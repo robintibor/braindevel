@@ -1,7 +1,7 @@
 from braindecode.experiments.parse import create_experiment_yaml_strings
 from braindecode.util import FuncAndArgs
 from braindecode.experiments.experiment import Experiment
-import yaml #@UnresolvedImport
+import yaml
 import numpy as np
 from braindecode.datasets.bbci_pylearn_dataset import BBCIPylearnCleanDataset
 from braindecode.mywyrm.processing import highpass_cnt
