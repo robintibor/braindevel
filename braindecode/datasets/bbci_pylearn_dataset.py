@@ -1,15 +1,15 @@
 import logging
 log = logging.getLogger(__name__)
-from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix  
+from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 import numpy as np
 from braindecode.datasets.bbci_dataset import BBCIDataset
 from braindecode.datasets.sensor_positions import (sort_topologically)
-from wyrm.processing import select_channels, select_epochs  
-#from motor_imagery_learning.csp.train_csp import generate_filterbank
+from wyrm.processing import select_channels, select_epochs
+from braindecode.datasets.filterbank import generate_filterbank
 from braindecode.mywyrm.processing import (bandpass_cnt,  segment_dat_fast)
-from wyrm.types import Data  
+from wyrm.types import Data
 from scipy.signal import blackmanharris
-from pylearn2.format.target_format import OneHotFormatter  
+from pylearn2.format.target_format import OneHotFormatter
 
 class BBCIPylearnDataset(DenseDesignMatrix):
     """ This loads BBCI datasets and puts them in a Dense Design Matrix. 
@@ -57,7 +57,7 @@ class BBCIPylearnDataset(DenseDesignMatrix):
 
     def create_dense_design_matrix(self):
         # epo has original shape trials x samples x channels x(freq/band?)
-        topo_view = self.bbci_set.epo.data.swapaxes(1,2)
+        topo_view = self.bbci_set.epo.data.swapaxes(1,2).astype(np.float32)
         # add empty axes if needed
         if topo_view.ndim == 3:
             topo_view = np.expand_dims(topo_view, axis=3)
@@ -71,6 +71,7 @@ class BBCIPylearnDataset(DenseDesignMatrix):
         y = format_targets(np.array(y))
         super(BBCIPylearnDataset, self).__init__(topo_view=topo_view, y=y, 
                                               axes=self.axes)
+        
         log.info("Loaded dataset with shape: {:s}".format(
             str(self.get_topological_view().shape)))
     
