@@ -19,8 +19,8 @@ with open('configs/eegnet_template.yaml', 'r') as f:
 def load_raw_data(filename='data/BBCI-without-last-runs/BhNoMoSc1S001R01_ds10_1-12.BBCI.mat',
                  sensors=['CPz', 'CP1', 'CP2']):
     raw_dataset = BBCIPylearnCleanDataset(filenames=filename,
-                               load_sensor_names=sensors, cleaner=BBCISetNoCleaner(),
-                               cnt_preprocessors=[(highpass_cnt, {'low_cut_off_hz': 0.5})]
+       cnt_preprocessors=[(highpass_cnt, {'low_cut_off_hz': 0.5})],
+       cleaner=BBCISetNoCleaner(),
     )
 
     raw_dataset.load()
@@ -39,7 +39,6 @@ right_rest_mask = np.logical_or(classes == 0, classes==2)
 X_right_rest = X[right_rest_mask].astype(np.float32)
 y_right_rest = y[right_rest_mask].astype(np.int32)
 classes_right_rest = classes[right_rest_mask].astype(np.int32)
-
 
 assert 'in_sensors' in train_str
 assert 'in_rows' in train_str

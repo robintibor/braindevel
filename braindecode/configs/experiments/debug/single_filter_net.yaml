@@ -1,0 +1,41 @@
+{
+    templates: {
+        simple_layers: [ 
+           &in_layer !!python/object/apply:lasagne.layers.InputLayer {
+                kwds: {
+                    shape: [null, in_sensors, in_rows, in_cols]
+                }
+            },
+            &conv !!python/object/apply:lasagne.layers.Conv2DLayer {
+                kwds: {
+                    incoming: *in_layer,
+                    num_filters: 1,
+                    filter_size: [100, 1],
+                    nonlinearity: !!python/name:theano.tensor.sqr ,
+                }
+            },
+            &pool !!python/object/apply:lasagne.layers.GlobalPoolLayer {
+                kwds: {
+                    incoming: *conv,
+                    pool_function: !!python/name:theano.tensor.sum ,
+                }
+            },
+            &log !!python/object/apply:lasagne.layers.NonlinearityLayer {
+                kwds: {
+                    incoming: *pool,
+                    nonlinearity: !!python/name:theano.tensor.log ,
+                }
+            },
+            &softmax !!python/object/apply:lasagne.layers.DenseLayer {
+                kwds: {
+                    incoming: *log,
+                    num_units: 2,
+                    nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+                }
+            },
+        ]
+    },
+    variants: [[{
+        layers: [$simple_layers],
+    }]]
+}
