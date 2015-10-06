@@ -1,5 +1,4 @@
 from braindecode.experiments.parse import create_experiment_yaml_strings
-from braindecode.util import FuncAndArgs
 from braindecode.experiments.experiment import Experiment
 import yaml
 import numpy as np
@@ -10,7 +9,7 @@ import lasagne
 from numpy.random import RandomState  
 from braindecode.datasets.preprocessing import RestrictToTwoClasses
 from braindecode.datasets.dataset_splitters import DatasetSingleFoldSplitter
-
+from braindecode.datasets.batch_iteration import get_balanced_batches
 lasagne.random.set_rng(RandomState(9859295))
 
 with open('configs/experiments/debug/single_filter_net.yaml', 'r') as f:
@@ -57,6 +56,7 @@ final_layer = layers[-1]
 
 exp = Experiment()
 exp.setup(final_layer, dataset_splitter,
-          loss_var_func=FuncAndArgs(lasagne.objectives.categorical_crossentropy), 
-          updates_var_func=FuncAndArgs(lasagne.updates.adam))
+          loss_var_func=lasagne.objectives.categorical_crossentropy, 
+          updates_var_func=lasagne.updates.adam,
+          batch_iter_func=get_balanced_batches)
 exp.run()
