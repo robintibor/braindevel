@@ -7,13 +7,14 @@ from collections import OrderedDict
 
 class Experiment(object):
     def setup(self, final_layer, dataset_splitter, loss_var_func,
-            updates_var_func, batch_iter_func, monitors,
+            updates_var_func, batch_iter_func, monitors, stop_criterion,
             target_var=None):
         lasagne.random.set_rng(RandomState(9859295))
         self.final_layer = final_layer
         self.dataset_splitter = dataset_splitter
         self.batch_iter_func = batch_iter_func
         self.monitors = monitors
+        self.stop_criterion = stop_criterion
         self.create_theano_functions(final_layer, loss_var_func,
             updates_var_func, target_var)
 
@@ -43,8 +44,7 @@ class Experiment(object):
         self.monitor_epoch(datasets)
         self.print_epoch()
         batch_rng = RandomState(328774)
-        for _ in range(10):
-            #print self.stop_criterion.should_stop()
+        while not self.stop_criterion.should_stop(self.monitor_chans):
             all_batch_inds = self.batch_iter_func(len(train_set.y),
                 batch_size=60, rng=batch_rng)
             for batch_inds in all_batch_inds:

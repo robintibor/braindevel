@@ -12,6 +12,7 @@ from braindecode.datasets.dataset_splitters import DatasetSingleFoldSplitter
 from braindecode.datasets.batch_iteration import get_balanced_batches
 from braindecode.veganlasagne.monitors import LossMonitor, MisclassMonitor,\
     RuntimeMonitor
+from braindecode.veganlasagne.stopping import NoDecrease, Or, MaxEpochs
 lasagne.random.set_rng(RandomState(9859295))
 
 with open('configs/experiments/debug/single_filter_net.yaml', 'r') as f:
@@ -61,5 +62,8 @@ exp.setup(final_layer, dataset_splitter,
           loss_var_func=lasagne.objectives.categorical_crossentropy, 
           updates_var_func=lasagne.updates.adam,
           batch_iter_func=get_balanced_batches,
-          monitors=[LossMonitor(), MisclassMonitor(), RuntimeMonitor()])
+          monitors=[LossMonitor(), MisclassMonitor(), RuntimeMonitor()],
+          stop_criterion=Or(stopping_criteria=[
+            NoDecrease('valid_y_loss', num_epochs=100),
+            MaxEpochs(num_epochs=10)]))
 exp.run()
