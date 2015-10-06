@@ -1,6 +1,8 @@
 import numpy as np
 
 class NoDecrease(object):
+    """ Stops if there is no decrease on a given monitor channel
+    for given number of epochs."""
     def  __init__(self, chan_name, num_epochs, min_decrease=1e-6):
         self.chan_name = chan_name
         self.num_epochs = num_epochs
@@ -36,3 +38,13 @@ class Or(object):
         return np.any([s.should_stop(monitor_chans) 
             for s in self.stopping_criteria])
         
+class ChanBelow():
+    """ Stops if the given monitor channel is below the given value."""
+    def  __init__(self, chan_name, target_value):
+        self.chan_name = chan_name
+        self.target_value = target_value
+        
+    def should_stop(self, monitor_chans):
+        # -1 due to doing one monitor at start of training
+        current_val = monitor_chans[self.chan_name][-1]
+        return current_val < self.target_value

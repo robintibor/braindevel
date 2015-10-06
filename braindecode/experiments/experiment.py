@@ -4,14 +4,16 @@ import theano
 import theano.tensor as T
 from braindecode.veganlasagne.update_modifiers import norm_constraint
 from collections import OrderedDict
+from braindecode.veganlasagne.remember import RememberBest
+from braindecode.veganlasagne.stopping import Or, MaxEpochs, ChanBelow
 
 class Experiment(object):
-    def setup(self, final_layer, dataset_splitter, loss_var_func,
+    def setup(self, final_layer, dataset_provider, loss_var_func,
             updates_var_func, batch_iter_func, monitors, stop_criterion,
             target_var=None):
         lasagne.random.set_rng(RandomState(9859295))
         self.final_layer = final_layer
-        self.dataset_splitter = dataset_splitter
+        self.dataset_provider = dataset_provider
         self.batch_iter_func = batch_iter_func
         self.monitors = monitors
         self.stop_criterion = stop_criterion
@@ -32,17 +34,31 @@ class Experiment(object):
         # 2 and max col norm 0.5
         updates = norm_constraint(updates, final_layer)
         input_var = lasagne.layers.get_all_layers(final_layer)[0].input_var
+        # needed for resetting to best model after early stop
+        self.all_params = updates.keys()
         self.loss_func = theano.function([input_var, target_var], loss)
 
         self.train_func = theano.function([input_var, target_var], updates=updates)
         self.pred_func = theano.function([input_var], prediction)
+        self.remember_extension = RememberBest('valid_y_loss')
         
     def run(self):
-        datasets = self.dataset_splitter.split_into_train_valid_test()
+        self.run_until_early_stop()
+        self.setup_after_stop_training()
+        self.run_until_second_stop()
+
+    def run_until_early_stop(self):
+        datasets = self.dataset_provider.get_train_valid_test()
         self.create_monitors(datasets)
+        self.run_until_stop(datasets, remember_best=True)
+        
+    def run_until_stop(self, datasets, remember_best):
         train_set = datasets['train']
         self.monitor_epoch(datasets)
         self.print_epoch()
+        if remember_best:
+            self.remember_extension.remember_epoch(self.monitor_chans,
+                self.all_params)
         batch_rng = RandomState(328774)
         while not self.stop_criterion.should_stop(self.monitor_chans):
             all_batch_inds = self.batch_iter_func(len(train_set.y),
@@ -52,6 +68,21 @@ class Experiment(object):
                     train_set.y[batch_inds])
             self.monitor_epoch(datasets)
             self.print_epoch()
+            if remember_best:
+                self.remember_extension.remember_epoch(self.monitor_chans,
+                self.all_params)
+    
+    def setup_after_stop_training(self):
+        self.remember_extension.reset_to_best_model(self.monitor_chans,
+                self.all_params)
+        self.stop_criterion = Or(stopping_criteria=[
+            MaxEpochs(num_epochs=self.remember_extension.best_epoch * 2),
+            ChanBelow(chan_name='valid_y_loss', 
+                target_value=self.monitor_chans['train_y_loss'][-1])])
+    
+    def run_until_second_stop(self):
+        datasets = self.dataset_provider.get_train_merged_valid_test()
+        self.run_until_stop(datasets, remember_best=False)
 
     def create_monitors(self, datasets):
         self.monitor_chans = OrderedDict()

@@ -7,8 +7,10 @@ from braindecode.mywyrm.processing import highpass_cnt
 from braindecode.mywyrm.clean import BBCISetNoCleaner
 import lasagne
 from numpy.random import RandomState  
-from braindecode.datasets.preprocessing import RestrictToTwoClasses
-from braindecode.datasets.dataset_splitters import DatasetSingleFoldSplitter
+from braindecode.datasets.preprocessing import RestrictToTwoClasses,\
+    OnlineAxiswiseStandardize
+from braindecode.datasets.dataset_splitters import DatasetSingleFoldSplitter,\
+    PreprocessedSplitter
 from braindecode.datasets.batch_iteration import get_balanced_batches
 from braindecode.veganlasagne.monitors import LossMonitor, MisclassMonitor,\
     RuntimeMonitor
@@ -38,8 +40,10 @@ raw_dataset.load()
 # for now format y back to classes
 raw_dataset.y = np.argmax(raw_dataset.y, axis=1).astype(np.int32)
 
-dataset_splitter = DatasetSingleFoldSplitter(raw_dataset, num_folds=10, 
-    test_fold_nr=9)
+dataset_provider = PreprocessedSplitter(
+    dataset_splitter=DatasetSingleFoldSplitter(raw_dataset, num_folds=10, 
+        test_fold_nr=9),
+          preprocessor=OnlineAxiswiseStandardize(axis=('c', 1)))
 
 assert 'in_sensors' in train_str
 assert 'in_rows' in train_str
@@ -58,12 +62,12 @@ layers = train_dict['layers']
 final_layer = layers[-1]
 
 exp = Experiment()
-exp.setup(final_layer, dataset_splitter,
+exp.setup(final_layer, dataset_provider,
           loss_var_func=lasagne.objectives.categorical_crossentropy, 
           updates_var_func=lasagne.updates.adam,
           batch_iter_func=get_balanced_batches,
           monitors=[LossMonitor(), MisclassMonitor(), RuntimeMonitor()],
           stop_criterion=Or(stopping_criteria=[
-            NoDecrease('valid_y_loss', num_epochs=100),
+            NoDecrease('valid_y_loss', num_epochs=5, min_decrease=0),
             MaxEpochs(num_epochs=10)]))
 exp.run()

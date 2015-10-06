@@ -142,3 +142,94 @@ class DatasetTwoFileSingleFoldSplitter(DatasetTrainValidTestSplitter):
             if hasattr(dataset, 'reload'):
                 dataset.reload()
         
+class PreprocessedSplitter(object):
+    def __init__(self, dataset_splitter, preprocessor):
+        self.dataset_splitter = dataset_splitter
+        self.preprocessor = preprocessor
+
+    def get_train_valid_test(self):
+        datasets = self.dataset_splitter.split_into_train_valid_test()
+        self.dataset_splitter.free_memory_if_reloadable()
+        if self.preprocessor is not None:
+            self.preprocessor.apply(datasets['train'], can_fit=True)
+            self.preprocessor.apply(datasets['valid'], can_fit=False)
+            self.preprocessor.apply(datasets['test'], can_fit=False)
+        return datasets
+
+    def get_train_merged_valid_test(self):
+        self.dataset_splitter.reload_data()
+        new_datasets = self.get_train_fitted_valid_test()
+        return new_datasets
+
+    def get_train_fitted_valid_test(self):
+        this_datasets = self.dataset_splitter.split_into_train_valid_test()
+        self.dataset_splitter.free_memory_if_reloadable()
+        train_valid_set = self.concatenate_sets(this_datasets['train'],
+            this_datasets['valid'])
+        test_set = this_datasets['test']
+        train_set_num_trials = len(this_datasets['train'].y)
+        del this_datasets['train']
+        if self.preprocessor is not None:
+            self.preprocessor.apply(train_valid_set, can_fit=True)
+            self.preprocessor.apply(test_set, can_fit=False)
+        _, valid_set = self.split_sets(train_valid_set, 
+            train_set_num_trials, len(this_datasets['valid'].y))
+        # train valid is the new train set!!
+        return {'train': train_valid_set, 'valid': valid_set, 
+            'test': test_set}
+
+    def concatenate_sets(self, first_set, second_set):
+        """ Concatenates topo views and y(targets)"""
+        assert first_set.view_converter.axes == second_set.view_converter.axes,\
+            "first set and second set should have same axes ordering"
+        assert first_set.view_converter.axes[0] == 'b', ("Expect batch axis "
+            "as first axis")
+        merged_topo_view = np.concatenate((first_set.get_topological_view(),
+            second_set.get_topological_view()))
+        merged_y = np.concatenate((first_set.y, second_set.y)) 
+        merged_set = DenseDesignMatrix(
+            topo_view=merged_topo_view,
+            y=merged_y,
+            axes=first_set.view_converter.axes)
+        return merged_set
+    
+    def split_sets(self, full_set, split_index, split_to_end_num):
+        """ Assumes that full set may be doubled or tripled in size
+        and split index refers to original size. So
+        if we originally had 100 trials (set1) + 20 trials (set2) 
+        merged to 120 trials, we get a split index of 100.
+        If we later have 360 trials we assume that the 360 trials 
+        consist of:
+        100 trials set1 + 20 trials set2 + 100 trials set1 + 20 trials set2
+        + 100 trials set1 + 20 trials set2
+        (and not 300 trials set1 + 60 trials set2)"""
+        full_topo = full_set.get_topological_view()
+        full_y = full_set.y
+        original_full_len = split_index + split_to_end_num
+        topo_first = full_topo[:split_index]
+        y_first = full_y[:split_index]
+        topo_second = full_topo[split_index:original_full_len]
+        y_second = full_y[split_index:original_full_len]
+        next_start = original_full_len
+        # Go through possibly appended transformed copies of dataset
+        # If preprocessors did not change dataset size, this is not 
+        # necessary
+        for next_split in xrange(next_start + split_index, 
+                len(full_set.y), original_full_len):
+            next_end = next_split + split_to_end_num
+            topo_first = np.concatenate((topo_first, 
+                full_topo[next_start:next_split]))
+            y_first = np.concatenate((y_first, full_y[next_start:next_split]))
+            topo_second = np.concatenate((topo_second, 
+                full_topo[next_split:next_end]))
+            y_second =  np.concatenate((y_second, full_y[next_split:next_end]))
+            next_start = next_end
+        first_set = DenseDesignMatrix(
+            topo_view=topo_first,
+            y=y_first,
+            axes=full_set.view_converter.axes)
+        second_set = DenseDesignMatrix(
+            topo_view=topo_second,
+            y=y_second,
+            axes=full_set.view_converter.axes)
+        return first_set, second_set
