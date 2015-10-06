@@ -4,7 +4,6 @@ import theano
 import theano.tensor as T
 from braindecode.veganlasagne.update_modifiers import norm_constraint
 from collections import OrderedDict
-import numpy as np
 
 class Experiment(object):
     def setup(self, final_layer, dataset_splitter, loss_var_func,
@@ -37,26 +36,15 @@ class Experiment(object):
         self.train_func = theano.function([input_var, target_var], updates=updates)
         self.pred_func = theano.function([input_var], prediction)
         
-    def create_monitors(self, datasets):
-        self.monitor_chans = OrderedDict([('train_y_misclass', []),
-            ('train_y_loss', []), ('valid_y_misclass', []), 
-            ('valid_y_loss', []), ('test_y_misclass', []), 
-            ('test_y_loss', []), ('runtime', [])])
-        self.last_epoch_time = None
-        for monitor in self.monitors:
-            monitor.setup(datasets, self.monitor_chans)
-        
-
     def run(self):
         datasets = self.dataset_splitter.split_into_train_valid_test()
-        
         self.create_monitors(datasets)
         train_set = datasets['train']
-        
         self.monitor_epoch(datasets)
         self.print_epoch()
         batch_rng = RandomState(328774)
         for _ in range(10):
+            #print self.stop_criterion.should_stop()
             all_batch_inds = self.batch_iter_func(len(train_set.y),
                 batch_size=60, rng=batch_rng)
             for batch_inds in all_batch_inds:
@@ -64,19 +52,23 @@ class Experiment(object):
                     train_set.y[batch_inds])
             self.monitor_epoch(datasets)
             self.print_epoch()
+
+    def create_monitors(self, datasets):
+        self.monitor_chans = OrderedDict()
+        self.last_epoch_time = None
+        for monitor in self.monitors:
+            monitor.setup(self.monitor_chans, datasets)
             
     def monitor_epoch(self, all_datasets):
-        self.monitor_chans['runtime'].append(1)
         for monitor in self.monitors:
-            monitor.monitor_epoch(self.pred_func, self.loss_func, all_datasets)
+            monitor.monitor_epoch(self.monitor_chans, self.pred_func,
+                self.loss_func, all_datasets)
 
     def print_epoch(self):
         # -1 due to doing one monitor at start of training
-        i_epoch = len(self.monitor_chans['train_y_loss']) - 1 
+        i_epoch = len(self.monitor_chans.values()[0]) - 1 
         print("Epoch {:d}".format(i_epoch))
         for chan_name in self.monitor_chans:
             print("{:20s} {:.5f}".format(chan_name,
                 self.monitor_chans[chan_name][-1]))
         print("")
-        
-        
