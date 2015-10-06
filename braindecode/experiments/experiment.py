@@ -67,20 +67,8 @@ class Experiment(object):
             
     def monitor_epoch(self, all_datasets):
         self.monitor_chans['runtime'].append(1)
-        for setname in all_datasets:
-            assert setname in ['train', 'valid', 'test']
-            dataset = all_datasets[setname]
-            loss = self.loss_func(dataset.get_topological_view(),
-                    dataset.y) 
-            monitor_key = "{:s}_y_loss".format(setname)
-            self.monitor_chans[monitor_key].append(float(loss))
-            monitor_key = "{:s}_y_misclass".format(setname)
-            preds = self.pred_func(dataset.get_topological_view())
-            pred_classes = np.argmax(preds, axis=1)
-            misclass = 1 - (np.sum(pred_classes == dataset.y) / 
-                float(len(dataset.y)))
-            self.monitor_chans[monitor_key].append(float(misclass))
-            
+        for monitor in self.monitors:
+            monitor.monitor_epoch(self.pred_func, self.loss_func, all_datasets)
 
     def print_epoch(self):
         # -1 due to doing one monitor at start of training
