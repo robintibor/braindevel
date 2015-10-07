@@ -42,7 +42,7 @@ theano:
 	pip install git+git://github.com/Theano/Theano.git@rel-0.7rc2 $(PIP_FLAG)
 
 pylearn2:
-	pip install git+git://github.com:lisa-lab/pylearn2.git@8bd3cc2ecd4062b425d938d68024276592bce1a7 $(PIP_FLAG)
+	pip install git+git://github.com/lisa-lab/pylearn2.git@8bd3cc2ecd4062b425d938d68024276592bce1a7 $(PIP_FLAG)
 
 wyrm:
 	pip install git+git://github.com/bbci/wyrm.git@e976e500914cce720a659025c18efc338b408721 $(PIP_FLAG)
