@@ -17,10 +17,21 @@ export NUMPY_SITE_CFG
 #clone-repository:
 #	git clone https://robintibor@bitbucket.org/robintibor/machine-learning-for-motor-imagery.git
 
-requirements: 
-	sudo apt-get install liblas-dev liblapack-dev gfortran libyaml-dev cython
+requirements: libs scikits-samplerate
 
-install: python-packages theano pylearn2 wyrm scikits-samplerate scikits-samplerate-pip
+libs:
+	sudo apt-get install liblas-dev liblapack-dev gfortran libyaml-dev cython
+	
+scikits-samplerate:
+	wget http://www.mega-nerd.com/SRC/libsamplerate-0.1.8.tar.gz
+	tar -xvf libsamplerate-0.1.8.tar.gz
+	cd libsamplerate-0.1.8 && \
+	./configure --prefix=$(MAKEFILE_DIR)/libsamplerate/ && \
+	make && \
+	make install && \
+	ldconfig -v
+
+install: python-packages theano pylearn2 wyrm scikits-samplerate-pip
 
 python-packages:
 	pip install numpy scipy matplotlib scikit-learn pytest h5py $(PIP_FLAG)
@@ -34,23 +45,7 @@ pylearn2:
 wyrm:
 	pip install -e git+https://github.com/bbci/wyrm.git@e976e500914cce720a659025c18efc338b408721#egg=Wyrm-master $(PIP_FLAG) --src wyrm
 
-scikits-samplerate:
-	wget http://www.mega-nerd.com/SRC/libsamplerate-0.1.8.tar.gz
-	tar -xvf libsamplerate-0.1.8.tar.gz
-	cd libsamplerate-0.1.8 && \
-	./configure --prefix=$(MAKEFILE_DIR)/libsamplerate/ && \
-	make && \
-	make install && \
-	ldconfig -v
-
 scikits-samplerate-pip:
 	(test -e ~/.numpy-site.cfg && grep -q 'samplerate' ~/.numpy-site.cfg) || echo "$$NUMPY_SITE_CFG" >> ~/.numpy-site.cfg
 	# check first if file exists and already has samplerate info
 	pip install scikits.samplerate $(PIP_FLAG)
-
-
-
-	
-
-
-
