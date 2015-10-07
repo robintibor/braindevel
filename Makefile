@@ -36,7 +36,7 @@ install: python-packages theano pylearn2 wyrm lasagne scikits-samplerate-pip
 
 python-packages:
 	pip install --upgrade pip $(PIP_FLAG)
-	pip install numpy scipy matplotlib scikit-learn pytest h5py $(PIP_FLAG)
+	pip install numpy scipy matplotlib scikit-learn pytest h5py jupyter $(PIP_FLAG)
 
 theano:
 	pip install git+git://github.com/Theano/Theano.git@rel-0.7rc2 $(PIP_FLAG)
