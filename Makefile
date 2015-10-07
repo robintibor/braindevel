@@ -35,6 +35,7 @@ scikits-samplerate:
 install: python-packages theano pylearn2 wyrm scikits-samplerate-pip
 
 python-packages:
+	pip install --upgrade pip
 	pip install numpy scipy matplotlib scikit-learn pytest h5py $(PIP_FLAG)
 
 theano:
