@@ -1,4 +1,4 @@
-PIP_FLAG = --user
+PIP_FLAG = #--user
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # if installing by hand, this should be put in file .numpy-site.cfg before installing scikits.samplerate
