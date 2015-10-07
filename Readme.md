@@ -43,9 +43,11 @@ make install PIP_FLAG=--user
 
 ### Option 2 (with requirements.txt):
 
+```
 pip install -r requirements.txt
 make scikits-samplerate-pip
 
+```
 
 ## Test installation
 
