@@ -32,20 +32,23 @@ scikits-samplerate:
 	make install && \
 	ldconfig -v
 
-install: python-packages theano pylearn2 wyrm scikits-samplerate-pip
+install: python-packages theano pylearn2 wyrm lasagne scikits-samplerate-pip
 
 python-packages:
 	pip install --upgrade pip $(PIP_FLAG)
 	pip install numpy scipy matplotlib scikit-learn pytest h5py $(PIP_FLAG)
 
 theano:
-	pip install git+git@github.com:Theano/Theano.git@rel-0.7rc2 $(PIP_FLAG)
+	pip install git+git://github.com/Theano/Theano.git@rel-0.7rc2 $(PIP_FLAG)
 
 pylearn2:
-	pip install git+git@github.com:lisa-lab/pylearn2.git@8bd3cc2ecd4062b425d938d68024276592bce1a7 $(PIP_FLAG)
+	pip install git+git://github.com:lisa-lab/pylearn2.git@8bd3cc2ecd4062b425d938d68024276592bce1a7 $(PIP_FLAG)
 
 wyrm:
-	pip install git+https://github.com/bbci/wyrm.git@e976e500914cce720a659025c18efc338b408721 $(PIP_FLAG)
+	pip install git+git://github.com/bbci/wyrm.git@e976e500914cce720a659025c18efc338b408721 $(PIP_FLAG)
+
+lasagne:
+	pip install git+git://github.com/Lasagne/Lasagne.git@6dd88f5fada20768087f29ae89cbd83980fe0a4e $(PIP_FLAG)
 
 scikits-samplerate-pip:
 	(test -e ~/.numpy-site.cfg && grep -q 'samplerate' ~/.numpy-site.cfg) || echo "$$NUMPY_SITE_CFG" >> ~/.numpy-site.cfg
