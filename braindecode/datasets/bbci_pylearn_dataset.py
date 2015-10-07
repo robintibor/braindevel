@@ -63,7 +63,6 @@ class BBCIPylearnDataset(DenseDesignMatrix):
         # add empty axes if needed
         if topo_view.ndim == 3:
             topo_view = np.expand_dims(topo_view, axis=3)
-        #TODO(Robin): debug/remove again
         topo_view = np.ascontiguousarray(np.copy(topo_view))
         y = [event_class for time, event_class in self.bbci_set.epo.markers]
         assert np.array_equal(self.bbci_set.epo.axes[0] + 1, y), ("trial axes should"

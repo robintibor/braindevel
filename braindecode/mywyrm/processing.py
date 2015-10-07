@@ -1,13 +1,13 @@
 import scipy
-from wyrm.processing import lfilter, filtfilt  
+from wyrm.processing import lfilter, filtfilt
 import numpy as np
 from copy import deepcopy
 from braindecode.datasets.preprocessing import (exponential_running_mean, 
     exponential_running_var, OnlineAxiswiseStandardize)
-from sklearn.covariance import LedoitWolf as LW  
-import scikits.samplerate  
+from sklearn.covariance import LedoitWolf as LW
+import scikits.samplerate
 import re
-import wyrm.types  
+import wyrm.types
 
 def online_standardize_epo(epo_train, epo_test):
     standard_dim_inds=(0,1)
@@ -82,7 +82,6 @@ def select_channels_epo(epo, regexp_list, invert=False, chanaxis=-1):
         regular expressions.
 
     """
-    # TODO: make it work with epos
     chan_mask = np.array([False for i in range(len(epo.axes[chanaxis]))])
     for c_idx, c in enumerate(epo.axes[chanaxis]):
         for regexp in regexp_list:

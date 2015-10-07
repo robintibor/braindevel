@@ -322,7 +322,7 @@ def compute_confusion_matrix_csp(result_objects):
     test_labels = [r.multi_class.test_labels for r in result_objects]
     # have to "chain" both folds and datasets thats why two times itertools chain
     # to flatten the list
-    # TODO: in this case i guess number of folds always same so maybe just wrap with
+    # TODELAY: in this case i guess number of folds always same so maybe just wrap with
     # np array and then flatten? instead of itertools chain?
     test_labels_flat = list(itertools.chain(*itertools.chain(*test_labels)))
     test_predicted_labels = [r.multi_class.test_predicted_labels for r in result_objects]

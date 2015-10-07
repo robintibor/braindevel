@@ -173,7 +173,7 @@ class ResultPrinter:
     def _create_experiment_param_headers_and_rows(self):
         varying_param_keys = self._result_pool.varying_params()[0].keys()
         # Try to put dataset filename in second column after id...
-        # TODO: remove testfilename from this
+        # TODELAY: remove testfilename from this
         if (self._result_pool.have_varying_datasets()):
             if 'dataset_filename' in varying_param_keys:
                 filenamekey = 'dataset_filename'
@@ -204,7 +204,7 @@ class ResultPrinter:
             # Put rest of parameters
             for param_key in varying_param_keys:
                 param_value = varying_params_this_result_obj[param_key]
-                # TODO: remove again this if
+                # TODELAY: remove again this if
                 if param_key == 'test_filename':
                     param_value = re.sub(r"(./)?data/[^/]*/", '', str(param_value))
                     param_value = re.sub(r"MoSc[0-9]*S[0-9]*R[0-9]*_ds10_", '',

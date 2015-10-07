@@ -56,12 +56,11 @@
                     {'low_cut_off_hz': 0.5}
                 ],
             ],
-            cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner { },
+            cleaner: !obj:braindecode.mywyrm.clean.$cleaner { },
             sensor_names: $sensor_names,
             unsupervised_preprocessor: !obj:braindecode.datasets.preprocessing.RestrictToTwoClasses {
                 classes: [0,2]
             },
-            #axes: ['b',1,0,'c'],
         },
         online_chan_freq_wise: !obj:braindecode.datasets.preprocessing.OnlineAxiswiseStandardize {
             axis: ['c', 1]
@@ -70,7 +69,8 @@
         adam: !!python/name:lasagne.updates.adam ,
     },
     variants: [[{
-        save_path: ['data/models/rawnet/'],
+        cleaner: [BBCISetCleaner],
+        save_path: ['data/models/rawnet-clean/'],
         sensor_names: ["*C_sensors"],
         layers: [$simple_layers],
         dataset: [$raw_set],

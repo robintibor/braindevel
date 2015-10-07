@@ -55,9 +55,7 @@ class ExperimentsRunner:
                 for file_name in existing_result_files]
             highest_result_nr = max(existing_result_nrs)
             result_nr = highest_result_nr + result_nr
-        # Todo: use os.join to prevent mistakes? i.e. than always
-        # folder path is a folder, no matter if slash or not at end
-        return folder_path + str(result_nr)
+        return os.path.join(folder_path, str(result_nr))
     
     def _create_save_folder_path(self):
         train_str = self._all_train_strs[0]
@@ -85,9 +83,6 @@ class ExperimentsRunner:
         for i in range(self._get_start_id(),  self._get_stop_id() + 1):
             self._run_experiment(i)           
             
-        # lets mkae it faster for tests by not printing... 
-        # TODO(Robin): remove again
-        self._print_results()
         if (not self._dry_run and self._quiet):
             self._print_results()
     
