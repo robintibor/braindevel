@@ -1,6 +1,6 @@
 import itertools
 from copy import deepcopy, copy
-import yaml 
+import yam
 from string import Template
 
 
@@ -159,7 +159,11 @@ def process_templates(templates, parameters):
         for template_name in needed_template_names:
             template_string = templates[template_name]
             for param in parameters_without_template_parameters.keys():
-                if ('$' + param) in template_string:
+                if (('$' + param + ' ') in template_string or
+                    ('$' + param + ',') in template_string  or
+                    ('$' + param + ']') in template_string  or
+                    ('$' + param + '}') in template_string  or
+                    ('$' + param + '\n') in template_string):
                     parameters_without_template_parameters.pop(param)
             template_string = Template(template_string).substitute(parameters)
             processed_templates[template_name] = template_string

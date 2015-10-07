@@ -1,0 +1,107 @@
+{
+    templates: {
+        simple_layers: [ 
+           &in_layer !obj:lasagne.layers.InputLayer {
+                shape: [null, in_sensors, in_rows, in_cols]
+            },
+            &shuffle !obj:lasagne.layers.DimshuffleLayer {
+                incoming: *in_layer,
+                pattern: [0,3,2,1],
+            },
+            &time_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *shuffle,
+                num_filters: 40,
+                filter_size: [$filter_time_length, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+            },
+            &drop_time !obj:lasagne.layers.DropoutLayer {
+                incoming: *time_conv,
+                p: 0.5,
+            },
+            &spat_conv !obj:braindecode.veganlasagne.layers.Conv2DAllColsLayer {
+                incoming: *drop_time,
+                num_filters: 40,
+                filter_size: [1, -1],
+                nonlinearity: !!python/name:theano.tensor.sqr ,
+            },
+            &pool !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
+                    incoming: *spat_conv,
+                    pool_size: [50,1],
+                    stride: [10,1],
+                    mode: 'average_exc_pad',
+            },
+            &log !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *pool,
+                    nonlinearity: !!python/name:theano.tensor.log ,
+            },
+            &drop_feature !obj:lasagne.layers.DropoutLayer {
+                incoming: *log,
+                p: 0.5,
+            },
+            &softmax !obj:lasagne.layers.DenseLayer {
+                    incoming: *drop_feature,
+                    num_units: 2,
+                    nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+            },
+        ],
+        raw_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {
+            filenames: $dataset_filename,
+            cnt_preprocessors: [
+                [
+                    !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                    {'newfs': $resample_fs},
+                ],
+                [
+                    !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                    {'low_cut_off_hz': 0.5}
+                ],
+            ],
+            cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner { },
+            sensor_names: $sensor_names,
+            unsupervised_preprocessor: !obj:braindecode.datasets.preprocessing.RestrictToTwoClasses {
+                classes: [0,2]
+            },
+            #axes: ['b',1,0,'c'],
+        },
+        online_chan_freq_wise: !obj:braindecode.datasets.preprocessing.OnlineAxiswiseStandardize {
+            axis: ['c', 1]
+        },
+        categorical_crossentropy: !!python/name:lasagne.objectives.categorical_crossentropy ,
+        adam: !!python/name:lasagne.updates.adam ,
+    },
+    variants: [[{
+        save_path: ['data/models/rawnet/'],
+        sensor_names: ["*C_sensors"],
+        layers: [$simple_layers],
+        dataset: [$raw_set],
+        dataset_provider: ["*preprocessed_provider"],
+        preprocessor: [$online_chan_freq_wise],
+        loss_var_func: [$categorical_crossentropy],
+        updates_var_func: [$adam],
+        max_increasing_epochs: [150],
+        max_epochs: [1500],
+        filter_time_length: [15],
+        resample_fs: [150],
+        dataset_filename: [
+                'data/BBCI-all-runs/AnWeMoSc1S001R01_ds10_1-14BBCI.mat',
+                'data/BBCI-all-runs/BhNoMoSc1S001R01_ds10_1-14BBCI.mat',
+                'data/BBCI-all-runs/FaMaMoSc1S001R01_ds10_1-16BBCI.mat',
+                'data/BBCI-all-runs/FrThMoSc1S001R01_ds10_1-13BBCI.mat',
+                'data/BBCI-all-runs/GuJoMoSc01S001R01_ds10_1-13BBCI.mat',
+                'data/BBCI-all-runs/JoBeMoSc01S001R01_ds10_1-13BBCI.mat',
+                'data/BBCI-all-runs/KaUsMoSc1S001R01_ds10_1-13BBCI.mat',
+                'data/BBCI-all-runs/LaKaMoSc1S001R01_ds10_1-11BBCI.mat',
+#                'data/BBCI-all-runs/LuFiMoSc3S001R01_ds10_1-13BBCI.mat',
+                'data/BBCI-all-runs/MaGlMoSc2S001R01_ds10_1-14BBCI.mat',
+                'data/BBCI-all-runs/MaJaMoSc1S001R01_ds10_1-13BBCI.mat',
+#                'data/BBCI-all-runs/MaKiMoSC01S001R01_ds10_1-6BBCI.mat',
+                'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
+                'data/BBCI-all-runs/NaMaMoSc1S001R01_ds10_1-13BBCI.mat',
+                'data/BBCI-all-runs/OlIlMoSc01S001R01_ds10_1-13BBCI.mat',
+                'data/BBCI-all-runs/PiWiMoSc1S001R01_ds10_1-13BBCI.mat',
+                'data/BBCI-all-runs/RoBeMoSc03S001R01_ds10_1-11BBCI.mat',
+                'data/BBCI-all-runs/RoScMoSc1S001R01_ds10_1-13BBCI.mat',
+                'data/BBCI-all-runs/StHeMoSc01S001R01_ds10_1-12BBCI.mat',
+                'data/BBCI-all-runs/SvMuMoSc1S001R01_ds10_1-14BBCI.mat']
+    }]]
+}

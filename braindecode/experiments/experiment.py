@@ -7,6 +7,7 @@ from collections import OrderedDict
 from braindecode.veganlasagne.remember import RememberBest
 from braindecode.veganlasagne.stopping import Or, MaxEpochs, ChanBelow
 import logging
+from pylearn2.utils.timing import log_timing
 log = logging.getLogger(__name__)
 
 class Experiment(object):
@@ -19,16 +20,28 @@ class Experiment(object):
         self.batch_iter_func = batch_iter_func
         self.monitors = monitors
         self.stop_criterion = stop_criterion
+        self.print_layer_sizes()
+        log.info("Create theano functions...")
         self.create_theano_functions(final_layer, loss_var_func,
             updates_var_func, target_var)
 
+    def print_layer_sizes(self):
+        log.info("Layers...")
+        layers = lasagne.layers.get_all_layers(self.final_layer)
+        for l in layers:
+            log.info(l.__class__.__name__)
+            log.info(l.output_shape)
+    
     def create_theano_functions(self, final_layer, loss_var_func,
             updates_var_func, target_var):
         if target_var is None:
             target_var = T.ivector('targets')
         prediction = lasagne.layers.get_output(final_layer)
+        # test as in during testing not as in "test set"
+        test_prediction = lasagne.layers.get_output(final_layer, 
+            deterministic=True)
         loss = loss_var_func(prediction, target_var).mean()
-
+        test_loss = loss_var_func(test_prediction, target_var).mean()
         # create parameter update expressions
         params = lasagne.layers.get_all_params(final_layer, trainable=True)
         updates = updates_var_func(loss, params)
@@ -38,15 +51,18 @@ class Experiment(object):
         input_var = lasagne.layers.get_all_layers(final_layer)[0].input_var
         # needed for resetting to best model after early stop
         self.all_params = updates.keys()
-        self.loss_func = theano.function([input_var, target_var], loss)
+        self.loss_func = theano.function([input_var, target_var], test_loss)
 
         self.train_func = theano.function([input_var, target_var], updates=updates)
-        self.pred_func = theano.function([input_var], prediction)
+        self.pred_func = theano.function([input_var], test_prediction)
         self.remember_extension = RememberBest('valid_misclass')
         
     def run(self):
+        log.info("Run until first stop...")
         self.run_until_early_stop()
+        log.info("Setup for second stop...")
         self.setup_after_stop_training()
+        log.info("Run until second stop...")
         self.run_until_second_stop()
 
     def run_until_early_stop(self):
@@ -65,9 +81,11 @@ class Experiment(object):
         while not self.stop_criterion.should_stop(self.monitor_chans):
             all_batch_inds = self.batch_iter_func(len(train_set.y),
                 batch_size=60, rng=batch_rng)
-            for batch_inds in all_batch_inds:
-                self.train_func(train_set.get_topological_view()[batch_inds], 
-                    train_set.y[batch_inds])
+            
+            with log_timing(log, None, final_msg='Time updates this epoch:'):
+                for batch_inds in all_batch_inds:
+                    self.train_func(train_set.get_topological_view()[batch_inds], 
+                        train_set.y[batch_inds])
             self.monitor_epoch(datasets)
             self.print_epoch()
             if remember_best:

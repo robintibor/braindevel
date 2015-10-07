@@ -1,11 +1,4 @@
 #!/usr/bin/env python
-# I don't know how to properly import python packages, so I do it like this ;)
-# http://stackoverflow.com/a/9806045/1469195
-import os
-import inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-os.sys.path.insert(0,parentdir) 
 import argparse
 import re
 import yaml
