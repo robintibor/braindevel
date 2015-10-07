@@ -37,13 +37,13 @@ python-packages:
 	pip install numpy scipy matplotlib scikit-learn pytest h5py $(PIP_FLAG)
 
 theano:
-	pip install -e git+git@github.com:Theano/Theano.git@4410fb0f3569956e4896457295fc96bc2530faf4#egg=Theano-master $(PIP_FLAG) --src Theano
+	pip install git+git@github.com:Theano/Theano.git@rel-0.7rc2 $(PIP_FLAG)
 
 pylearn2:
-	pip install -e git+git@github.com:lisa-lab/pylearn2.git@8bd3cc2ecd4062b425d938d68024276592bce1a7#egg=pylearn2-master $(PIP_FLAG) --src pylearn2
+	pip install git+git@github.com:lisa-lab/pylearn2.git@8bd3cc2ecd4062b425d938d68024276592bce1a7 $(PIP_FLAG)
 
 wyrm:
-	pip install -e git+https://github.com/bbci/wyrm.git@e976e500914cce720a659025c18efc338b408721#egg=Wyrm-master $(PIP_FLAG) --src wyrm
+	pip install git+https://github.com/bbci/wyrm.git@e976e500914cce720a659025c18efc338b408721 $(PIP_FLAG)
 
 scikits-samplerate-pip:
 	(test -e ~/.numpy-site.cfg && grep -q 'samplerate' ~/.numpy-site.cfg) || echo "$$NUMPY_SITE_CFG" >> ~/.numpy-site.cfg
