@@ -20,7 +20,8 @@ export NUMPY_SITE_CFG
 requirements: libs scikits-samplerate
 
 libs:
-	sudo apt-get install liblas-dev liblapack-dev gfortran libyaml-dev cython
+	sudo apt-get install liblas-dev liblapack-dev gfortran libyaml-dev cython\
+		libfreetype6-dev
 	
 scikits-samplerate:
 	wget http://www.mega-nerd.com/SRC/libsamplerate-0.1.8.tar.gz
