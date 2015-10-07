@@ -6,6 +6,8 @@ from braindecode.veganlasagne.update_modifiers import norm_constraint
 from collections import OrderedDict
 from braindecode.veganlasagne.remember import RememberBest
 from braindecode.veganlasagne.stopping import Or, MaxEpochs, ChanBelow
+import logging
+log = logging.getLogger(__name__)
 
 class Experiment(object):
     def setup(self, final_layer, dataset_provider, loss_var_func,
@@ -40,7 +42,7 @@ class Experiment(object):
 
         self.train_func = theano.function([input_var, target_var], updates=updates)
         self.pred_func = theano.function([input_var], prediction)
-        self.remember_extension = RememberBest('valid_y_loss')
+        self.remember_extension = RememberBest('valid_misclass')
         
     def run(self):
         self.run_until_early_stop()
@@ -77,8 +79,8 @@ class Experiment(object):
                 self.all_params)
         self.stop_criterion = Or(stopping_criteria=[
             MaxEpochs(num_epochs=self.remember_extension.best_epoch * 2),
-            ChanBelow(chan_name='valid_y_loss', 
-                target_value=self.monitor_chans['train_y_loss'][-1])])
+            ChanBelow(chan_name='valid_loss', 
+                target_value=self.monitor_chans['train_loss'][-1])])
     
     def run_until_second_stop(self):
         datasets = self.dataset_provider.get_train_merged_valid_test()
@@ -98,8 +100,8 @@ class Experiment(object):
     def print_epoch(self):
         # -1 due to doing one monitor at start of training
         i_epoch = len(self.monitor_chans.values()[0]) - 1 
-        print("Epoch {:d}".format(i_epoch))
+        log.info("Epoch {:d}".format(i_epoch))
         for chan_name in self.monitor_chans:
-            print("{:20s} {:.5f}".format(chan_name,
+            log.info("{:20s} {:.5f}".format(chan_name,
                 self.monitor_chans[chan_name][-1]))
-        print("")
+        log.info("")

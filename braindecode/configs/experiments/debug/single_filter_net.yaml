@@ -33,9 +33,28 @@
                     nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
                 }
             },
-        ]
+        ],
+        raw_set: !!python/object/apply:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {
+            kwds: {
+                filenames: 'data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat',
+                cnt_preprocessors: [
+                    [
+                        !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                        {'low_cut_off_hz': 0.5}]
+                    ],
+                cleaner: !!python/object/apply:braindecode.mywyrm.clean.BBCISetNoCleaner { },
+                load_sensor_names: ['CPz', 'CP1', 'CP2'],
+                unsupervised_preprocessor: !!python/object/apply:braindecode.datasets.preprocessing.RestrictToTwoClasses {
+                    kwds: {
+                        classes: [0,2]
+                    }
+                }
+            }
+        },
     },
     variants: [[{
+        save_path: ['data/models/faketest/'],
         layers: [$simple_layers],
+        dataset: [$raw_set],
     }]]
 }

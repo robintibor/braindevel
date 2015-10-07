@@ -1,4 +1,6 @@
  {
         layers: $layers,
-        original_params: $original_params
+        original_params: $original_params,
+        save_path: $save_path,
+        dataset: $dataset
 }

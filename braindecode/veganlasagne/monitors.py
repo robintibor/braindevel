@@ -15,7 +15,7 @@ class LossMonitor(Monitor):
     def setup(self, monitor_chans, datasets):
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
-            monitor_key = "{:s}_y_loss".format(setname)
+            monitor_key = "{:s}_loss".format(setname)
             monitor_chans[monitor_key] = []
 
     def monitor_epoch(self, monitor_chans, pred_func, loss_func,
@@ -25,14 +25,14 @@ class LossMonitor(Monitor):
             dataset = datasets[setname]
             loss = loss_func(dataset.get_topological_view(),
                     dataset.y) 
-            monitor_key = "{:s}_y_loss".format(setname)
+            monitor_key = "{:s}_loss".format(setname)
             monitor_chans[monitor_key].append(float(loss))
             
 class MisclassMonitor(Monitor):
     def setup(self, monitor_chans, datasets):
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
-            monitor_key = "{:s}_y_misclass".format(setname)
+            monitor_key = "{:s}_misclass".format(setname)
             monitor_chans[monitor_key] = []
 
     def monitor_epoch(self, monitor_chans,
@@ -40,7 +40,7 @@ class MisclassMonitor(Monitor):
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
             dataset = datasets[setname]
-            monitor_key = "{:s}_y_misclass".format(setname)
+            monitor_key = "{:s}_misclass".format(setname)
             preds = pred_func(dataset.get_topological_view())
             pred_classes = np.argmax(preds, axis=1)
             misclass = 1 - (np.sum(pred_classes == dataset.y) / 
