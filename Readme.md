@@ -56,12 +56,12 @@ add the repository to the python path, i.e.
 export PYTHONPATH=$PYTHONPATH:<repositoryfolder>
 ```
 
-Start ```jupyter``` in terminal and navigate to braindecode/tutorials/Artificial_Example.ipynb. If it works, everything is fine :)
+Start ```jupyter``` in terminal and navigate to ```braindecode/notebooks/tutorials/Artificial_Example.ipynb```. If it works, everything is fine :)
 
 
 ### Work with real data
 
-Create folder ```<repositoryfolder>/```
+Create folder ```<repositoryfolder>/data/BBCI-without-last-runs/```
 
 Put the following files in there:
 
@@ -85,3 +85,5 @@ RoScMoSc1S001R01_ds10_1-11.BBCI.mat
 StHeMoSc01S001R01_ds10_1-10.BBCI.mat
 SvMuMoSc1S001R01_ds10_1-12.BBCI.mat
 ```
+
+Now you should be able to also run ```braindecode/notebooks/tutorials/Lasagne.ipynb```.
