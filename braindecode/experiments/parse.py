@@ -2,25 +2,56 @@ import itertools
 from copy import deepcopy, copy
 import yam
 from string import Template
-
+from collections import deque
 
 def transform_vals_to_string_constructor(loader, node):
     return dict([(v[0].value, yaml.serialize(v[1])) for v in node.value])
 
-def create_experiment_yaml_strings(config_str, main_template_str):
-    
+def create_experiment_yaml_strings_from_files(config_filename, 
+        main_template_filename):
     yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
+    config_strings = []
+
+    config_filename_stack = deque([config_filename])
+
+    while len(config_filename_stack) > 0:
+        config_filename = config_filename_stack.pop()
+        with open(config_filename,'r') as config_file:
+            config_str = config_file.read()
+        config_obj = yaml.load(config_str.replace("templates:",
+            "templates: !TransformValsToString"))
+        if 'extends' in config_obj:
+            other_filenames = config_obj['extends']
+            config_filename_stack.extend(other_filenames)
+        config_strings.append(config_str)
+
+    config_strings = config_strings[::-1]
     
-    config_obj = yaml.load(config_str.replace("templates:", "templates: !TransformValsToString"))
+    with open(main_template_filename, 'r') as main_template_file:
+        main_template_str = main_template_file.read()
+    return create_experiment_yaml_strings(config_strings, main_template_str)
     
-    params =  create_variants_recursively(config_obj['variants'])
+
+def create_experiment_yaml_strings(all_config_strings, main_template_str):
+    """ Config strings should be from top file to bottom file."""
+    variants = []
+    templates = dict()
+    yaml.add_constructor(u'!TransformValsToString',
+        transform_vals_to_string_constructor)
+    for config_str in all_config_strings:
+        config_obj = yaml.load(config_str.replace("templates:", "templates: !TransformValsToString"))
+        if 'variants' in config_obj:
+            sub_variants = create_variants_recursively(config_obj['variants'])
+            variants = product_of_lists_of_dicts(variants, sub_variants)
+        if 'templates' in config_obj:
+            templates.update(config_obj['templates'])
+
+    final_params = merge_parameters_and_templates(variants, templates)
     # possibly remove equal params?
-    templates = config_obj['templates']
-    final_params = merge_parameters_and_templates(params, templates)
     
     train_strings = []
     for i_config in range(len(final_params)):
-        final_params[i_config]['original_params'] = yaml.dump(params[i_config])
+        final_params[i_config]['original_params'] = yaml.dump(variants[i_config])
         train_str = Template(main_template_str).substitute(final_params[i_config])
         train_strings.append(train_str)
     return train_strings

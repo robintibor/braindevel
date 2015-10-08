@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import logging
-from braindecode.experiments.parse import create_experiment_yaml_strings
+from braindecode.experiments.parse import (
+    create_experiment_yaml_strings_from_files)
 from pylearn2.utils.logger import (CustomStreamHandler, CustomFormatter)
 from braindecode.experiments.experiment_runner import ExperimentsRunner
 import argparse
@@ -58,14 +59,9 @@ def parse_command_line_arguments():
 if __name__ == "__main__":
     setup_logging()
     args = parse_command_line_arguments()
-    with open(args.experiments_file_name, 'r') as f:
-        config_str = f.read()
 
-    with open(args.template_file_name, 'r') as f:
-        main_template_str = f.read()
-
-    all_train_strs = create_experiment_yaml_strings(config_str, main_template_str)
-
+    all_train_strs = create_experiment_yaml_strings_from_files(
+        args.experiments_file_name, args.template_file_name)
     exp_runner = ExperimentsRunner(quiet=args.quiet, start_id=args.startid,
         stop_id=args.stopid)
     exp_runner.run(all_train_strs)
