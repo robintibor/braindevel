@@ -69,7 +69,7 @@ Add the repository to the python path, i.e.
 export PYTHONPATH=$PYTHONPATH:<repositoryfolder>
 ```
 
-Start ```jupyter``` in terminal and navigate to ```braindecode/notebooks/tutorials/Artificial_Example.ipynb```. If it works, everything is fine :)
+Start ```jupyter notebook``` in terminal and navigate to ```braindecode/notebooks/tutorials/Artificial_Example.ipynb```. If it works, everything is fine :)
 
 
 ### Work with real data
