@@ -33,6 +33,7 @@ scikits-samplerate:
 	ldconfig -v
 
 install: python-packages theano pylearn2 wyrm lasagne scikits-samplerate-pip braindecode
+	python setup.py develop $(PIP_FLAG)
 
 python-packages:
 	pip install --upgrade pip $(PIP_FLAG)
@@ -54,6 +55,3 @@ scikits-samplerate-pip:
 	(test -e ~/.numpy-site.cfg && grep -q 'samplerate' ~/.numpy-site.cfg) || echo "$$NUMPY_SITE_CFG" >> ~/.numpy-site.cfg
 	# check first if file exists and already has samplerate info
 	pip install scikits.samplerate $(PIP_FLAG)
-
-braindecode:
-	python setup.py develop $(PIP_FLAG)
