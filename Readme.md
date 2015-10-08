@@ -46,6 +46,7 @@ make install PIP_FLAG=--user
 ```
 pip install -r requirements.txt
 make scikits-samplerate-pip
+python setup.py develop (optionally with --user)
 
 ```
 
@@ -63,11 +64,6 @@ In ipython or jupyter notebook, you can check if theano is using cudnn with:
 If it shows True, cudnn is being used, otherwise not.
 
 ## Test installation
-
-Add the repository to the python path, i.e. 
-``` 
-export PYTHONPATH=$PYTHONPATH:<repositoryfolder>
-```
 
 Start ```jupyter notebook``` in terminal and navigate to ```braindecode/notebooks/tutorials/Artificial_Example.ipynb```. If it works, everything is fine :)
 
