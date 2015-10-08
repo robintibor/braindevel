@@ -11,7 +11,7 @@ sudo apt-get install python-pip git
 git clone https://github.com/robintibor/braindecode.git
 ```
 
-## Now make the requirements
+## Make the requirements
 
 ```
 cd braindecode

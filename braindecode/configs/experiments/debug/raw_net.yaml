@@ -70,7 +70,7 @@
     },
     variants: [[{
         cleaner: [BBCISetCleaner],
-        save_path: ['data/models/rawnet-without-last/'],
+        save_path: ['data/models/rawnet-without-last-repl/'],
         sensor_names: ["*C_sensors"],
         layers: [$simple_layers],
         dataset: [$raw_set],
