@@ -29,22 +29,22 @@ def create_variants_recursively(variants):
         """
         Create Variants, variants are like structured like trees of ranges basically...
         >>> variant_dict_list = [[{'batches': [1, 2]}]]
-        >>> ExperimentsRunner.create_variants_recursively(variant_dict_list)
+        >>> create_variants_recursively(variant_dict_list)
         [{'batches': 1}, {'batches': 2}]
         >>> variant_dict_list = [[{'batches': [1, 2], 'algorithm': ['bgd', 'sgd']}]]
-        >>> ExperimentsRunner.create_variants_recursively(variant_dict_list)
+        >>> create_variants_recursively(variant_dict_list)
         [{'batches': 1, 'algorithm': 'bgd'}, {'batches': 1, 'algorithm': 'sgd'}, {'batches': 2, 'algorithm': 'bgd'}, {'batches': 2, 'algorithm': 'sgd'}]
         
         >>> variant_dict_list = [[{'batches': [1,2]}, {'algorithm': ['bgd', 'sgd']}]]
-        >>> ExperimentsRunner.create_variants_recursively(variant_dict_list)
+        >>> create_variants_recursively(variant_dict_list)
         [{'batches': 1}, {'batches': 2}, {'algorithm': 'bgd'}, {'algorithm': 'sgd'}]
 
         >>> variant_dict_list = [[{'algorithm': ['bgd'], 'variants': [[{'batches': [1, 2]}]]}]]
-        >>> ExperimentsRunner.create_variants_recursively(variant_dict_list)
+        >>> create_variants_recursively(variant_dict_list)
         [{'batches': 1, 'algorithm': 'bgd'}, {'batches': 2, 'algorithm': 'bgd'}]
         
         >>> variant_dict_list = [[{'batches': [1, 2]}], [{'algorithm': ['bgd', 'sgd']}]]
-        >>> ExperimentsRunner.create_variants_recursively(variant_dict_list)
+        >>> create_variants_recursively(variant_dict_list)
         [{'batches': 1, 'algorithm': 'bgd'}, {'batches': 1, 'algorithm': 'sgd'}, {'batches': 2, 'algorithm': 'bgd'}, {'batches': 2, 'algorithm': 'sgd'}]
 
 
@@ -136,39 +136,50 @@ def merge_parameters_and_templates(all_parameters, templates):
     return all_final_params
 
 def process_templates(templates, parameters):
-        processed_templates = {}
-        # we need templates to replace placeholders in parameters
-        # placeholders defined with $
-        needed_template_names = filter(
-            lambda value: isinstance(value, basestring) and value[0] == '$', 
-            parameters.values())
-        parameters_without_template_parameters = copy(parameters)
-        
-        # remove $ at start! :)
-        # e.g. ["$rect_lin", "$dropout"] => ["rect_lin", "dropout"]
-        needed_template_names = [name[1:] for name in needed_template_names]
-        
-        # now for any needed template, first substitute any $-placeholders
-        # _within_ the template with a value from the parameter.
-        # Then replace the parameter itself with the template
-        # e.g. parameters .. {layers: "$flat", hidden_neurons: 8,...},
-        # template: flat: [...$hidden_neurons...]
-        # 1 => template: flat: [...8...]
-        # 2 => processed_parameters .. {layers: "[...8...]", hidden_neurons:8, ...}
-        #   => parameters_without_template_parameters: .. {layers: "[...8...]",..}
-        for template_name in needed_template_names:
-            template_string = templates[template_name]
-            for param in parameters_without_template_parameters.keys():
-                if (('$' + param + ' ') in template_string or
-                    ('$' + param + ',') in template_string  or
-                    ('$' + param + ']') in template_string  or
-                    ('$' + param + '}') in template_string  or
-                    ('$' + param + '\n') in template_string):
-                    parameters_without_template_parameters.pop(param)
-            template_string = Template(template_string).substitute(parameters)
-            processed_templates[template_name] = template_string
-        return processed_templates, parameters_without_template_parameters
+    """Substitute parameters within templates, return substituted templates, 
+    only returns those templates actually needed by the parameters. """
+    processed_templates = {}
+    # we need templates to replace placeholders in parameters
+    # placeholders defined with $
+    needed_template_names = filter(
+        lambda value: isinstance(value, basestring) and value[0] == '$', 
+        parameters.values())
+    parameters_without_template_parameters = copy(parameters)
+    # remove $ at start! :)
+    # e.g. ["$rect_lin", "$dropout"] => ["rect_lin", "dropout"]
+    needed_template_names = [name[1:] for name in needed_template_names]
     
+    # now for any needed template, first substitute any $-placeholders
+    # _within_ the template with a value from the parameter.
+    # Then replace the parameter itself with the template
+    # e.g. parameters .. {layers: "$flat", hidden_neurons: 8,...},
+    # template: flat: [...$hidden_neurons...]
+    # 1 => template: flat: [...8...]
+    # 2 => processed_parameters .. {layers: "[...8...]", hidden_neurons:8, ...}
+    #   => parameters_without_template_parameters: .. {layers: "[...8...]",..}
+    for template_name in needed_template_names:
+        template_string = templates[template_name]
+        for param in parameters_without_template_parameters.keys():
+            if (('$' + param + ' ') in template_string or
+                ('$' + param + ',') in template_string  or
+                ('$' + param + ']') in template_string  or
+                ('$' + param + '}') in template_string  or
+                ('$' + param + "'") in template_string  or
+                ('$' + param + '"b') in template_string  or
+                ('$' + param + '\n') in template_string):
+                parameters_without_template_parameters.pop(param)
+        template_string = Template(template_string).substitute(parameters)
+        processed_templates[template_name] = template_string
+        
+    # Now it can still happen that a template has been replaced by another template
+    # Try to fix this also
+    for template_name in processed_templates.keys():
+        template_str = processed_templates[template_name]
+        if '$' in template_str:
+            new_str = Template(template_string).substitute(processed_templates)
+            processed_templates[template_name] = new_str
+    return processed_templates, parameters_without_template_parameters
+
 
 def process_parameters_by_templates(parameters, templates):
     processed_parameters = copy(parameters)
