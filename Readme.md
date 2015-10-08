@@ -49,9 +49,22 @@ make scikits-samplerate-pip
 
 ```
 
+## Cudnn
+
+Cudnn is not a strict requirement, however everything will be slower without it.
+Follow the instructions to install it correctly for theano:
+http://deeplearning.net/software/theano/library/sandbox/cuda/dnn.html
+
+In ipython or jupyter notebook, you can check if theano is using cudnn with:
+
+```
+>>> import theano.sandbox.cuda.dnn; theano.sandbox.cuda.dnn.dnn_available()
+```
+If it shows True, cudnn is being used, otherwise not.
+
 ## Test installation
 
-add the repository to the python path, i.e. 
+Add the repository to the python path, i.e. 
 ``` 
 export PYTHONPATH=$PYTHONPATH:<repositoryfolder>
 ```

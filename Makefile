@@ -39,7 +39,7 @@ python-packages:
 	pip install numpy scipy matplotlib scikit-learn pytest h5py jupyter seaborn $(PIP_FLAG)
 
 theano:
-	pip install git+git://github.com/Theano/Theano.git@rel-0.7rc2 $(PIP_FLAG)
+	pip install git+https://github.com/Theano/Theano.git@15c90dd3#egg=Theano==0.8.git $(PIP_FLAG)
 
 pylearn2:
 	pip install -e git+https://github.com/lisa-lab/pylearn2.git@8bd3cc2ecd4062b425d938d68024276592bce1a7#egg=pylearn2-master $(PIP_FLAG) --src pylearn2
