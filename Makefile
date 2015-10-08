@@ -48,7 +48,7 @@ wyrm:
 	pip install -e git+https://github.com/bbci/wyrm.git@e976e500914cce720a659025c18efc338b408721#egg=Wyrm-master $(PIP_FLAG) --src wyrm
 
 lasagne:
-	pip install git+git://github.com/Lasagne/Lasagne.git@6dd88f5fada20768087f29ae89cbd83980fe0a4e $(PIP_FLAG)
+	pip install git+https://github.com/Lasagne/Lasagne.git@6dd88f5fada20768087f29ae89cbd83980fe0a4e $(PIP_FLAG)
 
 scikits-samplerate-pip:
 	(test -e ~/.numpy-site.cfg && grep -q 'samplerate' ~/.numpy-site.cfg) || echo "$$NUMPY_SITE_CFG" >> ~/.numpy-site.cfg
