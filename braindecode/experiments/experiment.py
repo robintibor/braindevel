@@ -24,6 +24,7 @@ class Experiment(object):
         log.info("Create theano functions...")
         self.create_theano_functions(final_layer, loss_var_func,
             updates_var_func, target_var)
+        log.info("Done.")
 
     def print_layer_sizes(self):
         log.info("Layers...")
@@ -95,7 +96,7 @@ class Experiment(object):
     def setup_after_stop_training(self):
         self.remember_extension.reset_to_best_model(self.monitor_chans,
                 self.all_params)
-        self.stop_criterion = Or(stopping_criteria=[
+        self.stop_criterion = Or(stop_criteria=[
             MaxEpochs(num_epochs=self.remember_extension.best_epoch * 2),
             ChanBelow(chan_name='valid_loss', 
                 target_value=self.monitor_chans['train_loss'][-1])])

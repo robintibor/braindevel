@@ -111,8 +111,6 @@ class ExperimentsRunner:
         dataset = train_dict['dataset'] 
         dataset.load()
         
-        # for now format y back to classes
-        dataset.y = np.argmax(dataset.y, axis=1).astype(np.int32)
         
         dataset_provider = train_dict['dataset_provider']
             

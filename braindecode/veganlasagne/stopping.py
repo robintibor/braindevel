@@ -31,12 +31,12 @@ class MaxEpochs(object):
 
 
 class Or(object):
-    def  __init__(self, stopping_criteria):
-        self.stopping_criteria = stopping_criteria
+    def  __init__(self, stop_criteria):
+        self.stop_criteria = stop_criteria
         
     def should_stop(self, monitor_chans):
         return np.any([s.should_stop(monitor_chans) 
-            for s in self.stopping_criteria])
+            for s in self.stop_criteria])
         
 class ChanBelow():
     """ Stops if the given monitor channel is below the given value."""

@@ -14,7 +14,7 @@
             dataset_splitter: !obj:braindecode.datasets.dataset_splitters.DatasetSingleFoldSplitter {
                 dataset: *dataset, 
                 num_folds: 10, 
-                test_fold_nr: 9,
+                i_test_fold: 9,
             },
             preprocessor: *preprocessor,
         },
@@ -29,7 +29,7 @@
                 !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
             ],
             stop_criterion: !obj:braindecode.veganlasagne.stopping.Or {
-                stopping_criteria: [
+                stop_criteria: [
                     !obj:braindecode.veganlasagne.stopping.NoDecrease {
                         chan_name: valid_misclass,
                         num_epochs: $max_increasing_epochs,

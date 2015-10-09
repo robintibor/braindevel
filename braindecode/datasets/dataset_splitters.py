@@ -24,10 +24,10 @@ class DatasetTrainValidTestSplitter():
         raise NotImplementedError("Subclass needs to implement this")
 
 class DatasetSingleFoldSplitter(DatasetTrainValidTestSplitter):
-    def __init__(self, dataset, num_folds, test_fold_nr):
+    def __init__(self, dataset, num_folds=10, i_test_fold=-1):
         self.dataset = dataset
         self.num_folds = num_folds
-        self.test_fold_nr = test_fold_nr
+        self.i_test_fold = i_test_fold
         
     def ensure_dataset_is_loaded(self):
         if (hasattr(self.dataset, '_data_not_loaded_yet') and 
@@ -44,12 +44,12 @@ class DatasetSingleFoldSplitter(DatasetTrainValidTestSplitter):
         num_trials = self.dataset.get_topological_view().shape[0]
         # also works in case test fold nr is 0 as it will just take -1 
         # which is fine last fold)
-        valid_fold_nr = self.test_fold_nr - 1
+        i_valid_fold = self.i_test_fold - 1
         folds = list(KFold(num_trials, n_folds=self.num_folds, shuffle=False))
         # [1] needed as it is always a split of whole dataset into train/test
         # indices
-        test_fold = folds[self.test_fold_nr][1]
-        valid_fold = folds[valid_fold_nr][1]
+        test_fold = folds[self.i_test_fold][1]
+        valid_fold = folds[i_valid_fold][1]
         full_fold = range(num_trials)
         train_fold = np.setdiff1d(full_fold, 
             np.concatenate((valid_fold, test_fold)))
@@ -110,8 +110,8 @@ class DatasetTwoFileSingleFoldSplitter(DatasetTrainValidTestSplitter):
         assert hasattr(self.train_set, 'X') # needs to be loaded already
         num_trials = self.train_set.get_topological_view().shape[0]
         folds = list(KFold(num_trials, n_folds=self.num_folds, shuffle=False))
-        valid_fold_nr = -1 # always use last fold as validation fold
-        valid_fold = folds[valid_fold_nr][1]
+        i_valid_fold = -1 # always use last fold as validation fold
+        valid_fold = folds[i_valid_fold][1]
         full_fold = range(num_trials)
         train_fold = np.setdiff1d(full_fold, valid_fold)
 
