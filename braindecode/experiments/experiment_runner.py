@@ -2,11 +2,9 @@ import logging
 log = logging.getLogger(__name__)
 from glob import glob
 import yaml
-from pprint import pprint
 from numpy.random import RandomState 
 import time
 import os
-import numpy as np
 from braindecode.experiments.experiment import Experiment
 from braindecode.results.results import Result
 import pickle
@@ -83,7 +81,7 @@ class ExperimentsRunner:
         for i in range(self._get_start_id(),  self._get_stop_id() + 1):
             self._run_experiment(i)           
             
-        if (not self._dry_run and self._quiet):
+        if (not self._dry_run and (not self._quiet)):
             self._print_results()
     
     def _get_start_id(self):

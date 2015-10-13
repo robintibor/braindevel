@@ -1,0 +1,15 @@
+{
+    templates: {
+        online_chan_freq_wise: !obj:braindecode.datasets.preprocessing.OnlineAxiswiseStandardize {
+            axis: ['c', 1]
+        },
+        categorical_crossentropy: !!python/name:lasagne.objectives.categorical_crossentropy ,
+        adam: !!python/name:lasagne.updates.adam ,
+    },
+    variants: [[{
+            preprocessor: [$online_chan_freq_wise],
+            loss_var_func: [$categorical_crossentropy],
+            updates_var_func: [$adam],
+            
+    }]]
+}

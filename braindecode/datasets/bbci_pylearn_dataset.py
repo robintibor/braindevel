@@ -40,7 +40,7 @@ class BBCIPylearnDataset(DenseDesignMatrix):
             sensor_names=load_sensor_names, #!! other sensors will not be used during cleaning
             cnt_preprocessors=cnt_preprocessors, 
             epo_preprocessors=epo_preprocessors,
-            segment_ival=segment_ival)
+            segment_ival=segment_ival)        
         self._data_not_loaded_yet = True # needed for lazy loading
         
     def load(self):
@@ -49,6 +49,9 @@ class BBCIPylearnDataset(DenseDesignMatrix):
         self.remove_bbci_set_epo()
         if self.unsupervised_preprocessor is not None:
             self.apply_unsupervised_preprocessor()
+
+        # for now format y back to classes
+        self.y = np.argmax(self.y, axis=1).astype(np.int32)
         self._data_not_loaded_yet = False # needed for lazy loading
       
     def load_bbci_set(self):  
