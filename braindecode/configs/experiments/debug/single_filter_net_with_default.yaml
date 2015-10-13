@@ -26,9 +26,9 @@
             },
         ],
         raw_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {
-            !obj:braindecode.datasets.bbci_dataset.ProcessedDataset {
-                wyrm_dataset: !obj:braindecode.datasets.BBCIDataset {
-                    filenames: 'data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat',
+            signal_marker_set: !obj:braindecode.datasets.bbci_dataset.ProcessedDataset {
+                wyrm_set: !obj:braindecode.datasets.bbci_dataset.BBCIDataset {
+                    filename: 'data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat',
                     load_sensor_names: ['CPz', 'CP1', 'CP2'],
                 },
                 cnt_preprocessors: [
@@ -36,11 +36,11 @@
                         !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
                         {'low_cut_off_hz': 0.5}]
                     ],
-            }
+            },
             cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner { },
             unsupervised_preprocessor: !obj:braindecode.datasets.preprocessing.RestrictToTwoClasses {
                 classes: [0,2]
-            }
+            },
         },
     },
     variants: [[{

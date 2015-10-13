@@ -15,7 +15,7 @@ class BBCIPylearnDataset(DenseDesignMatrix):
     """ This loads BBCI datasets and puts them in a Dense Design Matrix. 
     Load sensor names will only load these sensors and also only perform 
     cleaning using these sensors(!). So you will get different cleaning results."""
-    def __init__(self, filenames, load_sensor_names=None,
+    def __init__(self, signal_marker_set,
         sensor_names = None,
         cnt_preprocessors=[], epo_preprocessors=[],
         limits=None, start=None, stop=None,
@@ -26,27 +26,14 @@ class BBCIPylearnDataset(DenseDesignMatrix):
         # sort sensors topologically to allow networks to exploit topology
         if sensor_names is not None:
             sensor_names = sort_topologically(sensor_names)
-        if load_sensor_names is not None:
-            load_sensor_names = sort_topologically(load_sensor_names)
-        if load_sensor_names is not None and sensor_names is not None:
-            for sensor_name in sensor_names:
-                assert sensor_name in load_sensor_names, ("Cannot select "
-                    "sensor {:s} later as it will not be loaded.").format(
-                        sensor_name)
         self.__dict__.update(locals())
-        del self.self
-        filename = filenames # for now only for one file
-        self.bbci_set = BBCIDataset(filename, 
-            sensor_names=load_sensor_names, #!! other sensors will not be used during cleaning
-            cnt_preprocessors=cnt_preprocessors, 
-            epo_preprocessors=epo_preprocessors,
-            segment_ival=segment_ival)        
+        del self.self       
         self._data_not_loaded_yet = True # needed for lazy loading
         
     def load(self):
-        self.load_bbci_set()
+        self.load_signal_marker_set()
         self.create_dense_design_matrix()
-        self.remove_bbci_set_epo()
+        self.remove_signal_marker_set_epo()
         if self.unsupervised_preprocessor is not None:
             self.apply_unsupervised_preprocessor()
 
@@ -54,21 +41,21 @@ class BBCIPylearnDataset(DenseDesignMatrix):
         self.y = np.argmax(self.y, axis=1).astype(np.int32)
         self._data_not_loaded_yet = False # needed for lazy loading
       
-    def load_bbci_set(self):  
+    def load_signal_marker_set(self):  
         raise NotImplementedError("Should not be called anymore, only call"
             " clean dataset loader")
 
     def create_dense_design_matrix(self):
         # epo has original shape trials x samples x channels x(freq/band?)
-        topo_view = self.bbci_set.epo.data.swapaxes(1,2).astype(np.float32)
+        topo_view = self.signal_marker_set.epo.data.swapaxes(1,2).astype(np.float32)
         
         
         # add empty axes if needed
         if topo_view.ndim == 3:
             topo_view = np.expand_dims(topo_view, axis=3)
         topo_view = np.ascontiguousarray(np.copy(topo_view))
-        y = [event_class for time, event_class in self.bbci_set.epo.markers]
-        assert np.array_equal(self.bbci_set.epo.axes[0] + 1, y), ("trial axes should"
+        y = [event_class for time, event_class in self.signal_marker_set.epo.markers]
+        assert np.array_equal(self.signal_marker_set.epo.axes[0] + 1, y), ("trial axes should"
             "have same event labels (offset by 1 due to 0 and 1-based indexing")
 
         topo_view, y = self.adjust_for_start_stop_limits(topo_view, y)
@@ -80,10 +67,10 @@ class BBCIPylearnDataset(DenseDesignMatrix):
         log.info("Loaded dataset with shape: {:s}".format(
             str(self.get_topological_view().shape)))
     
-    def remove_bbci_set_epo(self):
+    def remove_signal_marker_set_epo(self):
         """ To save memory, delete bbci set data,
-        but keep bbci_set itself to allow reloading. """
-        del self.bbci_set.epo
+        but keep signal_marker_set itself to allow reloading. """
+        del self.signal_marker_set.epo
 
     def adjust_for_start_stop_limits(self, topo_view, y):
         # cant use both limits and start and stop...
@@ -115,17 +102,17 @@ class BBCIPylearnDataset(DenseDesignMatrix):
 
 
 class BBCIPylearnCleanDataset(BBCIPylearnDataset):
-    def __init__(self, filenames, cleaner, **kwargs):
+    def __init__(self, cleaner, **kwargs):
         self.cleaner = cleaner
-        super(BBCIPylearnCleanDataset, self).__init__(filenames, **kwargs)
+        super(BBCIPylearnCleanDataset, self).__init__(**kwargs)
 
-    def load_bbci_set(self):  
+    def load_signal_marker_set(self):  
         """ Only load clean data """
         # Data may be loaded already... e.g. if train set was loaded
         # and now valid set is being loaded as part of same set
         self.clean_and_load_set()
         log.info("Loaded clean data with shape {:s}.".format(
-            self.bbci_set.epo.data.shape))           
+            self.signal_marker_set.epo.data.shape))           
     
     def clean_and_load_set(self):
         self.load_full_set()
@@ -136,17 +123,14 @@ class BBCIPylearnCleanDataset(BBCIPylearnDataset):
     def load_full_set(self):
         log.info("Loading set...")
         # First load whole set
-        self.bbci_set.load_continuous_signal()
-        self.bbci_set.add_markers()
+        self.signal_marker_set.load_signal_and_markers()
     
     def determine_clean_trials_and_chans(self):
         log.info("Cleaning set...")
-        assert isinstance(self.filenames, basestring)
-        filename = self.filenames # expecting only one filename
         (rejected_chans, rejected_trials, clean_trials) = self.cleaner.clean(
-            self.bbci_set.cnt, filename)
+            self.signal_marker_set.cnt)
         assert np.array_equal(np.union1d(clean_trials, rejected_trials),
-            range(len(self.bbci_set.cnt.markers))), ("All trials should "
+            range(len(self.signal_marker_set.cnt.markers))), ("All trials should "
                 "either be clean or rejected.")
         assert np.intersect1d(clean_trials, rejected_trials).size == 0, ("All "
             "trials should either be clean or rejected.")
@@ -157,37 +141,39 @@ class BBCIPylearnCleanDataset(BBCIPylearnDataset):
 
     def select_sensors(self):
         if len(self.rejected_chans) > 0:
-            self.bbci_set.cnt = select_channels(self.bbci_set.cnt, 
+            self.signal_marker_set.cnt = select_channels(self.signal_marker_set.cnt, 
                 self.rejected_chans, invert=True)
         if self.sensor_names is not None:
-            self.bbci_set.cnt = select_channels(self.bbci_set.cnt, 
+            self.signal_marker_set.cnt = select_channels(
+                self.signal_marker_set.cnt, 
                 self.sensor_names)
-        cleaned_sensor_names = self.bbci_set.cnt.axes[-1]
+        cleaned_sensor_names = self.signal_marker_set.cnt.axes[-1]
         self.sensor_names = cleaned_sensor_names
 
     def preproc_and_load_clean_trials(self):
         log.info("Preprocessing set...")
-        self.bbci_set.preprocess_continuous_signal()
-        self.bbci_set.segment_into_trials()
+        self.signal_marker_set.preprocess_continuous_signal()
+        self.signal_marker_set.segment_into_trials()
         if len(self.rejected_trials) > 0:
-            self.bbci_set.epo = select_epochs(self.bbci_set.epo, 
+            self.signal_marker_set.epo = select_epochs(
+                self.signal_marker_set.epo, 
                 self.rejected_trials, invert=True)
         # select epochs does not update marker structure...
-        clean_markers = [m for i,m in enumerate(self.bbci_set.epo.markers) \
+        clean_markers = [m for i,m in enumerate(self.signal_marker_set.epo.markers) \
             if i not in self.rejected_trials]
-        self.bbci_set.epo.markers = clean_markers
-        self.bbci_set.remove_continuous_signal()
-        self.bbci_set.preprocess_trials()
+        self.signal_marker_set.epo.markers = clean_markers
+        self.signal_marker_set.remove_continuous_signal()
+        self.signal_marker_set.preprocess_trials()
 
 class BBCIPylearnCleanFFTDataset(BBCIPylearnCleanDataset):
-    def __init__(self, filenames, transform_function_and_args,
+    def __init__(self, transform_function_and_args,
         frequency_start=None, frequency_stop=None, **kwargs):
         self.frequency_start = frequency_start
         self.frequency_stop = frequency_stop
         self.transform_function_and_args = transform_function_and_args
-        super(BBCIPylearnCleanFFTDataset, self).__init__(filenames, **kwargs)
+        super(BBCIPylearnCleanFFTDataset, self).__init__(**kwargs)
         
-    def load_bbci_set(self):
+    def load_signal_marker_set(self):
         self.clean_and_load_set()
         self.transform_with_fft()
             
@@ -195,8 +181,8 @@ class BBCIPylearnCleanFFTDataset(BBCIPylearnCleanDataset):
         # transpose as transform functions expect 
         # #trials x#channels x#samples order
         # (in wyrm framework it is #trials x#samples x#channels normally)
-        trials = self.bbci_set.epo.data.transpose(0,2,1)
-        fs = self.bbci_set.epo.fs
+        trials = self.signal_marker_set.epo.data.transpose(0,2,1)
+        fs = self.signal_marker_set.epo.fs
         win_length_ms, win_stride_ms = 500,250
         assert (win_length_ms == 500 and win_stride_ms == 250), ("if not, "
             "check if fft_pipeline function would still work")
@@ -215,11 +201,11 @@ class BBCIPylearnCleanFFTDataset(BBCIPylearnCleanDataset):
         transformed_trials = transform_func(trials, 
                 window_length=win_length, 
                 window_stride=win_stride, **transform_kwargs)
-        self.bbci_set.epo.data = transformed_trials.transpose(0,2,1,3) # should be
+        self.signal_marker_set.epo.data = transformed_trials.transpose(0,2,1,3) # should be
         #transposed back in pylearnbbcidataset class
 
         # possibly select frequencies
-        freq_bins = np.fft.rfftfreq(win_length, 1.0/self.bbci_set.epo.fs)
+        freq_bins = np.fft.rfftfreq(win_length, 1.0/self.signal_marker_set.epo.fs)
         if self.frequency_start is not None:
             freq_bin_start = freq_bins.tolist().index(self.frequency_start)
         else:
@@ -228,8 +214,8 @@ class BBCIPylearnCleanFFTDataset(BBCIPylearnCleanDataset):
             # + 1 as later indexing will exclude stop
             freq_bin_stop = freq_bins.tolist().index(self.frequency_stop) + 1
         else:
-            freq_bin_stop = self.bbci_set.epo.data.shape[-1]
-        self.bbci_set.epo.data = self.bbci_set.epo.data[:,:,:,
+            freq_bin_stop = self.signal_marker_set.epo.data.shape[-1]
+        self.signal_marker_set.epo.data = self.signal_marker_set.epo.data[:,:,:,
             freq_bin_start:freq_bin_stop]
 
 def compute_power_and_phase(trials, window_length, window_stride,
@@ -296,12 +282,12 @@ class BBCIPylearnCleanFilterbankDataset(BBCIPylearnCleanDataset):
         self.high_width = high_width
         super(BBCIPylearnCleanFilterbankDataset, self).__init__(filenames, **kwargs)
         
-    def load_bbci_set(self):
+    def load_signal_marker_set(self):
         self.load_full_set()
         self.determine_clean_trials_and_chans()
         self.select_sensors()
         log.info("Preprocessing continuous signal...")
-        self.bbci_set.preprocess_continuous_signal()
+        self.signal_marker_set.preprocess_continuous_signal()
         self.create_filterbank()
         
     def create_filterbank(self):
@@ -311,7 +297,7 @@ class BBCIPylearnCleanFilterbankDataset(BBCIPylearnCleanDataset):
         self.filterbands = generate_filterbank(self.min_freq, self.max_freq,
             self.last_low_freq, self.low_width, self.high_width)
         segment_length =  self.segment_ival[1] - self.segment_ival[0]
-        num_samples = segment_length  * self.bbci_set.cnt.fs / 1000.0
+        num_samples = segment_length  * self.signal_marker_set.cnt.fs / 1000.0
         assert num_samples.is_integer()
         num_samples = int(num_samples)
         full_epo_data = np.empty((len(self.clean_trials), num_samples, 
@@ -319,21 +305,21 @@ class BBCIPylearnCleanFilterbankDataset(BBCIPylearnCleanDataset):
         # Fill filterbank
         self.fill_filterbank_data(full_epo_data)
         # Transform to wyrm epoched dataset
-        clean_markers = [m for i,m in enumerate(self.bbci_set.cnt.markers) \
+        clean_markers = [m for i,m in enumerate(self.signal_marker_set.cnt.markers) \
             if i not in self.rejected_trials]
-        del self.bbci_set.cnt
+        del self.signal_marker_set.cnt
         new_epo = Data(data=full_epo_data, 
             axes=self.filterband_axes, names=self.filterband_names,
             units=self.filterband_names)
         new_epo.markers = clean_markers
-        self.bbci_set.epo = new_epo
+        self.signal_marker_set.epo = new_epo
 
     def fill_filterbank_data(self, full_epo_data):
         for filterband_i in xrange(len(self.filterbands)): 
             low_freq, high_freq= self.filterbands[filterband_i]
             log.info("Filterband {:d} of {:d}, from {:5.2f} to {:5.2f}".format(
                 filterband_i + 1, len(self.filterbands), low_freq, high_freq))
-            bandpassed_cnt = bandpass_cnt(self.bbci_set.cnt, 
+            bandpassed_cnt = bandpass_cnt(self.signal_marker_set.cnt, 
                 low_freq, high_freq, filt_order=3)
             epo = segment_dat_fast(bandpassed_cnt, 
                    marker_def={'1 - Right Hand': [1], '2 - Left Hand': [2], 

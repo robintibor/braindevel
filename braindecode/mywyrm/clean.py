@@ -1,28 +1,28 @@
 import numpy as np
 from braindecode.datasets.bbci_dataset import BBCIDataset
 from braindecode.mywyrm.processing import (bandpass_cnt, segment_dat_fast)
-from wyrm.processing import select_channels, append_cnt, append_epo  
+from wyrm.processing import select_channels, append_cnt, append_epo
 
 class BBCISetNoCleaner():
-    def clean(self, bbci_set_cnt, filename):
+    def clean(self, bbci_set_cnt):
         clean_trials = range(len(bbci_set_cnt.markers))
         (rejected_chans, rejected_trials, clean_trials) = ([],[], clean_trials)
         return (rejected_chans, rejected_trials, clean_trials) 
         
 class BBCISetCleaner():
     """ Determines rejected trials and channels """
-    def __init__(self, rejection_var_ival=[0,4000], 
+    def __init__(self, filename, rejection_var_ival=[0,4000], 
             rejection_blink_ival=[-500,4000],
             max_min=600, whisker_percent=10, whisker_length=3):
         local_vars = locals()
         del local_vars['self']
         self.__dict__.update(local_vars)
         
-    def clean(self, bbci_set_cnt, filename):
+    def clean(self, bbci_set_cnt):
         (rejected_chans, rejected_trials, reject_max_min, reject_var, 
                 clean_trials) =  compute_rejected_channels_trials_cnt(
                     bbci_set_cnt, 
-                    filename=filename, 
+                    filename=self.filename, 
                     rejection_blink_ival=self.rejection_blink_ival, 
                     max_min=self.max_min, 
                     rejection_var_ival=self.rejection_var_ival, 
@@ -36,7 +36,7 @@ class BBCISetCleaner():
         
 class BBCITwoSetsCleaner():
     """ Determines rejected trials and channels """
-    def __init__(self, second_filename,
+    def __init__(self, filename, second_filename,
         load_sensor_names,
         rejection_var_ival=[0,4000], 
             rejection_blink_ival=[-500,4000],
@@ -54,7 +54,7 @@ class BBCITwoSetsCleaner():
                 clean_trials) =  compute_rejected_channels_trials_two_sets_cnt(
                     first_cnt=bbci_set_cnt,
                     second_cnt=second_cnt,
-                    first_filename=filename, 
+                    first_filename=self.filename, 
                     second_filename=self.second_filename,
                     rejection_blink_ival=self.rejection_blink_ival, 
                     max_min=self.max_min, 
@@ -92,7 +92,7 @@ class BBCITwoSetsCleaner():
 
 class BBCISecondSetCleaner():
     """ Class just returns already computed values from a twoset cleaner """
-    def __init__(self, first_set_cleaner, rejection_var_ival=[0,4000], 
+    def __init__(self, filename, first_set_cleaner, rejection_var_ival=[0,4000], 
             rejection_blink_ival=[-500,4000],
             max_min=600, whisker_percent=10, whisker_length=3):
         local_vars = locals()
@@ -107,7 +107,7 @@ class BBCISecondSetCleaner():
         assert hasattr(self.first_set_cleaner, 'rejected_chans')
         assert hasattr(self.first_set_cleaner, 'rejected_trials_second')
         assert hasattr(self.first_set_cleaner, 'clean_trials_second')
-        assert self.first_set_cleaner.second_filename == filename
+        assert self.first_set_cleaner.second_filename == self.filename
                 
         return (self.first_set_cleaner.rejected_chans,
                 self.first_set_cleaner.rejected_trials_second, 
@@ -125,7 +125,7 @@ class BBCISecondSetOnlyChanCleaner():
         # TODELAY: check that first set cleaner had same cleaning params
         # or just remove args
         
-    def clean(self, bbci_set_cnt, filename):
+    def clean(self, bbci_set_cnt):
         """ Don't do any cleaning, just return clean values already computed
         from a two-set cleaner """
         assert hasattr(self.first_set_cleaner, 'rejected_chans')
