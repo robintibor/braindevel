@@ -10,9 +10,8 @@ for i_name = 1:numel(files)
    file_name = files(i_name).name;
    file_path = fullfile(gdf_dir, file_name);
    fprintf('Processing %s...\n', file_path);
-   [s, h] = sload(file_path);
+   [signal, header] = sload(file_path);
    [~,basename,~] = fileparts(file_name);
-   combined = struct('signal', s, 'header', h);
    mat_file_path = fullfile(hdf5_dir, strcat(basename, '.mat'));
-   save(mat_file_path, 'combined', '-v7.3');
+   save(mat_file_path, 'signal', 'header', '-v7.3');
 end
