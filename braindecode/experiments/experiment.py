@@ -8,7 +8,41 @@ from braindecode.veganlasagne.remember import RememberBest
 from braindecode.veganlasagne.stopping import Or, MaxEpochs, ChanBelow
 import logging
 from pylearn2.utils.timing import log_timing
+from copy import deepcopy
+from braindecode.datasets.dataset_splitters import (DatasetSingleFoldSplitter,
+    PreprocessedSplitter)
 log = logging.getLogger(__name__)
+
+class ExperimentCrossValidation():
+    def __init__(self, final_layer, dataset, preprocessor, num_folds,
+            exp_args):
+        self.final_layer = final_layer
+        self.dataset = dataset
+        self.preprocessor = preprocessor
+        self.num_folds = num_folds
+        self.exp_args = exp_args
+        
+    def setup(self):
+        lasagne.random.set_rng(RandomState(9859295))
+
+    def run(self):
+        self.all_layers = []
+        self.all_monitor_chans = []
+        for i_fold in range(self.num_folds):
+            log.info("Running fold {:d} of {:d}".format(i_fold,
+                self.num_folds))
+            this_layers = deepcopy(self.final_layer)
+            this_exp_args = deepcopy(self.exp_args)
+            dataset_splitter = DatasetSingleFoldSplitter(self.dataset,
+                num_folds=self.num_folds, i_test_fold=i_fold)
+            this_dataset_provider = PreprocessedSplitter(
+                dataset_splitter=dataset_splitter,
+                preprocessor=self.preprocessor)
+            exp = Experiment()
+            exp.setup(this_layers, this_dataset_provider, **this_exp_args)
+            exp.run()
+            self.all_layers.append(deepcopy(exp.final_layer))
+            self.all_monitor_chans.append(deepcopy(exp.monitor_chans))
 
 class Experiment(object):
     def setup(self, final_layer, dataset_provider, loss_var_func,

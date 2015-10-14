@@ -83,6 +83,3 @@ class RuntimeMonitor(Monitor):
             self.last_call_time = cur_time
         monitor_chans['runtime'].append(cur_time - self.last_call_time)
         self.last_call_time = cur_time
-        
-    
-    

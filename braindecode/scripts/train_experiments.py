@@ -37,6 +37,8 @@ def parse_command_line_arguments():
         help="Run experiment on less features and less data to test it")
     parser.add_argument('--dryrun', action="store_true",
         help="Only show parameters for experiment, don't train.")
+    parser.add_argument('--cv', action="store_true", 
+        help="Use cross validation instead of train test split")
     parser.add_argument('--params', nargs='*', default=[],
                         help='''Parameters to override default values/other values given in experiment file.
                         Supply it in the form parameter1=value1 parameters2=value2, ...''')
@@ -63,5 +65,5 @@ if __name__ == "__main__":
     all_train_strs = create_experiment_yaml_strings_from_files(
         args.experiments_file_name, args.template_file_name)
     exp_runner = ExperimentsRunner(quiet=args.quiet, start_id=args.startid,
-        stop_id=args.stopid)
+        stop_id=args.stopid, cross_validation=args.cv)
     exp_runner.run(all_train_strs)

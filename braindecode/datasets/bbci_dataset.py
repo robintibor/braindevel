@@ -135,3 +135,47 @@ class BBCIDataset(object):
                     all_sensor_names)
         return all_sensor_names
     
+class BCICompetition4Set2A(object):
+    def __init__(self, filename, load_sensor_names=None):
+        """ Constructor will not call superclass constructor yet"""
+        self.__dict__.update(locals())
+        del self.self
+
+    def load(self):
+        """ This function actually loads the data. Will be called by the 
+        get dataset lazy loading function""" 
+        with h5py.File(self.filename, 'r') as h5file:
+            cnt_signal = np.float32(h5file['combined']['signal'])
+            eeg_signal = cnt_signal[:22,:].T # remaining are eog chans
+            # replace nans
+            eeg_signal[np.isnan(eeg_signal)] = np.nanmean(eeg_signal)
+        
+            chan_names = [''.join(chr(c) for c in h5file[obj_ref]) for 
+                            obj_ref in h5file['combined']['header']['Label'][0,:]]
+            assert np.array_equal(['EEG-Fz', 'EEG', 'EEG', 'EEG', 'EEG', 'EEG',
+                                   'EEG', 'EEG-C3', 'EEG', 'EEG-Cz', 'EEG', 
+                                   'EEG-C4', 'EEG', 'EEG', 'EEG', 'EEG', 'EEG', 
+                                   'EEG', 'EEG', 'EEG-Pz', 'EEG', 'EEG', 
+                                   'EOG-left', 'EOG-central', 'EOG-right'],
+                                 chan_names)
+        
+            fs = np.int(h5file['combined']['header']['EVENT']['SampleRate'][:])
+        
+            classes = h5file['combined']['header']['Classlabel'][:][0].astype(np.int32)
+            event_types = h5file['combined']['header']['EVENT']['TYP'][0,:]
+            trial_mask = np.array([ev in [769, 770, 771, 772, 783] for ev in event_types])
+            start_samples = h5file['combined']['header']['EVENT']['POS'][0,:].astype(np.int64)
+            trial_start_samples = start_samples[trial_mask]
+            trial_start_times = trial_start_samples * (1000.0 / fs) 
+            markers = zip(trial_start_times, classes)
+            samplenumbers = np.array(range(eeg_signal.shape[0]))
+            timesteps_in_ms = samplenumbers * 1000.0 / fs
+            
+            wanted_sensor_names = chan_names[:22]
+            cnt = wyrm.types.Data(eeg_signal, 
+                        [timesteps_in_ms, wanted_sensor_names],
+                        ['time', 'channel'], 
+                        ['ms', '#'])
+            cnt.fs = fs
+            cnt.markers = markers
+        return cnt    

@@ -272,7 +272,7 @@ def compute_short_time_fourier_transform(trials, window_length, window_stride):
     return fft_trials
 
 class BBCIPylearnCleanFilterbankDataset(BBCIPylearnCleanDataset):
-    def __init__(self, filenames, min_freq, max_freq,
+    def __init__(self, min_freq, max_freq,
             last_low_freq, low_width, high_width,
             **kwargs):
         self.min_freq = min_freq
@@ -280,7 +280,7 @@ class BBCIPylearnCleanFilterbankDataset(BBCIPylearnCleanDataset):
         self.last_low_freq = last_low_freq
         self.low_width = low_width
         self.high_width = high_width
-        super(BBCIPylearnCleanFilterbankDataset, self).__init__(filenames, **kwargs)
+        super(BBCIPylearnCleanFilterbankDataset, self).__init__(**kwargs)
         
     def load_signal_marker_set(self):
         self.load_full_set()

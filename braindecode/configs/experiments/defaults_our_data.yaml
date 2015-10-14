@@ -5,11 +5,17 @@
         },
         categorical_crossentropy: !!python/name:lasagne.objectives.categorical_crossentropy ,
         adam: !!python/name:lasagne.updates.adam ,
+        C_sensors: ['FC5', 'FC1', 'FC2', 'FC6', 'C3', 'Cz', 'C4', 'CP5',
+            'CP1', 'CP2', 'CP6', 'FC3', 'FCz', 'FC4', 'C5', 'C1', 'C2', 'C6',
+            'CP3', 'CPz', 'CP4', 'FFC5h', 'FFC3h', 'FFC4h', 'FFC6h', 'FCC5h',
+            'FCC3h', 'FCC4h', 'FCC6h', 'CCP5h', 'CCP3h', 'CCP4h', 'CCP6h', 'CPP5h',
+            'CPP3h', 'CPP4h', 'CPP6h', 'FFC1h', 'FFC2h', 'FCC1h', 'FCC2h', 'CCP1h',
+         'CCP2h', 'CPP1h', 'CPP2h'],
     },
     variants: [[{
             preprocessor: [$online_chan_freq_wise],
             loss_var_func: [$categorical_crossentropy],
             updates_var_func: [$adam],
-            
+            dataset_provider: ["*preprocessed_provider"],
     }]]
 }

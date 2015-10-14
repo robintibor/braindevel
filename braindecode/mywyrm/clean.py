@@ -11,7 +11,7 @@ class BBCISetNoCleaner():
         
 class BBCISetCleaner():
     """ Determines rejected trials and channels """
-    def __init__(self, filename, rejection_var_ival=[0,4000], 
+    def __init__(self, eog_set, rejection_var_ival=[0,4000], 
             rejection_blink_ival=[-500,4000],
             max_min=600, whisker_percent=10, whisker_length=3):
         local_vars = locals()
@@ -22,7 +22,7 @@ class BBCISetCleaner():
         (rejected_chans, rejected_trials, reject_max_min, reject_var, 
                 clean_trials) =  compute_rejected_channels_trials_cnt(
                     bbci_set_cnt, 
-                    filename=self.filename, 
+                    self.eog_set, 
                     rejection_blink_ival=self.rejection_blink_ival, 
                     max_min=self.max_min, 
                     rejection_var_ival=self.rejection_var_ival, 
@@ -173,17 +173,11 @@ def compute_rejected_channels_trials_two_sets_cnt(first_cnt, second_cnt,
             whisker_percent=whisker_percent, 
             whisker_length=whisker_length)
     
-def compute_rejected_channels_trials_cnt(cnt, filename, rejection_blink_ival,
+def compute_rejected_channels_trials_cnt(cnt, eog_set, rejection_blink_ival,
         max_min, rejection_var_ival, whisker_percent, whisker_length,
         low_cut_hz, high_cut_hz,filt_order):
     # First create eog set for blink rejection
-    eog_sensor_names = BBCIDataset.get_all_sensors(filename, pattern="EO")
-    eog_set = BBCIDataset(filename=filename, 
-                    sensor_names=eog_sensor_names, cnt_preprocessors=[],
-                    epo_preprocessors=[],
-                    segment_ival=rejection_blink_ival)
-    eog_set.load_continuous_signal()
-    eog_set.add_markers()
+    eog_set.load_signal_and_markers()
     eog_set.segment_into_trials()
     eog_set.remove_continuous_signal()
     

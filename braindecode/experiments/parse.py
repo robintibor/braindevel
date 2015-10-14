@@ -45,10 +45,8 @@ def create_experiment_yaml_strings(all_config_strings, main_template_str):
             variants = product_of_lists_of_dicts(variants, sub_variants)
         if 'templates' in config_obj:
             templates.update(config_obj['templates'])
-
     final_params = merge_parameters_and_templates(variants, templates)
     # possibly remove equal params?
-    
     train_strings = []
     for i_config in range(len(final_params)):
         final_params[i_config]['original_params'] = yaml.dump(variants[i_config])
@@ -201,12 +199,12 @@ def process_templates(templates, parameters):
                 parameters_without_template_parameters.pop(param)
         template_string = Template(template_string).substitute(parameters)
         processed_templates[template_name] = template_string
-        
+
     # Now it can still happen that a template has been replaced by another template
     # Try to fix this also
     for template_name in processed_templates.keys():
-        template_str = processed_templates[template_name]
-        if '$' in template_str:
+        template_string = processed_templates[template_name]
+        if '$' in template_string:
             new_str = Template(template_string).substitute(processed_templates)
             processed_templates[template_name] = new_str
     return processed_templates, parameters_without_template_parameters

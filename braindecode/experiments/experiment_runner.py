@@ -5,7 +5,7 @@ import yaml
 from numpy.random import RandomState 
 import time
 import os
-from braindecode.experiments.experiment import Experiment
+from braindecode.experiments.experiment import Experiment, ExperimentCrossValidation
 from braindecode.results.results import Result
 import pickle
 from braindecode.scripts.print_results import ResultPrinter
@@ -14,12 +14,13 @@ from pylearn2.config import yaml_parse
 
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
-            quiet=False, dry_run=False):
+            quiet=False, dry_run=False, cross_validation=False):
         self._start_id = start_id
         self._stop_id = stop_id
         self._test = test
         self._quiet = quiet
         self._dry_run = dry_run
+        self._cross_validation=cross_validation
         
     def run(self, all_train_strs):
         if (self._quiet):
@@ -32,7 +33,6 @@ class ExperimentsRunner:
     def _log_only_warnings(self):
         logging.getLogger("pylearn2").setLevel(logging.WARN)
         logging.getLogger("braindecode").setLevel(logging.WARN)
-    
     
     def _create_base_save_paths_for_all_experiments(self):
         self._base_save_paths = []
@@ -60,6 +60,9 @@ class ExperimentsRunner:
         folder_path = self._load_without_layers(train_str)['save_path']
         if (self._test):
             folder_path += '/test/'
+        if (self._cross_validation):
+            folder_path += '/cross-validation/'
+            
         return folder_path
     
     def _get_model_save_path(self, experiment_index):
@@ -108,11 +111,7 @@ class ExperimentsRunner:
         train_dict = self._load_without_layers(train_str)
         dataset = train_dict['dataset'] 
         dataset.load()
-        
-        
         dataset_provider = train_dict['dataset_provider']
-            
-        
         assert 'in_sensors' in train_str
         assert 'in_rows' in train_str
         assert 'in_cols' in train_str
@@ -126,36 +125,60 @@ class ExperimentsRunner:
         
         self._save_train_string(train_str, experiment_index)
         train_dict =  yaml_parse.load(train_str)
-        
+            
         layers = train_dict['layers']
         final_layer = layers[-1]
         
-        exp = Experiment()
-        exp.setup(final_layer, dataset_provider, **train_dict['exp_args'])
-        exp.run()
+        if not self._cross_validation:
+            exp = Experiment()
+            exp.setup(final_layer, dataset_provider, **train_dict['exp_args'])
+            exp.run()
+            endtime = time.time()
+            log.info("Saving result...")
+            result_or_results = Result(parameters=train_dict['original_params'],
+                templates={}, 
+                training_time=endtime - starttime, 
+                monitor_channels=exp.monitor_chans, 
+                predictions=[0,3,1,2,3,4],
+                targets=[3,4,1,2,3,4])
+            model = exp.final_layer
+        else:
+            preprocessor = train_dict['preprocessor']
+            # default 5 folds for now
+            num_folds = 5
+            exp_cv = ExperimentCrossValidation(final_layer, 
+                dataset, preprocessor,
+                num_folds=num_folds, exp_args=train_dict['exp_args'])
+            exp_cv.run()
+            endtime = time.time()
+            result_or_results = []
+            for i_fold in xrange(num_folds):
+                res = Result(parameters=train_dict['original_params'],
+                templates={}, 
+                training_time=endtime - starttime, 
+                monitor_channels=exp_cv.all_monitor_chans[i_fold], 
+                predictions=[0,3,1,2,3,4],
+                targets=[3,4,1,2,3,4])
+                result_or_results.append(res)
+            model = exp_cv.all_layers
+            
         
-        endtime = time.time()
-        
-        log.info("Saving result...")
-        result = Result(parameters=train_dict['original_params'],
-            templates={}, 
-            training_time=endtime - starttime, 
-            monitor_channels=exp.monitor_chans, 
-            predictions=[0,3,1,2,3,4],
-            targets=[3,4,1,2,3,4])
-        
+            
         if not os.path.exists(self._folder_path):
             os.makedirs(self._folder_path)
         
         result_file_name = self._get_result_save_path(experiment_index)
         with open(result_file_name, 'w') as resultfile:
-            pickle.dump(result, resultfile)
+            pickle.dump(result_or_results, resultfile)
 
         log.info("Saving model...")
         model_file_name = self._get_model_save_path(experiment_index)
         # Let's save model
         with open(model_file_name, 'w') as modelfile:
-            pickle.dump(exp.final_layer, modelfile)
+            pickle.dump(model, modelfile)
+        
+            
+        
     
     def _save_train_string(self, train_string, experiment_index):
         file_name = self._base_save_paths[experiment_index] + ".yaml"

@@ -47,7 +47,6 @@
         save_path: ['data/models/debug/single_filter_with_template/'],
         layers: [$simple_layers],
         dataset: [$raw_set],
-        dataset_provider: ["*preprocessed_provider"],
         max_increasing_epochs: [10],
         max_epochs: [10,30],
     }]]

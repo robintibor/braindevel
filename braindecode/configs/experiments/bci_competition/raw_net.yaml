@@ -47,9 +47,10 @@
         ],
         raw_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {
             signal_marker_set: !obj:braindecode.datasets.bbci_dataset.ProcessedDataset {
-                wyrm_set: !obj:braindecode.datasets.bbci_dataset.BBCIDataset {
+                wyrm_set: !obj:braindecode.datasets.bbci_dataset.BCICompetition4Set2A {
                     filename: $dataset_filename
                 },
+                segment_ival: [$trial_start, $trial_stop],
                 cnt_preprocessors: [
                     [
                         !!python/name:braindecode.mywyrm.processing.resample_cnt , 
@@ -61,21 +62,15 @@
                     ],
                 ]
             },
-            cleaner: !obj:braindecode.mywyrm.clean.$cleaner { 
-                eog_set: !obj:braindecode.datasets.bbci_dataset.ProcessedDataset {
-                    wyrm_set: !obj:braindecode.datasets.bbci_dataset.BBCIDataset {
-                        filename: $dataset_filename,
-                        load_sensor_names: ['EOGh', 'EOGv']
-                    },
-                }
-            },
+            cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner { },
             sensor_names: $sensor_names,
         },
     },
     variants: [[{
-        cleaner: [BBCISetCleaner],
-        save_path: ['data/models/rawnet-all-classes/'],
-        sensor_names: [$C_sensors],
+        trial_start: [500],
+        trial_stop: [2500],
+        save_path: ['data/models/bci-competition/raw-net/'],
+        sensor_names: ["null"],
         layers: [$raw_net_layers],
         dataset: [$raw_set],
         max_increasing_epochs: [150],
@@ -83,24 +78,15 @@
         filter_time_length: [15],
         resample_fs: [150],
         dataset_filename: [
-            'data/BBCI-without-last-runs/AnWeMoSc1S001R01_ds10_1-12.BBCI.mat',
-            'data/BBCI-without-last-runs/BhNoMoSc1S001R01_ds10_1-12.BBCI.mat',
-            'data/BBCI-without-last-runs/FaMaMoSc1S001R01_ds10_1-14.BBCI.mat',
-            'data/BBCI-without-last-runs/FrThMoSc1S001R01_ds10_1-11.BBCI.mat',
-            'data/BBCI-without-last-runs/GuJoMoSc01S001R01_ds10_1-11.BBCI.mat',
-            'data/BBCI-without-last-runs/JoBeMoSc01S001R01_ds10_1-11.BBCI.mat',
-            'data/BBCI-without-last-runs/KaUsMoSc1S001R01_ds10_1-11.BBCI.mat',
-            'data/BBCI-without-last-runs/LaKaMoSc1S001R01_ds10_1-9.BBCI.mat',
-            'data/BBCI-without-last-runs/MaGlMoSc2S001R01_ds10_1-12.BBCI.mat',
-            'data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat',
-            'data/BBCI-without-last-runs/MaVoMoSc1S001R01_ds10_1-11.BBCI.mat',
-            'data/BBCI-without-last-runs/NaMaMoSc1S001R01_ds10_1-11.BBCI.mat',
-            'data/BBCI-without-last-runs/OlIlMoSc01S001R01_ds10_1-11.BBCI.mat',
-            'data/BBCI-without-last-runs/PiWiMoSc1S001R01_ds10_1-11.BBCI.mat',
-            'data/BBCI-without-last-runs/RoBeMoSc03S001R01_ds10_1-9.BBCI.mat',
-            'data/BBCI-without-last-runs/RoScMoSc1S001R01_ds10_1-11.BBCI.mat',
-            'data/BBCI-without-last-runs/StHeMoSc01S001R01_ds10_1-10.BBCI.mat',
-            'data/BBCI-without-last-runs/SvMuMoSc1S001R01_ds10_1-12.BBCI.mat',
-        ],
+         'data/bci-competition-iv/2a/A01T.mat',
+         'data/bci-competition-iv/2a/A02T.mat',
+         'data/bci-competition-iv/2a/A03T.mat',
+         'data/bci-competition-iv/2a/A04T.mat',
+         'data/bci-competition-iv/2a/A05T.mat',
+         'data/bci-competition-iv/2a/A06T.mat',
+         'data/bci-competition-iv/2a/A07T.mat',
+         'data/bci-competition-iv/2a/A08T.mat',
+         'data/bci-competition-iv/2a/A09T.mat'
+         ],
     }]]
 }

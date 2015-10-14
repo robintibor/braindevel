@@ -1,0 +1,81 @@
+{
+    extends: ['configs/experiments/defaults_our_data.yaml'],
+    templates: {
+        fb_net_layers: [ 
+           &in_layer !obj:lasagne.layers.InputLayer {
+                    shape: [null, in_sensors, in_rows, in_cols]
+                },
+            &spat_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *in_layer,
+                num_filters: 80,
+                filter_size: [1, 1],
+                nonlinearity: !!python/name:theano.tensor.sqr ,
+            },
+            &pool !obj:braindecode.veganlasagne.pool.GlobalPoolLayerAxisWise {
+                incoming: *spat_conv,
+                axis: 2,
+                pool_function: !!python/name:theano.tensor.sum ,
+            },
+            &log !obj:lasagne.layers.NonlinearityLayer {
+                incoming: *pool,
+                nonlinearity: !!python/name:theano.tensor.log ,
+            },
+            &drop_feature !obj:lasagne.layers.DropoutLayer {
+                incoming: *log,
+                p: 0.5,
+            },
+            &softmax !obj:lasagne.layers.DenseLayer {
+                    incoming: *drop_feature,
+                    num_units: 4,
+                    nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+            },
+        ],
+        fb_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanFilterbankDataset {
+            signal_marker_set: !obj:braindecode.datasets.bbci_dataset.ProcessedDataset {
+                wyrm_set: !obj:braindecode.datasets.bbci_dataset.BCICompetition4Set2A {
+                    filename: $dataset_filename
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: [
+                    [
+                        !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                        {'newfs': $resample_fs},
+                    ],
+                    [
+                        !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                        {'low_cut_off_hz': 0.5}
+                    ],
+                ],
+            },
+            cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner { },
+            sensor_names: $sensor_names,
+            min_freq: 0,
+            max_freq: 70,
+            last_low_freq: 30,
+            low_width: 2,
+            high_width: 6,
+        },
+    },
+    variants: [[{
+        trial_start: [500],
+        trial_stop: [2500],
+        save_path: ['data/models/bci-competition/fb-net/'],
+        sensor_names: ["null"],
+        layers: [$fb_net_layers],
+        dataset: [$fb_set],
+        max_increasing_epochs: [150],
+        max_epochs: [1500],
+        resample_fs: [150],
+        dataset_filename: [
+         'data/bci-competition-iv/2a/A01T.mat',
+         'data/bci-competition-iv/2a/A02T.mat',
+         'data/bci-competition-iv/2a/A03T.mat',
+         'data/bci-competition-iv/2a/A04T.mat',
+         'data/bci-competition-iv/2a/A05T.mat',
+         'data/bci-competition-iv/2a/A06T.mat',
+         'data/bci-competition-iv/2a/A07T.mat',
+         'data/bci-competition-iv/2a/A08T.mat',
+         'data/bci-competition-iv/2a/A09T.mat'
+         ],
+    }]]
+}
