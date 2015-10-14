@@ -33,6 +33,10 @@ class ExperimentCrossValidation():
                 self.num_folds))
             this_layers = deepcopy(self.final_layer)
             this_exp_args = deepcopy(self.exp_args)
+            ## make sure dataset is loaded... 
+            if (hasattr(self.dataset, 'reload') and 
+                (not hasattr(self.dataset, 'X'))):
+                self.dataset.reload()
             dataset_splitter = DatasetSingleFoldSplitter(self.dataset,
                 num_folds=self.num_folds, i_test_fold=i_fold)
             this_dataset_provider = PreprocessedSplitter(
