@@ -29,7 +29,7 @@ class ExperimentCrossValidation():
         self.all_layers = []
         self.all_monitor_chans = []
         for i_fold in range(self.num_folds):
-            log.info("Running fold {:d} of {:d}".format(i_fold,
+            log.info("Running fold {:d} of {:d}".format(i_fold + 1,
                 self.num_folds))
             this_layers = deepcopy(self.final_layer)
             this_exp_args = deepcopy(self.exp_args)
