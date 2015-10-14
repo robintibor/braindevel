@@ -1,17 +1,7 @@
 {
-    extends: ['configs/experiments/bci_competition/raw_net_base.yaml'],
-    variants: [[{
+    extends: ['configs/experiments/bci_competition/raw_net_base.yaml',
+        'configs/experiments/bci_competition/combined/combined_files.yaml'],
+    variants: [[{   
         save_path: ['data/models/bci-competition/combined/raw-net/'],
-        dataset_filename: [
-         'data/bci-competition-iv/2a-combined/A01TE.mat',
-         'data/bci-competition-iv/2a-combined/A02TE.mat',
-         'data/bci-competition-iv/2a-combined/A03TE.mat',
-         'data/bci-competition-iv/2a-combined/A04TE.mat',
-         'data/bci-competition-iv/2a-combined/A05TE.mat',
-         'data/bci-competition-iv/2a-combined/A06TE.mat',
-         'data/bci-competition-iv/2a-combined/A07TE.mat',
-         'data/bci-competition-iv/2a-combined/A08TE.mat',
-         'data/bci-competition-iv/2a-combined/A09TE.mat',
-         ],
     }]]
 }
