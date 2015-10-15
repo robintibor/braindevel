@@ -50,7 +50,7 @@ def check_file(train_file, test_file, combined_file):
         combined_event_pos[:len(train_event_pos)])
     assert np.array_equal(test_event_pos,
         combined_event_pos[len(train_event_pos):] - train_signal.shape[1])
-    log.info("File good")
+    log.info("File ok")
 
 def check_as_sets(train_file_name, test_file_name, combined_file_name):
     train_set = BCICompetition4Set2A(train_file_name)
@@ -75,7 +75,7 @@ def check_as_sets(train_file_name, test_file_name, combined_file_name):
     test_part = combined_epo[288:]
     assert (np.sum(test_epo - test_part) /
         float(np.prod(test_epo.shape))) < 1e-2
-    log.info("Set good")
+    log.info("Set ok")
 
 if __name__ == '__main__':
     train_files = sorted(glob('data/bci-competition-iv/2a/*T.mat'))
