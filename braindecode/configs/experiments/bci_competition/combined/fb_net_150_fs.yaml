@@ -3,7 +3,7 @@
         'configs/experiments/bci_competition/combined/combined_files.yaml'],
     variants: [[
     {        
-        save_path: ['data/models/bci-competition/combined/fb-net-150/'],
+        save_path: ['data/models/bci-competition/combined/fb-net-150-fs/'],
         resample_fs: [150],
         max_freq: [70],
         last_low_freq: [30],
