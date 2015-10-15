@@ -161,10 +161,6 @@ class PreprocessedSplitter(object):
 
     def get_train_merged_valid_test(self):
         self.dataset_splitter.reload_data()
-        new_datasets = self.get_train_fitted_valid_test()
-        return new_datasets
-
-    def get_train_fitted_valid_test(self):
         this_datasets = self.dataset_splitter.split_into_train_valid_test()
         self.dataset_splitter.free_memory_if_reloadable()
         train_valid_set = self.concatenate_sets(this_datasets['train'],

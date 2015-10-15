@@ -9,6 +9,9 @@ def transform_vals_to_string_constructor(loader, node):
 
 def create_experiment_yaml_strings_from_files(config_filename, 
         main_template_filename):
+    # First read out all files (check for extends attribute)
+    # and transform to files to strings...
+    # Then call creation of experiment yaml strings
     yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
     config_strings = []
 
@@ -25,34 +28,50 @@ def create_experiment_yaml_strings_from_files(config_filename,
             config_filename_stack.extend(other_filenames)
         config_strings.append(config_str)
 
+    # Need to reverse as top file needs to be first config string
+    # (assumption by function called below)
     config_strings = config_strings[::-1]
     
     with open(main_template_filename, 'r') as main_template_file:
         main_template_str = main_template_file.read()
     return create_experiment_yaml_strings(config_strings, main_template_str)
-    
 
 def create_experiment_yaml_strings(all_config_strings, main_template_str):
     """ Config strings should be from top file to bottom file."""
-    variants = []
-    templates = dict()
     yaml.add_constructor(u'!TransformValsToString',
         transform_vals_to_string_constructor)
-    for config_str in all_config_strings:
-        config_obj = yaml.load(config_str.replace("templates:", "templates: !TransformValsToString"))
+    config_objects = [yaml.load(conf_str.replace("templates:", 
+            "templates: !TransformValsToString"))
+        for conf_str in all_config_strings]
+    final_params = create_params_from_config_objects(config_objects)
+    # possibly remove equal params?
+    train_strings = []
+    for i_config in range(len(final_params)):
+        train_str = Template(main_template_str).substitute(final_params[i_config])
+        train_strings.append(train_str)
+    return train_strings
+
+def create_params_from_config_objects(config_objects):
+    templates, variants = create_templates_variants_from_config_objects(
+        config_objects)
+    final_params = merge_parameters_and_templates(variants, templates)
+    # add original params for later printing
+    for i_config in range(len(final_params)):
+        final_params[i_config]['original_params'] = yaml.dump(variants[i_config])
+
+    return final_params
+
+def create_templates_variants_from_config_objects(config_objects):
+    variants = []
+    templates = dict()
+    for config_obj in config_objects:
         if 'variants' in config_obj:
             sub_variants = create_variants_recursively(config_obj['variants'])
             variants = product_of_lists_of_dicts(variants, sub_variants)
         if 'templates' in config_obj:
             templates.update(config_obj['templates'])
-    final_params = merge_parameters_and_templates(variants, templates)
-    # possibly remove equal params?
-    train_strings = []
-    for i_config in range(len(final_params)):
-        final_params[i_config]['original_params'] = yaml.dump(variants[i_config])
-        train_str = Template(main_template_str).substitute(final_params[i_config])
-        train_strings.append(train_str)
-    return train_strings
+    return templates, variants
+
 
 def create_variants_recursively(variants):
         """
