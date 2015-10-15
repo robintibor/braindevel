@@ -9,7 +9,8 @@ class ProcessedDataset(object):
     """ Class to load BBCI Dataset in matlab format """
     def __init__(self, wyrm_set, sensor_names=None,
             cnt_preprocessors=[], epo_preprocessors=[],
-            segment_ival=[0,4000]):
+            segment_ival=[0,4000], 
+            marker_def={'1': [1], '2': [2], '3': [3], '4': [4]}):
         """ Constructor will not call superclass constructor yet"""
         self.__dict__.update(locals())
         del self.self
@@ -36,9 +37,8 @@ class ProcessedDataset(object):
         # adding the numbers at start to force later sort in segment_dat
         # to sort them in given order
         self.epo = segment_dat_fast(self.cnt, 
-            marker_def={'1 - Right Hand': [1], '2 - Left Hand': [2], 
-                '3 - Rest': [3], '4 - Feet': [4]}, 
-            ival=self.segment_ival)
+            ival=self.segment_ival,
+            marker_def=self.marker_def)
 
     def remove_continuous_signal(self):
         del self.cnt
@@ -161,9 +161,14 @@ class BCICompetition4Set2A(object):
         
             fs = np.int(h5file['header']['EVENT']['SampleRate'][:])
         
-            classes = h5file['header']['Classlabel'][:][0].astype(np.int32)
+            classes = h5file['header']['Classlabel'][0,:].astype(np.int32)
             event_types = h5file['header']['EVENT']['TYP'][0,:]
+            assert ((np.intersect1d(event_types,  [769,770,771,772]).size == 0) 
+                or not np.any(event_types == 783)), ("Either only known only "
+                "unknown events")
             trial_mask = np.array([ev in [769, 770, 771, 772, 783] for ev in event_types])
+            if not np.any(event_types == 783): # chekc labels correct
+                assert np.array_equal(event_types[trial_mask] - 768, classes)
             start_samples = h5file['header']['EVENT']['POS'][0,:].astype(np.int64)
             trial_start_samples = start_samples[trial_mask]
             trial_start_times = trial_start_samples * (1000.0 / fs) 
