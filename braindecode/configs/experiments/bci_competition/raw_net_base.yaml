@@ -27,8 +27,8 @@
             },
             &pool !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
                     incoming: *spat_conv,
-                    pool_size: [50,1],
-                    stride: [10,1],
+                    pool_size: [$pool_time_length,1],
+                    stride: [$pool_time_stride,1],
                     mode: 'average_exc_pad',
             },
             &log !obj:lasagne.layers.NonlinearityLayer {
@@ -58,7 +58,7 @@
                     ],
                     [
                         !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
-                        {'low_cut_off_hz': 0.5}
+                        {'low_cut_off_hz': $low_cut_off_hz}
                     ],
                 ]
             },
@@ -67,14 +67,12 @@
         },
     },
     variants: [[{
-        trial_start: [500],
-        trial_stop: [2500],
+        trial_start: [0],
+        trial_stop: [4000],
         sensor_names: ["null"],
         layers: [$raw_net_layers],
         dataset: [$raw_set],
         max_increasing_epochs: [150],
         max_epochs: [1500],
-        filter_time_length: [15],
-        resample_fs: [150],
     }]]
 }

@@ -43,27 +43,27 @@
                     ],
                     [
                         !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
-                        {'low_cut_off_hz': 0.5}
+                        {'low_cut_off_hz': $low_cut_off_hz}
                     ],
                 ],
             },
             cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner { },
             sensor_names: $sensor_names,
-            min_freq: 0,
-            max_freq: 70,
-            last_low_freq: 30,
+            min_freq: $min_freq,
+            max_freq: $max_freq,
+            last_low_freq: $last_low_freq,
             low_width: 2,
             high_width: 6,
         },
     },
     variants: [[{
         trial_start: [500],
-        trial_stop: [2500],
+        trial_stop: [4000],
         sensor_names: ["null"],
         layers: [$fb_net_layers],
         dataset: [$fb_set],
         max_increasing_epochs: [150],
         max_epochs: [1500],
-        resample_fs: [150],
+        low_cut_off_hz: [0.5],
     }]]
 }

@@ -14,13 +14,15 @@ from pylearn2.config import yaml_parse
 
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
-            quiet=False, dry_run=False, cross_validation=False):
+            quiet=False, dry_run=False, cross_validation=False,
+            shuffle=False):
         self._start_id = start_id
         self._stop_id = stop_id
         self._test = test
         self._quiet = quiet
         self._dry_run = dry_run
         self._cross_validation=cross_validation
+        self._shuffle=shuffle
         
     def run(self, all_train_strs):
         if (self._quiet):
@@ -62,6 +64,8 @@ class ExperimentsRunner:
             folder_path += '/test/'
         if (self._cross_validation):
             folder_path += '/cross-validation/'
+        if (self._shuffle):
+            folder_path += '/shuffle/'
             
         return folder_path
     
@@ -142,13 +146,14 @@ class ExperimentsRunner:
                 predictions=[0,3,1,2,3,4],
                 targets=[3,4,1,2,3,4])
             model = exp.final_layer
-        else:
+        else: # cross validation
             preprocessor = train_dict['preprocessor']
             # default 5 folds for now
             num_folds = 5
             exp_cv = ExperimentCrossValidation(final_layer, 
                 dataset, preprocessor,
-                num_folds=num_folds, exp_args=train_dict['exp_args'])
+                num_folds=num_folds, exp_args=train_dict['exp_args'],
+                shuffle=self._shuffle)
             exp_cv.run()
             endtime = time.time()
             result_or_results = []
@@ -162,8 +167,6 @@ class ExperimentsRunner:
                 result_or_results.append(res)
             model = exp_cv.all_layers
             
-        
-            
         if not os.path.exists(self._folder_path):
             os.makedirs(self._folder_path)
         
@@ -176,9 +179,6 @@ class ExperimentsRunner:
         # Let's save model
         with open(model_file_name, 'w') as modelfile:
             pickle.dump(model, modelfile)
-        
-            
-        
     
     def _save_train_string(self, train_string, experiment_index):
         file_name = self._base_save_paths[experiment_index] + ".yaml"
@@ -192,4 +192,3 @@ class ExperimentsRunner:
     def _print_results(self):
         res_printer = ResultPrinter(self._folder_path)
         res_printer.print_results()
-

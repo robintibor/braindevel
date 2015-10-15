@@ -15,12 +15,13 @@ log = logging.getLogger(__name__)
 
 class ExperimentCrossValidation():
     def __init__(self, final_layer, dataset, preprocessor, num_folds,
-            exp_args):
+            exp_args, shuffle):
         self.final_layer = final_layer
         self.dataset = dataset
         self.preprocessor = preprocessor
         self.num_folds = num_folds
         self.exp_args = exp_args
+        self.shuffle = shuffle
         
     def setup(self):
         lasagne.random.set_rng(RandomState(9859295))
@@ -38,7 +39,8 @@ class ExperimentCrossValidation():
                 (not hasattr(self.dataset, 'X'))):
                 self.dataset.reload()
             dataset_splitter = DatasetSingleFoldSplitter(self.dataset,
-                num_folds=self.num_folds, i_test_fold=i_fold)
+                num_folds=self.num_folds, i_test_fold=i_fold,
+                shuffle=self.shuffle)
             this_dataset_provider = PreprocessedSplitter(
                 dataset_splitter=dataset_splitter,
                 preprocessor=self.preprocessor)

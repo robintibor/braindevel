@@ -39,6 +39,8 @@ def parse_command_line_arguments():
         help="Only show parameters for experiment, don't train.")
     parser.add_argument('--cv', action="store_true", 
         help="Use cross validation instead of train test split")
+    parser.add_argument('--shuffle', action="store_true", 
+        help="Use shuffle (only use together with --cv)")
     parser.add_argument('--params', nargs='*', default=[],
                         help='''Parameters to override default values/other values given in experiment file.
                         Supply it in the form parameter1=value1 parameters2=value2, ...''')
@@ -48,6 +50,8 @@ def parse_command_line_arguments():
                         help='''Stop with experiment at specified id....''')
     args = parser.parse_args()
 
+    assert (not (args.shuffle and (not args.cv))), ("Use shuffle only "
+        "together with cross validation.")
     # dictionary values are given with = inbetween, parse them here by hand
     param_dict =  dict([param_and_value.split('=') 
                         for param_and_value in args.params])
@@ -65,5 +69,5 @@ if __name__ == "__main__":
     all_train_strs = create_experiment_yaml_strings_from_files(
         args.experiments_file_name, args.template_file_name)
     exp_runner = ExperimentsRunner(quiet=args.quiet, start_id=args.startid,
-        stop_id=args.stopid, cross_validation=args.cv)
+        stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle)
     exp_runner.run(all_train_strs)

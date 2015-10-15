@@ -24,10 +24,12 @@ class DatasetTrainValidTestSplitter():
         raise NotImplementedError("Subclass needs to implement this")
 
 class DatasetSingleFoldSplitter(DatasetTrainValidTestSplitter):
-    def __init__(self, dataset, num_folds=10, i_test_fold=-1):
+    def __init__(self, dataset, num_folds=10, i_test_fold=-1,
+            shuffle=False):
         self.dataset = dataset
         self.num_folds = num_folds
         self.i_test_fold = i_test_fold
+        self.shuffle=shuffle
         
     def ensure_dataset_is_loaded(self):
         if (hasattr(self.dataset, '_data_not_loaded_yet') and 
@@ -45,7 +47,8 @@ class DatasetSingleFoldSplitter(DatasetTrainValidTestSplitter):
         # also works in case test fold nr is 0 as it will just take -1 
         # which is fine last fold)
         i_valid_fold = self.i_test_fold - 1
-        folds = list(KFold(num_trials, n_folds=self.num_folds, shuffle=False))
+        folds = list(KFold(num_trials, n_folds=self.num_folds,
+            shuffle=self.shuffle))
         # [1] needed as it is always a split of whole dataset into train/test
         # indices
         test_fold = folds[self.i_test_fold][1]
@@ -216,6 +219,7 @@ class PreprocessedSplitter(object):
         # necessary
         for next_split in xrange(next_start + split_index, 
                 len(full_set.y), original_full_len):
+            assert False, "Please check/test this code again if you need it"
             next_end = next_split + split_to_end_num
             topo_first = np.concatenate((topo_first, 
                 full_topo[next_start:next_split]))

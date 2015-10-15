@@ -1,0 +1,15 @@
+ {
+    extends: ['configs/experiments/bci_competition/raw_net_base.yaml',
+        'configs/experiments/bci_competition/combined/combined_files.yaml'],
+    variants: [[
+    {        
+        save_path: ['data/models/bci-competition/combined/raw-net-250-fs/'],
+        resample_fs: [250],
+        low_cut_off_hz: [0.5, 2, 4],
+        filter_time_length: [30],
+        pool_time_length: [100],
+        pool_time_stride: [20],
+    }
+    ]]
+ }
+ 
