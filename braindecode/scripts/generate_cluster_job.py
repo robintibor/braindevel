@@ -26,7 +26,7 @@ echo SGE_TASK_ID=$SGE_TASK_ID
 echo GPU_ID=$GPU_ID
 echo $CMD
 
-export THEANO_FLAGS="floatX=float32,device=gpu${GPU_ID},nvcc.fastmath=True"
+export THEANO_FLAGS="floatX=float32,device=gpu${GPU_ID},nvcc.fastmath=True,force_device=True"
 echo THEANO_FLAGS=$THEANO_FLAGS
 """
 def generate_cluster_job(sys_args):

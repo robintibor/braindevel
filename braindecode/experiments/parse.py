@@ -12,37 +12,32 @@ def create_experiment_yaml_strings_from_files(config_filename,
     # First read out all files (check for extends attribute)
     # and transform to files to strings...
     # Then call creation of experiment yaml strings
-    yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
-    config_strings = []
-
-    config_filename_stack = deque([config_filename])
-
-    while len(config_filename_stack) > 0:
-        config_filename = config_filename_stack.pop()
-        with open(config_filename,'r') as config_file:
-            config_str = config_file.read()
-        config_obj = yaml.load(config_str.replace("templates:",
-            "templates: !TransformValsToString"))
-        if 'extends' in config_obj:
-            other_filenames = config_obj['extends']
-            config_filename_stack.extend(other_filenames)
-        config_strings.append(config_str)
-
-    # Need to reverse as top file needs to be first config string
-    # (assumption by function called below)
-    config_strings = config_strings[::-1]
-    
+    config_strings = create_config_strings(config_filename)
     with open(main_template_filename, 'r') as main_template_file:
         main_template_str = main_template_file.read()
     return create_experiment_yaml_strings(config_strings, main_template_str)
 
+def create_config_strings(config_filename):
+    yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
+    config_strings = []
+    config_filename_stack = deque([config_filename])
+    while len(config_filename_stack) > 0:
+        config_filename = config_filename_stack.pop()
+        with open(config_filename, 'r') as config_file:
+            config_str = config_file.read()
+        config_obj = yaml.load(config_str.replace("templates:", "templates: !TransformValsToString"))
+        if 'extends' in config_obj:
+            other_filenames = config_obj['extends']
+            config_filename_stack.extend(other_filenames)
+        config_strings.append(config_str)
+    # Need to reverse as top file needs to be first config string
+    # (assumption by function create_templates_variants_from_config_objects)
+    config_strings = config_strings[::-1]
+    return config_strings
+
 def create_experiment_yaml_strings(all_config_strings, main_template_str):
     """ Config strings should be from top file to bottom file."""
-    yaml.add_constructor(u'!TransformValsToString',
-        transform_vals_to_string_constructor)
-    config_objects = [yaml.load(conf_str.replace("templates:", 
-            "templates: !TransformValsToString"))
-        for conf_str in all_config_strings]
+    config_objects = create_config_objects(all_config_strings)
     final_params = create_params_from_config_objects(config_objects)
     # possibly remove equal params?
     train_strings = []
@@ -50,6 +45,13 @@ def create_experiment_yaml_strings(all_config_strings, main_template_str):
         train_str = Template(main_template_str).substitute(final_params[i_config])
         train_strings.append(train_str)
     return train_strings
+
+def create_config_objects(all_config_strings):
+    yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
+    config_objects = [yaml.load(conf_str.replace("templates:", 
+                "templates: !TransformValsToString")) for 
+        conf_str in all_config_strings]
+    return config_objects
 
 def create_params_from_config_objects(config_objects):
     templates, variants = create_templates_variants_from_config_objects(
