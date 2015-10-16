@@ -70,3 +70,19 @@ def test_preprocessed_splitter():
     assert np.array_equal(train_topo, to_4d_array([-4,-3,-2,-1,0,1,2,3,4]))
     assert np.array_equal(valid_topo, to_4d_array([4]))
     assert np.array_equal(test_topo, to_4d_array([5]))
+    
+def test_repeated_calls_with_shuffle():
+    """Repeated calls should always lead to same split"""
+    data = np.arange(100)
+    dataset = DenseDesignMatrix(topo_view=to_4d_array(data), 
+        y=np.zeros(100))
+    splitter = DatasetSingleFoldSplitter(dataset, num_folds=10, 
+        i_test_fold=9, shuffle=True)
+    reference_datasets = splitter.split_into_train_valid_test()
+    
+    # 20 attemptsat splitting should all lead to same datasets!
+    for _ in range(20):
+        new_datasets = splitter.split_into_train_valid_test()
+        for key in reference_datasets:
+            assert np.array_equal(reference_datasets[key].get_topological_view(),
+                new_datasets[key].get_topological_view())

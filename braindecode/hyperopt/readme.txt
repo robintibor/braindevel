@@ -36,6 +36,13 @@ Each HPOlib cmd creates a new folder, called smac_2_08_00-master_1000_date_and_t
 Output of currently running configs and crashes are stored as *instance.out
 To manually run a config see first lines of corresponding *solver.out
 
+### Create experiment
+Call ./scripts/create_hyperopt_files.py with wanted experiments file name
+Create a new folder for the experiment (below hyperopt folder?)
+Copy contents of robin_rawnet there, exchange .pcs file and templates.yaml file 
+with the files created with the script
+Adapt as config.cfg written above 
+
 ### Robin Commands
 (source your gpu-startup-file)
 export PYTHONPATH=$PYTHONPATH:/home/schirrmr/motor-imagery/code/motor_imagery_learning/

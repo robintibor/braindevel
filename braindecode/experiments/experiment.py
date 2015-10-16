@@ -1,4 +1,4 @@
-import lasagn
+import lasagne
 from numpy.random import RandomState
 import theano
 import theano.tensor as T

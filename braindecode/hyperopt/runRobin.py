@@ -126,6 +126,9 @@ if __name__ == "__main__":
     dataset_nr = fold / 10
     inner_fold_nr = fold % 10
     
+    # debug: (should be 0.649123 for rawnet)
+    #dataset_nr = 0
+    #inner_fold_nr = 9
 
     params['dataset_filename'] = os.path.join(dataset_dir, dataset_list[dataset_nr])
     params['i_test_fold'] = inner_fold_nr

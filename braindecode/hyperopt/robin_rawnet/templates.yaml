@@ -1,34 +1,35 @@
 {
     templates: {
         raw_net_layers: [&id001 !obj:lasagne.layers.InputLayer {shape: [null, in_sensors, in_rows, in_cols]},
-      &id002 !obj:lasagne.layers.DimshuffleLayer {incoming: *id001, pattern: [0, 3, 2,
-          1]}, &id003 !obj:lasagne.layers.Conv2DLayer {incoming: *id002, num_filters: 40,
-        filter_size: [$filter_time_length, 1], nonlinearity: !!python/name:lasagne.nonlinearities.identity ''},
-      &id004 !obj:lasagne.layers.DropoutLayer {incoming: *id003, p: 0.5}, &id005 !obj:braindecode.veganlasagne.layers.Conv2DAllColsLayer {
-        incoming: *id004, num_filters: 40, filter_size: [1, -1], nonlinearity: !!python/name:theano.tensor.sqr ''},
-      &id006 !obj:braindecode.veganlasagne.pool.SumPool2dLayer {incoming: *id005, pool_size: [
-          $pool_time_length, 1], stride: [$pool_time_stride, 1], mode: 'average_exc_pad'},
-      &id007 !obj:lasagne.layers.NonlinearityLayer {incoming: *id006, nonlinearity: !!python/name:theano.tensor.log ''},
-      &id008 !obj:lasagne.layers.DropoutLayer {incoming: *id007, p: 0.5}, !obj:lasagne.layers.DenseLayer {
-        incoming: *id008, num_units: 4, nonlinearity: !!python/name:lasagne.nonlinearities.softmax ''}]
-    ,
+  &id002 !obj:lasagne.layers.DimshuffleLayer {incoming: *id001, pattern: [0, 3, 2,
+      1]}, &id003 !obj:lasagne.layers.Conv2DLayer {incoming: *id002, num_filters: 40,
+    filter_size: [$filter_time_length, 1], nonlinearity: !!python/name:lasagne.nonlinearities.identity ''},
+  &id004 !obj:lasagne.layers.DropoutLayer {incoming: *id003, p: 0.5}, &id005 !obj:braindecode.veganlasagne.layers.Conv2DAllColsLayer {
+    incoming: *id004, num_filters: 40, filter_size: [1, -1], nonlinearity: !!python/name:theano.tensor.sqr ''},
+  &id006 !obj:braindecode.veganlasagne.pool.SumPool2dLayer {incoming: *id005, pool_size: [
+      $pool_time_length, 1], stride: [$pool_time_stride, 1], mode: 'average_exc_pad'},
+  &id007 !obj:lasagne.layers.NonlinearityLayer {incoming: *id006, nonlinearity: !!python/name:theano.tensor.log ''},
+  &id008 !obj:lasagne.layers.DropoutLayer {incoming: *id007, p: 0.5}, !obj:lasagne.layers.DenseLayer {
+    incoming: *id008, num_units: 4, nonlinearity: !!python/name:lasagne.nonlinearities.softmax ''}]
+,
         categorical_crossentropy: !!python/name:lasagne.objectives.categorical_crossentropy ''
-    ,
+,
         adam: !!python/name:lasagne.updates.adam ''
-    ,
+,
         raw_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {signal_marker_set: !obj:braindecode.datasets.bbci_dataset.ProcessedDataset {
-        wyrm_set: !obj:braindecode.datasets.bbci_dataset.BCICompetition4Set2A {filename: $dataset_filename},
-        segment_ival: [$trial_start, $trial_stop], cnt_preprocessors: [[!!python/name:braindecode.mywyrm.processing.resample_cnt '',
-            {'newfs': $resample_fs}], [!!python/name:braindecode.mywyrm.processing.highpass_cnt '',
-            {'low_cut_off_hz': $low_cut_off_hz}]]}, cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner {},
-      sensor_names: $sensor_names}
-    ,
+    wyrm_set: !obj:braindecode.datasets.bbci_dataset.BCICompetition4Set2A {filename: $dataset_filename},
+    segment_ival: [$trial_start, $trial_stop], cnt_preprocessors: [[!!python/name:braindecode.mywyrm.processing.resample_cnt '',
+        {'newfs': $resample_fs}], [!!python/name:braindecode.mywyrm.processing.highpass_cnt '',
+        {'low_cut_off_hz': $low_cut_off_hz}]]}, cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner {},
+  sensor_names: $sensor_names}
+,
         online_chan_freq_wise: !obj:braindecode.datasets.preprocessing.OnlineAxiswiseStandardize {axis: ['c', 1]}
-    ,
+,
         C_sensors: ['FC5', 'FC1', 'FC2', 'FC6', 'C3', 'Cz', 'C4', 'CP5', 'CP1', 'CP2', 'CP6', 'FC3',
-      'FCz', 'FC4', 'C5', 'C1', 'C2', 'C6', 'CP3', 'CPz', 'CP4', 'FFC5h', 'FFC3h', 'FFC4h',
-      'FFC6h', 'FCC5h', 'FCC3h', 'FCC4h', 'FCC6h', 'CCP5h', 'CCP3h', 'CCP4h', 'CCP6h',
-      'CPP5h', 'CPP3h', 'CPP4h', 'CPP6h', 'FFC1h', 'FFC2h', 'FCC1h', 'FCC2h', 'CCP1h',
-      'CCP2h', 'CPP1h', 'CPP2h']
-    }
-}
+  'FCz', 'FC4', 'C5', 'C1', 'C2', 'C6', 'CP3', 'CPz', 'CP4', 'FFC5h', 'FFC3h', 'FFC4h',
+  'FFC6h', 'FCC5h', 'FCC3h', 'FCC4h', 'FCC6h', 'CCP5h', 'CCP3h', 'CCP4h', 'CCP6h',
+  'CPP5h', 'CPP3h', 'CPP4h', 'CPP6h', 'FFC1h', 'FFC2h', 'FCC1h', 'FCC2h', 'CCP1h',
+  'CCP2h', 'CPP1h', 'CPP2h']
+,
+}}
+

@@ -14,12 +14,13 @@ from string import Template
 from pylearn2.config import yaml_parse
 import yaml
 from braindecode.experiments.experiment import Experiment
-
-
+import lasagne
+from numpy.random import RandomState
 
 def train_hyperopt(params):
     """ Runs one fold with given parameters and returns test misclass."""
-    
+    lasagne.random.set_rng(RandomState(9859295))
+
     template_name = params.pop('template_name')    
     params = adjust_params_for_hyperopt(params)
     
@@ -81,7 +82,7 @@ def train_hyperopt(params):
     final_misclass = exp.monitor_chans['test_misclass'][-1]
     print("Result for")
     pprint(params)
-    print("Average Test misclass: {:5.4f}".format(float(final_misclass)))
+    print("Final Test misclass: {:5.4f}".format(float(final_misclass)))
     return final_misclass
 
 def adjust_params_for_hyperopt(params):
@@ -95,23 +96,23 @@ def adjust_params_for_hyperopt(params):
 
 
 if __name__ == "__main__":
-    params = {'dataset': '$raw_set',
+    params = {'dataset': '**raw_set',
          'dataset_filename': 'data/bci-competition-iv/2a-combined/A01TE.mat',
          'dataset_provider': '*preprocessed_provider',
          'filter_time_length': 15,
-         'layers': '$raw_net_layers',
-         'loss_var_func': '$categorical_crossentropy',
-         'low_cut_off_hz': 0.5,
-         'max_epochs': 3,
+         'layers': '**raw_net_layers',
+         'loss_var_func': '**categorical_crossentropy',
+         'low_cut_off_hz': 2,
+         'max_epochs': 5,
          'max_increasing_epochs': 150,
          'pool_time_length': 50,
          'pool_time_stride': 10,
-         'preprocessor': '$online_chan_freq_wise',
+         'preprocessor': '**online_chan_freq_wise',
          'resample_fs': 150,
          'sensor_names': 'null',
          'trial_start': 0,
          'trial_stop': 4000,
-         'updates_var_func': '$adam',
+         'updates_var_func': '**adam',
          'num_folds': 10,
          'i_test_fold': 9,
          'template_name': '/home/schirrmr/braindecode/code/braindecode/hyperopt/robin_rawnet/templates.yaml'}

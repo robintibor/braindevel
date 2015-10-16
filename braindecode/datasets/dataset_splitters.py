@@ -4,6 +4,7 @@ from sklearn.cross_validation import KFold
 import numpy as np
 from copy import deepcopy
 from collections import OrderedDict
+from numpy.random import RandomState
 
 class DatasetTrainValidTestSplitter():
     __metaclass__ = ABCMeta
@@ -47,8 +48,14 @@ class DatasetSingleFoldSplitter(DatasetTrainValidTestSplitter):
         # also works in case test fold nr is 0 as it will just take -1 
         # which is fine last fold)
         i_valid_fold = self.i_test_fold - 1
-        folds = list(KFold(num_trials, n_folds=self.num_folds,
-            shuffle=self.shuffle))
+        
+        if self.shuffle:
+            rng = RandomState(729387987) #TODO: check it rly ledas to same split when being called twice
+            folds = list(KFold(num_trials, n_folds=self.num_folds,
+                shuffle=self.shuffle, random_state=rng))
+        else:
+            folds = list(KFold(num_trials, n_folds=self.num_folds,
+                shuffle=False))
         # [1] needed as it is always a split of whole dataset into train/test
         # indices
         test_fold = folds[self.i_test_fold][1]
