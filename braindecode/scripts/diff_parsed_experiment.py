@@ -89,8 +89,8 @@ def compare_experiment_yaml_strings(experiments_file_name, dir_name,
                 print("Experiment {:d}".format(i_str + 1))
                 print(diff_str)
                 print('\n')
-            print("Experiment {:2d} ok.".format(i_str + 1))
-                
+            else:
+                print("Experiment {:2d} ok.".format(i_str + 1))
         if (len(old_train_strs) != len(new_train_strs)):
             print("Could not compare all experiments.")
             print("Old experiments: {:d}".format(len(old_train_strs)))
