@@ -8,14 +8,14 @@ from glob import glob
 import difflib
 from braindecode.experiments.parse import create_experiment_yaml_strings_from_files
 
-_train_str_seperator = "#####TRAINSTRING#####"
+_train_str_separator = "#####TRAINSTRING#####"
 
 def parse_command_line_arguments():
     parser = argparse.ArgumentParser(
         description="""Diff parsed experiments.
-        
+
         Examples:
-        
+
         ./scripts/diff_parsed_experiment.py compare configs/experiments/bci_competition/combined/fb_net_150_fs.yaml 
         ./scripts/diff_parsed_experiment.py compare configs/experiments/bci_competition/combined/fb_net_150_fs.yaml --dir data/models/bci-competition/combined/raw-net-250-fs/cross-validation/
         ./scripts/diff_parsed_experiment.py compare configs/experiments/bci_competition/combined/fb_net_150_fs.yaml --file configs/experiments/combined/fb_net_150_fs.yaml.old_train_strs
@@ -63,7 +63,7 @@ def store_experiment_yaml_strings(experiments_file_name):
         main_template_filename='configs/eegnet_template.yaml')
     train_str_file_name = experiments_file_name + ".old_train_strs"
     with open(train_str_file_name, 'w') as tmp_file:
-        tmp_file.write(_train_str_seperator.join(train_strs))
+        tmp_file.write(_train_str_separator.join(train_strs))
 
 def compare_experiment_yaml_strings(experiments_file_name, dir_name,
             file_name):
@@ -108,7 +108,7 @@ def extract_old_train_strings(dir_name, file_name):
     
     if file_name is not None:
         with open(file_name, 'r') as tmp_file:
-            old_train_strs = tmp_file.read().split(_train_str_seperator)
+            old_train_strs = tmp_file.read().split(_train_str_separator)
     return old_train_strs
 
 if __name__ == "__main__":
@@ -118,4 +118,3 @@ if __name__ == "__main__":
     if args.subparser_name == 'compare':
         compare_experiment_yaml_strings(args.experiments_file_name,
             args.dir, args.file)
-
