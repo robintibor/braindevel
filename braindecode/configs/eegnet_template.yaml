@@ -7,8 +7,8 @@
         preprocessed_provider: &preprocessed_provider !obj:braindecode.datasets.dataset_splitters.PreprocessedSplitter {
             dataset_splitter: !obj:braindecode.datasets.dataset_splitters.DatasetSingleFoldSplitter {
                 dataset: *dataset, 
-                num_folds: 10, 
-                i_test_fold: 9,
+                num_folds: $num_folds, 
+                i_test_fold: $i_test_fold,
             },
             preprocessor: *preprocessor,
         },

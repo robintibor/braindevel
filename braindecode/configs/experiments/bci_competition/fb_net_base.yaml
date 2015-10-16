@@ -1,5 +1,5 @@
 {
-    extends: ['configs/experiments/defaults_our_data.yaml'],
+    extends: ['configs/experiments/defaults.yaml'],
     templates: {
         fb_net_layers: [ 
            &in_layer !obj:lasagne.layers.InputLayer {
