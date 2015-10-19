@@ -2,7 +2,6 @@ import logging
 log = logging.getLogger(__name__)
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 import numpy as np
-from braindecode.datasets.bbci_dataset import BBCIDataset
 from braindecode.datasets.sensor_positions import (sort_topologically)
 from wyrm.processing import select_channels, select_epochs
 from braindecode.datasets.filterbank import generate_filterbank

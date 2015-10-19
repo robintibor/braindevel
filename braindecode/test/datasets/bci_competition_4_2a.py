@@ -1,5 +1,5 @@
-from braindecode.datasets.bbci_dataset import (
-    BCICompetition4Set2A, ProcessedDataset)
+from braindecode.datasets.set_loaders import BCICompetition4Set2A
+from braindecode.datasets.signal_processor import SignalProcessor
 from glob import glob
 import h5py
 import numpy as np
@@ -54,16 +54,16 @@ def check_file(train_file, test_file, combined_file):
 
 def check_as_sets(train_file_name, test_file_name, combined_file_name):
     train_set = BCICompetition4Set2A(train_file_name)
-    train_wyrm_set = ProcessedDataset(train_set)
+    train_wyrm_set = SignalProcessor(train_set)
     train_wyrm_set.load()
     
     test_set = BCICompetition4Set2A(test_file_name)
-    test_wyrm_set = ProcessedDataset(test_set,
+    test_wyrm_set = SignalProcessor(test_set,
         marker_def={'Unknown':[-2147483648]})
     test_wyrm_set.load()
     
     combined_set = BCICompetition4Set2A(combined_file_name)
-    combined_wyrm_set = ProcessedDataset(combined_set)
+    combined_wyrm_set = SignalProcessor(combined_set)
     combined_wyrm_set.load()
     # nans were made to be means, so ignore that some values are not equal
     train_epo = train_wyrm_set.epo.data
@@ -77,7 +77,8 @@ def check_as_sets(train_file_name, test_file_name, combined_file_name):
         float(np.prod(test_epo.shape))) < 1e-2
     log.info("Set ok")
 
-if __name__ == '__main__':
+def test_all():
+    """ Extra function with test_ so pytest will also run it """
     train_files = sorted(glob('data/bci-competition-iv/2a/*T.mat'))
     test_files = sorted(glob('data/bci-competition-iv/2a/*E.mat'))
     combined_files = sorted(glob('data/bci-competition-iv/2a-combined/*TE.mat'))
@@ -91,3 +92,6 @@ if __name__ == '__main__':
                 combined_file_name, 'r') as combined_file:
             check_file(train_file, test_file, combined_file)
         check_as_sets(train_file_name, test_file_name, combined_file_name)
+
+if __name__ == '__main__':
+    test_all()

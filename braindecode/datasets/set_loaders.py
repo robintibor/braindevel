@@ -1,51 +1,8 @@
-import numpy as np
-import wyrm.types
-from braindecode.mywyrm.processing import segment_dat_fast
-from braindecode.datasets.sensor_positions import sort_topologically
 import h5py
+import numpy as np
 import re
-
-class ProcessedDataset(object):
-    """ Class to load BBCI Dataset in matlab format """
-    def __init__(self, wyrm_set, sensor_names=None,
-            cnt_preprocessors=[], epo_preprocessors=[],
-            segment_ival=[0,4000], 
-            marker_def={'1': [1], '2': [2], '3': [3], '4': [4]}):
-        """ Constructor will not call superclass constructor yet"""
-        self.__dict__.update(locals())
-        del self.self
-        self._data_not_loaded_yet = True # needed for lazy loading
-
-    def load(self):
-        """ This function actually loads the data. Will be called by the 
-        get dataset lazy loading function""" 
-        # TODELAY: Later switch to a wrapper dataset for all files
-        self.load_signal_and_markers()
-        self.preprocess_continuous_signal()
-        self.segment_into_trials()
-        self.remove_continuous_signal() # not needed anymore
-        self.preprocess_trials()
-
-    def load_signal_and_markers(self):
-        self.cnt = self.wyrm_set.load()
-
-    def preprocess_continuous_signal(self):
-        for func, kwargs in self.cnt_preprocessors:
-            self.cnt = func(self.cnt, **kwargs)
-
-    def segment_into_trials(self):
-        # adding the numbers at start to force later sort in segment_dat
-        # to sort them in given order
-        self.epo = segment_dat_fast(self.cnt, 
-            ival=self.segment_ival,
-            marker_def=self.marker_def)
-
-    def remove_continuous_signal(self):
-        del self.cnt
-
-    def preprocess_trials(self):
-        for func, kwargs in self.epo_preprocessors:
-            self.epo = func(self.epo, **kwargs)
+from braindecode.datasets.sensor_positions import sort_topologically
+import wyrm.types
 
 class BBCIDataset(object):
     def __init__(self, filename, load_sensor_names=None):
@@ -145,9 +102,13 @@ class BCICompetition4Set2A(object):
             cnt_signal = np.float32(h5file['signal'])
             last_eeg_chan = 22 # remaining are eog chans
             eeg_signal = cnt_signal[:last_eeg_chan,:].T 
-            # replace nans
-            eeg_signal[np.isnan(eeg_signal)] = np.nanmean(eeg_signal)
-        
+            # replace nans  by means of corresponding chans
+            for i_chan in xrange(eeg_signal.shape[1]):
+                chan_signal = eeg_signal[:, i_chan]
+                chan_signal[np.isnan(chan_signal)] = np.nanmean(chan_signal)
+                eeg_signal[:, i_chan] = chan_signal
+            assert not np.any(np.isnan(eeg_signal))
+            
             chan_names = [''.join(chr(c) for c in h5file[obj_ref]) for 
                             obj_ref in h5file['header']['Label'][0,:]]
             assert np.array_equal(['EEG-Fz', 'EEG', 'EEG', 'EEG', 'EEG', 'EEG',
@@ -181,4 +142,4 @@ class BCICompetition4Set2A(object):
                         ['ms', '#'])
             cnt.fs = fs
             cnt.markers = markers
-        return cnt    
+        return cnt

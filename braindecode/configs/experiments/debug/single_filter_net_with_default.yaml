@@ -26,8 +26,8 @@
             },
         ],
         raw_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {
-            signal_marker_set: !obj:braindecode.datasets.bbci_dataset.ProcessedDataset {
-                wyrm_set: !obj:braindecode.datasets.bbci_dataset.BBCIDataset {
+            signal_marker_set: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.set_loaders.BBCIDataset {
                     filename: 'data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat',
                     load_sensor_names: ['CPz', 'CP1', 'CP2'],
                 },

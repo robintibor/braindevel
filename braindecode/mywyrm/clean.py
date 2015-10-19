@@ -1,5 +1,5 @@
 import numpy as np
-from braindecode.datasets.bbci_dataset import BBCIDataset
+from braindecode.datasets.set_loaders import BBCIDataset
 from braindecode.mywyrm.processing import (bandpass_cnt, segment_dat_fast)
 from wyrm.processing import select_channels, append_cnt, append_epo
 

@@ -45,9 +45,9 @@
                     nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
             },
         ],
-        raw_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {
-            signal_marker_set: !obj:braindecode.datasets.bbci_dataset.ProcessedDataset {
-                wyrm_set: !obj:braindecode.datasets.bbci_dataset.BCICompetition4Set2A {
+        raw_set: !obj:braindecode.datasets.pylearn.BBCIPylearnCleanDataset {
+            signal_marker_set: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.set_loaders.BCICompetition4Set2A {
                     filename: $dataset_filename
                 },
                 segment_ival: [$trial_start, $trial_stop],

@@ -16,8 +16,8 @@
 ,
         adam: !!python/name:lasagne.updates.adam ''
 ,
-        raw_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {signal_marker_set: !obj:braindecode.datasets.bbci_dataset.ProcessedDataset {
-    wyrm_set: !obj:braindecode.datasets.bbci_dataset.BCICompetition4Set2A {filename: $dataset_filename},
+        raw_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {signal_marker_set: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+    set_loader: !obj:braindecode.datasets.bbci_dataset.BCICompetition4Set2A {filename: $dataset_filename},
     segment_ival: [$trial_start, $trial_stop], cnt_preprocessors: [[!!python/name:braindecode.mywyrm.processing.resample_cnt '',
         {'newfs': $resample_fs}], [!!python/name:braindecode.mywyrm.processing.highpass_cnt '',
         {'low_cut_off_hz': $low_cut_off_hz}]]}, cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner {},
