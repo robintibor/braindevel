@@ -17,6 +17,7 @@ export CPATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$CPATH
 echo "Working directory is $PWD"
 
 export GPU_ID=`cat ${HOME}/${JOB_ID}_${SGE_TASK_ID}_${JOB_NAME}`
+export CUDA_VISIBLE_DEVICES=$GPU_ID
 echo HOME=$HOME
 echo USER=$USER
 echo JOB_ID=$JOB_ID
