@@ -112,3 +112,15 @@ def get_EEG_sensors():
 
 def get_EEG_sensors_sorted():
     return sort_topologically(get_EEG_sensors())
+
+def get_BCI_Competition_All_Sensors():
+    return ['EEG-Fz', 'EEG-1', 'EEG-2', 'EEG-3', 'EEG-4', 'EEG-5', 'EEG-6',
+       'EEG-C3', 'EEG-8', 'EEG-Cz', 'EEG-10', 'EEG-C4', 'EEG-12', 'EEG-13',
+       'EEG-14', 'EEG-15', 'EEG-16', 'EEG-17', 'EEG-18', 'EEG-Pz',
+       'EEG-20', 'EEG-21', 'EOG-left', 'EOG-central', 'EOG-right']
+    
+def get_BCI_Competition_EEG_Sensors():
+    return ['EEG-Fz', 'EEG-1', 'EEG-2', 'EEG-3', 'EEG-4', 'EEG-5', 'EEG-6',
+       'EEG-C3', 'EEG-8', 'EEG-Cz', 'EEG-10', 'EEG-C4', 'EEG-12', 'EEG-13',
+       'EEG-14', 'EEG-15', 'EEG-16', 'EEG-17', 'EEG-18', 'EEG-Pz',
+       'EEG-20', 'EEG-21']

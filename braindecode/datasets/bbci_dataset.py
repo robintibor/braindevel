@@ -48,8 +48,8 @@ class ProcessedDataset(object):
             self.epo = func(self.epo, **kwargs)
 
 class BBCIDataset(object):
-    def __init__(self, filename, load_sensor_names=None):
-        """ Constructor will not call superclass constructor yet"""
+    def __init__(self, filename, load_sensor_names):
+        assert load_sensor_names is not None
         self.__dict__.update(locals())
         del self.self
 
@@ -63,6 +63,7 @@ class BBCIDataset(object):
 
     def load_continuous_signal(self):
         wanted_chan_inds, wanted_sensor_names = self.determine_sensors()
+        print wanted_chan_inds
         fs = self.determine_samplingrate()
         with h5py.File(self.filename, 'r') as h5file:
             samples = int(h5file['nfo']['T'][0,0])
@@ -72,6 +73,8 @@ class BBCIDataset(object):
                 chan_set_name = 'ch' + str(chan_ind_set + 1)
                 # first 0 to unpack into vector, before it is 1xN matrix
                 chan_signal = h5file[chan_set_name][0,:] # already load into memory
+                
+                # replace nans by mean value
                 continuous_signal[:, chan_ind_arr] = chan_signal
             samplenumbers = np.array(range(continuous_signal.shape[0]))
             timesteps_in_ms = samplenumbers * 1000.0 / fs
@@ -85,17 +88,9 @@ class BBCIDataset(object):
     def determine_sensors(self):
         #TODELAY: change to only taking filename? maybe more 
         # clarity where file is opened
-        with h5py.File(self.filename, 'r') as h5file:
-            clab_set = h5file['dat']['clab'][:,0]
-            all_sensor_names = [''.join(chr(c) for c in h5file[obj_ref]) for \
-                obj_ref in clab_set]
-            if self.load_sensor_names is None:
-                # if no sensor names given, take all EEG-chans
-                EEG_sensor_names = filter(lambda s: not s.startswith('E'), all_sensor_names)
-                # sort sensors topologically to allow networks to exploit topology
-                self.load_sensor_names = sort_topologically(EEG_sensor_names)
-            chan_inds = self.determine_chan_inds(all_sensor_names, 
-                self.load_sensor_names)
+        all_sensor_names = self.get_all_sensors(self.filename, pattern=None)
+        chan_inds = self.determine_chan_inds(all_sensor_names, 
+            self.load_sensor_names)
         return chan_inds, self.load_sensor_names
 
     
@@ -118,8 +113,8 @@ class BBCIDataset(object):
     
     def add_markers(self, cnt):
         with h5py.File(self.filename, 'r') as h5file:
-            event_times_in_ms = h5file['mrk']['time'][:][:,0]
-            event_classes = h5file['mrk']['event']['desc'][:][0]
+            event_times_in_ms = h5file['mrk']['time'][:,0]
+            event_classes = h5file['mrk']['event']['desc'][0]
         # expect epoched set with always 2000 samples per epoch 
         # compare to matlab samples from tonio lab
         cnt.markers =  zip(event_times_in_ms, event_classes)
@@ -129,7 +124,13 @@ class BBCIDataset(object):
         # TODELAY: split into two methods?
         with h5py.File(filename, 'r') as h5file:
             clab_set = h5file['dat']['clab'][:,0]
-            all_sensor_names = [''.join(chr(c) for c in h5file[obj_ref]) for obj_ref in clab_set]
+            # if saved in matlab, sensor names will be object referecnes
+            # otherwise they are stored as strings and directly retrievable
+            try:
+                all_sensor_names = [''.join(chr(c) 
+                    for c in h5file[obj_ref]) for obj_ref in clab_set]
+            except KeyError: 
+                all_sensor_names = clab_set.tolist()
             if pattern is not None:
                 all_sensor_names = filter(lambda sname: re.search(pattern, sname), 
                     all_sensor_names)
@@ -146,7 +147,8 @@ class BCICompetition4Set2A(object):
         get dataset lazy loading function""" 
         with h5py.File(self.filename, 'r') as h5file:
             cnt_signal = np.float32(h5file['signal'])
-            eeg_signal = cnt_signal[:22,:].T # remaining are eog chans
+            last_eeg_chan = 22 # remaining are eog chans
+            eeg_signal = cnt_signal[:last_eeg_chan,:].T 
             # replace nans
             eeg_signal[np.isnan(eeg_signal)] = np.nanmean(eeg_signal)
         
@@ -176,7 +178,7 @@ class BCICompetition4Set2A(object):
             samplenumbers = np.array(range(eeg_signal.shape[0]))
             timesteps_in_ms = samplenumbers * 1000.0 / fs
             
-            wanted_sensor_names = chan_names[:22]
+            wanted_sensor_names = chan_names[:last_eeg_chan]
             cnt = wyrm.types.Data(eeg_signal, 
                         [timesteps_in_ms, wanted_sensor_names],
                         ['time', 'channel'], 
