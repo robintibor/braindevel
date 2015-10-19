@@ -48,8 +48,8 @@ class ProcessedDataset(object):
             self.epo = func(self.epo, **kwargs)
 
 class BBCIDataset(object):
-    def __init__(self, filename, load_sensor_names):
-        assert load_sensor_names is not None
+    def __init__(self, filename, load_sensor_names=None):
+        """ Constructor will not call superclass constructor yet"""
         self.__dict__.update(locals())
         del self.self
 
@@ -63,7 +63,6 @@ class BBCIDataset(object):
 
     def load_continuous_signal(self):
         wanted_chan_inds, wanted_sensor_names = self.determine_sensors()
-        print wanted_chan_inds
         fs = self.determine_samplingrate()
         with h5py.File(self.filename, 'r') as h5file:
             samples = int(h5file['nfo']['T'][0,0])
@@ -73,8 +72,6 @@ class BBCIDataset(object):
                 chan_set_name = 'ch' + str(chan_ind_set + 1)
                 # first 0 to unpack into vector, before it is 1xN matrix
                 chan_signal = h5file[chan_set_name][0,:] # already load into memory
-                
-                # replace nans by mean value
                 continuous_signal[:, chan_ind_arr] = chan_signal
             samplenumbers = np.array(range(continuous_signal.shape[0]))
             timesteps_in_ms = samplenumbers * 1000.0 / fs
@@ -89,6 +86,11 @@ class BBCIDataset(object):
         #TODELAY: change to only taking filename? maybe more 
         # clarity where file is opened
         all_sensor_names = self.get_all_sensors(self.filename, pattern=None)
+        if self.load_sensor_names is None:
+            # if no sensor names given, take all EEG-chans
+            EEG_sensor_names = filter(lambda s: not s.startswith('E'), all_sensor_names)
+            # sort sensors topologically to allow networks to exploit topology
+            self.load_sensor_names = sort_topologically(EEG_sensor_names)
         chan_inds = self.determine_chan_inds(all_sensor_names, 
             self.load_sensor_names)
         return chan_inds, self.load_sensor_names
@@ -124,13 +126,7 @@ class BBCIDataset(object):
         # TODELAY: split into two methods?
         with h5py.File(filename, 'r') as h5file:
             clab_set = h5file['dat']['clab'][:,0]
-            # if saved in matlab, sensor names will be object referecnes
-            # otherwise they are stored as strings and directly retrievable
-            try:
-                all_sensor_names = [''.join(chr(c) 
-                    for c in h5file[obj_ref]) for obj_ref in clab_set]
-            except KeyError: 
-                all_sensor_names = clab_set.tolist()
+            all_sensor_names = [''.join(chr(c) for c in h5file[obj_ref]) for obj_ref in clab_set]
             if pattern is not None:
                 all_sensor_names = filter(lambda sname: re.search(pattern, sname), 
                     all_sensor_names)
