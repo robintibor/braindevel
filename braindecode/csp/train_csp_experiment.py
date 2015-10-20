@@ -29,6 +29,8 @@ class CSPExperimentsRunner(ExperimentsRunner):
             csp_train.only_last_fold=True
         else: # cross validation
             csp_train.only_last_fold=False
+        if self._shuffle:
+            csp_train.shuffle = True
         
         csp_train.run()
         endtime = time.time() 
@@ -87,7 +89,6 @@ def parse_command_line_arguments():
     parser.add_argument('--stopid', type=int,
                         help='''Stop with experiment at specified id....''')
     args = parser.parse_args()
-    assert not args.shuffle, "Not supported yet" #TODO: support
     assert (not (args.shuffle and (not args.cv))), ("Use shuffle only "
         "together with cross validation.")
     # dictionary values are given with = inbetween, parse them here by hand

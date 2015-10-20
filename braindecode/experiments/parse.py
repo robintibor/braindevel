@@ -3,6 +3,7 @@ from copy import deepcopy, copy
 import yam
 from string import Template
 from collections import deque
+import numpy as np
 
 def transform_vals_to_string_constructor(loader, node):
     return dict([(v[0].value, yaml.serialize(v[1])) for v in node.value])
@@ -39,10 +40,11 @@ def create_experiment_yaml_strings(all_config_strings, main_template_str):
     """ Config strings should be from top file to bottom file."""
     config_objects = create_config_objects(all_config_strings)
     final_params = create_params_from_config_objects(config_objects)
-    # possibly remove equal params?
+   
     train_strings = []
     for i_config in range(len(final_params)):
-        train_str = Template(main_template_str).substitute(final_params[i_config])
+        train_str = Template(main_template_str).substitute(
+            final_params[i_config])
         train_strings.append(train_str)
     return train_strings
 
@@ -61,8 +63,12 @@ def create_params_from_config_objects(config_objects):
     for i_config in range(len(final_params)):
         final_params[i_config]['original_params'] = yaml.dump(
             variants[i_config], default_flow_style=True)
-
-    return final_params
+    # Remove equal params. Can happen if param in upper file has several possible
+    # values and in lower file is set to be always the same one, e.g.,
+    # upper: resample_fs: [300,150], lower: resample_fs: [200]
+    _, unique_inds = np.unique(final_params, return_index=True)
+    unique_final_params = np.array(final_params)[np.sort(unique_inds)]
+    return unique_final_params
 
 def create_templates_variants_from_config_objects(config_objects):
     variants = []

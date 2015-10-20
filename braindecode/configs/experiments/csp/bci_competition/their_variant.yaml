@@ -10,7 +10,7 @@
         low_width: [4],
         high_width: [4],
         last_low_freq: [38],
-        segment_ival: [[500,2500], [0,4000]],
+        segment_ival: [[500,2500]],
         num_selected_features: ["null"],
     }
     ]]

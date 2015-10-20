@@ -10,6 +10,7 @@ import numpy as np
 from copy import deepcopy
 from pylearn2.utils import serial
 from braindecode.datasets.sensor_positions import sort_topologically
+from numpy.random import RandomState
 import logging
 log = logging.getLogger(__name__)
 
@@ -29,7 +30,8 @@ class CSPTrain(object):
             only_last_fold=False,
             restricted_n_trials=None,
             common_average_reference=False,
-            ival_optimizer=None):
+            ival_optimizer=None,
+            shuffle=False):
         local_vars = locals()
         del local_vars['self']
         self.__dict__.update(local_vars)
@@ -95,8 +97,14 @@ class CSPTrain(object):
         num_clean_trials = len(self.clean_trials)
         if self.restricted_n_trials is not None:
             num_clean_trials = int(num_clean_trials * self.restricted_n_trials)
-        folds = KFold(num_clean_trials, n_folds=self.num_folds, 
-            shuffle=False)
+        if not self.shuffle:
+            folds = KFold(num_clean_trials, n_folds=self.num_folds, 
+                shuffle=False)
+        else:
+            rng = RandomState(903372376)
+            folds = KFold(num_clean_trials, n_folds=self.num_folds, 
+                shuffle=True, random_state=rng)
+            
         # remap to original indices in unclean set(!)
         self.folds = map(lambda fold: 
             {'train': self.clean_trials[fold[0]], 
