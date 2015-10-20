@@ -59,7 +59,8 @@ def create_params_from_config_objects(config_objects):
     final_params = merge_parameters_and_templates(variants, templates)
     # add original params for later printing
     for i_config in range(len(final_params)):
-        final_params[i_config]['original_params'] = yaml.dump(variants[i_config])
+        final_params[i_config]['original_params'] = yaml.dump(
+            variants[i_config], default_flow_style=True)
 
     return final_params
 

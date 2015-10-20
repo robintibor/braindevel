@@ -21,7 +21,7 @@ class CSPExperimentsRunner(ExperimentsRunner):
         lasagne.random.set_rng(RandomState(9859295))
         starttime = time.time()
         
-        train_dict = yaml_parse(train_str)
+        train_dict = yaml_parse.load(train_str)
         self._save_train_string(train_str, experiment_index)
         csp_train = train_dict['csp_train']
         
@@ -33,9 +33,8 @@ class CSPExperimentsRunner(ExperimentsRunner):
         csp_train.run()
         endtime = time.time() 
         result = TrainCSPResult(
-                csp_trainer = csp_train,
+                csp_trainer=csp_train,
                 parameters=train_dict['original_params'],
-                templates={}, 
                 training_time=endtime - starttime)   
         if not os.path.exists(self._folder_path):
             os.makedirs(self._folder_path)
@@ -78,6 +77,8 @@ def parse_command_line_arguments():
         help="Only show parameters for experiment, don't train.")
     parser.add_argument('--cv', action="store_true", 
         help="Use cross validation instead of train test split")
+    parser.add_argument('--shuffle', action="store_true", 
+        help="Use shuffle (only use together with --cv)")
     parser.add_argument('--params', nargs='*', default=[],
                         help='''Parameters to override default values/other values given in experiment file.
                         Supply it in the form parameter1=value1 parameters2=value2, ...''')
@@ -86,7 +87,7 @@ def parse_command_line_arguments():
     parser.add_argument('--stopid', type=int,
                         help='''Stop with experiment at specified id....''')
     args = parser.parse_args()
-
+    assert not args.shuffle, "Not supported yet" #TODO: support
     assert (not (args.shuffle and (not args.cv))), ("Use shuffle only "
         "together with cross validation.")
     # dictionary values are given with = inbetween, parse them here by hand
@@ -105,7 +106,7 @@ if __name__ == "__main__":
 
     all_train_strs = create_experiment_yaml_strings_from_files(
         args.experiments_file_name, args.template_file_name)
-    exp_runner = ExperimentsRunner(quiet=args.quiet, start_id=args.startid,
+    exp_runner = CSPExperimentsRunner(quiet=args.quiet, start_id=args.startid,
         stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle)
     exp_runner.run(all_train_strs)
 

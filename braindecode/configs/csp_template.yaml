@@ -1,0 +1,25 @@
+ {
+        original_params: $original_params,
+        save_path: $save_path,
+        csp_train: !obj:braindecode.csp.train_csp.CSPTrain {
+            set_loader: !obj:braindecode.datasets.set_loaders.$set_type {
+                filename: $dataset_filename
+            },
+            sensor_names: $sensor_names,
+            low_cut_off_hz: $low_cut_off_hz,
+            cleaner: $cleaner,
+            resample_fs: $resample_fs,
+            segment_ival: $segment_ival,
+            num_folds: $num_folds,
+            num_filters: $num_filters,
+            num_selected_filterbands: $num_selected_filterbands,
+            num_selected_features: $num_selected_features,
+            forward_steps: $forward_steps,
+            backward_steps: $backward_steps,
+            min_freq: $min_freq,
+            max_freq: $max_freq,
+            low_width: $low_width,
+            high_width: $high_width,
+            last_low_freq: $last_low_freq,          
+        }
+}
