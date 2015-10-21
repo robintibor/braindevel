@@ -2,6 +2,7 @@ from braindecode.datasets.dataset_splitters import (
     DatasetSingleFoldSplitter, PreprocessedSplitter)
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 import numpy as np
+from braindecode.datasets.dataset_splitters import DatasetFixedTrialSplitter
 
 def to_4d_array(arr):
     arr = np.array(arr)
@@ -86,3 +87,28 @@ def test_repeated_calls_with_shuffle():
         for key in reference_datasets:
             assert np.array_equal(reference_datasets[key].get_topological_view(),
                 new_datasets[key].get_topological_view())
+            
+def test_fixed_trial():
+    dataset = DenseDesignMatrix(topo_view=to_4d_array(range(12)),
+         y=np.zeros(12))
+    splitter = DatasetFixedTrialSplitter(dataset, n_train_trials=10, 
+        valid_set_fraction=0.2)
+    sets = splitter.split_into_train_valid_test()
+    assert np.array_equal(sets['train'].get_topological_view().squeeze(),
+                          range(8))
+    assert np.array_equal(sets['valid'].get_topological_view().squeeze(), 
+                          [8,9])
+    assert np.array_equal(sets['test'].get_topological_view().squeeze(), 
+                          range(10,12))
+
+def test_fixed_trial_with_rounding():
+    dataset = DenseDesignMatrix(topo_view = to_4d_array(range(12)), 
+        y= np.zeros(12))
+    splitter = DatasetFixedTrialSplitter(dataset, n_train_trials=9,
+        valid_set_fraction=0.2)
+    sets = splitter.split_into_train_valid_test()
+    assert np.array_equal(sets['train'].get_topological_view().squeeze(), 
+                          range(8))
+    assert sets['valid'].get_topological_view().squeeze() == 8
+    assert np.array_equal(sets['test'].get_topological_view().squeeze(), 
+                          range(9,12))

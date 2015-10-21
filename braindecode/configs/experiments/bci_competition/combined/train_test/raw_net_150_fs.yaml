@@ -1,0 +1,9 @@
+ {
+    extends: ['configs/experiments/bci_competition/combined/raw_net_150_fs.yaml',
+        'configs/experiments/bci_competition/combined/train_test/defaults.yaml'],
+    variants: [[
+    {        
+        save_path: ['data/models/bci-competition/combined/train-test/raw-net-150-fs/'],
+    }
+    ]]
+}

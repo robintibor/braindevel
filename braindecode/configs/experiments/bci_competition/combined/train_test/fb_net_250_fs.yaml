@@ -1,0 +1,10 @@
+ {
+    extends: ['configs/experiments/bci_competition/combined/fb_net_250_fs.yaml',
+        'configs/experiments/bci_competition/combined/train_test/defaults.yaml'],
+    variants: [[
+    {
+        save_path: ['data/models/bci-competition/combined/train-test/fb-net-250-fs/'],
+    }
+    ]]
+ }
+ 

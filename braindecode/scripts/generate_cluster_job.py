@@ -9,10 +9,15 @@ file_prefix = \
 
 cd ${HOME}/braindecode/code/braindecode/
 export PYTHONPATH=$PYTHONPATH:`pwd`/../
-# add stuff for library
-export LD_LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LD_LIBRARY_PATH
-export LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LIBRARY_PATH
-export CPATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$CPATH
+# add stuff for cudnn
+export LD_LIBRARY_PATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$LD_LIBRARY_PATH
+export LIBRARY_PATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$LIBRARY_PATH
+export CPATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$CPATH
+
+## once you have cuda > 7.0 and can use cudnnv3:
+#export LD_LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LD_LIBRARY_PATH
+#export LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LIBRARY_PATH
+#export CPATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$CPATH
 
 echo "Working directory is $PWD"
 

@@ -116,6 +116,8 @@ class ExperimentsRunner:
         dataset = train_dict['dataset'] 
         dataset.load()
         dataset_provider = train_dict['dataset_provider']
+        # for now hacky like this... (in order to be able to supply No dataset)
+        dataset_provider.set_dataset(dataset)
         assert 'in_sensors' in train_str
         assert 'in_rows' in train_str
         assert 'in_cols' in train_str
