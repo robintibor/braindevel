@@ -63,6 +63,11 @@ In ipython or jupyter notebook, you can check if theano is using cudnn with:
 ```
 If it shows True, cudnn is being used, otherwise not.
 
+## PyCuda
+
+Atleast one person told me you need to install PyCuda to use theano on GPU :) Follow installation instructions here:
+http://wiki.tiker.net/PyCuda/Installation
+
 ## Test installation
 
 Start ```jupyter notebook``` in terminal and navigate to ```braindecode/notebooks/tutorials/Artificial_Example.ipynb```. If it works, everything is fine :)
