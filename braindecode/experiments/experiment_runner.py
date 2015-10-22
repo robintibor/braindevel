@@ -130,6 +130,9 @@ class ExperimentsRunner:
             str(dataset.get_topological_view().shape[3]))
         
         self._save_train_string(train_str, experiment_index)
+        # reset rng for actual loading of layers, so you can reproduce it 
+        # when you load the file later
+        lasagne.random.set_rng(RandomState(9859295))
         train_dict =  yaml_parse.load(train_str)
             
         layers = train_dict['layers']

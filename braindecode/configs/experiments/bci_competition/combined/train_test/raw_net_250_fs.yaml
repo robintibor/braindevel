@@ -4,6 +4,7 @@
     variants: [[
     {        
         save_path: ['data/models/bci-competition/combined/train-test/raw-net-250-fs/'],
+        valid_set_fraction: [0.2],
     }
     ]]
  }

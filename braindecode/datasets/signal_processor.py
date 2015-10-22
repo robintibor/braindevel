@@ -9,7 +9,6 @@ class SignalProcessor(object):
         """ Constructor will not call superclass constructor yet"""
         self.__dict__.update(locals())
         del self.self
-        self._data_not_loaded_yet = True # needed for lazy loading
 
     def load(self):
         """ This function actually loads the data. Will be called by the 

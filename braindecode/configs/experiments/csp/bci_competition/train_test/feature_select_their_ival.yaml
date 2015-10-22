@@ -1,0 +1,11 @@
+ {
+    extends: ['configs/experiments/csp/bci_competition/their_variant.yaml'],
+    variants: [[
+    {        
+        save_path: ['data/models/csp/bci-competition/train-test/feature-select-their-ival/'],
+        num_folds: [2],
+        num_selected_features: [20],
+    }
+    ]]
+ }
+ 
