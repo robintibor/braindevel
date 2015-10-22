@@ -3,17 +3,12 @@
         original_params: $original_params,
         save_path: $save_path,
         dataset: &dataset $dataset,
-        preprocessor: &preprocessor $preprocessor,
         dataset_splitter: &dataset_splitter $dataset_splitter,
-        preprocessed_provider: &preprocessed_provider !obj:braindecode.datasets.dataset_splitters.PreprocessedSplitter {
-            dataset_splitter: *dataset_splitter,
-            preprocessor: *preprocessor,
-        },
-        dataset_provider: $dataset_provider,
         exp_args: {
+            preprocessor: &preprocessor $preprocessor,
+            iterator: $iterator,
             loss_var_func: $loss_var_func,
             updates_var_func: $updates_var_func,
-            batch_iter_func: !!python/name:braindecode.datasets.batch_iteration.get_balanced_batches ,
             monitors: [
                 !obj:braindecode.veganlasagne.monitors.LossMonitor {},
                 !obj:braindecode.veganlasagne.monitors.MisclassMonitor {},

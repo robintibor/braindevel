@@ -16,10 +16,6 @@ class DenseDesignMatrixWrapper(DenseDesignMatrix):
     reloadable=False
     def ensure_is_loaded(self):
         pass
-    def load(self):
-        pass
-    def free_memory_if_reloadable(self):
-        pass
 
 class BBCIPylearnDataset(DenseDesignMatrix):
     """ This loads BBCI datasets and puts them in a Dense Design Matrix. 
@@ -112,9 +108,14 @@ class BBCIPylearnDataset(DenseDesignMatrix):
 
 
 class BBCIPylearnCleanDataset(BBCIPylearnDataset):
+    reloadable=False # No need to reload rawset, it shd be small enough (?)
     def __init__(self, cleaner, **kwargs):
         self.cleaner = cleaner
         super(BBCIPylearnCleanDataset, self).__init__(**kwargs)
+
+    def ensure_is_loaded(self):
+        if not hasattr(self, 'X'):
+            self.load()
 
     def load_signal_marker_set(self):  
         """ Only load clean data """
@@ -282,6 +283,7 @@ def compute_short_time_fourier_transform(trials, window_length, window_stride):
     return fft_trials
 
 class BBCIPylearnCleanFilterbankDataset(BBCIPylearnCleanDataset):
+    reloadable=True
     def __init__(self, min_freq, max_freq,
             last_low_freq, low_width, high_width,
             **kwargs):
@@ -344,11 +346,8 @@ class BBCIPylearnCleanFilterbankDataset(BBCIPylearnCleanDataset):
         self.filterband_names = epo.names + ['filterband']
         self.filterband_units = epo.units + ['Hz']
     
-    def reload(self):
-        log.info("Reloading...")
-        if (hasattr(self, 'X')):
-            del self.X
-        self.load()
+    def free_memory(self):
+        del self.X
 
 def format_targets(y):
     # matlab has one-based indexing and one-based labels

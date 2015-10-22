@@ -41,7 +41,8 @@ def test_experiment_fixed_split():
     
     exp = Experiment()
     exp.setup(network, dataset, dataset_splitter, preprocessor,
-              dataset_iterator, loss_var_func, updates_var_func, monitors, stop_criterion)
+              dataset_iterator, loss_var_func, updates_var_func, monitors,
+              stop_criterion)
     exp.run()
     assert np.allclose(
         [0.548148, 0.540741, 0.503704, 0.451852, 0.392593, 0.370370, 

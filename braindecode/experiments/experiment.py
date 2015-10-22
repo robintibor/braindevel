@@ -14,11 +14,9 @@ from braindecode.datasets.dataset_splitters import (DatasetSingleFoldSplitter,
 log = logging.getLogger(__name__)
 
 class ExperimentCrossValidation():
-    def __init__(self, final_layer, dataset, preprocessor, num_folds,
-            exp_args, shuffle):
+    def __init__(self, final_layer, dataset, exp_args, num_folds, shuffle):
         self.final_layer = final_layer
         self.dataset = dataset
-        self.preprocessor = preprocessor
         self.num_folds = num_folds
         self.exp_args = exp_args
         self.shuffle = shuffle
@@ -35,17 +33,12 @@ class ExperimentCrossValidation():
             this_layers = deepcopy(self.final_layer)
             this_exp_args = deepcopy(self.exp_args)
             ## make sure dataset is loaded... 
-            if (hasattr(self.dataset, 'reload') and 
-                (not hasattr(self.dataset, 'X'))):
-                self.dataset.reload()
-            dataset_splitter = DatasetSingleFoldSplitter(self.dataset,
+            self.dataset.ensure_is_loaded()
+            dataset_splitter = DatasetSingleFoldSplitter(
                 num_folds=self.num_folds, i_test_fold=i_fold,
                 shuffle=self.shuffle)
-            this_dataset_provider = PreprocessedSplitter(
-                dataset_splitter=dataset_splitter,
-                preprocessor=self.preprocessor)
             exp = Experiment()
-            exp.setup(this_layers, this_dataset_provider, **this_exp_args)
+            exp.setup(this_layers, self.dataset, dataset_splitter, **this_exp_args)
             exp.run()
             self.all_layers.append(deepcopy(exp.final_layer))
             self.all_monitor_chans.append(deepcopy(exp.monitor_chans))

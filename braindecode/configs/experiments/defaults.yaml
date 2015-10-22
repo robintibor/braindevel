@@ -12,13 +12,17 @@
             'CPP3h', 'CPP4h', 'CPP6h', 'FFC1h', 'FFC2h', 'FCC1h', 'FCC2h', 'CCP1h',
          'CCP2h', 'CPP1h', 'CPP2h'],
          single_fold_splitter: !obj:braindecode.datasets.dataset_splitters.DatasetSingleFoldSplitter {
-                dataset: null, 
                 num_folds: $num_folds, 
                 i_test_fold: $i_test_fold,
             },
+        balanced_batch_iterator: !obj:braindecode.datasets.batch_iteration.BalancedBatchIterator {
+            batch_size: $batch_size,
+        }
     },
     variants: [[{
+            iterator: [$balanced_batch_iterator],
             dataset_splitter: [$single_fold_splitter],
+            batch_size: [60],
             preprocessor: [$online_chan_freq_wise],
             loss_var_func: [$categorical_crossentropy],
             updates_var_func: [$adam],

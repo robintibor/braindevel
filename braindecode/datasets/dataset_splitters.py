@@ -112,7 +112,8 @@ class PreprocessedSplitter(object):
 
     def get_train_valid_test(self, dataset):
         datasets = self.dataset_splitter.split_into_train_valid_test(dataset)
-        dataset.free_memory_if_reloadable()
+        if dataset.reloadable:
+            dataset.free_memory()
         if self.preprocessor is not None:
             self.preprocessor.apply(datasets['train'], can_fit=True)
             self.preprocessor.apply(datasets['valid'], can_fit=False)
@@ -122,7 +123,8 @@ class PreprocessedSplitter(object):
     def get_train_merged_valid_test(self, dataset):
         dataset.ensure_is_loaded()
         this_datasets = self.dataset_splitter.split_into_train_valid_test(dataset)
-        dataset.free_memory_if_reloadable()
+        if dataset.reloadable:
+            dataset.free_memory()
         train_valid_set = self.concatenate_sets(this_datasets['train'],
             this_datasets['valid'])
         test_set = this_datasets['test']

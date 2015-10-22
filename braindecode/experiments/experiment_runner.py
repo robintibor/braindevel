@@ -115,7 +115,7 @@ class ExperimentsRunner:
         train_dict = self._load_without_layers(train_str)
         dataset = train_dict['dataset'] 
         dataset.load()
-        dataset_provider = train_dict['dataset_provider']
+        dataset_splitter = train_dict['dataset_splitter']
         # TODO: change to new experiment class design
         assert 'in_sensors' in train_str
         assert 'in_rows' in train_str
@@ -139,7 +139,8 @@ class ExperimentsRunner:
         
         if not self._cross_validation:
             exp = Experiment()
-            exp.setup(final_layer, dataset_provider, **train_dict['exp_args'])
+            exp.setup(final_layer, dataset, dataset_splitter,
+                **train_dict['exp_args'])
             exp.run()
             endtime = time.time()
             log.info("Saving result...")
@@ -151,14 +152,12 @@ class ExperimentsRunner:
                 targets=[3,4,1,2,3,4])
             model = exp.final_layer
         else: # cross validation
-            preprocessor = train_dict['preprocessor']
             # default 5 folds for now
             num_folds = 5
             # hackily replace parameter here, since it is not respected
             train_dict['original_params']['num_folds'] = 5
             exp_cv = ExperimentCrossValidation(final_layer, 
-                dataset, preprocessor,
-                num_folds=num_folds, exp_args=train_dict['exp_args'],
+                dataset, exp_args=train_dict['exp_args'], num_folds=num_folds,
                 shuffle=self._shuffle)
             exp_cv.run()
             endtime = time.time()

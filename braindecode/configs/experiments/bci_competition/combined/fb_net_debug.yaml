@@ -1,0 +1,15 @@
+ {
+    extends: ['configs/experiments/bci_competition/fb_net_base.yaml',
+        'configs/experiments/bci_competition/combined/combined_files.yaml'],
+    variants: [[
+    {        
+        save_path: ['data/models/bci-competition/combined/fb-net-150-fs-debug-to-delete/'],
+        resample_fs: [150],
+        last_low_freq: [9],
+        max_freq: [9],
+        min_freq: [9],
+        max_epochs: [5],
+    }
+    ]]
+ }
+ 
