@@ -62,7 +62,7 @@ class Experiment(object):
         self.iterator = iterator
         self.monitors = monitors
         self.stop_criterion = stop_criterion
-        dataset.ensure_is_loaded()
+        self.dataset.ensure_is_loaded()
         self.print_layer_sizes()
         log.info("Create theano functions...")
         self.create_theano_functions(final_layer, loss_var_func,
@@ -110,7 +110,7 @@ class Experiment(object):
         self.run_until_second_stop()
 
     def run_until_early_stop(self):
-        datasets = self.dataset_provider.get_train_valid_test()
+        datasets = self.dataset_provider.get_train_valid_test(self.dataset)
         self.create_monitors(datasets)
         self.run_until_stop(datasets, remember_best=True)
         
@@ -143,7 +143,8 @@ class Experiment(object):
                 target_value=self.monitor_chans['train_loss'][-1])])
     
     def run_until_second_stop(self):
-        datasets = self.dataset_provider.get_train_merged_valid_test()
+        datasets = self.dataset_provider.get_train_merged_valid_test(
+            self.dataset)
         self.run_until_stop(datasets, remember_best=False)
 
     def create_monitors(self, datasets):

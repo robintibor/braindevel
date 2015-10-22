@@ -18,10 +18,8 @@ class DenseDesignMatrixWrapper(DenseDesignMatrix):
         pass
     def load(self):
         pass
-    def free_memory(self):
+    def free_memory_if_reloadable(self):
         pass
-    def reload(self):
-        assert False
 
 class BBCIPylearnDataset(DenseDesignMatrix):
     """ This loads BBCI datasets and puts them in a Dense Design Matrix. 

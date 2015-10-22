@@ -116,8 +116,7 @@ class ExperimentsRunner:
         dataset = train_dict['dataset'] 
         dataset.load()
         dataset_provider = train_dict['dataset_provider']
-        # for now hacky like this... (in order to be able to supply No dataset)
-        dataset_provider.set_dataset(dataset)
+        # TODO: change to new experiment class design
         assert 'in_sensors' in train_str
         assert 'in_rows' in train_str
         assert 'in_cols' in train_str
@@ -155,6 +154,8 @@ class ExperimentsRunner:
             preprocessor = train_dict['preprocessor']
             # default 5 folds for now
             num_folds = 5
+            # hackily replace parameter here, since it is not respected
+            train_dict['original_params']['num_folds'] = 5
             exp_cv = ExperimentCrossValidation(final_layer, 
                 dataset, preprocessor,
                 num_folds=num_folds, exp_args=train_dict['exp_args'],
