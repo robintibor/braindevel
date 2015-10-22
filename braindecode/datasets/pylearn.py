@@ -10,6 +10,19 @@ from wyrm.types import Data
 from scipy.signal import blackmanharris
 from pylearn2.format.target_format import OneHotFormatter
 
+
+
+class DenseDesignMatrixWrapper(DenseDesignMatrix):
+    reloadable=False
+    def ensure_is_loaded(self):
+        pass
+    def load(self):
+        pass
+    def free_memory(self):
+        pass
+    def reload(self):
+        assert False
+
 class BBCIPylearnDataset(DenseDesignMatrix):
     """ This loads BBCI datasets and puts them in a Dense Design Matrix. 
     Load sensor names will only load these sensors and also only perform 

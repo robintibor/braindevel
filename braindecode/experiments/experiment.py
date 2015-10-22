@@ -51,15 +51,18 @@ class ExperimentCrossValidation():
             self.all_monitor_chans.append(deepcopy(exp.monitor_chans))
 
 class Experiment(object):
-    def setup(self, final_layer, dataset_provider, loss_var_func,
-            updates_var_func, batch_iter_func, monitors, stop_criterion,
+    def setup(self, final_layer, dataset, splitter, preprocessor,
+            iterator, loss_var_func, updates_var_func, monitors, stop_criterion,
             target_var=None):
         lasagne.random.set_rng(RandomState(9859295))
         self.final_layer = final_layer
-        self.dataset_provider = dataset_provider
-        self.batch_iter_func = batch_iter_func
+        self.dataset = dataset
+        self.dataset_provider = PreprocessedSplitter(splitter, preprocessor)
+        self.preprocessor=preprocessor
+        self.iterator = iterator
         self.monitors = monitors
         self.stop_criterion = stop_criterion
+        dataset.ensure_is_loaded()
         self.print_layer_sizes()
         log.info("Create theano functions...")
         self.create_theano_functions(final_layer, loss_var_func,
@@ -112,21 +115,19 @@ class Experiment(object):
         self.run_until_stop(datasets, remember_best=True)
         
     def run_until_stop(self, datasets, remember_best):
-        train_set = datasets['train']
         self.monitor_epoch(datasets)
         self.print_epoch()
         if remember_best:
             self.remember_extension.remember_epoch(self.monitor_chans,
                 self.all_params)
-        batch_rng = RandomState(328774)
+            
+        self.iterator.reset_rng()
         while not self.stop_criterion.should_stop(self.monitor_chans):
-            all_batch_inds = self.batch_iter_func(len(train_set.y),
-                batch_size=60, rng=batch_rng)
+            batch_generator = self.iterator.get_train_batches(datasets['train'])
             
             with log_timing(log, None, final_msg='Time updates this epoch:'):
-                for batch_inds in all_batch_inds:
-                    self.train_func(train_set.get_topological_view()[batch_inds], 
-                        train_set.y[batch_inds])
+                for inputs, targets in batch_generator:
+                    self.train_func(inputs, targets)
             self.monitor_epoch(datasets)
             self.print_epoch()
             if remember_best:

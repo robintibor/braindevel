@@ -30,16 +30,14 @@ class DatasetTrainValidTestSplitter(object):
 class SingleDatasetSplitter(DatasetTrainValidTestSplitter):
     """Base class for single dataset splitters."""
     def ensure_dataset_is_loaded(self):
-        if (hasattr(self.dataset, '_data_not_loaded_yet') and 
-            self.dataset._data_not_loaded_yet):
-            self.dataset.load()
+        self.dataset.ensure_is_loaded()
         
     def free_memory_if_reloadable(self):
-        if hasattr(self.dataset, 'reload'):
-            del self.dataset.X
+        if self.dataset.reloadable:
+            self.dataset.free_memory()
             
     def reload_data(self):
-        if hasattr(self.dataset, 'reload'):
+        if self.dataset.reloadable:
             self.dataset.reload()
 
 class DatasetFixedTrialSplitter(SingleDatasetSplitter):
