@@ -1,6 +1,6 @@
 import itertools
 from copy import deepcopy, copy
-import yam
+import yaml
 from string import Template
 from collections import deque
 
