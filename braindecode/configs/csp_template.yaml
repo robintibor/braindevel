@@ -10,6 +10,7 @@
             cleaner: $cleaner,
             resample_fs: $resample_fs,
             segment_ival: $segment_ival,
+            standardize: $standardize,
             num_folds: $num_folds,
             num_filters: $num_filters,
             num_selected_filterbands: $num_selected_filterbands,

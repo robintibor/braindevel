@@ -21,7 +21,9 @@ class CSPTrain(object):
             min_freq=0, max_freq=48, last_low_freq=48,
             low_width=4, high_width=4,
             filt_order=3,
-            segment_ival=[500,4000], num_folds=5,
+            segment_ival=[500,4000], 
+            standardize=True,
+            num_folds=5,
             num_filters=None, num_selected_filterbands=None,
             num_selected_features=None,
             forward_steps=4,
@@ -117,6 +119,7 @@ class CSPTrain(object):
         self.binary_csp = BinaryCSP(self.cnt, self.filterbands, 
             self.filt_order, self.folds, self.class_pairs, 
             self.segment_ival, self.num_filters, 
+            standardize=self.standardize,
             ival_optimizer=self.ival_optimizer)
         self.binary_csp.run()
         
