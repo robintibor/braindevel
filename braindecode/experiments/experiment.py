@@ -116,7 +116,8 @@ class Experiment(object):
             
         self.iterator.reset_rng()
         while not self.stop_criterion.should_stop(self.monitor_chans):
-            batch_generator = self.iterator.get_train_batches(datasets['train'])
+            batch_generator = self.iterator.get_batches(datasets['train'],
+                deterministic=False)
             
             with log_timing(log, None, final_msg='Time updates this epoch:'):
                 for inputs, targets in batch_generator:
@@ -149,7 +150,7 @@ class Experiment(object):
     def monitor_epoch(self, all_datasets):
         for monitor in self.monitors:
             monitor.monitor_epoch(self.monitor_chans, self.pred_func,
-                self.loss_func, all_datasets)
+                self.loss_func, all_datasets, self.iterator)
 
     def print_epoch(self):
         # -1 due to doing one monitor at start of training
