@@ -39,21 +39,6 @@ class LossMonitor(Monitor):
                 total_loss += (batch_loss * batch_size)
             
             mean_loss = total_loss / num_trials
-            
-            """
-            while start < len(dataset.y):
-                actual_batch_size = min(
-                    start + batch_size, len(dataset.y)) - start
-                batch_loss = loss_func(
-                    dataset.get_topological_view()[start:start+batch_size],
-                    dataset.y[start:start+batch_size])
-                # at the end we want the mean over whole dataset
-                # so weigh this mean (loss func arleady computes mean for batch)
-                # by the size of the batch... this works also if batches
-                # not all the same size
-                batch_loss *= (float(actual_batch_size)/len(dataset.y))
-                total_loss += batch_loss
-                start += batch_size"""
             monitor_key = "{:s}_loss".format(setname)
             monitor_chans[monitor_key].append(float(mean_loss))
             
