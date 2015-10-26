@@ -146,7 +146,7 @@ def create_flat_window_batches(topo, y, batch_size,
         batch_topo_shape[0] = len(batch_inds)
         batch_topo_shape[sample_axes_dim] = n_samples_per_window
         batch_topo = np.ones(batch_topo_shape, dtype=np.float32) * np.nan
-        batch_y = np.ones(len(batch_inds)) * np.nan
+        batch_y = np.ones(len(batch_inds), dtype=np.int32) * -1
         for i_batch_trial, i_flat_trial in enumerate(batch_inds):
             i_trial = i_flat_trial // n_sample_windows
             i_sample_window = i_flat_trial % n_sample_windows
@@ -157,6 +157,10 @@ def create_flat_window_batches(topo, y, batch_size,
             batch_y[i_batch_trial] = y[i_trial]
 
         assert not np.any(np.isnan(batch_topo))
-        assert not np.any(np.isnan(batch_y))
+        assert not np.any(batch_y == -1)
         assert np.array_equal(batch_topo.shape, batch_topo_shape)
+        # maybe remove this and remove multiplication with nan 
+        # and assertion check in case
+        # this is too slow?
+        batch_topo = batch_topo.astype(np.float32)
         yield batch_topo, batch_y

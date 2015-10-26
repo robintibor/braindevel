@@ -118,7 +118,8 @@ class FlatSampleWindowMisclassMonitor(Monitor):
 
     def monitor_epoch(self, monitor_chans,
             pred_func, loss_func, datasets, iterator):
-        assert(isinstance(iterator, FlatSampleWindowsIterator))
+        #TODO:reenable
+        #assert(isinstance(iterator, FlatSampleWindowsIterator))
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
             dataset = datasets[setname]
