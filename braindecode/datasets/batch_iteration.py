@@ -98,9 +98,12 @@ def create_sample_window_batches(topo, y, batch_size,
             i_trial = i_flat_trial // n_sample_windows
             i_sample_window = i_flat_trial % n_sample_windows
             i_start_sample = start_sample_inds[i_sample_window]
-            batch_topo[i_batch_trial] = topo[i_trial].take(
-                range(i_start_sample,i_start_sample+n_samples_per_window), 
-                axis=sample_axes_dim-1)
+            #http://stackoverflow.com/a/28685499/1469195
+            batch_topo[i_batch_trial] = np.rollaxis(
+                np.rollaxis(topo[i_trial], 
+                    sample_axes_dim-1, 0)[i_start_sample:i_start_sample+n_samples_per_window],
+                    0, 
+                sample_axes_dim)
             batch_y[i_batch_trial] = y[i_trial]
 
         assert not np.any(np.isnan(batch_topo))

@@ -55,18 +55,17 @@ class MisclassMonitor(Monitor):
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
             dataset = datasets[setname]
-            batch_size = 50
-            # compute batchwise so that they fit on graphics card
-            # this has been performance tested on a case where
-            # whole set had size 400 and 
-            # still fits on gpu and it was only about
-            # factor 2 slower...
-            preds = ([pred_func(dataset.get_topological_view()[i:i+batch_size]) 
-                      for i in xrange(0, len(dataset.y), batch_size)])
-            preds = np.concatenate(preds)
-            pred_classes = np.argmax(preds, axis=1)
-            misclass = 1 - (np.sum(pred_classes == dataset.y) / 
-                float(len(dataset.y)))
+            all_target_labels = []
+            all_pred_labels = []
+            for batch in iterator.get_batches(dataset,deterministic=True):
+                preds = pred_func(batch[0])
+                pred_labels = np.argmax(preds, axis=1)
+                all_pred_labels.extend(pred_labels)
+                all_target_labels.extend(batch[1])
+            all_pred_labels = np.array(all_pred_labels)
+            all_target_labels = np.array(all_target_labels)
+            misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
+                float(len(all_target_labels)))
             monitor_key = "{:s}_misclass".format(setname)
             monitor_chans[monitor_key].append(float(misclass))
     
@@ -77,16 +76,24 @@ class SampleWindowMisclassMonitor(Monitor):
             monitor_key = "{:s}_misclass".format(setname)
             monitor_chans[monitor_key] = []
 
-    def monitor_epoch(self, monitor_chans,
+    def monitor_epoch_new(self, monitor_chans,
             pred_func, loss_func, datasets, iterator):
-        #TODO:reenable
-        #assert(isinstance(iterator, SampleWindowsIterator))
+        assert(isinstance(iterator, SampleWindowsIterator))
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
             dataset = datasets[setname]
             all_pred_labels = []
             all_target_labels = []
             n_trials = dataset.get_topological_view().shape[0]
+            n_windows_per_trial = iterator.get_windows_per_trial(dataset)
+            
+            batches = iterator.get_batches(dataset, deterministic=True)
+            all_window_preds = np.ones((n_trials * n_windows_per_trial),
+                dtype=np.int32)
+            for batch in batches:
+                batch_preds = pred_func(batch[0])
+                
+                
             for i_trial in range(n_trials):
                 trial_batches = iterator.get_batches_for_trial(dataset, i_trial)
                 sum_trial_preds = 0
@@ -108,6 +115,26 @@ class SampleWindowMisclassMonitor(Monitor):
                 float(len(all_pred_labels)))
             monitor_key = "{:s}_misclass".format(setname)
             monitor_chans[monitor_key].append(float(misclass))
+
+    def monitor_epoch(self, monitor_chans,
+            pred_func, loss_func, datasets, iterator):
+        assert(isinstance(iterator, SampleWindowsIterator))
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            dataset = datasets[setname]
+            all_preds = []
+            for batch in iterator.get_batches(dataset, deterministic=True):
+                batch_preds = pred_func(batch[0])
+                all_preds.extend(batch_preds)
+            
+            n_trials = len(dataset.y)
+            preds_by_trial = np.reshape(all_preds, (n_trials, -1 , len(all_preds[0])))
+            preds_by_trial = np.sum(preds_by_trial, axis=1)
+            pred_labels = np.argmax(preds_by_trial, axis=1)
+            accuracy = np.sum(pred_labels == dataset.y) / float(len(dataset.y))
+            misclass = 1 - accuracy
+            monitor_key = "{:s}_misclass".format(setname)
+            monitor_chans[monitor_key].append(float(misclass))
         
 class RuntimeMonitor(Monitor):
     def setup(self, monitor_chans, datasets):
@@ -122,3 +149,19 @@ class RuntimeMonitor(Monitor):
             self.last_call_time = cur_time
         monitor_chans['runtime'].append(cur_time - self.last_call_time)
         self.last_call_time = cur_time
+
+class DummyMisclassMonitor(Monitor):
+    """ For Profiling tests...."""
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_misclass".format(setname)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans,
+            pred_func, loss_func, datasets, iterator):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            misclass = 0.5
+            monitor_key = "{:s}_misclass".format(setname)
+            monitor_chans[monitor_key].append(float(misclass))
