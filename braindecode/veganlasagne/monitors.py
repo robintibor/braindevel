@@ -1,8 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
 import time
-from braindecode.datasets.batch_iteration import (SampleWindowsIterator,
-    FlatSampleWindowsIterator)
+from braindecode.datasets.batch_iteration import SampleWindowsIterator
 
 class Monitor(object):
     __metaclass__ = ABCMeta
@@ -80,46 +79,8 @@ class SampleWindowMisclassMonitor(Monitor):
 
     def monitor_epoch(self, monitor_chans,
             pred_func, loss_func, datasets, iterator):
-        assert(isinstance(iterator,SampleWindowsIterator))
-        for setname in datasets:
-            assert setname in ['train', 'valid', 'test']
-            dataset = datasets[setname]
-            all_pred_labels = []
-            all_target_labels = []
-            for batch in iterator.get_batches(dataset, deterministic=True,
-                    merge_trial_window_dims=False):
-                batch_features = batch[0]
-                batch_y = batch[1]
-                flat_batch_features = np.concatenate(batch_features)
-                preds = pred_func(flat_batch_features)
-                batch_size = batch_features.shape[0]
-                
-                # transform to #trials x #windows again
-                preds = np.reshape(preds,(batch_size,-1,preds.shape[1]))
-                # pred of trial is mean over windows (windows in dim 1)
-                preds = np.mean(preds, axis=1)
-                pred_labels = np.argmax(preds,axis=1)
-                all_pred_labels.extend(pred_labels)
-                all_target_labels.extend(batch_y)
-            all_pred_labels = np.array(all_pred_labels)
-            all_target_labels = np.array(all_target_labels)
-            assert len(all_target_labels) == len(dataset.y)
-            misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
-                float(len(all_pred_labels)))
-            monitor_key = "{:s}_misclass".format(setname)
-            monitor_chans[monitor_key].append(float(misclass))
-
-class FlatSampleWindowMisclassMonitor(Monitor):
-    def setup(self, monitor_chans, datasets):
-        for setname in datasets:
-            assert setname in ['train', 'valid', 'test']
-            monitor_key = "{:s}_misclass".format(setname)
-            monitor_chans[monitor_key] = []
-
-    def monitor_epoch(self, monitor_chans,
-            pred_func, loss_func, datasets, iterator):
         #TODO:reenable
-        #assert(isinstance(iterator, FlatSampleWindowsIterator))
+        #assert(isinstance(iterator, SampleWindowsIterator))
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
             dataset = datasets[setname]

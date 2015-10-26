@@ -1,8 +1,8 @@
 import braindecode.veganlasagne.monitors
 from braindecode.datasets.preprocessing import OnlineAxiswiseStandardize
 from braindecode.datasets.dataset_splitters import DatasetFixedTrialSplitter
-from braindecode.datasets.batch_iteration import BalancedBatchIterator,\
-    SampleWindowsIterator
+from braindecode.datasets.batch_iteration import (BalancedBatchIterator,
+    SampleWindowsIterator)
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 from braindecode.experiments.experiment import Experiment
 from lasagne.layers import (DenseLayer, InputLayer)
@@ -134,7 +134,7 @@ def test_experiment_sample_windows():
     dataset = rand_set
     
     dataset_iterator = SampleWindowsIterator(trial_window_fraction=0.5, 
-                                             batch_iterator=BalancedBatchIterator(batch_size=60))
+                                             batch_size=60)
     
     preprocessor = OnlineAxiswiseStandardize(axis=['c', 1])
     dataset_splitter=DatasetFixedTrialSplitter(n_train_trials=150, valid_set_fraction=0.1)
@@ -153,26 +153,26 @@ def test_experiment_sample_windows():
     exp.run()
     
     assert np.allclose(
-        [0.629630,0.548148,0.429630,0.333333,0.192593,0.148148,0.146667],
+        [0.629630,0.140741,0.029630,0.022222,0.000000,0.000000,0.000000],
         exp.monitor_chans['train_misclass'],
         rtol=1e-4, atol=1e-4)
     assert np.allclose(
-        [0.400000,0.333333,0.200000,0.133333,0.133333,0.133333,0.133333],
+        [0.400000,0.133333,0.066667,0.000000,0.000000,0.000000,0.000000],
         exp.monitor_chans['valid_misclass'],
         rtol=1e-4, atol=1e-4)
     assert np.allclose(
-        [0.560000,0.460000,0.200000,0.120000,0.100000,0.080000,0.080000],
+        [0.560000,0.060000,0.000000,0.000000,0.000000,0.000000,0.000000],
         exp.monitor_chans['test_misclass'],
         rtol=1e-4, atol=1e-4)
     assert np.allclose(
-        [1.180264,0.767753,0.719211,0.673590,0.630989,0.591554,0.585297],
+        [1.180264,0.574277,0.420065,0.330960,0.278621,0.245745,0.242898],
         exp.monitor_chans['train_loss'],
         rtol=1e-4, atol=1e-4)
     assert np.allclose(
-        [1.001361,0.698932,0.651048,0.606471,0.565222,0.527422,0.527705],
+        [1.001361,0.515506,0.373913,0.293137,0.245398,0.215802,0.216017],
         exp.monitor_chans['valid_loss'],
         rtol=1e-4, atol=1e-4)
     assert np.allclose(
-        [0.991774,0.703992,0.654657,0.608628,0.566029,0.526912,0.527028],
+        [0.991774,0.512727,0.366482,0.285447,0.239593,0.212038,0.211920],
         exp.monitor_chans['test_loss'],
         rtol=1e-4, atol=1e-4)
