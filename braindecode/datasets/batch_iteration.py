@@ -40,7 +40,7 @@ class SampleWindowsIterator():
     def __init__(self,trial_window_fraction, batch_iterator, sample_axes_name=0,
         stride=1):
         """Note sample sample_axes_name should be 'c', 0, or 1 from bc01 convention!"""
-        self.trial_window_fraction = 0.5
+        self.trial_window_fraction = trial_window_fraction
         self.batch_iterator = batch_iterator
         self.sample_axes_name = sample_axes_name
         self.stride = stride
@@ -71,7 +71,7 @@ def trials_to_samplewindows(batch, sample_axes_dim, trial_window_fraction,
     # produce one new trial per old trial per window
     new_shape = [batch[0].shape[0], len(start_sample_inds)] + list(batch[0].shape[1:])
     new_shape[sample_axes_dim + 1] = n_samples_per_window
-    new_train_batch = np.ones(new_shape)
+    new_train_batch = np.ones(new_shape, dtype=np.float32)
     # before with loop comprehension + np.array wrap (i.e. without preallocation)
     # factor 50 slower(!)
     for i_sample_window, i_start in enumerate(start_sample_inds):
@@ -90,3 +90,60 @@ def trials_to_samplewindows(batch, sample_axes_dim, trial_window_fraction,
         #new_train_batch = np.swapaxes(new_train_batch, 0,1)
         new_train_y = batch[1]
     return (new_train_batch, new_train_y)
+
+class FlatSampleWindowsIterator(object):
+    def __init__(self,trial_window_fraction, batch_size, sample_axes_name=0,
+            stride=1):
+        """Note sample sample_axes_name should be 'c', 0, or 1 from bc01 convention!"""
+        self.trial_window_fraction = trial_window_fraction
+        self.rng = RandomState(348846723)
+        self.batch_size = batch_size
+        self.sample_axes_name = sample_axes_name
+        self.stride = stride
+
+    def get_batches(self, dataset, deterministic):
+        sample_axes_dim = dataset.view_converter.axes.index(self.sample_axes_name)
+        topo = dataset.get_topological_view()
+        y = dataset.y
+        return create_flat_window_batches(topo, y, self.batch_size,
+                                          sample_axes_dim, self.trial_window_fraction, 
+                                          self.stride, 
+                                  shuffle=(not deterministic), rng=self.rng)
+        
+    def reset_rng(self):
+        self.rng = RandomState(348846723)
+
+def create_flat_window_batches(topo, y, batch_size, 
+       sample_axes_dim, trial_window_fraction, stride, shuffle, rng):
+    n_trials = topo.shape[0]
+    n_samples_per_trial = topo.shape[sample_axes_dim]
+    n_samples_per_window = int(np.round(n_samples_per_trial * 
+        trial_window_fraction))
+    # + 1 necessary since range exclusive...
+    start_sample_inds = range(0, n_samples_per_trial - n_samples_per_window + 1, stride)
+    n_sample_windows = len(start_sample_inds)
+    n_flat_trials = n_sample_windows * n_trials
+
+    folds = KFold(n_flat_trials,n_folds=n_flat_trials // batch_size,
+                  random_state=rng, shuffle=shuffle)
+    all_batch_inds = [f[1] for f in folds]
+
+    for batch_inds in all_batch_inds:
+        batch_topo_shape = list(topo.shape)
+        batch_topo_shape[0] = len(batch_inds)
+        batch_topo_shape[sample_axes_dim] = n_samples_per_window
+        batch_topo = np.ones(batch_topo_shape, dtype=np.float32) * np.nan
+        batch_y = np.ones(len(batch_inds)) * np.nan
+        for i_batch_trial, i_flat_trial in enumerate(batch_inds):
+            i_trial = i_flat_trial // n_sample_windows
+            i_sample_window = i_flat_trial % n_sample_windows
+            i_start_sample = start_sample_inds[i_sample_window]
+            batch_topo[i_batch_trial] = topo[i_trial].take(
+                range(i_start_sample,i_start_sample+n_samples_per_window), 
+                                    axis=sample_axes_dim-1)
+            batch_y[i_batch_trial] = y[i_trial]
+
+        assert not np.any(np.isnan(batch_topo))
+        assert not np.any(np.isnan(batch_y))
+        assert np.array_equal(batch_topo.shape, batch_topo_shape)
+        yield batch_topo, batch_y
