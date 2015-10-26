@@ -106,10 +106,17 @@ class FlatSampleWindowsIterator(object):
         topo = dataset.get_topological_view()
         y = dataset.y
         return create_flat_window_batches(topo, y, self.batch_size,
-                                          sample_axes_dim, self.trial_window_fraction, 
-                                          self.stride, 
-                                  shuffle=(not deterministic), rng=self.rng)
-        
+             sample_axes_dim, self.trial_window_fraction, self.stride, 
+             shuffle=(not deterministic), rng=self.rng)
+    
+    def get_batches_for_trial(self, dataset, i_trial):
+        sample_axes_dim = dataset.view_converter.axes.index(self.sample_axes_name)
+        topo = dataset.get_topological_view()[i_trial:i_trial+1]
+        y = dataset.y[i_trial:i_trial+1]
+        return create_flat_window_batches(topo, y, self.batch_size,
+             sample_axes_dim, self.trial_window_fraction, self.stride, 
+             shuffle=False, rng=self.rng)
+
     def reset_rng(self):
         self.rng = RandomState(348846723)
 
@@ -124,9 +131,15 @@ def create_flat_window_batches(topo, y, batch_size,
     n_sample_windows = len(start_sample_inds)
     n_flat_trials = n_sample_windows * n_trials
 
-    folds = KFold(n_flat_trials,n_folds=n_flat_trials // batch_size,
-                  random_state=rng, shuffle=shuffle)
-    all_batch_inds = [f[1] for f in folds]
+    n_batches = n_flat_trials // batch_size
+    if (n_batches > 1):
+        folds = KFold(n_flat_trials,n_folds=n_batches,
+                      random_state=rng, shuffle=shuffle)
+        all_batch_inds = [f[1] for f in folds]
+    else:
+        all_batch_inds = [range(n_flat_trials)]
+        if shuffle:
+            rng.shuffle(all_batch_inds)
 
     for batch_inds in all_batch_inds:
         batch_topo_shape = list(topo.shape)
@@ -140,7 +153,7 @@ def create_flat_window_batches(topo, y, batch_size,
             i_start_sample = start_sample_inds[i_sample_window]
             batch_topo[i_batch_trial] = topo[i_trial].take(
                 range(i_start_sample,i_start_sample+n_samples_per_window), 
-                                    axis=sample_axes_dim-1)
+                axis=sample_axes_dim-1)
             batch_y[i_batch_trial] = y[i_trial]
 
         assert not np.any(np.isnan(batch_topo))

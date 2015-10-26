@@ -1,7 +1,9 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
 import time
-from braindecode.datasets.batch_iteration import SampleWindowsIterator
+from braindecode.datasets.batch_iteration import (SampleWindowsIterator,
+    FlatSampleWindowsIterator)
+
 class Monitor(object):
     __metaclass__ = ABCMeta
     @abstractmethod
@@ -78,7 +80,7 @@ class SampleWindowMisclassMonitor(Monitor):
 
     def monitor_epoch(self, monitor_chans,
             pred_func, loss_func, datasets, iterator):
-        #TODO:reenable assert(isinstance(iterator,SampleWindowsIterator))
+        assert(isinstance(iterator,SampleWindowsIterator))
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
             dataset = datasets[setname]
@@ -107,6 +109,44 @@ class SampleWindowMisclassMonitor(Monitor):
             monitor_key = "{:s}_misclass".format(setname)
             monitor_chans[monitor_key].append(float(misclass))
 
+class FlatSampleWindowMisclassMonitor(Monitor):
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_misclass".format(setname)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans,
+            pred_func, loss_func, datasets, iterator):
+        assert(isinstance(iterator, FlatSampleWindowsIterator))
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            dataset = datasets[setname]
+            all_pred_labels = []
+            all_target_labels = []
+            n_trials = dataset.get_topological_view().shape[0]
+            for i_trial in range(n_trials):
+                trial_batches = iterator.get_batches_for_trial(dataset, i_trial)
+                sum_trial_preds = 0
+                n_preds = 0
+                for batch in trial_batches:
+                    batch_preds = pred_func(batch[0])
+                    sum_trial_preds += np.sum(batch_preds, axis=0)
+                    n_preds += len(batch_preds)
+                    assert len(batch[0]) == len(batch_preds)
+                assert sum_trial_preds.ndim == 1
+                pred_label = np.argmax(sum_trial_preds)
+                all_pred_labels.append(pred_label)    
+                all_target_labels.append(batch[1][0]) 
+            all_pred_labels = np.array(all_pred_labels)
+            all_target_labels = np.array(all_target_labels)
+            assert len(all_pred_labels) == len(all_target_labels)
+            misclass = 1  - (np.sum(
+                all_pred_labels == all_target_labels) / 
+                float(len(all_pred_labels)))
+            monitor_key = "{:s}_misclass".format(setname)
+            monitor_chans[monitor_key].append(float(misclass))
+        
 class RuntimeMonitor(Monitor):
     def setup(self, monitor_chans, datasets):
         self.last_call_time = None
