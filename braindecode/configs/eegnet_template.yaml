@@ -4,11 +4,12 @@
         save_path: $save_path,
         dataset: &dataset $dataset,
         dataset_splitter: &dataset_splitter $dataset_splitter,
+        num_cv_folds: $num_cv_folds,
         exp_args: {
             preprocessor: &preprocessor $preprocessor,
             iterator: $iterator,
-            loss_var_func: $loss_var_func,
-            updates_var_func: $updates_var_func,
+            loss_expression: $loss_var_func,
+            updates_expression: $updates_var_func,
             monitors: $monitors,
             stop_criterion: !obj:braindecode.veganlasagne.stopping.Or {
                 stop_criteria: [

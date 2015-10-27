@@ -141,9 +141,9 @@ class ExperimentsRunner:
         final_layer = layers[-1]
         
         if not self._cross_validation:
-            exp = Experiment()
-            exp.setup(final_layer, dataset, dataset_splitter,
+            exp = Experiment(final_layer, dataset, dataset_splitter,
                 **train_dict['exp_args'])
+            exp.setup()
             exp.run()
             endtime = time.time()
             log.info("Saving result...")
@@ -156,9 +156,7 @@ class ExperimentsRunner:
             model = exp.final_layer
         else: # cross validation
             # default 5 folds for now
-            num_folds = 5
-            # hackily replace parameter here, since it is not respected
-            train_dict['original_params']['num_folds'] = 5
+            num_folds = train_dict['num_cv_folds']
             exp_cv = ExperimentCrossValidation(final_layer, 
                 dataset, exp_args=train_dict['exp_args'], num_folds=num_folds,
                 shuffle=self._shuffle)

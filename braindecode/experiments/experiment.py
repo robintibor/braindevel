@@ -37,29 +37,32 @@ class ExperimentCrossValidation():
             dataset_splitter = SingleFoldSplitter(
                 num_folds=self.num_folds, i_test_fold=i_fold,
                 shuffle=self.shuffle)
-            exp = Experiment()
-            exp.setup(this_layers, self.dataset, dataset_splitter, **this_exp_args)
+            exp = Experiment(this_layers, self.dataset, dataset_splitter, 
+                **this_exp_args)
+            exp.setup()
             exp.run()
             self.all_layers.append(deepcopy(exp.final_layer))
             self.all_monitor_chans.append(deepcopy(exp.monitor_chans))
 
 class Experiment(object):
-    def setup(self, final_layer, dataset, splitter, preprocessor,
-            iterator, loss_var_func, updates_var_func, monitors, stop_criterion,
-            target_var=None):
-        lasagne.random.set_rng(RandomState(9859295))
+    def __init__(self, final_layer, dataset, splitter, preprocessor,
+            iterator, loss_expression, updates_expression, monitors, stop_criterion):
         self.final_layer = final_layer
         self.dataset = dataset
         self.dataset_provider = PreprocessedSplitter(splitter, preprocessor)
         self.preprocessor=preprocessor
         self.iterator = iterator
+        self.loss_expression = loss_expression
+        self.updates_expression = updates_expression
         self.monitors = monitors
         self.stop_criterion = stop_criterion
+    
+    def setup(self, target_var=None):
+        lasagne.random.set_rng(RandomState(9859295))
         self.dataset.ensure_is_loaded()
         self.print_layer_sizes()
         log.info("Create theano functions...")
-        self.create_theano_functions(final_layer, loss_var_func,
-            updates_var_func, target_var)
+        self.create_theano_functions(target_var)
         log.info("Done.")
 
     def print_layer_sizes(self):
@@ -69,23 +72,22 @@ class Experiment(object):
             log.info(l.__class__.__name__)
             log.info(l.output_shape)
     
-    def create_theano_functions(self, final_layer, loss_var_func,
-            updates_var_func, target_var):
+    def create_theano_functions(self, target_var):
         if target_var is None:
             target_var = T.ivector('targets')
-        prediction = lasagne.layers.get_output(final_layer)
+        prediction = lasagne.layers.get_output(self.final_layer)
         # test as in during testing not as in "test set"
-        test_prediction = lasagne.layers.get_output(final_layer, 
+        test_prediction = lasagne.layers.get_output(self.final_layer, 
             deterministic=True)
-        loss = loss_var_func(prediction, target_var).mean()
-        test_loss = loss_var_func(test_prediction, target_var).mean()
+        loss = self.loss_expression(prediction, target_var).mean()
+        test_loss = self.loss_expression(test_prediction, target_var).mean()
         # create parameter update expressions
-        params = lasagne.layers.get_all_params(final_layer, trainable=True)
-        updates = updates_var_func(loss, params)
+        params = lasagne.layers.get_all_params(self.final_layer, trainable=True)
+        updates = self.updates_expression(loss, params)
         # put norm constraints on all layer, for now fixed to max kernel norm
         # 2 and max col norm 0.5
-        updates = norm_constraint(updates, final_layer)
-        input_var = lasagne.layers.get_all_layers(final_layer)[0].input_var
+        updates = norm_constraint(updates, self.final_layer)
+        input_var = lasagne.layers.get_all_layers(self.final_layer)[0].input_var
         # needed for resetting to best model after early stop
         self.all_params = updates.keys()
         self.loss_func = theano.function([input_var, target_var], test_loss)
