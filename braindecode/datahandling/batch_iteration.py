@@ -7,18 +7,18 @@ class BalancedBatchIterator(object):
         self.batch_size = batch_size
         self.rng = RandomState(328774)
     
-    def get_batches(self, dataset, deterministic):
+    def get_batches(self, dataset, shuffle):
         num_trials = dataset.get_topological_view().shape[0]
         
         batches = get_balanced_batches(num_trials,
-            batch_size=self.batch_size, rng=self.rng, shuffle=(not deterministic))
+            batch_size=self.batch_size, rng=self.rng, shuffle=shuffle)
         for batch_inds in batches:
             yield (dataset.get_topological_view()[batch_inds],
                 dataset.y[batch_inds])
 
     def reset_rng(self):
         self.rng = RandomState(328774)
-    
+
 def get_balanced_batches(num_trials, batch_size, rng, shuffle=True):
     # We will use the test folds as our mini-batches,
     # training fold indices are completely ignored here
@@ -37,6 +37,7 @@ def get_balanced_batches(num_trials, batch_size, rng, shuffle=True):
         test_folds = [batch]
     return test_folds
 
+
 class WindowsIterator(object):
     def __init__(self,trial_window_fraction, batch_size, sample_axes_name=0,
             stride=1):
@@ -47,22 +48,14 @@ class WindowsIterator(object):
         self.sample_axes_name = sample_axes_name
         self.stride = stride
 
-    def get_batches(self, dataset, deterministic):
+    def get_batches(self, dataset, shuffle):
         sample_axes_dim = dataset.view_converter.axes.index(self.sample_axes_name)
         topo = dataset.get_topological_view()
         y = dataset.y
         return create_sample_window_batches(topo, y, self.batch_size,
              sample_axes_dim, self.trial_window_fraction, self.stride, 
-             shuffle=(not deterministic), rng=self.rng)
+             shuffle=shuffle, rng=self.rng)
     
-    def get_batches_for_trial(self, dataset, i_trial):
-        sample_axes_dim = dataset.view_converter.axes.index(self.sample_axes_name)
-        topo = dataset.get_topological_view()[i_trial:i_trial+1]
-        y = dataset.y[i_trial:i_trial+1]
-        return create_sample_window_batches(topo, y, self.batch_size,
-             sample_axes_dim, self.trial_window_fraction, self.stride, 
-             shuffle=False, rng=self.rng)
-
     def reset_rng(self):
         self.rng = RandomState(348846723)
 

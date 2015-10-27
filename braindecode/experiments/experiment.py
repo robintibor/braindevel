@@ -119,7 +119,7 @@ class Experiment(object):
         self.iterator.reset_rng()
         while not self.stop_criterion.should_stop(self.monitor_chans):
             batch_generator = self.iterator.get_batches(datasets['train'],
-                deterministic=False)
+                shuffle=True)
             
             with log_timing(log, None, final_msg='Time updates this epoch:'):
                 for inputs, targets in batch_generator:

@@ -20,8 +20,8 @@ class LossMonitor(Monitor):
             monitor_key = "{:s}_loss".format(setname)
             monitor_chans[monitor_key] = []
 
-    def monitor_epoch(self, monitor_chans, pred_func, loss_func,
-            datasets, iterator):
+    def monitor_epoch(self, monitor_chans, pred_func, loss_func, datasets,
+            iterator):
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
             dataset = datasets[setname]
@@ -29,7 +29,7 @@ class LossMonitor(Monitor):
             #batch_size = 50
             total_loss = 0.0
             num_trials = 0
-            for batch in iterator.get_batches(dataset,deterministic=True):
+            for batch in iterator.get_batches(dataset, shuffle=False):
                 batch_size = batch[0].shape[0]
                 batch_loss = loss_func(batch[0], batch[1])
                 # at the end we want the mean over whole dataset
@@ -57,7 +57,7 @@ class MisclassMonitor(Monitor):
             dataset = datasets[setname]
             all_target_labels = []
             all_pred_labels = []
-            for batch in iterator.get_batches(dataset,deterministic=True):
+            for batch in iterator.get_batches(dataset, shuffle=False):
                 preds = pred_func(batch[0])
                 pred_labels = np.argmax(preds, axis=1)
                 all_pred_labels.extend(pred_labels)
@@ -76,46 +76,6 @@ class WindowMisclassMonitor(Monitor):
             monitor_key = "{:s}_misclass".format(setname)
             monitor_chans[monitor_key] = []
 
-    def monitor_epoch_new(self, monitor_chans,
-            pred_func, loss_func, datasets, iterator):
-        assert(isinstance(iterator, WindowsIterator))
-        for setname in datasets:
-            assert setname in ['train', 'valid', 'test']
-            dataset = datasets[setname]
-            all_pred_labels = []
-            all_target_labels = []
-            n_trials = dataset.get_topological_view().shape[0]
-            n_windows_per_trial = iterator.get_windows_per_trial(dataset)
-            
-            batches = iterator.get_batches(dataset, deterministic=True)
-            all_window_preds = np.ones((n_trials * n_windows_per_trial),
-                dtype=np.int32)
-            for batch in batches:
-                batch_preds = pred_func(batch[0])
-                
-                
-            for i_trial in range(n_trials):
-                trial_batches = iterator.get_batches_for_trial(dataset, i_trial)
-                sum_trial_preds = 0
-                n_preds = 0
-                for batch in trial_batches:
-                    batch_preds = pred_func(batch[0])
-                    sum_trial_preds += np.sum(batch_preds, axis=0)
-                    n_preds += len(batch_preds)
-                    assert len(batch[0]) == len(batch_preds)
-                assert sum_trial_preds.ndim == 1
-                pred_label = np.argmax(sum_trial_preds)
-                all_pred_labels.append(pred_label)    
-                all_target_labels.append(batch[1][0]) 
-            all_pred_labels = np.array(all_pred_labels)
-            all_target_labels = np.array(all_target_labels)
-            assert len(all_pred_labels) == len(all_target_labels)
-            misclass = 1  - (np.sum(
-                all_pred_labels == all_target_labels) / 
-                float(len(all_pred_labels)))
-            monitor_key = "{:s}_misclass".format(setname)
-            monitor_chans[monitor_key].append(float(misclass))
-
     def monitor_epoch(self, monitor_chans,
             pred_func, loss_func, datasets, iterator):
         assert(isinstance(iterator, WindowsIterator))
@@ -123,7 +83,7 @@ class WindowMisclassMonitor(Monitor):
             assert setname in ['train', 'valid', 'test']
             dataset = datasets[setname]
             all_preds = []
-            for batch in iterator.get_batches(dataset, deterministic=True):
+            for batch in iterator.get_batches(dataset, shuffle=False):
                 batch_preds = pred_func(batch[0])
                 all_preds.extend(batch_preds)
             
