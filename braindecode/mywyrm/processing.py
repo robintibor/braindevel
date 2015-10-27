@@ -2,7 +2,7 @@ import scipy
 from wyrm.processing import lfilter, filtfilt
 import numpy as np
 from copy import deepcopy
-from braindecode.datasets.preprocessing import (exponential_running_mean, 
+from braindecode.datahandling.preprocessing import (exponential_running_mean, 
     exponential_running_var, OnlineAxiswiseStandardize)
 from sklearn.covariance import LedoitWolf as LW
 import scikits.samplerate

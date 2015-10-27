@@ -1,5 +1,5 @@
 import numpy as np
-from braindecode.datasets.batch_iteration import SampleWindowsIterator
+from braindecode.datahandling.batch_iteration import WindowsIterator
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 
 def test_flat_sample_windows_iterator():
@@ -9,7 +9,7 @@ def test_flat_sample_windows_iterator():
     y = np.int32(range(topo_data.shape[0]))
     dataset = DenseDesignMatrixWrapper(topo_view=topo_data, y=y, axes=('b','c',0,1))
     
-    iterator = SampleWindowsIterator(batch_size=7, trial_window_fraction=1/3.0,
+    iterator = WindowsIterator(batch_size=7, trial_window_fraction=1/3.0,
                                         sample_axes_name=0, stride=1)
     
     batches = list(iterator.get_batches(dataset, deterministic=True))
@@ -45,7 +45,7 @@ def test_flat_sample_windows_iterator_get_trial():
     dataset = DenseDesignMatrixWrapper(topo_view=topo_data, y=y, 
         axes=('b','c',0,1))
     
-    iterator = SampleWindowsIterator(batch_size=7, 
+    iterator = WindowsIterator(batch_size=7, 
         trial_window_fraction=1/3.0, sample_axes_name=0, stride=1)
     trial_0_batches = list(iterator.get_batches_for_trial(dataset, 0))
     trial_1_batches = list(iterator.get_batches_for_trial(dataset, 1))

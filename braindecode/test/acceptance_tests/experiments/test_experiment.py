@@ -1,8 +1,8 @@
 import braindecode.veganlasagne.monitors
-from braindecode.datasets.preprocessing import OnlineAxiswiseStandardize
-from braindecode.datasets.dataset_splitters import DatasetFixedTrialSplitter
-from braindecode.datasets.batch_iteration import (BalancedBatchIterator,
-    SampleWindowsIterator)
+from braindecode.datahandling.preprocessing import OnlineAxiswiseStandardize
+from braindecode.datahandling.splitters import FixedTrialSplitter
+from braindecode.datahandling.batch_iteration import (BalancedBatchIterator,
+    WindowsIterator)
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 from braindecode.experiments.experiment import Experiment
 from lasagne.layers import (DenseLayer, InputLayer)
@@ -30,7 +30,7 @@ def test_experiment_fixed_split():
     dataset_iterator = BalancedBatchIterator(batch_size=60)
     
     preprocessor = OnlineAxiswiseStandardize (axis=['c', 1])
-    dataset_splitter=DatasetFixedTrialSplitter(n_train_trials=150, valid_set_fraction=0.1)
+    dataset_splitter=FixedTrialSplitter(n_train_trials=150, valid_set_fraction=0.1)
     updates_var_func=lasagne.updates.adam
     loss_var_func= lasagne.objectives.categorical_crossentropy
     monitors=[braindecode.veganlasagne.monitors.LossMonitor (),
@@ -133,15 +133,15 @@ def test_experiment_sample_windows():
     
     dataset = rand_set
     
-    dataset_iterator = SampleWindowsIterator(trial_window_fraction=0.5, 
+    dataset_iterator = WindowsIterator(trial_window_fraction=0.5, 
                                              batch_size=60)
     
     preprocessor = OnlineAxiswiseStandardize(axis=['c', 1])
-    dataset_splitter=DatasetFixedTrialSplitter(n_train_trials=150, valid_set_fraction=0.1)
+    dataset_splitter=FixedTrialSplitter(n_train_trials=150, valid_set_fraction=0.1)
     updates_var_func=lasagne.updates.adam
     loss_var_func= lasagne.objectives.categorical_crossentropy
     monitors=[braindecode.veganlasagne.monitors.LossMonitor (),
-                    braindecode.veganlasagne.monitors.SampleWindowMisclassMonitor(),
+                    braindecode.veganlasagne.monitors.WindowMisclassMonitor(),
                     braindecode.veganlasagne.monitors.RuntimeMonitor()]
     stop_criterion= braindecode.veganlasagne.stopping.MaxEpochs(num_epochs=5)
     

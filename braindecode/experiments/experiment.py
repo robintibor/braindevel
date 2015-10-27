@@ -9,7 +9,7 @@ from braindecode.veganlasagne.stopping import Or, MaxEpochs, ChanBelow
 import logging
 from pylearn2.utils.timing import log_timing
 from copy import deepcopy
-from braindecode.datasets.dataset_splitters import (DatasetSingleFoldSplitter,
+from braindecode.datahandling.splitters import (SingleFoldSplitter,
     PreprocessedSplitter)
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class ExperimentCrossValidation():
             this_exp_args = deepcopy(self.exp_args)
             ## make sure dataset is loaded... 
             self.dataset.ensure_is_loaded()
-            dataset_splitter = DatasetSingleFoldSplitter(
+            dataset_splitter = SingleFoldSplitter(
                 num_folds=self.num_folds, i_test_fold=i_fold,
                 shuffle=self.shuffle)
             exp = Experiment()

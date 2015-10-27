@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
 import time
-from braindecode.datasets.batch_iteration import SampleWindowsIterator
+from braindecode.datahandling.batch_iteration import WindowsIterator
 
 class Monitor(object):
     __metaclass__ = ABCMeta
@@ -69,7 +69,7 @@ class MisclassMonitor(Monitor):
             monitor_key = "{:s}_misclass".format(setname)
             monitor_chans[monitor_key].append(float(misclass))
     
-class SampleWindowMisclassMonitor(Monitor):
+class WindowMisclassMonitor(Monitor):
     def setup(self, monitor_chans, datasets):
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
@@ -78,7 +78,7 @@ class SampleWindowMisclassMonitor(Monitor):
 
     def monitor_epoch_new(self, monitor_chans,
             pred_func, loss_func, datasets, iterator):
-        assert(isinstance(iterator, SampleWindowsIterator))
+        assert(isinstance(iterator, WindowsIterator))
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
             dataset = datasets[setname]
@@ -118,7 +118,7 @@ class SampleWindowMisclassMonitor(Monitor):
 
     def monitor_epoch(self, monitor_chans,
             pred_func, loss_func, datasets, iterator):
-        assert(isinstance(iterator, SampleWindowsIterator))
+        assert(isinstance(iterator, WindowsIterator))
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
             dataset = datasets[setname]

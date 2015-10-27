@@ -1,8 +1,7 @@
-from braindecode.datasets.dataset_splitters import (
-    DatasetSingleFoldSplitter, PreprocessedSplitter)
-from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 import numpy as np
-from braindecode.datasets.dataset_splitters import DatasetFixedTrialSplitter
+from braindecode.datahandling.splitters import (
+    SingleFoldSplitter, PreprocessedSplitter, FixedTrialSplitter)
+from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 
 def to_4d_array(arr):
     arr = np.array(arr)
@@ -12,7 +11,7 @@ def to_4d_array(arr):
 def test_last_fold():
     data = np.arange(10)
     dataset = DenseDesignMatrixWrapper(topo_view=to_4d_array(data), y=np.zeros(10))
-    splitter = DatasetSingleFoldSplitter(num_folds=10, 
+    splitter = SingleFoldSplitter(num_folds=10, 
         i_test_fold=9)
     datasets= splitter.split_into_train_valid_test(dataset)
     
@@ -26,7 +25,7 @@ def test_last_fold():
 def test_first_fold():
     data = np.arange(10)
     dataset = DenseDesignMatrixWrapper(topo_view=to_4d_array(data), y=np.zeros(10))
-    splitter = DatasetSingleFoldSplitter(num_folds=10, 
+    splitter = SingleFoldSplitter(num_folds=10, 
         i_test_fold=0)
     datasets= splitter.split_into_train_valid_test(dataset)
     
@@ -49,7 +48,7 @@ def test_preprocessed_splitter():
 
     data = np.arange(10)
     dataset = DenseDesignMatrixWrapper(topo_view=to_4d_array(data), y=np.zeros(10))
-    splitter = DatasetSingleFoldSplitter(num_folds=10, i_test_fold=9)
+    splitter = SingleFoldSplitter(num_folds=10, i_test_fold=9)
     preproc_splitter = PreprocessedSplitter(dataset_splitter=splitter,
         preprocessor=DemeanPreproc())
 
@@ -77,7 +76,7 @@ def test_repeated_calls_with_shuffle():
     data = np.arange(100)
     dataset = DenseDesignMatrixWrapper(topo_view=to_4d_array(data), 
         y=np.zeros(100))
-    splitter = DatasetSingleFoldSplitter(num_folds=10, 
+    splitter = SingleFoldSplitter(num_folds=10, 
         i_test_fold=9, shuffle=True)
     reference_datasets = splitter.split_into_train_valid_test(dataset)
     
@@ -91,7 +90,7 @@ def test_repeated_calls_with_shuffle():
 def test_fixed_trial():
     dataset = DenseDesignMatrixWrapper(topo_view=to_4d_array(range(12)),
          y=np.zeros(12))
-    splitter = DatasetFixedTrialSplitter(n_train_trials=10, 
+    splitter = FixedTrialSplitter(n_train_trials=10, 
         valid_set_fraction=0.2)
     sets = splitter.split_into_train_valid_test(dataset)
     assert np.array_equal(sets['train'].get_topological_view().squeeze(),
@@ -104,7 +103,7 @@ def test_fixed_trial():
 def test_fixed_trial_with_rounding():
     dataset = DenseDesignMatrixWrapper(topo_view = to_4d_array(range(12)), 
         y= np.zeros(12))
-    splitter = DatasetFixedTrialSplitter(n_train_trials=9,
+    splitter = FixedTrialSplitter(n_train_trials=9,
         valid_set_fraction=0.2)
     sets = splitter.split_into_train_valid_test(dataset)
     assert np.array_equal(sets['train'].get_topological_view().squeeze(), 

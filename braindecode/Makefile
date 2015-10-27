@@ -1,4 +1,4 @@
-DOCTEST_FILES =  experiments/parse.py  datasets/preprocessing.py
+DOCTEST_FILES =  experiments/parse.py  datahandling/preprocessing.py
 
 # always run test.. necessary since we have a test directory 
 .PHONY: unit-tests acceptance-tests

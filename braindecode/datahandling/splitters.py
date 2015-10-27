@@ -5,13 +5,13 @@ import numpy as np
 from collections import OrderedDict
 from numpy.random import RandomState
 
-class DatasetTrainValidTestSplitter(object):
+class TrainValidTestSplitter(object):
     __metaclass__ = ABCMeta
     @abstractmethod
     def split_into_train_valid_test(self, dataset):
         raise NotImplementedError("Subclass needs to implement this")
 
-class DatasetFixedTrialSplitter(DatasetTrainValidTestSplitter):
+class FixedTrialSplitter(TrainValidTestSplitter):
     def __init__(self, n_train_trials, valid_set_fraction):
         self.n_train_trials = n_train_trials
         self.valid_set_fraction = valid_set_fraction
@@ -41,7 +41,7 @@ class DatasetFixedTrialSplitter(DatasetTrainValidTestSplitter):
             test_fold)
         return datasets
 
-class DatasetSingleFoldSplitter(DatasetTrainValidTestSplitter):
+class SingleFoldSplitter(TrainValidTestSplitter):
     def __init__(self, num_folds=10, i_test_fold=-1,
             shuffle=False):
         self.num_folds = num_folds

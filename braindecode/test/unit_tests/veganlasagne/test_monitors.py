@@ -1,6 +1,6 @@
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
-from braindecode.datasets.batch_iteration import SampleWindowsIterator
-from braindecode.veganlasagne.monitors import SampleWindowMisclassMonitor
+from braindecode.datahandling.batch_iteration import WindowsIterator
+from braindecode.veganlasagne.monitors import WindowMisclassMonitor
 import numpy as np
 
 def test_flat_sample_window_misclass_monitor():
@@ -16,10 +16,10 @@ def test_flat_sample_window_misclass_monitor():
     dataset = DenseDesignMatrixWrapper(topo_view=topo_data, y=y, 
         axes=('b','c',0,1))
     
-    iterator = SampleWindowsIterator(batch_size=7, 
+    iterator = WindowsIterator(batch_size=7, 
         trial_window_fraction=1/3.0, sample_axes_name=0, stride=1)
     
-    monitor = SampleWindowMisclassMonitor()
+    monitor = WindowMisclassMonitor()
     monitor_chans = {'train_misclass': []}
     monitor.monitor_epoch(monitor_chans, pred_func, None, {'train': dataset}, 
         iterator)

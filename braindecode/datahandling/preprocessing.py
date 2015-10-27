@@ -1,8 +1,8 @@
-from pylearn2.datasets.preprocessing import Preprocessor  
-from pylearn2.datasets.preprocessing import Pipeline  
+from pylearn2.datasets.preprocessing import Preprocessor
+from pylearn2.datasets.preprocessing import Pipeline
 import numpy as np
 import os
-from pylearn2.utils import serial  
+from pylearn2.utils import serial
 from copy import deepcopy
 import scipy.ndimage
 

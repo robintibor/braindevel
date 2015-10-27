@@ -37,7 +37,7 @@ def get_balanced_batches(num_trials, batch_size, rng, shuffle=True):
         test_folds = [batch]
     return test_folds
 
-class SampleWindowsIterator(object):
+class WindowsIterator(object):
     def __init__(self,trial_window_fraction, batch_size, sample_axes_name=0,
             stride=1):
         """Note sample sample_axes_name should be 'c', 0, or 1 from bc01 convention!"""
