@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 class BinaryCSP(object):
     def __init__(self, cnt, filterbands, filt_order, folds,
             class_pairs, segment_ival, num_filters,
-            ival_optimizer, marker_def=None):
+            ival_optimizer, standardize, marker_def=None):
         self.__dict__.update(locals())
         del self.self
         # Default marker def is form our EEG 3-4 sec motor imagery dataset
@@ -44,7 +44,8 @@ class BinaryCSP(object):
         test_ind = train_test['test']
         epo_train = select_epochs(epo, train_ind)
         epo_test = select_epochs(epo, test_ind)
-        epo_train, epo_test = online_standardize_epo(epo_train, epo_test)
+        if self.standardize:
+            epo_train, epo_test = online_standardize_epo(epo_train, epo_test)
         # TODELAY: also integrate into init and store results
         self.train_labels_full_fold[fold_nr] = epo_train.axes[0]
         self.test_labels_full_fold[fold_nr] = epo_test.axes[0]

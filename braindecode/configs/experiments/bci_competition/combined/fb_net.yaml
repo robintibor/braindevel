@@ -1,0 +1,7 @@
+{
+    extends: ['configs/experiments/bci_competition/fb_net_base.yaml',
+        'configs/experiments/bci_competition/combined/combined_files.yaml'],
+    variants: [[{
+        save_path: ['data/models/bci-competition/combined/fb-net-repl/'],
+    }]]
+}

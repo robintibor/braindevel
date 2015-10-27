@@ -1,0 +1,27 @@
+ {
+    extends: ['configs/experiments/bci_competition/fb_net_base.yaml',
+        'configs/experiments/bci_competition/combined/combined_files.yaml'],
+    variants: [[
+    {        
+        save_path: ['data/models/bci-competition/combined/fb-net-150-fs/'],
+        resample_fs: [150],
+        max_freq: [70],
+        last_low_freq: [30],
+        variants: [[
+        {
+            min_freq: [0],
+            low_cut_off_hz: [0.5],
+        },
+        {
+            min_freq: [2],
+            low_cut_off_hz: [2],
+        },
+        {
+            min_freq: [4],
+            low_cut_off_hz: [4],
+        },
+        ]]
+    }
+    ]]
+ }
+ 

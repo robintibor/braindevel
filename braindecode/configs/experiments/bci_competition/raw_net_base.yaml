@@ -1,0 +1,78 @@
+{
+    extends: ['configs/experiments/defaults.yaml'],
+    templates: {
+        raw_net_layers: [ 
+           &in_layer !obj:lasagne.layers.InputLayer {
+                shape: [null, in_sensors, in_rows, in_cols]
+            },
+            &shuffle !obj:lasagne.layers.DimshuffleLayer {
+                incoming: *in_layer,
+                pattern: [0,3,2,1],
+            },
+            &time_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *shuffle,
+                num_filters: 40,
+                filter_size: [$filter_time_length, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+            },
+            &drop_time !obj:lasagne.layers.DropoutLayer {
+                incoming: *time_conv,
+                p: 0.5,
+            },
+            &spat_conv !obj:braindecode.veganlasagne.layers.Conv2DAllColsLayer {
+                incoming: *drop_time,
+                num_filters: 40,
+                filter_size: [1, -1],
+                nonlinearity: !!python/name:theano.tensor.sqr ,
+            },
+            &pool !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
+                    incoming: *spat_conv,
+                    pool_size: [$pool_time_length,1],
+                    stride: [$pool_time_stride,1],
+                    mode: 'average_exc_pad',
+            },
+            &log !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *pool,
+                    nonlinearity: !!python/name:theano.tensor.log ,
+            },
+            &drop_feature !obj:lasagne.layers.DropoutLayer {
+                incoming: *log,
+                p: 0.5,
+            },
+            &softmax !obj:lasagne.layers.DenseLayer {
+                    incoming: *drop_feature,
+                    num_units: 4,
+                    nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+            },
+        ],
+        raw_set: !obj:braindecode.datasets.pylearn.BBCIPylearnCleanDataset {
+            signal_marker_set: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.set_loaders.BCICompetition4Set2A {
+                    filename: $dataset_filename
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: [
+                    [
+                        !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                        {'newfs': $resample_fs},
+                    ],
+                    [
+                        !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                        {'low_cut_off_hz': $low_cut_off_hz}
+                    ],
+                ]
+            },
+            cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner { },
+            sensor_names: $sensor_names,
+        },
+    },
+    variants: [[{
+        trial_start: [0],
+        trial_stop: [4000],
+        sensor_names: ["null"],
+        layers: [$raw_net_layers],
+        dataset: [$raw_set],
+        max_increasing_epochs: [150],
+        max_epochs: [1500],
+    }]]
+}

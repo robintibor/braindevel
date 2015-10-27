@@ -1,44 +1,46 @@
-from wyrm.processing import select_channels, append_cnt
+from wyrm.processing import select_channels
 from braindecode.mywyrm.processing import (
     resample_cnt, highpass_cnt, common_average_reference_cnt)
-from braindecode.mywyrm.clean import (
-    compute_rejected_channels_trials_cnt, BBCITwoSetsCleaner)
+from braindecode.mywyrm.clean import (BBCISetNoCleaner)
 import itertools
 from sklearn.cross_validation import KFold
 from braindecode.csp.pipeline import (BinaryCSP, FilterbankCSP,
     MultiClassWeightedVoting)
-from braindecode.datasets.bbci_dataset import BBCIDataset
 import numpy as np
 from copy import deepcopy
 from pylearn2.utils import serial
 from braindecode.datasets.sensor_positions import sort_topologically
+from numpy.random import RandomState
 import logging
 log = logging.getLogger(__name__)
 
 class CSPTrain(object):
-    def __init__(self,filename, sensor_names=None, load_sensor_names=None,
-            low_cut_off_hz=0.5, rejection_var_ival=[0,4000], 
-            rejection_blink_ival=[-500,4000],
-            max_min=600, whisker_percent=10, whisker_length=3,
-            resample_fs=300,
+    def __init__(self,set_loader, sensor_names=None,
+            low_cut_off_hz=0.5, cleaner=None,
+            resample_fs=None,
             min_freq=0, max_freq=48, last_low_freq=48,
             low_width=4, high_width=4,
             filt_order=3,
-            segment_ival=[500,4000], num_folds=10,
+            segment_ival=[500,4000], 
+            standardize=True,
+            num_folds=5,
             num_filters=None, num_selected_filterbands=None,
             num_selected_features=None,
-            forward_steps=2,
-            backward_steps=1,
+            forward_steps=4,
+            backward_steps=2,
             stop_when_no_improvement=False,
             only_last_fold=False,
             restricted_n_trials=None,
             common_average_reference=False,
-            ival_optimizer=None):
+            ival_optimizer=None,
+            shuffle=False):
         local_vars = locals()
         del local_vars['self']
         self.__dict__.update(local_vars)
         # remember params for later result printing etc
         self.original_params = deepcopy(local_vars)
+        if self.cleaner is None:
+            self.cleaner = BBCISetNoCleaner()
 
     def get_trainer(self):
         """ just for later saving"""
@@ -57,31 +59,14 @@ class CSPTrain(object):
         self.run_training()
 
     def load_bbci_set(self):
-        #TODELAY: do we even need to assign bbci_set to this object?
-        self.bbci_set = BBCIDataset(self.filename, 
-            sensor_names=self.load_sensor_names)
-        self.bbci_set.load_continuous_signal()
-        self.bbci_set.add_markers()
-        self.cnt = self.bbci_set.cnt
-        del self.bbci_set.cnt # save memory
+        self.cnt = self.set_loader.load()
 
     def clean_set(self):
-        (rejected_chans, rejected_trials, reject_max_min, reject_var, 
-            clean_trials) = compute_rejected_channels_trials_cnt(self.cnt, 
-                filename=self.filename, 
-                rejection_blink_ival=self.rejection_blink_ival, 
-                max_min=self.max_min, 
-                rejection_var_ival=self.rejection_var_ival, 
-                whisker_percent=self.whisker_percent, 
-                whisker_length=self.whisker_length, 
-                low_cut_hz=0.5, 
-                high_cut_hz=150,
-                filt_order=4)
-        self.rejected_chans = rejected_chans
-        self.rejected_trials = rejected_trials
-        self.rejected_trials_max_min = reject_max_min
-        self.rejected_trials_var = reject_var
-        self.clean_trials = clean_trials
+        (rejected_chans, rejected_trials, clean_trials) = self.cleaner.clean(
+            self.cnt)
+        self.rejected_chans = np.array(rejected_chans)
+        self.rejected_trials = np.array(rejected_trials)
+        self.clean_trials = np.array(clean_trials)
         # do not remove rejected channels yet to allow calling
         # this function several times with same result
 
@@ -93,7 +78,8 @@ class CSPTrain(object):
             self.sensor_names = sort_topologically(self.sensor_names)
             self.cnt = select_channels(self.cnt, self.sensor_names)
 
-        self.cnt = resample_cnt(self.cnt, newfs=self.resample_fs)
+        if self.resample_fs is not None:
+            self.cnt = resample_cnt(self.cnt, newfs=self.resample_fs)
         if self.low_cut_off_hz is not None:
             self.cnt = highpass_cnt(self.cnt, low_cut_off_hz=self.low_cut_off_hz)
         if self.common_average_reference is True:
@@ -113,8 +99,14 @@ class CSPTrain(object):
         num_clean_trials = len(self.clean_trials)
         if self.restricted_n_trials is not None:
             num_clean_trials = int(num_clean_trials * self.restricted_n_trials)
-        folds = KFold(num_clean_trials, n_folds=self.num_folds, 
-            shuffle=False)
+        if not self.shuffle:
+            folds = KFold(num_clean_trials, n_folds=self.num_folds, 
+                shuffle=False)
+        else:
+            rng = RandomState(903372376)
+            folds = KFold(num_clean_trials, n_folds=self.num_folds, 
+                shuffle=True, random_state=rng)
+            
         # remap to original indices in unclean set(!)
         self.folds = map(lambda fold: 
             {'train': self.clean_trials[fold[0]], 
@@ -127,6 +119,7 @@ class CSPTrain(object):
         self.binary_csp = BinaryCSP(self.cnt, self.filterbands, 
             self.filt_order, self.folds, self.class_pairs, 
             self.segment_ival, self.num_filters, 
+            standardize=self.standardize,
             ival_optimizer=self.ival_optimizer)
         self.binary_csp.run()
         
@@ -146,100 +139,6 @@ class CSPTrain(object):
                                     self.class_pairs)
         self.multi_class.run()
         
-
-class CSPTrainTest(CSPTrain):
-    def __init__(self,filename, test_filename, **kwargs):
-        self.test_filename = test_filename
-        super(CSPTrainTest, self).__init__(filename, **kwargs)
-
-    def run(self):
-        log.info("Loading train set...")
-        self.load_bbci_set()
-        log.info("Loading test set...")
-        self.load_bbci_test_set()
-        log.info("Cleaning both sets...")
-        self.clean_both_sets()
-        log.info("Preprocessing train set...")
-        self.preprocess_set()
-        log.info("Preprocessing test set...")
-        self.preprocess_test_set()
-        self.remember_sensor_names()
-        self.init_training_vars()
-        log.info("Running Training...")
-        self.run_training()
-
-    def load_bbci_test_set(self):
-        #TODELAY: do we even need to assign bbci_test_set to this object?
-        self.bbci_test_set = BBCIDataset(self.test_filename, 
-            sensor_names=self.load_sensor_names)
-        self.bbci_test_set.load_continuous_signal()
-        self.bbci_test_set.add_markers()
-        self.test_cnt = self.bbci_test_set.cnt
-        del self.bbci_test_set.cnt # save memory
-
-    def clean_both_sets(self):
-        cleaner = BBCITwoSetsCleaner(second_filename=self.test_filename,
-            load_sensor_names=self.load_sensor_names,
-            rejection_var_ival=self.rejection_var_ival, 
-            rejection_blink_ival=self.rejection_blink_ival,
-            max_min=self.max_min, 
-            whisker_percent=self.whisker_percent, 
-            whisker_length=self.whisker_length)
-        
-        (rejected_chans, rejected_trials, clean_trials) = cleaner.clean(
-            self.cnt, self.filename)
-        
-        self.rejected_chans = rejected_chans
-        self.rejected_trials = rejected_trials
-        self.clean_trials = clean_trials
-        # do not clean test trials for now...
-        self.rejected_test_trials = []
-        self.clean_test_trials = range(len(self.test_cnt.markers))
-        # do not remove rejected channels yet to allow calling
-        # this function several times with same result
-        
-        assert np.intersect1d(self.clean_trials, self.rejected_trials).size == 0
-        assert np.intersect1d(self.clean_test_trials, 
-            self.rejected_test_trials).size == 0
-        assert np.array_equal(np.union1d(self.clean_test_trials, 
-            self.rejected_test_trials), range(len(self.test_cnt.markers)))
-        assert np.array_equal(np.union1d(self.clean_trials, 
-            self.rejected_trials), range(len(self.cnt.markers)))
-
-    def preprocess_test_set(self):
-        # Remove same chans as in train set...        
-        self.test_cnt = select_channels(self.test_cnt, self.rejected_chans, 
-            invert=True)
-        if self.sensor_names is not None:
-            self.sensor_names = sort_topologically(self.sensor_names)
-            self.test_cnt = select_channels(self.test_cnt, self.sensor_names)
-        self.test_cnt = resample_cnt(self.test_cnt, newfs=self.resample_fs)
-        if self.low_cut_off_hz is not None:
-            self.test_cnt = highpass_cnt(self.test_cnt, low_cut_off_hz=self.low_cut_off_hz)
-        if self.common_average_reference is True:
-            self.test_cnt = common_average_reference_cnt(self.test_cnt)
-
-
-    def init_training_vars(self):
-        assert self.restricted_n_trials is None, "Not implemented yet"
-        self.filterbands = generate_filterbank(min_freq=self.min_freq,
-            max_freq=self.max_freq, last_low_freq=self.last_low_freq, 
-            low_width=self.low_width, high_width=self.high_width)
-        self.class_pairs = list(itertools.combinations([0,1,2,3],2))
-        train_fold = self.clean_trials
-        num_all_train_trials = len(self.rejected_trials) + len(self.clean_trials)
-        assert num_all_train_trials == len(self.cnt.markers), ("all markers should "
-            "correspond to one train trial")
-        # you have to add number of train trials to the test indices, since
-        # train and test will be concatenated...
-        test_fold = np.array(self.clean_test_trials) + num_all_train_trials
-        self.folds = [{'train': train_fold, 'test': test_fold}]
-        assert np.intersect1d(self.folds[0]['test'], 
-            self.folds[0]['train']).size == 0
-
-        # merge cnts!!
-        self.cnt = append_cnt(self.cnt, self.test_cnt)
-
 def generate_filterbank(min_freq, max_freq, last_low_freq,
         low_width, high_width):
     assert isinstance(min_freq, int) or min_freq.is_integer()

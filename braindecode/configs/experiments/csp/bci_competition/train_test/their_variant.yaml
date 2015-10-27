@@ -1,0 +1,11 @@
+ {
+    extends: ['configs/experiments/csp/bci_competition/their_variant_good_ival.yaml'],
+    variants: [[
+    {        
+        save_path: ['data/models/csp/bci-competition/train-test/their-variant/'],
+        num_folds: [2],
+        standardize: [false],
+    }
+    ]]
+ }
+ 

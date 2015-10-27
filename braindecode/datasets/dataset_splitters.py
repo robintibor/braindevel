@@ -2,168 +2,129 @@ from abc import ABCMeta, abstractmethod
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 from sklearn.cross_validation import KFold
 import numpy as np
-from copy import deepcopy
 from collections import OrderedDict
+from numpy.random import RandomState
 
-class DatasetTrainValidTestSplitter():
+class DatasetTrainValidTestSplitter(object):
     __metaclass__ = ABCMeta
     @abstractmethod
-    def split_into_train_valid_test(self):
+    def split_into_train_valid_test(self, dataset):
         raise NotImplementedError("Subclass needs to implement this")
 
-    @abstractmethod
-    def ensure_dataset_is_loaded(self):
-        raise NotImplementedError("Subclass needs to implement this")
-
-    @abstractmethod
-    def free_memory_if_reloadable(self):
-        raise NotImplementedError("Subclass needs to implement this")
-
-    @abstractmethod
-    def reload_data(self):
-        raise NotImplementedError("Subclass needs to implement this")
-
-class DatasetSingleFoldSplitter(DatasetTrainValidTestSplitter):
-    def __init__(self, dataset, num_folds=10, i_test_fold=-1):
-        self.dataset = dataset
-        self.num_folds = num_folds
-        self.i_test_fold = i_test_fold
+class DatasetFixedTrialSplitter(DatasetTrainValidTestSplitter):
+    def __init__(self, n_train_trials, valid_set_fraction):
+        self.n_train_trials = n_train_trials
+        self.valid_set_fraction = valid_set_fraction
         
-    def ensure_dataset_is_loaded(self):
-        if (hasattr(self.dataset, '_data_not_loaded_yet') and 
-            self.dataset._data_not_loaded_yet):
-            self.dataset.load()
-        
-    def split_into_train_valid_test(self):
+    def split_into_train_valid_test(self, dataset):
         """ Split into train valid test by splitting 
         dataset into num folds, test fold nr should be given, 
         valid fold will be the one immediately before the test fold, 
         train folds the remaining 8 folds"""
-        assert self.dataset.view_converter.axes[0] == 'b'
-        assert hasattr(self.dataset, 'X') # needs to be loaded already
-        num_trials = self.dataset.get_topological_view().shape[0]
+        assert dataset.view_converter.axes[0] == 'b'
+        assert hasattr(dataset, 'X') # needs to be loaded already
+        num_trials = dataset.get_topological_view().shape[0]
+        assert num_trials > self.n_train_trials
+        
+        # split train into train and valid
+        # valid is at end, just subtract -1 because of zero-based indexing
+        i_last_valid_trial = self.n_train_trials - 1
+        i_last_train_trial = self.n_train_trials - 1 - int(
+            self.valid_set_fraction * self.n_train_trials)
+        # always +1 since ranges are exclusive the end index(!)
+        train_fold = range(i_last_train_trial+1)
+        valid_fold = range(i_last_train_trial+1,i_last_valid_trial+1)
+        test_fold = range(i_last_valid_trial+1, num_trials)
+        
+
+        datasets = split_set_by_indices(dataset, train_fold, valid_fold,
+            test_fold)
+        return datasets
+
+class DatasetSingleFoldSplitter(DatasetTrainValidTestSplitter):
+    def __init__(self, num_folds=10, i_test_fold=-1,
+            shuffle=False):
+        self.num_folds = num_folds
+        self.i_test_fold = i_test_fold
+        self.shuffle=shuffle
+
+    def split_into_train_valid_test(self, dataset):
+        """ Split into train valid test by splitting 
+        dataset into num folds, test fold nr should be given, 
+        valid fold will be the one immediately before the test fold, 
+        train folds the remaining 8 folds"""
+        assert dataset.view_converter.axes[0] == 'b'
+        assert hasattr(dataset, 'X') # needs to be loaded already
+        num_trials = dataset.get_topological_view().shape[0]
         # also works in case test fold nr is 0 as it will just take -1 
         # which is fine last fold)
         i_valid_fold = self.i_test_fold - 1
-        folds = list(KFold(num_trials, n_folds=self.num_folds, shuffle=False))
+        
+        if self.shuffle:
+            rng = RandomState(729387987) #TODO: check it rly leads to same split when being called twice
+            folds = list(KFold(num_trials, n_folds=self.num_folds,
+                shuffle=self.shuffle, random_state=rng))
+        else:
+            folds = list(KFold(num_trials, n_folds=self.num_folds,
+                shuffle=False))
         # [1] needed as it is always a split of whole dataset into train/test
         # indices
         test_fold = folds[self.i_test_fold][1]
         valid_fold = folds[i_valid_fold][1]
         full_fold = range(num_trials)
-        train_fold = np.setdiff1d(full_fold, 
+        train_fold = np.setdiff1d(full_fold,
             np.concatenate((valid_fold, test_fold)))
 
+        datasets = split_set_by_indices(dataset, train_fold, valid_fold,
+            test_fold)
+        return datasets
+
+def split_set_by_indices(dataset, train_fold, valid_fold, test_fold):
+        num_trials = dataset.get_topological_view().shape[0]
         # Make sure there are no overlaps and we have all possible trials
         # assigned
         assert np.intersect1d(valid_fold, test_fold).size == 0
         assert np.intersect1d(train_fold, test_fold).size == 0
         assert np.intersect1d(train_fold, valid_fold).size == 0
-        assert set(np.concatenate((train_fold, valid_fold, test_fold))) == set(range(num_trials))
-        train_set= DenseDesignMatrix(
-            topo_view=self.dataset.get_topological_view()[train_fold], 
-            y=self.dataset.y[train_fold], 
-            axes=self.dataset.view_converter.axes)
-        valid_set= DenseDesignMatrix(
-            topo_view=self.dataset.get_topological_view()[valid_fold],
-            y=self.dataset.y[valid_fold], 
-            axes=self.dataset.view_converter.axes)
-        test_set= DenseDesignMatrix(
-            topo_view=self.dataset.get_topological_view()[test_fold], 
-            y=self.dataset.y[test_fold], 
-            axes=self.dataset.view_converter.axes)
+        assert (set(np.concatenate((train_fold, valid_fold, test_fold))) == 
+            set(range(num_trials)))
+        
+        train_set = DenseDesignMatrix(topo_view=dataset.get_topological_view()[train_fold], 
+            y=dataset.y[train_fold], 
+            axes=dataset.view_converter.axes)
+        valid_set = DenseDesignMatrix(
+            topo_view=dataset.get_topological_view()[valid_fold], 
+            y=dataset.y[valid_fold], 
+            axes=dataset.view_converter.axes)
+        test_set = DenseDesignMatrix(
+            topo_view=dataset.get_topological_view()[test_fold], 
+            y=dataset.y[test_fold], 
+            axes=dataset.view_converter.axes)
         # make ordered dict to make it easier to iterate, i.e. for logging
-        return OrderedDict([('train', train_set),
-            ('valid', valid_set), 
-            ('test', test_set)])
-        
-    def free_memory_if_reloadable(self):
-        if hasattr(self.dataset, 'reload'):
-            del self.dataset.X
-            
-    def reload_data(self):
-        if hasattr(self.dataset, 'reload'):
-            self.dataset.reload()
-        
+        datasets = OrderedDict([('train', train_set), ('valid', valid_set), 
+                ('test', test_set)])
+        return datasets
 
-class DatasetTwoFileSingleFoldSplitter(DatasetTrainValidTestSplitter):
-    def __init__(self, train_set, test_set, num_folds):
-        """ num_folds here just determines size of valid set and train set.
-        E.g. if num_folds is 5, 
-        valid set will have 20% of the train set trials"""
-        self.train_set = train_set
-        self.test_set = test_set
-        self.num_folds = num_folds
-
-    def ensure_dataset_is_loaded(self):
-        for dataset in [self.train_set, self.test_set]:
-            if (hasattr(dataset, '_data_not_loaded_yet') and 
-                    dataset._data_not_loaded_yet):
-                dataset.load()
-
-    def split_into_train_valid_test(self):
-        """ Split into train valid test by splitting 
-        train dataset into num folds, test fold nr should be given, 
-        valid fold will be the one immediately before the test fold, 
-        train folds the remaining 8 folds"""
-        assert self.train_set.view_converter.axes[0] == 'b'
-        assert hasattr(self.train_set, 'X') # needs to be loaded already
-        num_trials = self.train_set.get_topological_view().shape[0]
-        folds = list(KFold(num_trials, n_folds=self.num_folds, shuffle=False))
-        i_valid_fold = -1 # always use last fold as validation fold
-        valid_fold = folds[i_valid_fold][1]
-        full_fold = range(num_trials)
-        train_fold = np.setdiff1d(full_fold, valid_fold)
-
-        # Make sure there are no overlaps and we have all possible trials
-        # assigned
-        assert np.intersect1d(train_fold, valid_fold).size == 0
-        assert set(np.concatenate((train_fold, valid_fold))) == set(range(num_trials))
-        train_set= DenseDesignMatrix(
-            topo_view=self.train_set.get_topological_view()[train_fold], 
-            y=self.train_set.y[train_fold], 
-            axes=self.train_set.view_converter.axes)
-        valid_set= DenseDesignMatrix(
-            topo_view=self.train_set.get_topological_view()[valid_fold],
-            y=self.train_set.y[valid_fold], 
-            axes=self.train_set.view_converter.axes)
-        test_set= deepcopy(self.test_set) # test set maybe preprocessed=modified by caller
-        return {'train': train_set, 
-            'valid': valid_set, 
-            'test': test_set}
-
-    def free_memory_if_reloadable(self):
-        for dataset in [self.train_set, self.test_set]:
-            if hasattr(dataset, 'reload'):
-                del dataset.X
-
-    def reload_data(self):
-        for dataset in [self.train_set, self.test_set]:
-            if hasattr(dataset, 'reload'):
-                dataset.reload()
-        
 class PreprocessedSplitter(object):
     def __init__(self, dataset_splitter, preprocessor):
         self.dataset_splitter = dataset_splitter
         self.preprocessor = preprocessor
 
-    def get_train_valid_test(self):
-        datasets = self.dataset_splitter.split_into_train_valid_test()
-        self.dataset_splitter.free_memory_if_reloadable()
+    def get_train_valid_test(self, dataset):
+        datasets = self.dataset_splitter.split_into_train_valid_test(dataset)
+        if dataset.reloadable:
+            dataset.free_memory()
         if self.preprocessor is not None:
             self.preprocessor.apply(datasets['train'], can_fit=True)
             self.preprocessor.apply(datasets['valid'], can_fit=False)
             self.preprocessor.apply(datasets['test'], can_fit=False)
         return datasets
 
-    def get_train_merged_valid_test(self):
-        self.dataset_splitter.reload_data()
-        new_datasets = self.get_train_fitted_valid_test()
-        return new_datasets
-
-    def get_train_fitted_valid_test(self):
-        this_datasets = self.dataset_splitter.split_into_train_valid_test()
-        self.dataset_splitter.free_memory_if_reloadable()
+    def get_train_merged_valid_test(self, dataset):
+        dataset.ensure_is_loaded()
+        this_datasets = self.dataset_splitter.split_into_train_valid_test(dataset)
+        if dataset.reloadable:
+            dataset.free_memory()
         train_valid_set = self.concatenate_sets(this_datasets['train'],
             this_datasets['valid'])
         test_set = this_datasets['test']
@@ -216,6 +177,7 @@ class PreprocessedSplitter(object):
         # necessary
         for next_split in xrange(next_start + split_index, 
                 len(full_set.y), original_full_len):
+            assert False, "Please check/test this code again if you need it"
             next_end = next_split + split_to_end_num
             topo_first = np.concatenate((topo_first, 
                 full_topo[next_start:next_split]))

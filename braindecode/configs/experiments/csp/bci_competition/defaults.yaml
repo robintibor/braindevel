@@ -1,0 +1,16 @@
+ {
+    extends: ['configs/experiments/csp/defaults.yaml',
+        'configs/experiments/bci_competition/combined/combined_files.yaml'],
+    templates: {
+        no_cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner { },
+    }, 
+    variants: [[
+    {        
+        set_type: ["BCICompetition4Set2A"],
+        cleaner: [$no_cleaner],
+        num_selected_filterbands: ["null"],
+        sensor_names: ["null"],
+    }
+    ]]
+ }
+ 

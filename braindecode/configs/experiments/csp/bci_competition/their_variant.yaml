@@ -1,0 +1,18 @@
+ {
+    extends: ['configs/experiments/csp/bci_competition/defaults.yaml'],
+    variants: [[
+    {        
+        save_path: ['data/models/csp/bci-competition/their-variant/'],
+        resample_fs: ["null"],
+        low_cut_off_hz: ["null"],
+        min_freq: [6],
+        max_freq: [38],
+        low_width: [4],
+        high_width: [4],
+        last_low_freq: [38],
+        segment_ival: [[500,2500]],
+        num_selected_features: ["null"],
+    }
+    ]]
+ }
+ 

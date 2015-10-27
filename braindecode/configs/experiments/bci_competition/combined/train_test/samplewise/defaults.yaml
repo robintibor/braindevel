@@ -1,0 +1,14 @@
+{
+    extends: ['configs/experiments/bci_competition/combined/train_test/defaults.yaml',
+        'configs/experiments/samplewise/defaults.yaml'],
+    variants: [[
+        {
+            sample_stride: [30],
+            valid_set_fraction: [0.2],
+            min_freq: [4],
+            low_cut_off_hz: [4],
+            max_increasing_epochs: [20],
+            max_epochs: [200],
+        }
+    ]]
+}

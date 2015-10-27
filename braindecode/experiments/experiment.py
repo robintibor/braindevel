@@ -1,4 +1,4 @@
-import lasagn
+import lasagne
 from numpy.random import RandomState
 import theano
 import theano.tensor as T
@@ -8,18 +8,54 @@ from braindecode.veganlasagne.remember import RememberBest
 from braindecode.veganlasagne.stopping import Or, MaxEpochs, ChanBelow
 import logging
 from pylearn2.utils.timing import log_timing
+from copy import deepcopy
+from braindecode.datasets.dataset_splitters import (DatasetSingleFoldSplitter,
+    PreprocessedSplitter)
 log = logging.getLogger(__name__)
 
+class ExperimentCrossValidation():
+    def __init__(self, final_layer, dataset, exp_args, num_folds, shuffle):
+        self.final_layer = final_layer
+        self.dataset = dataset
+        self.num_folds = num_folds
+        self.exp_args = exp_args
+        self.shuffle = shuffle
+        
+    def setup(self):
+        lasagne.random.set_rng(RandomState(9859295))
+
+    def run(self):
+        self.all_layers = []
+        self.all_monitor_chans = []
+        for i_fold in range(self.num_folds):
+            log.info("Running fold {:d} of {:d}".format(i_fold + 1,
+                self.num_folds))
+            this_layers = deepcopy(self.final_layer)
+            this_exp_args = deepcopy(self.exp_args)
+            ## make sure dataset is loaded... 
+            self.dataset.ensure_is_loaded()
+            dataset_splitter = DatasetSingleFoldSplitter(
+                num_folds=self.num_folds, i_test_fold=i_fold,
+                shuffle=self.shuffle)
+            exp = Experiment()
+            exp.setup(this_layers, self.dataset, dataset_splitter, **this_exp_args)
+            exp.run()
+            self.all_layers.append(deepcopy(exp.final_layer))
+            self.all_monitor_chans.append(deepcopy(exp.monitor_chans))
+
 class Experiment(object):
-    def setup(self, final_layer, dataset_provider, loss_var_func,
-            updates_var_func, batch_iter_func, monitors, stop_criterion,
+    def setup(self, final_layer, dataset, splitter, preprocessor,
+            iterator, loss_var_func, updates_var_func, monitors, stop_criterion,
             target_var=None):
         lasagne.random.set_rng(RandomState(9859295))
         self.final_layer = final_layer
-        self.dataset_provider = dataset_provider
-        self.batch_iter_func = batch_iter_func
+        self.dataset = dataset
+        self.dataset_provider = PreprocessedSplitter(splitter, preprocessor)
+        self.preprocessor=preprocessor
+        self.iterator = iterator
         self.monitors = monitors
         self.stop_criterion = stop_criterion
+        self.dataset.ensure_is_loaded()
         self.print_layer_sizes()
         log.info("Create theano functions...")
         self.create_theano_functions(final_layer, loss_var_func,
@@ -67,26 +103,25 @@ class Experiment(object):
         self.run_until_second_stop()
 
     def run_until_early_stop(self):
-        datasets = self.dataset_provider.get_train_valid_test()
+        datasets = self.dataset_provider.get_train_valid_test(self.dataset)
         self.create_monitors(datasets)
         self.run_until_stop(datasets, remember_best=True)
         
     def run_until_stop(self, datasets, remember_best):
-        train_set = datasets['train']
         self.monitor_epoch(datasets)
         self.print_epoch()
         if remember_best:
             self.remember_extension.remember_epoch(self.monitor_chans,
                 self.all_params)
-        batch_rng = RandomState(328774)
+            
+        self.iterator.reset_rng()
         while not self.stop_criterion.should_stop(self.monitor_chans):
-            all_batch_inds = self.batch_iter_func(len(train_set.y),
-                batch_size=60, rng=batch_rng)
+            batch_generator = self.iterator.get_batches(datasets['train'],
+                deterministic=False)
             
             with log_timing(log, None, final_msg='Time updates this epoch:'):
-                for batch_inds in all_batch_inds:
-                    self.train_func(train_set.get_topological_view()[batch_inds], 
-                        train_set.y[batch_inds])
+                for inputs, targets in batch_generator:
+                    self.train_func(inputs, targets)
             self.monitor_epoch(datasets)
             self.print_epoch()
             if remember_best:
@@ -102,7 +137,8 @@ class Experiment(object):
                 target_value=self.monitor_chans['train_loss'][-1])])
     
     def run_until_second_stop(self):
-        datasets = self.dataset_provider.get_train_merged_valid_test()
+        datasets = self.dataset_provider.get_train_merged_valid_test(
+            self.dataset)
         self.run_until_stop(datasets, remember_best=False)
 
     def create_monitors(self, datasets):
@@ -114,7 +150,7 @@ class Experiment(object):
     def monitor_epoch(self, all_datasets):
         for monitor in self.monitors:
             monitor.monitor_epoch(self.monitor_chans, self.pred_func,
-                self.loss_func, all_datasets)
+                self.loss_func, all_datasets, self.iterator)
 
     def print_epoch(self):
         # -1 due to doing one monitor at start of training

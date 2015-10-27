@@ -1,0 +1,20 @@
+{
+    templates: {
+        samplewise_iterator: !obj:braindecode.veganlasagne.monitors.SampleWindowsIterator {
+            batch_size: $batch_size,
+            trial_window_fraction: $trial_window_fraction,
+            sample_axes_name: $sample_axes_name,
+            stride: $sample_stride,
+        },
+        samplewise_misclass:  !obj:braindecode.veganlasagne.monitors.SampleWindowMisclassMonitor { } , 
+        
+    },
+    variants: [[{
+            misclass_monitor: [$samplewise_misclass],
+            iterator: [$samplewise_iterator],
+            batch_size: [60],
+            trial_window_fraction: [0.5],
+            sample_axes_name: [0],
+            sample_stride: [1],
+    }]]
+}

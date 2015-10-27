@@ -3,58 +3,84 @@ from copy import deepcopy, copy
 import yaml
 from string import Template
 from collections import deque
+import numpy as np
 
 def transform_vals_to_string_constructor(loader, node):
     return dict([(v[0].value, yaml.serialize(v[1])) for v in node.value])
 
 def create_experiment_yaml_strings_from_files(config_filename, 
         main_template_filename):
+    # First read out all files (check for extends attribute)
+    # and transform to files to strings...
+    # Then call creation of experiment yaml strings
+    config_strings = create_config_strings(config_filename)
+    with open(main_template_filename, 'r') as main_template_file:
+        main_template_str = main_template_file.read()
+    return create_experiment_yaml_strings(config_strings, main_template_str)
+
+def create_config_strings(config_filename):
     yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
     config_strings = []
-
     config_filename_stack = deque([config_filename])
-
     while len(config_filename_stack) > 0:
         config_filename = config_filename_stack.pop()
-        with open(config_filename,'r') as config_file:
+        with open(config_filename, 'r') as config_file:
             config_str = config_file.read()
-        config_obj = yaml.load(config_str.replace("templates:",
-            "templates: !TransformValsToString"))
+        config_obj = yaml.load(config_str.replace("templates:", "templates: !TransformValsToString"))
         if 'extends' in config_obj:
             other_filenames = config_obj['extends']
             config_filename_stack.extend(other_filenames)
         config_strings.append(config_str)
-
+    # Need to reverse as top file needs to be first config string
+    # (assumption by function create_templates_variants_from_config_objects)
     config_strings = config_strings[::-1]
-    
-    with open(main_template_filename, 'r') as main_template_file:
-        main_template_str = main_template_file.read()
-    return create_experiment_yaml_strings(config_strings, main_template_str)
-    
+    return config_strings
 
 def create_experiment_yaml_strings(all_config_strings, main_template_str):
     """ Config strings should be from top file to bottom file."""
+    config_objects = create_config_objects(all_config_strings)
+    final_params = create_params_from_config_objects(config_objects)
+   
+    train_strings = []
+    for i_config in range(len(final_params)):
+        train_str = Template(main_template_str).substitute(
+            final_params[i_config])
+        train_strings.append(train_str)
+    return train_strings
+
+def create_config_objects(all_config_strings):
+    yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
+    config_objects = [yaml.load(conf_str.replace("templates:", 
+                "templates: !TransformValsToString")) for 
+        conf_str in all_config_strings]
+    return config_objects
+
+def create_params_from_config_objects(config_objects):
+    templates, variants = create_templates_variants_from_config_objects(
+        config_objects)
+    final_params = merge_parameters_and_templates(variants, templates)
+    # add original params for later printing
+    for i_config in range(len(final_params)):
+        final_params[i_config]['original_params'] = yaml.dump(
+            variants[i_config], default_flow_style=True)
+    # Remove equal params. Can happen if param in upper file has several possible
+    # values and in lower file is set to be always the same one, e.g.,
+    # upper: resample_fs: [300,150], lower: resample_fs: [200]
+    _, unique_inds = np.unique(final_params, return_index=True)
+    unique_final_params = np.array(final_params)[np.sort(unique_inds)]
+    return unique_final_params
+
+def create_templates_variants_from_config_objects(config_objects):
     variants = []
     templates = dict()
-    yaml.add_constructor(u'!TransformValsToString',
-        transform_vals_to_string_constructor)
-    for config_str in all_config_strings:
-        config_obj = yaml.load(config_str.replace("templates:", "templates: !TransformValsToString"))
+    for config_obj in config_objects:
         if 'variants' in config_obj:
             sub_variants = create_variants_recursively(config_obj['variants'])
             variants = product_of_lists_of_dicts(variants, sub_variants)
         if 'templates' in config_obj:
             templates.update(config_obj['templates'])
+    return templates, variants
 
-    final_params = merge_parameters_and_templates(variants, templates)
-    # possibly remove equal params?
-    
-    train_strings = []
-    for i_config in range(len(final_params)):
-        final_params[i_config]['original_params'] = yaml.dump(variants[i_config])
-        train_str = Template(main_template_str).substitute(final_params[i_config])
-        train_strings.append(train_str)
-    return train_strings
 
 def create_variants_recursively(variants):
         """
@@ -201,12 +227,12 @@ def process_templates(templates, parameters):
                 parameters_without_template_parameters.pop(param)
         template_string = Template(template_string).substitute(parameters)
         processed_templates[template_name] = template_string
-        
+
     # Now it can still happen that a template has been replaced by another template
     # Try to fix this also
     for template_name in processed_templates.keys():
-        template_str = processed_templates[template_name]
-        if '$' in template_str:
+        template_string = processed_templates[template_name]
+        if '$' in template_string:
             new_str = Template(template_string).substitute(processed_templates)
             processed_templates[template_name] = new_str
     return processed_templates, parameters_without_template_parameters
