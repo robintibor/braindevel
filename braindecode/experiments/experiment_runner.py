@@ -115,6 +115,9 @@ class ExperimentsRunner:
         train_dict = self._load_without_layers(train_str)
         dataset = train_dict['dataset'] 
         dataset.load()
+        iterator = train_dict['exp_args']['iterator']
+        batch_gen = iterator.get_batches(dataset, deterministic=False)
+        dummy_batch_topo = batch_gen.next()[0]
         dataset_splitter = train_dict['dataset_splitter']
         # TODO: change to new experiment class design
         assert 'in_sensors' in train_str
@@ -122,11 +125,11 @@ class ExperimentsRunner:
         assert 'in_cols' in train_str
         
         train_str = train_str.replace('in_sensors',
-            str(dataset.get_topological_view().shape[1]))
+            str(dummy_batch_topo.shape[1]))
         train_str = train_str.replace('in_rows',
-            str(dataset.get_topological_view().shape[2]))
+            str(dummy_batch_topo.shape[2]))
         train_str = train_str.replace('in_cols', 
-            str(dataset.get_topological_view().shape[3]))
+            str(dummy_batch_topo.shape[3]))
         
         self._save_train_string(train_str, experiment_index)
         # reset rng for actual loading of layers, so you can reproduce it 

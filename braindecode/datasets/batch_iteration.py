@@ -23,8 +23,9 @@ def get_balanced_batches(num_trials, batch_size, rng, shuffle=True):
     # We will use the test folds as our mini-batches,
     # training fold indices are completely ignored here
     # test folds should all be distinct and together be the complete set
-    if batch_size < num_trials:
-        folds = KFold(num_trials, n_folds=num_trials // batch_size, 
+    n_batches = num_trials // batch_size
+    if n_batches > 1:
+        folds = KFold(num_trials, n_folds=n_batches, 
                       shuffle=shuffle, random_state=rng)
         test_folds = [f[1] for f in folds]
     else:

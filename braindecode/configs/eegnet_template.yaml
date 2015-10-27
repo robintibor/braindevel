@@ -9,11 +9,7 @@
             iterator: $iterator,
             loss_var_func: $loss_var_func,
             updates_var_func: $updates_var_func,
-            monitors: [
-                !obj:braindecode.veganlasagne.monitors.LossMonitor {},
-                !obj:braindecode.veganlasagne.monitors.MisclassMonitor {},
-                !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
-            ],
+            monitors: $monitors,
             stop_criterion: !obj:braindecode.veganlasagne.stopping.Or {
                 stop_criteria: [
                     !obj:braindecode.veganlasagne.stopping.NoDecrease {

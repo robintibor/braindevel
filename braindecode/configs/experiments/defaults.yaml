@@ -17,16 +17,23 @@
             },
         balanced_batch_iterator: !obj:braindecode.datasets.batch_iteration.BalancedBatchIterator {
             batch_size: $batch_size,
-        }
+        },
+        monitors: [
+                !obj:braindecode.veganlasagne.monitors.LossMonitor {},
+                $misclass_monitor,
+                !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
+            ],
+        default_misclass: !obj:braindecode.veganlasagne.monitors.MisclassMonitor {},
     },
     variants: [[{
+            monitors: [$monitors],
+            misclass_monitor: [$default_misclass],
             iterator: [$balanced_batch_iterator],
             dataset_splitter: [$single_fold_splitter],
             batch_size: [60],
             preprocessor: [$online_chan_freq_wise],
             loss_var_func: [$categorical_crossentropy],
             updates_var_func: [$adam],
-            dataset_provider: ["*preprocessed_provider"],
             num_folds: [10],
             i_test_fold: [-1], # test fold => last fold
     }]]
