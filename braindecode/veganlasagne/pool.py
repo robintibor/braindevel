@@ -24,7 +24,6 @@ class GlobalPoolLayerAxisWise(Layer):
     lasagne.layers.GlobalPoolLayer(incoming,
     pool_function=theano.tensor.mean, **kwargs)
     Global pooling layer where you can also set the axes to pool over.
-    This layer pools globally across all trailing dimensions beyond the 2nd.
     Parameters
     ----------
     incoming : a :class:`Layer` instance or tuple
