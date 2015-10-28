@@ -1,6 +1,6 @@
  {
-    extends: ['configs/experiments/bci_competition/combined/fb_net_150_fs.yaml',
-        'configs/experiments/bci_competition/combined/train_test/samplewise/defaults.yaml'],
+    extends: ['configs/experiments/bci_competition/fb_net_150_fs.yaml',
+        'configs/experiments/bci_competition/train_test/samplewise/defaults.yaml'],
     variants: [[
     {        
         sample_stride: [30],

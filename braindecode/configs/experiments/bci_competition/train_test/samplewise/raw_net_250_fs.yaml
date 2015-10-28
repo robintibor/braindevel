@@ -1,6 +1,6 @@
  {
-    extends: ['configs/experiments/bci_competition/combined/raw_net_250_fs.yaml',
-        'configs/experiments/bci_competition/combined/train_test/samplewise/defaults.yaml'],
+    extends: ['configs/experiments/bci_competition/raw_net_250_fs.yaml',
+        'configs/experiments/bci_competition/train_test/samplewise/defaults.yaml'],
     variants: [[
     {        
         sample_stride: [60],

@@ -1,5 +1,5 @@
 {
-    extends: ['configs/experiments/bci_competition/combined/train_test/defaults.yaml',
+    extends: ['configs/experiments/bci_competition/train_test/defaults.yaml',
         'configs/experiments/samplewise/defaults.yaml'],
     variants: [[
         {
