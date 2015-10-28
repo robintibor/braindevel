@@ -116,7 +116,7 @@ class ExperimentsRunner:
         dataset = train_dict['dataset'] 
         dataset.load()
         iterator = train_dict['exp_args']['iterator']
-        batch_gen = iterator.get_batches(dataset, deterministic=False)
+        batch_gen = iterator.get_batches(dataset, shuffle=True)
         dummy_batch_topo = batch_gen.next()[0]
         dataset_splitter = train_dict['dataset_splitter']
         # TODO: change to new experiment class design

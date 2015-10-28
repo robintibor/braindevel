@@ -2,7 +2,6 @@ import lasagne
 from numpy.random import RandomState
 import theano
 import theano.tensor as T
-from braindecode.veganlasagne.update_modifiers import norm_constraint
 from collections import OrderedDict
 from braindecode.veganlasagne.remember import RememberBest
 from braindecode.veganlasagne.stopping import Or, MaxEpochs, ChanBelow
@@ -47,7 +46,8 @@ class ExperimentCrossValidation():
 
 class Experiment(object):
     def __init__(self, final_layer, dataset, splitter, preprocessor,
-            iterator, loss_expression, updates_expression, monitors, stop_criterion):
+            iterator, loss_expression, updates_expression, 
+            updates_modifier, monitors, stop_criterion):
         self.final_layer = final_layer
         self.dataset = dataset
         self.dataset_provider = PreprocessedSplitter(splitter, preprocessor)
@@ -55,6 +55,7 @@ class Experiment(object):
         self.iterator = iterator
         self.loss_expression = loss_expression
         self.updates_expression = updates_expression
+        self.updates_modifier = updates_modifier
         self.monitors = monitors
         self.stop_criterion = stop_criterion
         self.monitor_manager = MonitorManager(monitors)
@@ -89,7 +90,7 @@ class Experiment(object):
         updates = self.updates_expression(loss, params)
         # put norm constraints on all layer, for now fixed to max kernel norm
         # 2 and max col norm 0.5
-        updates = norm_constraint(updates, self.final_layer)
+        updates = self.updates_modifier.modify(updates, self.final_layer)
         input_var = lasagne.layers.get_all_layers(self.final_layer)[0].input_var
         # needed for resetting to best model after early stop
         self.all_params = updates.keys()

@@ -1,12 +1,12 @@
 {
     templates: {
-        samplewise_iterator: !obj:braindecode.veganlasagne.monitors.SampleWindowsIterator {
+        samplewise_iterator: !obj:braindecode.datahandling.batch_iteration.WindowsIterator {
             batch_size: $batch_size,
             n_samples_per_window: $n_samples_per_window,
             sample_axes_name: $sample_axes_name,
             n_sample_stride: $sample_stride,
         },
-        samplewise_misclass:  !obj:braindecode.veganlasagne.monitors.SampleWindowMisclassMonitor { } , 
+        samplewise_misclass:  !obj:braindecode.veganlasagne.monitors.WindowMisclassMonitor { } , 
         
     },
     variants: [[{

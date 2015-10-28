@@ -10,6 +10,7 @@ from lasagne.layers import (DenseLayer, InputLayer)
 import lasagne
 from numpy.random import RandomState
 import numpy as np
+from braindecode.veganlasagne.update_modifiers import MaxNormConstraint
 
 def test_experiment_fixed_split():
     """ Regression test, checking that values have not changed from original run"""
@@ -21,10 +22,11 @@ def test_experiment_fixed_split():
 
     lasagne.random.set_rng(RandomState(9859295))
     in_layer = InputLayer(shape= [None, 10,10,3])
-    network = DenseLayer(incoming=in_layer,
+    network = DenseLayer(incoming=in_layer, name="softmax",
         num_units=2, nonlinearity=lasagne.nonlinearities.softmax)
     
     
+    updates_modifier = MaxNormConstraint({'softmax': 0.5})
     dataset = rand_set
     
     dataset_iterator = BalancedBatchIterator(batch_size=60)
@@ -40,7 +42,8 @@ def test_experiment_fixed_split():
     
     
     exp = Experiment(network, dataset, dataset_splitter, preprocessor,
-              dataset_iterator, loss_var_func, updates_var_func, monitors,
+              dataset_iterator, loss_var_func, updates_var_func, 
+              updates_modifier, monitors,
               stop_criterion)
     exp.setup()
     exp.run()
@@ -128,8 +131,9 @@ def test_experiment_sample_windows():
     
     lasagne.random.set_rng(RandomState(9859295))
     in_layer = InputLayer(shape= [None, 10,5,3])
-    network = DenseLayer(incoming=in_layer,
+    network = DenseLayer(incoming=in_layer, name='softmax',
         num_units=2, nonlinearity=lasagne.nonlinearities.softmax)
+    updates_modifier = MaxNormConstraint({'softmax': 0.5})
     
     dataset = rand_set
     
@@ -147,8 +151,8 @@ def test_experiment_sample_windows():
     
     
     exp = Experiment(network, dataset, dataset_splitter, preprocessor,
-              dataset_iterator, loss_var_func, updates_var_func, monitors,
-              stop_criterion)
+              dataset_iterator, loss_var_func, updates_var_func, 
+              updates_modifier, monitors, stop_criterion)
     exp.setup()
     exp.run()
     

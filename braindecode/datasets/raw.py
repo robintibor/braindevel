@@ -15,7 +15,7 @@ class SignalMatrix(DenseDesignMatrix):
         unsupervised_preprocessor=None):
 
         # sort sensors topologically to allow networks to exploit topology
-        if (sensor_names is not None) and (sensor_names != 'all'):
+        if (sensor_names is not None) and (sensor_names  is not 'all'):
             sensor_names = sort_topologically(sensor_names)
         self.__dict__.update(locals())
         del self.self       
@@ -137,7 +137,7 @@ class CleanSignalMatrix(SignalMatrix):
         if len(self.rejected_chans) > 0:
             self.signal_processor.cnt = select_channels(self.signal_processor.cnt, 
                 self.rejected_chans, invert=True)
-        if (self.sensor_names is not None) and (self.sensor_names != 'all'):
+        if (self.sensor_names is not None) and (self.sensor_names is not 'all'):
             self.signal_processor.cnt = select_channels(
                 self.signal_processor.cnt, 
                 self.sensor_names)

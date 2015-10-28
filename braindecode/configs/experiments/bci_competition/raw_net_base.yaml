@@ -14,6 +14,7 @@
                 num_filters: 40,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'time_conv',
             },
             &drop_time !obj:lasagne.layers.DropoutLayer {
                 incoming: *time_conv,
@@ -24,6 +25,7 @@
                 num_filters: 40,
                 filter_size: [1, -1],
                 nonlinearity: !!python/name:theano.tensor.sqr ,
+                name: 'spat_conv',
             },
             &pool !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
                     incoming: *spat_conv,
@@ -39,15 +41,16 @@
                 incoming: *log,
                 p: 0.5,
             },
-            &softmax !obj:lasagne.layers.DenseLayer {
+            &final_dense !obj:lasagne.layers.DenseLayer {
                     incoming: *drop_feature,
                     num_units: 4,
                     nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+                    name: 'final_dense',
             },
         ],
-        raw_set: !obj:braindecode.datasets.pylearn.BBCIPylearnCleanDataset {
-            signal_marker_set: !obj:braindecode.datasets.signal_processor.SignalProcessor {
-                set_loader: !obj:braindecode.datasets.set_loaders.BCICompetition4Set2A {
+        raw_set: !obj:braindecode.datasets.raw.CleanSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.BCICompetition4Set2A {
                     filename: $dataset_filename
                 },
                 segment_ival: [$trial_start, $trial_stop],
@@ -65,8 +68,14 @@
             cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
             sensor_names: $sensor_names,
         },
+        raw_layer_names_to_norms: {
+            time_conv: 2.0,
+            spat_conv: 2.0,
+            final_dense: 0.5,
+        }
     },
     variants: [[{
+        layer_names_to_norms: [$raw_layer_names_to_norms],
         trial_start: [0],
         trial_stop: [4000],
         sensor_names: ["null"],

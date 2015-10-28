@@ -1,6 +1,6 @@
 {
     templates: {
-        online_chan_freq_wise: !obj:braindecode.datasets.preprocessing.OnlineAxiswiseStandardize {
+        online_chan_freq_wise: !obj:braindecode.datahandling.preprocessing.OnlineAxiswiseStandardize {
             axis: ['c', 1]
         },
         categorical_crossentropy: !!python/name:lasagne.objectives.categorical_crossentropy ,
@@ -11,11 +11,11 @@
             'FCC3h', 'FCC4h', 'FCC6h', 'CCP5h', 'CCP3h', 'CCP4h', 'CCP6h', 'CPP5h',
             'CPP3h', 'CPP4h', 'CPP6h', 'FFC1h', 'FFC2h', 'FCC1h', 'FCC2h', 'CCP1h',
          'CCP2h', 'CPP1h', 'CPP2h'],
-         single_fold_splitter: !obj:braindecode.datasets.dataset_splitters.DatasetSingleFoldSplitter {
+         single_fold_splitter: !obj:braindecode.datahandling.splitters.SingleFoldSplitter {
                 num_folds: $num_split_folds, 
                 i_test_fold: $i_test_fold,
             },
-        balanced_batch_iterator: !obj:braindecode.datasets.batch_iteration.BalancedBatchIterator {
+        balanced_batch_iterator: !obj:braindecode.datahandling.batch_iteration.BalancedBatchIterator {
             batch_size: $batch_size,
         },
         monitors: [
@@ -24,18 +24,23 @@
                 !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
             ],
         default_misclass: !obj:braindecode.veganlasagne.monitors.MisclassMonitor {},
+        max_norm_modifier: !obj:braindecode.veganlasagne.update_modifiers.MaxNormConstraint {
+            layer_names_to_norms: $layer_names_to_norms,
+        },
     },
     variants: [[{
-            monitors: [$monitors],
-            misclass_monitor: [$default_misclass],
-            iterator: [$balanced_batch_iterator],
-            dataset_splitter: [$single_fold_splitter],
-            batch_size: [60],
-            preprocessor: [$online_chan_freq_wise],
-            loss_expression: [$categorical_crossentropy],
-            updates_expression: [$adam],
-            num_split_folds: [10],
-            num_cv_folds: [5],
-            i_test_fold: [-1], # test fold => last fold
+        updates_modifier: [$max_norm_modifier],
+        layer_names_to_norms: [null], # have to supply this in subyamls
+        monitors: [$monitors],
+        misclass_monitor: [$default_misclass],
+        iterator: [$balanced_batch_iterator],
+        dataset_splitter: [$single_fold_splitter],
+        batch_size: [60],
+        preprocessor: [$online_chan_freq_wise],
+        loss_expression: [$categorical_crossentropy],
+        updates_expression: [$adam],
+        num_split_folds: [10],
+        num_cv_folds: [5],
+        i_test_fold: [-1], # test fold => last fold
     }]]
 }

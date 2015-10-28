@@ -8,8 +8,9 @@
         exp_args: {
             preprocessor: &preprocessor $preprocessor,
             iterator: $iterator,
-            loss_expression: $loss_var_func,
-            updates_expression: $updates_var_func,
+            loss_expression: $loss_expression,
+            updates_expression: $updates_expression,
+            updates_modifier: $updates_modifier,
             monitors: $monitors,
             stop_criterion: !obj:braindecode.veganlasagne.stopping.Or {
                 stop_criteria: [

@@ -47,7 +47,6 @@ class MonitorManager(object):
             targets = []
             for batch in iterator.get_batches(dataset, shuffle=False):
                 preds, loss = self.pred_loss_func(batch[0], batch[1])
-                print "preds", preds
                 all_preds.append(preds)
                 all_losses.append(loss)
                 batch_sizes.append(len(batch[0]))

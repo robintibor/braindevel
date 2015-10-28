@@ -10,6 +10,7 @@
                 num_filters: 80,
                 filter_size: [1, 1],
                 nonlinearity: !!python/name:theano.tensor.sqr ,
+                name: 'spat_conv',
             },
             &pool !obj:braindecode.veganlasagne.pool.GlobalPoolLayerAxisWise {
                 incoming: *spat_conv,
@@ -24,15 +25,16 @@
                 incoming: *log,
                 p: 0.5,
             },
-            &softmax !obj:lasagne.layers.DenseLayer {
+            &final_dense !obj:lasagne.layers.DenseLayer {
                     incoming: *drop_feature,
                     num_units: 4,
                     nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+                    name: 'final_dense',
             },
         ],
-        fb_set: !obj:braindecode.datasets.pylearn.BBCIPylearnCleanFilterbankDataset {
-            signal_marker_set: !obj:braindecode.datasets.signal_processor.SignalProcessor {
-                set_loader: !obj:braindecode.datasets.set_loaders.BCICompetition4Set2A {
+        fb_set: !obj:braindecode.datasets.filterbank.FilterbankCleanSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.BCICompetition4Set2A {
                     filename: $dataset_filename
                 },
                 segment_ival: [$trial_start, $trial_stop],
@@ -55,8 +57,13 @@
             low_width: 2,
             high_width: 6,
         },
+        fb_layer_names_to_norms: {
+            spat_conv: 2.0,
+            final_dense: 0.5         
+        },
     },
     variants: [[{
+        layer_names_to_norms: [$fb_layer_names_to_norms],
         trial_start: [500],
         trial_stop: [4000],
         sensor_names: ["null"],
