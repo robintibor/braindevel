@@ -39,36 +39,35 @@ def get_balanced_batches(num_trials, batch_size, rng, shuffle=True):
 
 
 class WindowsIterator(object):
-    def __init__(self,trial_window_fraction, batch_size, sample_axes_name=0,
-            stride=1):
+    def __init__(self, n_samples_per_window, batch_size, sample_axes_name=0,
+            n_sample_stride=1):
         """Note sample sample_axes_name should be 'c', 0, or 1 from bc01 convention!"""
-        self.trial_window_fraction = trial_window_fraction
+        self.n_samples_per_window = n_samples_per_window
         self.rng = RandomState(348846723)
         self.batch_size = batch_size
         self.sample_axes_name = sample_axes_name
-        self.stride = stride
+        self.n_sample_stride = n_sample_stride
 
     def get_batches(self, dataset, shuffle):
         sample_axes_dim = dataset.view_converter.axes.index(self.sample_axes_name)
         topo = dataset.get_topological_view()
         y = dataset.y
         return create_sample_window_batches(topo, y, self.batch_size,
-             sample_axes_dim, self.trial_window_fraction, self.stride, 
+             sample_axes_dim, self.n_samples_per_window, self.n_sample_stride, 
              shuffle=shuffle, rng=self.rng)
     
     def reset_rng(self):
         self.rng = RandomState(348846723)
 
 def create_sample_window_batches(topo, y, batch_size, 
-       sample_axes_dim, trial_window_fraction, stride, shuffle, rng):
+       sample_axes_dim, n_samples_per_window, n_sample_stride, shuffle, rng):
     """Creates batches of windows from given trials (topo should have trials 
     as first dimension). """
     n_trials = topo.shape[0]
     n_samples_per_trial = topo.shape[sample_axes_dim]
-    n_samples_per_window = int(np.round(n_samples_per_trial * 
-        trial_window_fraction))
     # + 1 necessary since range exclusive...
-    start_sample_inds = range(0, n_samples_per_trial - n_samples_per_window + 1, stride)
+    start_sample_inds = range(0, n_samples_per_trial - n_samples_per_window + 1,
+        n_sample_stride)
     n_sample_windows = len(start_sample_inds)
     n_flat_trials = n_sample_windows * n_trials
 

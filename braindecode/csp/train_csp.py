@@ -1,7 +1,7 @@
 from wyrm.processing import select_channels
 from braindecode.mywyrm.processing import (
     resample_cnt, highpass_cnt, common_average_reference_cnt)
-from braindecode.mywyrm.clean import (BBCISetNoCleaner)
+from braindecode.mywyrm.clean import (NoCleaner)
 import itertools
 from sklearn.cross_validation import KFold
 from braindecode.csp.pipeline import (BinaryCSP, FilterbankCSP,
@@ -40,7 +40,7 @@ class CSPTrain(object):
         # remember params for later result printing etc
         self.original_params = deepcopy(local_vars)
         if self.cleaner is None:
-            self.cleaner = BBCISetNoCleaner()
+            self.cleaner = NoCleaner()
 
     def get_trainer(self):
         """ just for later saving"""

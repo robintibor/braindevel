@@ -3,7 +3,6 @@
         'configs/experiments/samplewise/defaults.yaml'],
     variants: [[
         {
-            sample_stride: [30],
             valid_set_fraction: [0.2],
             min_freq: [4],
             low_cut_off_hz: [4],

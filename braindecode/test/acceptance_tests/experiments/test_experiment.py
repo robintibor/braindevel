@@ -133,7 +133,7 @@ def test_experiment_sample_windows():
     
     dataset = rand_set
     
-    dataset_iterator = WindowsIterator(trial_window_fraction=0.5, 
+    dataset_iterator = WindowsIterator(n_samples_per_window=5, 
                                              batch_size=60)
     
     preprocessor = OnlineAxiswiseStandardize(axis=['c', 1])

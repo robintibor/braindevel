@@ -47,7 +47,7 @@
                     ],
                 ],
             },
-            cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner { },
+            cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
             sensor_names: $sensor_names,
             min_freq: $min_freq,
             max_freq: $max_freq,

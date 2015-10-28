@@ -3,13 +3,13 @@ from braindecode.datasets.loaders import BBCIDataset
 from braindecode.mywyrm.processing import (bandpass_cnt, segment_dat_fast)
 from wyrm.processing import select_channels, append_cnt, append_epo
 
-class BBCISetNoCleaner():
+class NoCleaner():
     def clean(self, bbci_set_cnt):
         clean_trials = range(len(bbci_set_cnt.markers))
         (rejected_chans, rejected_trials, clean_trials) = ([],[], clean_trials)
         return (rejected_chans, rejected_trials, clean_trials) 
         
-class BBCISetCleaner():
+class SingleSetCleaner():
     """ Determines rejected trials and channels """
     def __init__(self, eog_set, rejection_var_ival=[0,4000], 
             rejection_blink_ival=[-500,4000],
@@ -34,7 +34,7 @@ class BBCISetCleaner():
         self.rejected_chans = rejected_chans # remember in case other cleaner needs it
         return (rejected_chans, rejected_trials, clean_trials) 
         
-class BBCITwoSetsCleaner():
+class TwoSetsCleaner():
     """ Determines rejected trials and channels """
     def __init__(self, filename, second_filename,
         load_sensor_names,
@@ -90,7 +90,7 @@ class BBCITwoSetsCleaner():
         set_2.segment_into_trials()
         return set_2.cnt
 
-class BBCISecondSetCleaner():
+class SecondSetCleaner():
     """ Class just returns already computed values from a twoset cleaner """
     def __init__(self, filename, first_set_cleaner, rejection_var_ival=[0,4000], 
             rejection_blink_ival=[-500,4000],
@@ -113,7 +113,7 @@ class BBCISecondSetCleaner():
                 self.first_set_cleaner.rejected_trials_second, 
                 self.first_set_cleaner.clean_trials_second) 
     
-class BBCISecondSetOnlyChanCleaner():
+class SecondSetOnlyChanCleaner():
     """ Class just returns already computed values from a twoset cleaner,
     this one will keep all trials but remove cleaned chans. """
     def __init__(self, first_set_cleaner, rejection_var_ival=[0,4000], 

@@ -4,6 +4,7 @@
     variants: [[
     {        
         sample_stride: [60],
+        n_samples_per_window: [600],
         save_path: ['data/models/bci-competition/combined/train-test/samplewise/raw-net-250-fs/'],
     }
     ]]

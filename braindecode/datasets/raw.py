@@ -10,13 +10,12 @@ class SignalMatrix(DenseDesignMatrix):
     """ This loads EEG signal datasets and puts them in a Dense Design Matrix.
     Signal processor needs to load """
     def __init__(self, signal_processor,
-        sensor_names = None,
-        limits=None, start=None, stop=None,
+        sensor_names='all', limits=None, start=None, stop=None,
         axes=('b', 'c', 0, 1),
         unsupervised_preprocessor=None):
 
         # sort sensors topologically to allow networks to exploit topology
-        if sensor_names is not None:
+        if (sensor_names is not None) and (sensor_names != 'all'):
             sensor_names = sort_topologically(sensor_names)
         self.__dict__.update(locals())
         del self.self       
@@ -138,7 +137,7 @@ class CleanSignalMatrix(SignalMatrix):
         if len(self.rejected_chans) > 0:
             self.signal_processor.cnt = select_channels(self.signal_processor.cnt, 
                 self.rejected_chans, invert=True)
-        if self.sensor_names is not None:
+        if (self.sensor_names is not None) and (self.sensor_names != 'all'):
             self.signal_processor.cnt = select_channels(
                 self.signal_processor.cnt, 
                 self.sensor_names)

@@ -5,7 +5,7 @@ from braindecode.veganlasagne.monitors import WindowMisclassMonitor,\
 import numpy as np
 import theano.tensor as T
 
-def test_flat_sample_window_misclass_monitor():
+def test_window_misclass_monitor():
     inputs = T.ftensor4()
     targets = T.vector()
     
@@ -22,8 +22,8 @@ def test_flat_sample_window_misclass_monitor():
     dataset = DenseDesignMatrixWrapper(topo_view=topo_data, y=y, 
         axes=('b','c',0,1))
     
-    iterator = WindowsIterator(batch_size=7, 
-        trial_window_fraction=1/3.0, sample_axes_name=0, stride=1)
+    iterator = WindowsIterator(batch_size=7, n_samples_per_window=2,
+        sample_axes_name=0, n_sample_stride=1)
     
     monitor = WindowMisclassMonitor()
     monitor_manager = MonitorManager([monitor])

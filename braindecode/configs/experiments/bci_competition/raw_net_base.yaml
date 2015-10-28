@@ -62,7 +62,7 @@
                     ],
                 ]
             },
-            cleaner: !obj:braindecode.mywyrm.clean.BBCISetNoCleaner { },
+            cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
             sensor_names: $sensor_names,
         },
     },
