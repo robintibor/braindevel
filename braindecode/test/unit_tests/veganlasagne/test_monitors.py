@@ -1,12 +1,18 @@
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 from braindecode.datahandling.batch_iteration import WindowsIterator
-from braindecode.veganlasagne.monitors import WindowMisclassMonitor
+from braindecode.veganlasagne.monitors import WindowMisclassMonitor,\
+    MonitorManager
 import numpy as np
+import theano.tensor as T
 
 def test_flat_sample_window_misclass_monitor():
-    pred_func = lambda x: np.array((-(np.mean(x, axis=(1,2,3)) - 3), 
-                                np.mean(x, axis=(1,2,3)) - 3, 
-                                [0.0] * len(x))).T
+    inputs = T.ftensor4()
+    targets = T.vector()
+    
+    preds = T.stack((-(T.mean(inputs, axis=(1,2,3)) - 3),
+        T.mean(inputs, axis=(1,2,3)) - 3,
+        0.0 * T.mean(inputs, axis=(1,2,3)))).T
+    loss = T.mean(targets) # some dummy stuff
     # should lead to predictions 0,1,1 which should lead to misclass 1/3.0
 
     topo_data = [range(i_trial,i_trial+6) for i_trial in range(3)]
@@ -20,7 +26,8 @@ def test_flat_sample_window_misclass_monitor():
         trial_window_fraction=1/3.0, sample_axes_name=0, stride=1)
     
     monitor = WindowMisclassMonitor()
+    monitor_manager = MonitorManager([monitor])
+    monitor_manager.create_theano_functions(inputs, targets, preds, loss)
     monitor_chans = {'train_misclass': []}
-    monitor.monitor_epoch(monitor_chans, pred_func, None, {'train': dataset}, 
-        iterator)
+    monitor_manager.monitor_epoch(monitor_chans, {'train': dataset}, iterator)
     assert np.allclose([1/3.0], monitor_chans['train_misclass'])

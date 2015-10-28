@@ -11,6 +11,7 @@ from pylearn2.utils.timing import log_timing
 from copy import deepcopy
 from braindecode.datahandling.splitters import (SingleFoldSplitter,
     PreprocessedSplitter)
+from braindecode.veganlasagne.monitors import MonitorManager
 log = logging.getLogger(__name__)
 
 class ExperimentCrossValidation():
@@ -56,6 +57,7 @@ class Experiment(object):
         self.updates_expression = updates_expression
         self.monitors = monitors
         self.stop_criterion = stop_criterion
+        self.monitor_manager = MonitorManager(monitors)
     
     def setup(self, target_var=None):
         lasagne.random.set_rng(RandomState(9859295))
@@ -76,6 +78,7 @@ class Experiment(object):
         if target_var is None:
             target_var = T.ivector('targets')
         prediction = lasagne.layers.get_output(self.final_layer)
+        
         # test as in during testing not as in "test set"
         test_prediction = lasagne.layers.get_output(self.final_layer, 
             deterministic=True)
@@ -90,11 +93,11 @@ class Experiment(object):
         input_var = lasagne.layers.get_all_layers(self.final_layer)[0].input_var
         # needed for resetting to best model after early stop
         self.all_params = updates.keys()
-        self.loss_func = theano.function([input_var, target_var], test_loss)
 
         self.train_func = theano.function([input_var, target_var], updates=updates)
-        self.pred_func = theano.function([input_var], test_prediction)
         self.remember_extension = RememberBest('valid_misclass')
+        self.monitor_manager.create_theano_functions(input_var, target_var,
+            test_prediction, test_loss)
         
     def run(self):
         log.info("Run until first stop...")
@@ -150,9 +153,11 @@ class Experiment(object):
             monitor.setup(self.monitor_chans, datasets)
             
     def monitor_epoch(self, all_datasets):
-        for monitor in self.monitors:
-            monitor.monitor_epoch(self.monitor_chans, self.pred_func,
-                self.loss_func, all_datasets, self.iterator)
+        self.monitor_manager.monitor_epoch(self.monitor_chans, all_datasets, 
+            self.iterator)
+        #for monitor in self.monitors:
+        #    monitor.monitor_epoch(self.monitor_chans, self.pred_func,
+        #        self.loss_func, all_datasets, self.iterator)
 
     def print_epoch(self):
         # -1 due to doing one monitor at start of training
