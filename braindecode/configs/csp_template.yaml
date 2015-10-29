@@ -12,7 +12,7 @@
             segment_ival: $segment_ival,
             standardize: $standardize,
             num_folds: $num_folds,
-            num_filters: $num_filters,
+            n_top_bottom_csp_filters: $n_top_bottom_csp_filters,
             num_selected_filterbands: $num_selected_filterbands,
             num_selected_features: $num_selected_features,
             forward_steps: $forward_steps,

@@ -24,7 +24,7 @@ class CSPTrain(object):
             segment_ival=[500,4000], 
             standardize=True,
             num_folds=5,
-            num_filters=None, num_selected_filterbands=None,
+            n_top_bottom_csp_filters=None, num_selected_filterbands=None,
             num_selected_features=None,
             forward_steps=4,
             backward_steps=2,
@@ -125,7 +125,7 @@ class CSPTrain(object):
     def run_training(self):
         self.binary_csp = BinaryCSP(self.cnt, self.filterbands, 
             self.filt_order, self.folds, self.class_pairs, 
-            self.segment_ival, self.num_filters, 
+            self.segment_ival, self.n_top_bottom_csp_filters, 
             standardize=self.standardize,
             ival_optimizer=self.ival_optimizer,
             marker_def=self.marker_def)
