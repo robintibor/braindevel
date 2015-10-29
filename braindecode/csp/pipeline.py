@@ -63,11 +63,11 @@ class BinaryCSP(object):
         epo_test_pair = select_classes(epo_test, class_pair)
         if self.ival_optimizer is not None:
             best_segment_ival = self.ival_optimizer.optimize(epo_train_pair)
+            log.info("Ival {:.0f}ms - {:.0f}ms".format(*best_segment_ival))
             epo_train_pair = select_ival(epo_train_pair, best_segment_ival)
             epo_test_pair = select_ival(epo_test_pair, best_segment_ival)
             epo_train = select_ival(epo_train, best_segment_ival)
             epo_test = select_ival(epo_test, best_segment_ival)
-            log.info("Ival {:.0f} - {:.0f}".format(*best_segment_ival))
             
         self.train_labels[fold_nr][pair_nr] = epo_train_pair.axes[0]
         self.test_labels[fold_nr][pair_nr] = epo_test_pair.axes[0]

@@ -4,7 +4,6 @@
     {        
         save_path: ['data/models/csp/bci-competition/their-variant/'],
         resample_fs: ["null"],
-        low_cut_off_hz: ["null"],
         min_freq: [6],
         max_freq: [38],
         low_width: [4],

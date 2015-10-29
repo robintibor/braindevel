@@ -2,7 +2,7 @@ import numpy as np
 from pylearn2.utils import serial
 from copy import deepcopy
 
-class TrainCSPResult(object):
+class CSPResult(object):
     """ For storing a result"""
     def __init__(self, csp_trainer, parameters, training_time):
         self.multi_class = csp_trainer.multi_class
@@ -26,7 +26,8 @@ class TrainCSPResult(object):
         serial.save(filename, self)
     
 
-class TrainCSPModel(object):
+class CSPModel(object):
+    # TODO: check if it even works/is needed?
     """ For storing a model. Warning can be quite big"""
     def __init__(self, csp_trainer):
         self.csp_trainer = csp_trainer

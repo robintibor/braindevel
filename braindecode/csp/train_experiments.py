@@ -13,7 +13,7 @@ import lasagne
 import os
 from numpy.random import RandomState
 import pickle
-from braindecode.csp.results import TrainCSPResult
+from braindecode.csp.results import CSPResult
 log = logging.getLogger(__name__)
 
 class CSPExperimentsRunner(ExperimentsRunner):
@@ -34,7 +34,7 @@ class CSPExperimentsRunner(ExperimentsRunner):
         
         csp_train.run()
         endtime = time.time() 
-        result = TrainCSPResult(
+        result = CSPResult(
                 csp_trainer=csp_train,
                 parameters=train_dict['original_params'],
                 training_time=endtime - starttime)   

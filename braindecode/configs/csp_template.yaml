@@ -2,11 +2,10 @@
         original_params: $original_params,
         save_path: $save_path,
         csp_train: !obj:braindecode.csp.experiment.CSPExperiment {
-            set_loader: !obj:braindecode.datasets.set_loaders.$set_type {
+            set_loader: !obj:braindecode.datasets.loaders.$loader_type {
                 filename: $dataset_filename
             },
             sensor_names: $sensor_names,
-            low_cut_off_hz: $low_cut_off_hz,
             cleaner: $cleaner,
             resample_fs: $resample_fs,
             segment_ival: $segment_ival,

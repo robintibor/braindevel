@@ -107,4 +107,8 @@ def optimize_segment_ival(epo, max_score_fraction=0.8,
     end_sample = (t1 + 1) * n_samples_per_block
     start_ms = start_sample * 1000.0 / epo.fs 
     end_ms = end_sample * 1000.0 / epo.fs
+    # adjust in case trial was already cut out in some way
+    # assuming axis 1 is timeaxis
+    start_ms += epo.axes[1][0]
+    end_ms += epo.axes[1][0]
     return start_ms, end_ms
