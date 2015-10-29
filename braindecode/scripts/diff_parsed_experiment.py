@@ -10,52 +10,6 @@ from braindecode.experiments.parse import create_experiment_yaml_strings_from_fi
 
 _train_str_separator = "#####TRAINSTRING#####"
 
-def parse_command_line_arguments():
-    parser = argparse.ArgumentParser(
-        description="""Diff parsed experiments.
-
-        Examples:
-
-        ./scripts/diff_parsed_experiment.py compare configs/experiments/bci_competition/combined/fb_net_150_fs.yaml 
-        ./scripts/diff_parsed_experiment.py compare configs/experiments/bci_competition/combined/fb_net_150_fs.yaml --dir data/models/bci-competition/combined/raw-net-250-fs/cross-validation/
-        ./scripts/diff_parsed_experiment.py compare configs/experiments/bci_competition/combined/fb_net_150_fs.yaml --file configs/experiments/combined/fb_net_150_fs.yaml.old_train_strs
-        ./scripts/diff_parsed_experiment.py store configs/experiments/bci_competition/combined/fb_net_150_fs.yaml 
-
-    """
-    )
-    parser.add_argument('experiments_file_name',  action='store',
-        help='A YAML configuration file specifying the experiment.')
-    subparsers = parser.add_subparsers(dest="subparser_name")
-    compare_parser = subparsers.add_parser('compare', description="""
-        Compare current experiment and either a folder with yaml experiment strings
-        or a file with old yaml strings created with the store command of this script. 
-        
-    """)
-    
-    compare_opts = compare_parser.add_mutually_exclusive_group(required=False)
-    compare_opts.add_argument('--dir', default=None, type=str,
-                        help='''A directory of yaml files to compare 
-                        the current parse to.''')
-    compare_opts.add_argument('--file', default=None, type=str,
-                        help='''A file with old yaml strings to compare 
-                        the current parse to.''')
-    subparsers.add_parser('store', description="""
-        Store current parse of an experiment into a file with all experiment strings.
-        Example:
-        ./scripts/diff_parsed_experiment.py store configs/experiments/bci_competition/combined/fb_net_150_fs.yaml 
-    """)
-    args = parser.parse_args()
-    
-    
-    if (args.file is None) and (args.dir is None):
-        # if neither file nor dir given, assume old train strs exist...
-        file_name = args.experiments_file_name + ".old_train_strs"
-        if not os.path.isfile(file_name):
-            raise ValueError("No file or directory argument given and "
-                "{:s} does not exist".format(file_name))
-        args.file = file_name
-    
-    return args
 
 def store_experiment_yaml_strings(experiments_file_name):
     train_strs = create_experiment_yaml_strings_from_files(
@@ -111,6 +65,52 @@ def extract_old_train_strings(dir_name, file_name):
             old_train_strs = tmp_file.read().split(_train_str_separator)
     return old_train_strs
 
+def parse_command_line_arguments():
+    parser = argparse.ArgumentParser(
+        description="""Diff parsed experiments.
+
+        Examples:
+
+        ./scripts/diff_parsed_experiment.py compare configs/experiments/bci_competition/combined/fb_net_150_fs.yaml 
+        ./scripts/diff_parsed_experiment.py compare configs/experiments/bci_competition/combined/fb_net_150_fs.yaml --dir data/models/bci-competition/combined/raw-net-250-fs/cross-validation/
+        ./scripts/diff_parsed_experiment.py compare configs/experiments/bci_competition/combined/fb_net_150_fs.yaml --file configs/experiments/combined/fb_net_150_fs.yaml.old_train_strs
+        ./scripts/diff_parsed_experiment.py store configs/experiments/bci_competition/combined/fb_net_150_fs.yaml 
+
+    """
+    )
+    parser.add_argument('experiments_file_name',  action='store',
+        help='A YAML configuration file specifying the experiment.')
+    subparsers = parser.add_subparsers(dest="subparser_name")
+    compare_parser = subparsers.add_parser('compare', description="""
+        Compare current experiment and either a folder with yaml experiment strings
+        or a file with old yaml strings created with the store command of this script. 
+        
+    """)
+    
+    compare_opts = compare_parser.add_mutually_exclusive_group(required=False)
+    compare_opts.add_argument('--dir', default=None, type=str,
+                        help='''A directory of yaml files to compare 
+                        the current parse to.''')
+    compare_opts.add_argument('--file', default=None, type=str,
+                        help='''A file with old yaml strings to compare 
+                        the current parse to.''')
+    subparsers.add_parser('store', description="""
+        Store current parse of an experiment into a file with all experiment strings.
+        Example:
+        ./scripts/diff_parsed_experiment.py store configs/experiments/bci_competition/combined/fb_net_150_fs.yaml 
+    """)
+    args = parser.parse_args()
+    
+    if ((args.subparser_name == 'compare') and (args.file is None) and 
+        (args.dir is None)):
+        # if neither file nor dir given, assume old train strs exist...
+        file_name = args.experiments_file_name + ".old_train_strs"
+        if not os.path.isfile(file_name):
+            raise ValueError("No file or directory argument given and "
+                "{:s} does not exist".format(file_name))
+        args.file = file_name
+    
+    return args
 if __name__ == "__main__":
     args = parse_command_line_arguments()
     if args.subparser_name == 'store':

@@ -1,7 +1,7 @@
 {
     variants: [[{
         num_folds: [5],
-        num_filters: [5],
+        n_top_bottom_csp_filters: [5],
         num_selected_filterbands: ["null"],
         forward_steps: [4],
         backward_steps: [2],

@@ -1,0 +1,13 @@
+ {
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/fb_net_base.yaml',
+        'configs/experiments/bci_competition/filenames.yaml',
+        'configs/experiments/0_2_4_hz_highpass.yaml',
+        'configs/experiments/150_fs.yaml'],
+    variants: [[
+    {        
+        save_path: ['data/models/bci-competition/combined/fb-net-150-fs/'],
+    }
+    ]]
+ }
+ 
