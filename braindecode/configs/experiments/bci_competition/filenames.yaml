@@ -10,4 +10,5 @@ variants: [[{
          'data/bci-competition-iv/2a-combined/A08TE.mat',
          'data/bci-competition-iv/2a-combined/A09TE.mat',
          ],
+        loader_type: [BCICompetition4Set2A],
     }]]

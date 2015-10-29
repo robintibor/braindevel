@@ -1,7 +1,7 @@
 {
-    extends: ['configs/experiments/defaults.yaml'],
+    extends: ['configs/experiments/raw_set.yaml'],
     templates: {
-        raw_net_layers: [ 
+        raw_net_no_drop_time_layers: [ 
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, in_rows, in_cols]
             },
@@ -16,12 +16,8 @@
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
                 name: 'time_conv',
             },
-            &drop_time !obj:lasagne.layers.DropoutLayer {
-                incoming: *time_conv,
-                p: 0.5,
-            },
             &spat_conv !obj:braindecode.veganlasagne.layers.Conv2DAllColsLayer {
-                incoming: *drop_time,
+                incoming: *time_conv,
                 num_filters: 40,
                 filter_size: [1, -1],
                 nonlinearity: !!python/name:theano.tensor.sqr ,
@@ -48,26 +44,6 @@
                     name: 'final_dense',
             },
         ],
-        raw_set: !obj:braindecode.datasets.raw.CleanSignalMatrix {
-            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
-                set_loader: !obj:braindecode.datasets.loaders.BCICompetition4Set2A {
-                    filename: $dataset_filename
-                },
-                segment_ival: [$trial_start, $trial_stop],
-                cnt_preprocessors: [
-                    [
-                        !!python/name:braindecode.mywyrm.processing.resample_cnt , 
-                        {'newfs': $resample_fs},
-                    ],
-                    [
-                        !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
-                        {'low_cut_off_hz': $low_cut_off_hz}
-                    ],
-                ]
-            },
-            cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
-            sensor_names: $sensor_names,
-        },
         raw_layer_names_to_norms: {
             time_conv: 2.0,
             spat_conv: 2.0,
@@ -76,12 +52,6 @@
     },
     variants: [[{
         layer_names_to_norms: [$raw_layer_names_to_norms],
-        trial_start: [0],
-        trial_stop: [4000],
-        sensor_names: ["null"],
-        layers: [$raw_net_layers],
-        dataset: [$raw_set],
-        max_increasing_epochs: [150],
-        max_epochs: [1500],
+        layers: [$raw_net_no_drop_time_layers],
     }]]
 }

@@ -7,7 +7,8 @@
         'configs/experiments/bci_competition/train_test/defaults.yaml'],
     variants: [[
     {        
-        save_path: ['data/models/bci-competition/train-test/avg_raw/150-fs/'],
+        max_epochs: [10],
+        save_path: ['data/models/debug/bci-competition/train-test/avg_raw/150-fs/'],
         valid_set_fraction: [0.2],
         low_cut_off_hz: [4],
     }

@@ -1,0 +1,12 @@
+ {
+    extends: ['configs/experiments/bci_competition/raw_net_150_fs.yaml',
+        'configs/experiments/bci_competition/train_test/samplewise/defaults.yaml'],
+    variants: [[
+    {   
+        max_epochs: [1],
+        sample_stride: [30],
+        n_samples_per_window: [300],     
+        save_path: ['data/models/debug/bci-competition/train-test/samplewise/raw-net-150-fs/'],
+    }
+    ]]
+ }

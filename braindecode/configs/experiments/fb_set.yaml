@@ -1,0 +1,35 @@
+{
+    templates: {
+        fb_set: !obj:braindecode.datasets.filterbank.FilterbankCleanSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.BCICompetition4Set2A {
+                    filename: $dataset_filename
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: [
+                    [
+                        !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                        {'newfs': $resample_fs},
+                    ],
+                    [
+                        !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                        {'low_cut_off_hz': $low_cut_off_hz}
+                    ],
+                ],
+            },
+            cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
+            sensor_names: $sensor_names,
+            min_freq: $min_freq,
+            max_freq: $max_freq,
+            last_low_freq: $last_low_freq,
+            low_width: 2,
+            high_width: 6,
+        },
+    },
+    variants: [[{
+        trial_start: [500],
+        trial_stop: [4000],
+        sensor_names: ["null"],
+        dataset: [$fb_set],
+    }]]
+}

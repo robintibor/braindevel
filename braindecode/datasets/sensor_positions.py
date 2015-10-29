@@ -29,6 +29,14 @@ tight_C_positions = [
     ['CP5','CP3','CP1','CPz','CP2','CP4','CP6'],
     ['CPP5h','CPP3h','CPP1h',[],'CPP2h','CPP4h','CPP6h']]
 
+tight_bci_comp_4_2a_positions = [
+    [[],[],[],'Fz',[],[],[]],
+    [[],'2','3','4','5','6',[]],
+    ['7','C3','9','Cz','11','C4','13'],
+    [[],'14','15','16','17','18',[]],
+    [[],[],'19','Pz','21',[],[]],
+    [[],[],[],'22',[],[],[]]]
+
 tight_Kaggle_positions =  [
     [[],[],'Fp1',[],'FP2',[],[]],
     [[],'F7','F3','Fz','F4','F8',[]],
@@ -112,3 +120,8 @@ def get_EEG_sensors():
 
 def get_EEG_sensors_sorted():
     return sort_topologically(get_EEG_sensors())
+
+def get_bci_competition_iv_2a_sensors():
+    return ['Fz','2','3','4','5','6',
+    '7','C3','9','Cz','11','C4','13',
+    '14','15','16','17','18', '19','Pz','21','22']

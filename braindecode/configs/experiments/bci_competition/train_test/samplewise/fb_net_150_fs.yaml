@@ -1,5 +1,10 @@
  {
-    extends: ['configs/experiments/bci_competition/fb_net_150_fs.yaml',
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/fb_net_base.yaml',
+        'configs/experiments/bci_competition/filenames.yaml',
+        'configs/experiments/150_fs.yaml',
+        'configs/experiments/bci_competition/train_test/defaults.yaml',
+        'configs/experiments/samplewise.yaml',
         'configs/experiments/bci_competition/train_test/samplewise/defaults.yaml'],
     variants: [[
     {        

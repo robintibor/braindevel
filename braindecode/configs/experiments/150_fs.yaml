@@ -1,0 +1,13 @@
+ {
+    variants: [[
+    {        
+        resample_fs: [150],
+        max_freq: [70],
+        last_low_freq: [30],
+        filter_time_length: [15],
+        pool_time_length: [50],
+        pool_time_stride: [10],
+    }
+    ]]
+ }
+ 

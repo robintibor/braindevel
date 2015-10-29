@@ -42,5 +42,7 @@
         num_split_folds: [10],
         num_cv_folds: [5],
         i_test_fold: [-1], # test fold => last fold
+        max_increasing_epochs: [150],
+        max_epochs: [1500],
     }]]
 }

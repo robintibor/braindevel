@@ -9,6 +9,7 @@ from copy import deepcopy
 from pylearn2.utils import serial
 import os.path
 from matplotlib import gridspec
+from pydoc import classname
 
 def plot_head_signals(signals, sensor_names=None, figsize=(12,7), 
     plot_args=None):
@@ -287,22 +288,26 @@ def plot_confusion_matrix_for_result(result_folder, result_nr):
     plot_confusion_matrix(confusion_mat)    
 
 
-def plot_confusion_matrix(confusion_mat, figsize=None, colormap=cm.bwr):
+def plot_confusion_matrix(confusion_mat, class_names=None, figsize=None, colormap=cm.bwr):
     # TODELAY: split into several functions
     # transpose to get confusion matrix same way as matlab
     confusion_mat = confusion_mat.T
+    n_classes = confusion_mat.shape[0]
+    if class_names is None:
+        class_names = [str(i_class + 1) for i_class in xrange(n_classes)]
+        
     # norm by number of targets (targets are columns after transpose!)
     normed_conf_mat = confusion_mat / np.sum(confusion_mat, 
         axis=0).astype(float)
     augmented_conf_mat = deepcopy(normed_conf_mat)
-    augmented_conf_mat = np.vstack([augmented_conf_mat, [np.nan] *4])
-    augmented_conf_mat = np.hstack([augmented_conf_mat, [[np.nan]] * 5])
+    augmented_conf_mat = np.vstack([augmented_conf_mat, [np.nan] *n_classes])
+    augmented_conf_mat = np.hstack([augmented_conf_mat, [[np.nan]] * (n_classes+1)])
     
     fig = pyplot.figure(figsize=figsize)
     pyplot.clf()
     ax = fig.add_subplot(111)
     ax.set_aspect(1)
-    ax.imshow(np.array(augmented_conf_mat), cmap=colormap,  # @UndefinedVariable
+    ax.imshow(np.array(augmented_conf_mat), cmap=colormap,
         interpolation='nearest', alpha=0.6)
     width = len(confusion_mat)
     height = len(confusion_mat[0])
@@ -359,10 +364,12 @@ def plot_confusion_matrix(confusion_mat, figsize=None, colormap=cm.bwr):
                     horizontalalignment='center',
                     verticalalignment='center', fontsize=8)
     
-    pyplot.xticks(range(width), ['Right', 'Left', 'Rest', 'Feet'], fontsize=12)
-    pyplot.yticks(range(height), ['Right', 'Left', 'Rest', 'Feet'], fontsize=12)
+    pyplot.xticks(range(width), class_names, fontsize=12)
+    pyplot.yticks(range(height), class_names, fontsize=12)
+    pyplot.grid(False)
     pyplot.ylabel('Predictions', fontsize=15)
     pyplot.xlabel('Targets', fontsize=15)
+    
     return fig
 
 def plot_most_activated_neurons(activations, layers, num_neurons, plotfunction, figsize=(13,7)):
@@ -405,7 +412,7 @@ def plot_class_probs(probs, value_minmax=None):
     if value_minmax is None:
         value_minmax = np.max(np.abs(probs))
     fig = pyplot.figure(figsize=(2,6))
-    pyplot.imshow(np.atleast_2d(probs), interpolation='nearest', cmap=cm.bwr,  # @UndefinedVariable
+    pyplot.imshow(np.atleast_2d(probs), interpolation='nearest', cmap=cm.bwr,
                           origin='lower', vmin=-value_minmax, vmax=value_minmax)
     # hide normal x/y ticks but show some ticks for orientation in case two classes have almost same color
     fig.axes[0].get_xaxis().set_ticklabels([])

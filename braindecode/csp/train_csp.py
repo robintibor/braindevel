@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 class CSPTrain(object):
     def __init__(self,set_loader, sensor_names=None,
-            low_cut_off_hz=0.5, cleaner=None,
+            low_cut_off_hz=None, cleaner=None,
             resample_fs=None,
             min_freq=0, max_freq=48, last_low_freq=48,
             low_width=4, high_width=4,
@@ -33,14 +33,20 @@ class CSPTrain(object):
             restricted_n_trials=None,
             common_average_reference=False,
             ival_optimizer=None,
-            shuffle=False):
+            shuffle=False,
+            marker_def=None):
         local_vars = locals()
         del local_vars['self']
         self.__dict__.update(local_vars)
         # remember params for later result printing etc
         self.original_params = deepcopy(local_vars)
+        # Default marker def is form our EEG 3-4 sec motor imagery dataset
+        if self.marker_def is None:
+            self.marker_def = {'1 - Right Hand': [1], '2 - Left Hand': [2], 
+                    '3 - Rest': [3], '4 - Feet': [4]}
         if self.cleaner is None:
-            self.cleaner = NoCleaner()
+            self.cleaner = NoCleaner(segment_ival=self.segment_ival,
+                marker_def=self.marker_def)
 
     def get_trainer(self):
         """ just for later saving"""
@@ -94,7 +100,8 @@ class CSPTrain(object):
         self.filterbands = generate_filterbank(min_freq=self.min_freq,
             max_freq=self.max_freq, last_low_freq=self.last_low_freq, 
             low_width=self.low_width, high_width=self.high_width)
-        self.class_pairs = list(itertools.combinations([0,1,2,3],2))
+        n_classes = len(self.marker_def)
+        self.class_pairs = list(itertools.combinations(range(n_classes),2))
         # use only number of clean trials to split folds
         num_clean_trials = len(self.clean_trials)
         if self.restricted_n_trials is not None:
@@ -120,7 +127,8 @@ class CSPTrain(object):
             self.filt_order, self.folds, self.class_pairs, 
             self.segment_ival, self.num_filters, 
             standardize=self.standardize,
-            ival_optimizer=self.ival_optimizer)
+            ival_optimizer=self.ival_optimizer,
+            marker_def=self.marker_def)
         self.binary_csp.run()
         
         self.filterbank_csp = FilterbankCSP(self.binary_csp, 

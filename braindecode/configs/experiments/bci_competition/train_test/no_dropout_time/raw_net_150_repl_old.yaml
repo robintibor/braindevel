@@ -7,7 +7,7 @@
         'configs/experiments/bci_competition/train_test/defaults.yaml'],
     variants: [[
     {        
-        save_path: ['data/models/bci-competition/combined/train-test/raw-net-150-fs/'],
+        save_path: ['data/models/bci-competition/train-test/no-drop-time/raw-net-150-fs-repl/'],
     }
     ]]
 }

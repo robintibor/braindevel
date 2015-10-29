@@ -2,10 +2,25 @@ import numpy as np
 from braindecode.datasets.loaders import BBCIDataset
 from braindecode.mywyrm.processing import (bandpass_cnt, segment_dat_fast)
 from wyrm.processing import select_channels, append_cnt, append_epo
+from braindecode.datasets.signal_processor import SignalProcessor
 
 class NoCleaner():
+    def __init__(self, segment_ival=None, marker_def=None):
+        self.marker_def = marker_def
+        if self.marker_def is None:
+            self.marker_def = {'1 - Right Hand': [1], '2 - Left Hand': [2], 
+                    '3 - Rest': [3], '4 - Feet': [4]}
+        self.segment_ival = segment_ival
+        if self.segment_ival is None:
+            self.segment_ival = [0, 4000]
+
     def clean(self, bbci_set_cnt):
-        clean_trials = range(len(bbci_set_cnt.markers))
+        # Segment into trials and take all! :)
+        # Segment just to select markers and kick out out of bounds
+        # trials
+        epo = segment_dat_fast(bbci_set_cnt, marker_def=self.marker_def, 
+           ival=self.segment_ival)
+        clean_trials = range(epo.data.shape[0])
         (rejected_chans, rejected_trials, clean_trials) = ([],[], clean_trials)
         return (rejected_chans, rejected_trials, clean_trials) 
         
@@ -13,10 +28,17 @@ class SingleSetCleaner():
     """ Determines rejected trials and channels """
     def __init__(self, eog_set, rejection_var_ival=[0,4000], 
             rejection_blink_ival=[-500,4000],
-            max_min=600, whisker_percent=10, whisker_length=3):
+            max_min=600, whisker_percent=10, whisker_length=3,
+            marker_def=None):
         local_vars = locals()
         del local_vars['self']
         self.__dict__.update(local_vars)
+        
+        if self.marker_def is None:
+            self.marker_def = {'1 - Right Hand': [1], '2 - Left Hand': [2], 
+                    '3 - Rest': [3], '4 - Feet': [4]}
+        self.eog_set = SignalProcessor(set_loader=self.eog_set, 
+            segment_ival=rejection_blink_ival, marker_def=self.marker_def)
         
     def clean(self, bbci_set_cnt):
         (rejected_chans, rejected_trials, reject_max_min, reject_var, 
@@ -30,152 +52,15 @@ class SingleSetCleaner():
                     whisker_length=self.whisker_length,
                     low_cut_hz=0.5,
                     high_cut_hz=150,
-                    filt_order=4)
+                    filt_order=4,
+                    marker_def=self.marker_def)
         self.rejected_chans = rejected_chans # remember in case other cleaner needs it
         return (rejected_chans, rejected_trials, clean_trials) 
-        
-class TwoSetsCleaner():
-    """ Determines rejected trials and channels """
-    def __init__(self, filename, second_filename,
-        load_sensor_names,
-        rejection_var_ival=[0,4000], 
-            rejection_blink_ival=[-500,4000],
-            max_min=600, whisker_percent=10, whisker_length=3):
-        local_vars = locals()
-        del local_vars['self']
-        self.__dict__.update(local_vars)
 
-    def clean(self, bbci_set_cnt, filename):
-        second_cnt = self.load_second_cnt()
-        
-        n_first_trials = len(bbci_set_cnt.markers)
-        # determine individual trial 
-        (rejected_chans, rejected_trials, reject_max_min, reject_var, 
-                clean_trials) =  compute_rejected_channels_trials_two_sets_cnt(
-                    first_cnt=bbci_set_cnt,
-                    second_cnt=second_cnt,
-                    first_filename=self.filename, 
-                    second_filename=self.second_filename,
-                    rejection_blink_ival=self.rejection_blink_ival, 
-                    max_min=self.max_min, 
-                    rejection_var_ival=self.rejection_var_ival, 
-                    whisker_percent=self.whisker_percent, 
-                    whisker_length=self.whisker_length,
-                    low_cut_hz=0.5,
-                    high_cut_hz=150,
-                    filt_order=4)
-        assert np.intersect1d(rejected_trials, clean_trials).size == 0
-        rejected_trials = np.array(rejected_trials)
-        rejected_trials_first = rejected_trials[rejected_trials < n_first_trials]
-        self.rejected_trials_second = (rejected_trials[rejected_trials >= n_first_trials] -
-            n_first_trials)
 
-        clean_trials = np.array(clean_trials)
-        clean_trials_first = clean_trials[clean_trials < n_first_trials]
-        self.clean_trials_second = (clean_trials[clean_trials >= n_first_trials] -
-             n_first_trials)
-        self.rejected_chans = rejected_chans # remember in case other cleaner needs it
-        assert np.array_equal(np.union1d(rejected_trials_first, clean_trials_first), 
-            range(len(bbci_set_cnt.markers)))
-        assert np.array_equal(np.union1d(self.rejected_trials_second, 
-            self.clean_trials_second), 
-            range(len(second_cnt.markers)))
-        return (rejected_chans, rejected_trials_first, clean_trials_first) 
-    
-    def load_second_cnt(self):
-        set_2 = BBCIDataset(self.second_filename, 
-            sensor_names=self.load_sensor_names) # for debug, allow load sensor names
-        set_2.load_continuous_signal()
-        set_2.add_markers()
-        set_2.segment_into_trials()
-        return set_2.cnt
-
-class SecondSetCleaner():
-    """ Class just returns already computed values from a twoset cleaner """
-    def __init__(self, filename, first_set_cleaner, rejection_var_ival=[0,4000], 
-            rejection_blink_ival=[-500,4000],
-            max_min=600, whisker_percent=10, whisker_length=3):
-        local_vars = locals()
-        del local_vars['self']
-        self.__dict__.update(local_vars)
-        # TODELAY: check that first set cleaner had same cleaning params
-        # or just remove args
-        
-    def clean(self, bbci_set_cnt, filename):
-        """ Don't do any cleaning, just return clean values already computed
-        from a two-set cleaner """
-        assert hasattr(self.first_set_cleaner, 'rejected_chans')
-        assert hasattr(self.first_set_cleaner, 'rejected_trials_second')
-        assert hasattr(self.first_set_cleaner, 'clean_trials_second')
-        assert self.first_set_cleaner.second_filename == self.filename
-                
-        return (self.first_set_cleaner.rejected_chans,
-                self.first_set_cleaner.rejected_trials_second, 
-                self.first_set_cleaner.clean_trials_second) 
-    
-class SecondSetOnlyChanCleaner():
-    """ Class just returns already computed values from a twoset cleaner,
-    this one will keep all trials but remove cleaned chans. """
-    def __init__(self, first_set_cleaner, rejection_var_ival=[0,4000], 
-            rejection_blink_ival=[-500,4000],
-            max_min=600, whisker_percent=10, whisker_length=3):
-        local_vars = locals()
-        del local_vars['self']
-        self.__dict__.update(local_vars)
-        # TODELAY: check that first set cleaner had same cleaning params
-        # or just remove args
-        
-    def clean(self, bbci_set_cnt):
-        """ Don't do any cleaning, just return clean values already computed
-        from a two-set cleaner """
-        assert hasattr(self.first_set_cleaner, 'rejected_chans')
-        rejected_trials = []
-        clean_trials = range(len(bbci_set_cnt.markers))
-        return (self.first_set_cleaner.rejected_chans,
-                rejected_trials, 
-                clean_trials) 
-
-def compute_rejected_channels_trials_two_sets_cnt(first_cnt, second_cnt,
-    first_filename, second_filename, rejection_blink_ival,
-        max_min, rejection_var_ival, whisker_percent, whisker_length,
-        low_cut_hz, high_cut_hz,filt_order):
-    # First create eog set for blink rejection
-    eog_sensor_names = BBCIDataset.get_all_sensors(first_filename, pattern="EO")
-    eog_set_1 = BBCIDataset(filename=first_filename, 
-                    sensor_names=eog_sensor_names, cnt_preprocessors=[],
-                    epo_preprocessors=[],
-                    segment_ival=rejection_blink_ival)
-    eog_set_1.load_continuous_signal()
-    eog_set_1.add_markers()
-    eog_set_1.segment_into_trials()
-    eog_set_1.remove_continuous_signal()
-    
-    eog_set_2 = BBCIDataset(filename=second_filename, 
-                    sensor_names=eog_sensor_names, cnt_preprocessors=[],
-                    epo_preprocessors=[],
-                    segment_ival=rejection_blink_ival)
-    eog_set_2.load_continuous_signal()
-    eog_set_2.add_markers()
-    eog_set_2.segment_into_trials()
-    eog_set_2.remove_continuous_signal()
-    
-    merged_eog_epo = append_epo(eog_set_1.epo, eog_set_2.epo)
-    
-    merged_cnt = append_cnt(first_cnt, second_cnt)
-    # Then create bandpassed set for variance rejection
-    bandpassed_cnt = bandpass_cnt(merged_cnt, low_cut_hz, high_cut_hz, filt_order)
-    epo = segment_dat_fast(bandpassed_cnt, 
-           marker_def={'1 - Right Hand': [1], '2 - Left Hand': [2], 
-               '3 - Rest': [3], '4 - Feet': [4]}, 
-           ival=rejection_var_ival)
-    return compute_rejected_channels_trials(epo, 
-            merged_eog_epo, max_min=max_min, 
-            whisker_percent=whisker_percent, 
-            whisker_length=whisker_length)
-    
 def compute_rejected_channels_trials_cnt(cnt, eog_set, rejection_blink_ival,
         max_min, rejection_var_ival, whisker_percent, whisker_length,
-        low_cut_hz, high_cut_hz,filt_order):
+        low_cut_hz, high_cut_hz,filt_order, marker_def):
     # First create eog set for blink rejection
     eog_set.load_signal_and_markers()
     eog_set.segment_into_trials()
@@ -183,10 +68,8 @@ def compute_rejected_channels_trials_cnt(cnt, eog_set, rejection_blink_ival,
     
     # Then create bandpassed set for variance rejection
     bandpassed_cnt = bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order)
-    epo = segment_dat_fast(bandpassed_cnt, 
-           marker_def={'1 - Right Hand': [1], '2 - Left Hand': [2], 
-               '3 - Rest': [3], '4 - Feet': [4]}, 
-           ival=rejection_var_ival)
+    epo = segment_dat_fast(bandpassed_cnt, marker_def=marker_def,
+        ival=rejection_var_ival)
     return compute_rejected_channels_trials(epo, 
             eog_set.epo, max_min=max_min, 
             whisker_percent=whisker_percent, 

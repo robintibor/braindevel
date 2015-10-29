@@ -1,5 +1,10 @@
  {
-    extends: ['configs/experiments/bci_competition/raw_net_250_fs.yaml',
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/raw_net_base.yaml',
+        'configs/experiments/bci_competition/filenames.yaml',
+        'configs/experiments/250_fs.yaml',
+        'configs/experiments/bci_competition/train_test/defaults.yaml',
+        'configs/experiments/samplewise.yaml',
         'configs/experiments/bci_competition/train_test/samplewise/defaults.yaml'],
     variants: [[
     {        

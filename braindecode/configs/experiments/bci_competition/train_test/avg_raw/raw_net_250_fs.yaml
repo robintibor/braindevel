@@ -1,7 +1,10 @@
  {
-    extends: ['configs/experiments/bci_competition/raw_net_250_fs.yaml',
-        'configs/experiments/bci_competition/train_test/defaults.yaml',
-        'configs/experiments/bci_competition/avg_raw_net.yaml'],
+    extends: [
+        'configs/experiments/defaults.yaml',
+        'configs/experiments/avg_raw_net.yaml',
+        'configs/experiments/bci_competition/filenames.yaml',
+        'configs/experiments/250_fs.yaml',
+        'configs/experiments/bci_competition/train_test/defaults.yaml'],
     variants: [[
     {        
         save_path: ['data/models/bci-competition/train-test/avg_raw/250-fs/'],
