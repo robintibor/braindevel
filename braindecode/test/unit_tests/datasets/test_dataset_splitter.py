@@ -11,7 +11,7 @@ def to_4d_array(arr):
 def test_last_fold():
     data = np.arange(10)
     dataset = DenseDesignMatrixWrapper(topo_view=to_4d_array(data), y=np.zeros(10))
-    splitter = SingleFoldSplitter(num_folds=10, 
+    splitter = SingleFoldSplitter(n_folds=10, 
         i_test_fold=9)
     datasets= splitter.split_into_train_valid_test(dataset)
     
@@ -25,7 +25,7 @@ def test_last_fold():
 def test_first_fold():
     data = np.arange(10)
     dataset = DenseDesignMatrixWrapper(topo_view=to_4d_array(data), y=np.zeros(10))
-    splitter = SingleFoldSplitter(num_folds=10, 
+    splitter = SingleFoldSplitter(n_folds=10, 
         i_test_fold=0)
     datasets= splitter.split_into_train_valid_test(dataset)
     
@@ -48,7 +48,7 @@ def test_preprocessed_splitter():
 
     data = np.arange(10)
     dataset = DenseDesignMatrixWrapper(topo_view=to_4d_array(data), y=np.zeros(10))
-    splitter = SingleFoldSplitter(num_folds=10, i_test_fold=9)
+    splitter = SingleFoldSplitter(n_folds=10, i_test_fold=9)
     preproc_splitter = PreprocessedSplitter(dataset_splitter=splitter,
         preprocessor=DemeanPreproc())
 
@@ -76,7 +76,7 @@ def test_repeated_calls_with_shuffle():
     data = np.arange(100)
     dataset = DenseDesignMatrixWrapper(topo_view=to_4d_array(data), 
         y=np.zeros(100))
-    splitter = SingleFoldSplitter(num_folds=10, 
+    splitter = SingleFoldSplitter(n_folds=10, 
         i_test_fold=9, shuffle=True)
     reference_datasets = splitter.split_into_train_valid_test(dataset)
     

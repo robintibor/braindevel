@@ -1,7 +1,7 @@
  {
         original_params: $original_params,
         save_path: $save_path,
-        csp_train: !obj:braindecode.csp.train_csp.CSPTrain {
+        csp_train: !obj:braindecode.csp.experiment.CSPExperiment {
             set_loader: !obj:braindecode.datasets.set_loaders.$set_type {
                 filename: $dataset_filename
             },
@@ -11,10 +11,10 @@
             resample_fs: $resample_fs,
             segment_ival: $segment_ival,
             standardize: $standardize,
-            num_folds: $num_folds,
+            n_folds: $n_folds,
             n_top_bottom_csp_filters: $n_top_bottom_csp_filters,
-            num_selected_filterbands: $num_selected_filterbands,
-            num_selected_features: $num_selected_features,
+            n_selected_filterbands: $n_selected_filterbands,
+            n_selected_features: $n_selected_features,
             forward_steps: $forward_steps,
             backward_steps: $backward_steps,
             min_freq: $min_freq,

@@ -23,8 +23,8 @@ class FixedTrialSplitter(TrainValidTestSplitter):
         train folds the remaining 8 folds"""
         assert dataset.view_converter.axes[0] == 'b'
         assert hasattr(dataset, 'X') # needs to be loaded already
-        num_trials = dataset.get_topological_view().shape[0]
-        assert num_trials > self.n_train_trials
+        n_trials = dataset.get_topological_view().shape[0]
+        assert n_trials > self.n_train_trials
         
         # split train into train and valid
         # valid is at end, just subtract -1 because of zero-based indexing
@@ -34,7 +34,7 @@ class FixedTrialSplitter(TrainValidTestSplitter):
         # always +1 since ranges are exclusive the end index(!)
         train_fold = range(i_last_train_trial+1)
         valid_fold = range(i_last_train_trial+1,i_last_valid_trial+1)
-        test_fold = range(i_last_valid_trial+1, num_trials)
+        test_fold = range(i_last_valid_trial+1, n_trials)
         
 
         datasets = split_set_by_indices(dataset, train_fold, valid_fold,
@@ -42,9 +42,9 @@ class FixedTrialSplitter(TrainValidTestSplitter):
         return datasets
 
 class SingleFoldSplitter(TrainValidTestSplitter):
-    def __init__(self, num_folds=10, i_test_fold=-1,
+    def __init__(self, n_folds=10, i_test_fold=-1,
             shuffle=False):
-        self.num_folds = num_folds
+        self.n_folds = n_folds
         self.i_test_fold = i_test_fold
         self.shuffle=shuffle
 
@@ -55,23 +55,23 @@ class SingleFoldSplitter(TrainValidTestSplitter):
         train folds the remaining 8 folds"""
         assert dataset.view_converter.axes[0] == 'b'
         assert hasattr(dataset, 'X') # needs to be loaded already
-        num_trials = dataset.get_topological_view().shape[0]
+        n_trials = dataset.get_topological_view().shape[0]
         # also works in case test fold nr is 0 as it will just take -1 
         # which is fine last fold)
         i_valid_fold = self.i_test_fold - 1
         
         if self.shuffle:
             rng = RandomState(729387987) #TODO: check it rly leads to same split when being called twice
-            folds = list(KFold(num_trials, n_folds=self.num_folds,
+            folds = list(KFold(n_trials, n_folds=self.n_folds,
                 shuffle=self.shuffle, random_state=rng))
         else:
-            folds = list(KFold(num_trials, n_folds=self.num_folds,
+            folds = list(KFold(n_trials, n_folds=self.n_folds,
                 shuffle=False))
         # [1] needed as it is always a split of whole dataset into train/test
         # indices
         test_fold = folds[self.i_test_fold][1]
         valid_fold = folds[i_valid_fold][1]
-        full_fold = range(num_trials)
+        full_fold = range(n_trials)
         train_fold = np.setdiff1d(full_fold,
             np.concatenate((valid_fold, test_fold)))
 
@@ -80,14 +80,14 @@ class SingleFoldSplitter(TrainValidTestSplitter):
         return datasets
 
 def split_set_by_indices(dataset, train_fold, valid_fold, test_fold):
-        num_trials = dataset.get_topological_view().shape[0]
+        n_trials = dataset.get_topological_view().shape[0]
         # Make sure there are no overlaps and we have all possible trials
         # assigned
         assert np.intersect1d(valid_fold, test_fold).size == 0
         assert np.intersect1d(train_fold, test_fold).size == 0
         assert np.intersect1d(train_fold, valid_fold).size == 0
         assert (set(np.concatenate((train_fold, valid_fold, test_fold))) == 
-            set(range(num_trials)))
+            set(range(n_trials)))
         
         train_set = DenseDesignMatrix(topo_view=dataset.get_topological_view()[train_fold], 
             y=dataset.y[train_fold], 
@@ -128,13 +128,13 @@ class PreprocessedSplitter(object):
         train_valid_set = self.concatenate_sets(this_datasets['train'],
             this_datasets['valid'])
         test_set = this_datasets['test']
-        train_set_num_trials = len(this_datasets['train'].y)
+        n_train_set_trials = len(this_datasets['train'].y)
         del this_datasets['train']
         if self.preprocessor is not None:
             self.preprocessor.apply(train_valid_set, can_fit=True)
             self.preprocessor.apply(test_set, can_fit=False)
         _, valid_set = self.split_sets(train_valid_set, 
-            train_set_num_trials, len(this_datasets['valid'].y))
+            n_train_set_trials, len(this_datasets['valid'].y))
         # train valid is the new train set!!
         return {'train': train_valid_set, 'valid': valid_set, 
             'test': test_set}

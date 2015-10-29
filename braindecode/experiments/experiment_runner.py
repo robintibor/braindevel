@@ -159,14 +159,14 @@ class ExperimentsRunner:
             model = exp.final_layer
         else: # cross validation
             # default 5 folds for now
-            num_folds = train_dict['num_cv_folds']
+            n_folds = train_dict['num_cv_folds']
             exp_cv = ExperimentCrossValidation(final_layer, 
-                dataset, exp_args=train_dict['exp_args'], num_folds=num_folds,
+                dataset, exp_args=train_dict['exp_args'], n_folds=n_folds,
                 shuffle=self._shuffle)
             exp_cv.run()
             endtime = time.time()
             result_or_results = []
-            for i_fold in xrange(num_folds):
+            for i_fold in xrange(n_folds):
                 res = Result(parameters=train_dict['original_params'],
                 templates={}, 
                 training_time=endtime - starttime, 

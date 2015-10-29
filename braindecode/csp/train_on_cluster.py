@@ -34,7 +34,7 @@ def generate_cluster_job(sys_args):
     # so that theano flags are preserved and correct (and only one) gpu taken
     arguments_for_train.append('--quiet') # better not to create huge job output files
     train_args_string = " ".join(arguments_for_train)
-    train_script = "./csp/train_csp_experiment.py" 
+    train_script = "./csp/train_experiment.py" 
     train_command = "{:s} {:s} {:s}".format(train_script, config_file, 
         train_args_string)
     job_string = "{:s}\n{:s}\n".format(file_prefix, train_command)

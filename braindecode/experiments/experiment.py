@@ -14,10 +14,10 @@ from braindecode.veganlasagne.monitors import MonitorManager
 log = logging.getLogger(__name__)
 
 class ExperimentCrossValidation():
-    def __init__(self, final_layer, dataset, exp_args, num_folds, shuffle):
+    def __init__(self, final_layer, dataset, exp_args, n_folds, shuffle):
         self.final_layer = final_layer
         self.dataset = dataset
-        self.num_folds = num_folds
+        self.n_folds = n_folds
         self.exp_args = exp_args
         self.shuffle = shuffle
         
@@ -27,15 +27,15 @@ class ExperimentCrossValidation():
     def run(self):
         self.all_layers = []
         self.all_monitor_chans = []
-        for i_fold in range(self.num_folds):
+        for i_fold in range(self.n_folds):
             log.info("Running fold {:d} of {:d}".format(i_fold + 1,
-                self.num_folds))
+                self.n_folds))
             this_layers = deepcopy(self.final_layer)
             this_exp_args = deepcopy(self.exp_args)
             ## make sure dataset is loaded... 
             self.dataset.ensure_is_loaded()
             dataset_splitter = SingleFoldSplitter(
-                num_folds=self.num_folds, i_test_fold=i_fold,
+                n_folds=self.n_folds, i_test_fold=i_fold,
                 shuffle=self.shuffle)
             exp = Experiment(this_layers, self.dataset, dataset_splitter, 
                 **this_exp_args)

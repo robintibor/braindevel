@@ -1,6 +1,6 @@
 from wyrm.processing import select_channels
 from braindecode.mywyrm.processing import (
-    resample_cnt, highpass_cnt, common_average_reference_cnt)
+    resample_cnt, common_average_reference_cnt)
 from braindecode.mywyrm.clean import (NoCleaner)
 import itertools
 from sklearn.cross_validation import KFold
@@ -14,18 +14,105 @@ from numpy.random import RandomState
 import logging
 log = logging.getLogger(__name__)
 
-class CSPTrain(object):
+class CSPExperiment(object):
+    """
+        A Filter Bank Common Spatial Patterns Experiment.
+
+        Parameters
+        ----------
+        set_loader : Dataset loader
+            An object which loads the dataset. 
+            Should have a load method which returns a wyrm data object with 
+            the continuuous signal.
+        cleaner : Cleaning object
+            Should have a clean method which accepts the continuuous signal as 
+            a wyrm object and returns the rejected chans, rejected trials and
+            the clean trials.
+        resample_fs : float
+            The resampling frequency. None means no resampling.
+        min_freq : int
+            The minimum frequency of the filterbank.
+        max_freq : int
+            The maximum frequency of the filterbank.
+        low_width : int
+            The width of the filterbands in the lower frequencies.
+        high_width : int
+            The width of the filterbands in the higher frequencies.
+        last_low_freq : int
+            The last frequency with the low width frequency of the filterbank.
+        filt_order : int
+            The filter order of the butterworth filter which computes the filterbands.
+        segment_ival : sequence of 2 floats
+            The start and end of the trial in milliseconds with respect to the markers.
+        standardize : bool
+            Whether to standardize the features of the filterbank before training.
+            Will do online standardization, i.e., will compute means and standard
+            deviations on the training fold and then compute running means and
+            standard deviations going trial by trial through the test fold.
+        n_folds : int
+            How many folds. Also determines size of the test fold, e.g.
+            5 folds imply the test fold has 20% of the original data.
+        n_top_bottom_csp_filters : int
+            Number of top and bottom CSP filters to select from all computed filters.
+            Top and bottom refers to CSP filters sorted by their eigenvalues.
+            So a value of 3 here will lead to 6(!) filters.
+            None means all filters.
+        n_selected_filterbands : int
+            Number of filterbands to select for the filterbank.
+            Will be selected by the highest training accuracies.
+            None means all filterbands.
+        n_selected_features : int
+            Number of features to select for the filterbank.
+            Will be selected by an internal cross validation across feature
+            subsets.
+            None means all features.
+        forward_steps : int
+            Number of forward steps to make in the feature selection,
+            before the next backward step.
+        backward_steps : int
+            Number of backward steps to make in the feature selection,
+            before the next forward step.
+        stop_when_no_improvement: bool
+            Whether to stop the feature selection if the interal cross validation
+            accuracy could not be improved after an epoch finished
+            (epoch=given number of forward and backward steps).
+            False implies always run until wanted number of features.
+        only_last_fold: bool
+            Whether to train only on the last fold. 
+            True implies a train-test split, where the n_folds parameter
+            determines the size of the test fold.
+            Test fold will always be at the end of the data (timewise).
+        restricted_n_trials: int
+            Take only a restricted number of the clean trials.
+            None implies all clean trials.
+        common_average_reference: bool
+            Whether to run a common average reference on the signal (before filtering).
+        ival_optimizer: IvalOptimizer object
+            If given, optimize the ival inside the trial before CSP.
+            None means use the full trial.
+        shuffle: bool
+            Whether to shuffle the clean trials before splitting them into folds.
+            False implies folds are time-blocks, True implies folds are random
+            mixes of trials of the entire file.
+        marker_def: dict
+            Dictionary mapping class names to marker numbers, e.g.
+            {'1 - Correct': [31], '2 - Error': [32]}
+    """
     def __init__(self,set_loader, sensor_names=None,
-            low_cut_off_hz=None, cleaner=None,
+            cleaner=None,
             resample_fs=None,
-            min_freq=0, max_freq=48, last_low_freq=48,
-            low_width=4, high_width=4,
+            min_freq=0,
+            max_freq=48,
+            last_low_freq=48,
+            low_width=4,
+            high_width=4,
             filt_order=3,
             segment_ival=[500,4000], 
             standardize=True,
-            num_folds=5,
-            n_top_bottom_csp_filters=None, num_selected_filterbands=None,
-            num_selected_features=None,
+            n_folds=5,
+            n_top_bottom_csp_filters=None,
+            n_selected_filterbands=None,
+            n_selected_features=None,
             forward_steps=4,
             backward_steps=2,
             stop_when_no_improvement=False,
@@ -86,8 +173,6 @@ class CSPTrain(object):
 
         if self.resample_fs is not None:
             self.cnt = resample_cnt(self.cnt, newfs=self.resample_fs)
-        if self.low_cut_off_hz is not None:
-            self.cnt = highpass_cnt(self.cnt, low_cut_off_hz=self.low_cut_off_hz)
         if self.common_average_reference is True:
             self.cnt = common_average_reference_cnt(self.cnt)
 
@@ -103,15 +188,15 @@ class CSPTrain(object):
         n_classes = len(self.marker_def)
         self.class_pairs = list(itertools.combinations(range(n_classes),2))
         # use only number of clean trials to split folds
-        num_clean_trials = len(self.clean_trials)
+        n_clean_trials = len(self.clean_trials)
         if self.restricted_n_trials is not None:
-            num_clean_trials = int(num_clean_trials * self.restricted_n_trials)
+            n_clean_trials = int(n_clean_trials * self.restricted_n_trials)
         if not self.shuffle:
-            folds = KFold(num_clean_trials, n_folds=self.num_folds, 
+            folds = KFold(n_clean_trials, n_folds=self.n_folds, 
                 shuffle=False)
         else:
             rng = RandomState(903372376)
-            folds = KFold(num_clean_trials, n_folds=self.num_folds, 
+            folds = KFold(n_clean_trials, n_folds=self.n_folds, 
                 shuffle=True, random_state=rng)
             
         # remap to original indices in unclean set(!)
@@ -132,8 +217,8 @@ class CSPTrain(object):
         self.binary_csp.run()
         
         self.filterbank_csp = FilterbankCSP(self.binary_csp, 
-            num_features=self.num_selected_features,
-            num_filterbands=self.num_selected_filterbands,
+            n_features=self.n_selected_features,
+            n_filterbands=self.n_selected_filterbands,
             forward_steps=self.forward_steps,
             backward_steps=self.backward_steps,
             stop_when_no_improvement=self.stop_when_no_improvement)
@@ -178,12 +263,12 @@ def generate_filterbank(min_freq, max_freq, last_low_freq,
 
 class CSPRetrain():
     """ CSP Retraining on existing filters computed previously."""
-    def __init__(self, trainer_filename, num_selected_features="asbefore",
-            num_selected_filterbands="asbefore",forward_steps=2,
+    def __init__(self, trainer_filename, n_selected_features="asbefore",
+            n_selected_filterbands="asbefore",forward_steps=2,
             backward_steps=1, stop_when_no_improvement=False):
         self.trainer_filename = trainer_filename
-        self.num_selected_features = num_selected_features
-        self.num_selected_filterbands = num_selected_filterbands
+        self.n_selected_features = n_selected_features
+        self.n_selected_filterbands = n_selected_filterbands
         self.forward_steps = forward_steps
         self.backward_steps = backward_steps
         self.stop_when_no_improvement = stop_when_no_improvement
@@ -195,18 +280,18 @@ class CSPRetrain():
     def run(self):
         log.info("Loading trainer...")
         self.trainer = serial.load(self.trainer_filename)
-        if self.num_selected_features == "asbefore":
-            self.num_selected_features = self.trainer.filterbank_csp.num_features
-        if self.num_selected_filterbands == "asbefore":
-            self.num_selected_filterbands = self.trainer.filterbank_csp.num_filterbands
+        if self.n_selected_features == "asbefore":
+            self.n_selected_features = self.trainer.filterbank_csp.n_features
+        if self.n_selected_filterbands == "asbefore":
+            self.n_selected_filterbands = self.trainer.filterbank_csp.n_filterbands
         # For later storage, remember selected features and filterbands
         # TODELAY: solve this more cleanly during saving or sth :)
-        self.trainer.original_params['num_selected_features'] = \
-            self.num_selected_features
-        self.trainer.original_params['num_selected_filterbands'] = \
-            self.num_selected_filterbands
-        recreate_filterbank(self.trainer, self.num_selected_features,
-            self.num_selected_filterbands, self.forward_steps,
+        self.trainer.original_params['n_selected_features'] = \
+            self.n_selected_features
+        self.trainer.original_params['n_selected_filterbands'] = \
+            self.n_selected_filterbands
+        recreate_filterbank(self.trainer, self.n_selected_features,
+            self.n_selected_filterbands, self.forward_steps,
             self.backward_steps, self.stop_when_no_improvement)
         
         log.info("Rerunning filterbank...")
@@ -215,10 +300,10 @@ class CSPRetrain():
         log.info("Rerunning multiclass...")
         self.trainer.multi_class.run()
 
-def recreate_filterbank(train_csp_obj, num_features, num_filterbands,
+def recreate_filterbank(train_csp_obj, n_features, n_filterbands,
         forward_steps, backward_steps, stop_when_no_improvement):
     train_csp_obj.filterbank_csp = FilterbankCSP(train_csp_obj.binary_csp,
-        num_features, num_filterbands, 
+        n_features, n_filterbands, 
             forward_steps=forward_steps,
             backward_steps=backward_steps,
             stop_when_no_improvement=stop_when_no_improvement)

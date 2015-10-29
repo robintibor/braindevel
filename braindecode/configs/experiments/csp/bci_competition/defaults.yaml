@@ -8,7 +8,7 @@
     {        
         set_type: ["BCICompetition4Set2A"],
         cleaner: [$no_cleaner],
-        num_selected_filterbands: ["null"],
+        n_selected_filterbands: ["null"],
         sensor_names: ["null"],
     }
     ]]

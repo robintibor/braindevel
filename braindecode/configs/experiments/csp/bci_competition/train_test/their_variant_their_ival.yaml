@@ -3,7 +3,7 @@
     variants: [[
     {        
         save_path: ['data/models/csp/bci-competition/train-test/their-variant-their-ival/'],
-        num_folds: [2],
+        n_folds: [2],
         standardize: [false],
     }
     ]]

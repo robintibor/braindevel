@@ -6,7 +6,7 @@
         'configs/experiments/150_fs.yaml',
         'configs/experiments/bci_competition/train_test/defaults.yaml'],
     variants: [[
-    {        
+    {
         save_path: ['data/models/bci-competition/train-test/avg_raw/150-fs/'],
         valid_set_fraction: [0.2],
         low_cut_off_hz: [4],

@@ -11,7 +11,7 @@
         high_width: [6],
         last_low_freq: [30],
         segment_ival: [[500,2500], [0,4000]],
-        num_selected_features: [80],
+        n_selected_features: [80],
     }
     ]]
  }

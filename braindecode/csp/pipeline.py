@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 class BinaryCSP(object):
     def __init__(self, cnt, filterbands, filt_order, folds,
-            class_pairs, segment_ival, num_filters,
+            class_pairs, segment_ival, n_filters,
             ival_optimizer, standardize, marker_def=None):
         self.__dict__.update(locals())
         del self.self
@@ -75,11 +75,11 @@ class BinaryCSP(object):
         ## Calculate CSP
         filters, patterns, variances = calculate_csp(epo_train_pair)
         ## Apply csp, calculate features
-        if self.num_filters is not None:
+        if self.n_filters is not None:
             # take topmost and bottommost filters, e.g.
-            # for num_filters=3 0,1,2,-3,-2,-1
-            columns = range(0, self.num_filters) + \
-                range(-self.num_filters, 0)
+            # for n_filters=3 0,1,2,-3,-2,-1
+            columns = range(0, self.n_filters) + \
+                range(-self.n_filters, 0)
         else: # take all possible filters
             columns = range(len(filters))
         train_feature = apply_csp_var_log(epo_train_pair, filters, 
@@ -127,10 +127,10 @@ class BinaryCSP(object):
           
 
     def init_results(self):
-        num_filterbands = len(self.filterbands)
-        num_folds = len(self.folds)
-        num_class_pairs = len(self.class_pairs)
-        result_shape = (num_filterbands, num_folds, num_class_pairs)
+        n_filterbands = len(self.filterbands)
+        n_folds = len(self.folds)
+        n_class_pairs = len(self.class_pairs)
+        result_shape = (n_filterbands, n_folds, n_class_pairs)
         all_varnames = ['filters', 'patterns', 'variances',
                         'train_feature', 'test_feature',
                         'train_feature_full_fold', 'test_feature_full_fold', 
@@ -184,18 +184,18 @@ class BinaryCSP(object):
 
 
 class FilterbankCSP(object):
-    def __init__(self, binary_csp, num_features=None, num_filterbands=None,
+    def __init__(self, binary_csp, n_features=None, n_filterbands=None,
             forward_steps=2, backward_steps=1, stop_when_no_improvement=False):
         self.binary_csp = binary_csp
-        self.num_features = num_features
-        self.num_filterbands = num_filterbands
+        self.n_features = n_features
+        self.n_filterbands = n_filterbands
         self.forward_steps = forward_steps
         self.backward_steps = backward_steps
         self.stop_when_no_improvement = stop_when_no_improvement
         
     def run(self):
         self.select_filterbands()
-        if self.num_features is not None:
+        if self.n_features is not None:
             self.collect_best_features()
             #self.select_features()
         else: 
@@ -204,20 +204,20 @@ class FilterbankCSP(object):
         self.predict_outputs()
         
     def select_filterbands(self):
-        num_all_filterbands = len(self.binary_csp.filterbands)
-        if self.num_filterbands is None:
-            self.selected_filter_inds = range(num_all_filterbands)
+        n_all_filterbands = len(self.binary_csp.filterbands)
+        if self.n_filterbands is None:
+            self.selected_filter_inds = range(n_all_filterbands)
         else:
             # Select the filterbands with the highest mean accuracy on the
             # training sets
             mean_accs = np.mean(self.binary_csp.train_accuracy, axis=(1,2))
-            best_filters = np.argsort(mean_accs)[::-1][:self.num_filterbands]
+            best_filters = np.argsort(mean_accs)[::-1][:self.n_filterbands]
             self.selected_filter_inds = best_filters
         
     def collect_features(self):
-        num_folds = len(self.binary_csp.folds)
-        num_class_pairs = len(self.binary_csp.class_pairs)
-        result_shape = (num_folds, num_class_pairs)
+        n_folds = len(self.binary_csp.folds)
+        n_class_pairs = len(self.binary_csp.class_pairs)
+        result_shape = (n_folds, n_class_pairs)
         self.train_feature = np.empty(result_shape, dtype=object)
         self.train_feature_full_fold = np.empty(result_shape, dtype=object)
         self.test_feature = np.empty(result_shape, dtype=object)
@@ -227,8 +227,8 @@ class FilterbankCSP(object):
         filter_inds = self.selected_filter_inds
         # merge along featureaxis: axis 1
         merge_features = lambda fv1, fv2: append_epo(fv1, fv2, classaxis=1)
-        for fold_i in range(num_folds):
-            for class_i in range(num_class_pairs):
+        for fold_i in range(n_folds):
+            for class_i in range(n_class_pairs):
                 self.train_feature[fold_i, class_i] = reduce(
                     merge_features, 
                     bincsp.train_feature[filter_inds, fold_i, class_i])
@@ -247,16 +247,16 @@ class FilterbankCSP(object):
         then selecting the best filterpair from the bestfilterband (measured on internal
         train/test split)"""
         bincsp = self.binary_csp # just to make code shorter
-        num_folds = len(self.binary_csp.folds)
-        num_class_pairs = len(self.binary_csp.class_pairs)
-        result_shape = (num_folds, num_class_pairs)
+        n_folds = len(self.binary_csp.folds)
+        n_class_pairs = len(self.binary_csp.class_pairs)
+        result_shape = (n_folds, n_class_pairs)
         self.train_feature = np.empty(result_shape, dtype=object)
         self.train_feature_full_fold = np.empty(result_shape, dtype=object)
         self.test_feature = np.empty(result_shape, dtype=object)
         self.test_feature_full_fold = np.empty(result_shape, dtype=object)
         self.selected_filters_per_filterband = np.empty(result_shape, dtype=object)
-        for fold_i in range(num_folds):
-            for class_pair_i in range(num_class_pairs):
+        for fold_i in range(n_folds):
+            for class_pair_i in range(n_class_pairs):
                 bin_csp_train_features = deepcopy(bincsp.train_feature[
                     self.selected_filter_inds, fold_i, class_pair_i])
                 bin_csp_train_features_full_fold = deepcopy(
@@ -269,7 +269,7 @@ class FilterbankCSP(object):
                     bincsp.test_feature_full_fold[
                         self.selected_filter_inds,fold_i, class_pair_i])
                 selected_filters_per_filt = self.select_best_filters_best_filterbands(
-                    bin_csp_train_features, max_features=self.num_features,
+                    bin_csp_train_features, max_features=self.n_features,
                     forward_steps=self.forward_steps, 
                     backward_steps=self.backward_steps,
                     stop_when_no_improvement=self.stop_when_no_improvement)
@@ -296,9 +296,9 @@ class FilterbankCSP(object):
         assert max_features is not None, ("For now not dealing with the case "
             "that max features is unlimited")
         assert features[0].data.shape[1] % 2 == 0
-        num_filterbands = len(features)
-        num_filters_per_fb = features[0].data.shape[1] / 2
-        selected_filters_per_band = [0] * num_filterbands
+        n_filterbands = len(features)
+        n_filters_per_fb = features[0].data.shape[1] / 2
+        selected_filters_per_band = [0] * n_filterbands
         best_selected_filters_per_filterband = None
         last_best_accuracy = -1
         # Run until no improvement or max features reached
@@ -306,9 +306,9 @@ class FilterbankCSP(object):
         while (not selection_finished):
             for _ in xrange(forward_steps):
                 best_accuracy = -1 # lets try always taking a feature in each iteration
-                for filt_i in range(num_filterbands):
+                for filt_i in range(n_filterbands):
                     this_filt_per_fb = deepcopy(selected_filters_per_band)
-                    if (this_filt_per_fb[filt_i] == num_filters_per_fb):
+                    if (this_filt_per_fb[filt_i] == n_filters_per_fb):
                         continue
                     this_filt_per_fb[filt_i] = this_filt_per_fb[filt_i] + 1
                     all_features = FilterbankCSP.collect_features_for_filter_selection(
@@ -321,7 +321,7 @@ class FilterbankCSP(object):
                 selected_filters_per_band = best_selected_filters_per_filterband
             for _ in xrange(backward_steps):
                 best_accuracy = -1 # lets try always taking a feature in each iteration
-                for filt_i in range(num_filterbands):
+                for filt_i in range(n_filterbands):
                     this_filt_per_fb = deepcopy(selected_filters_per_band)
                     if (this_filt_per_fb[filt_i] == 0):
                         continue
@@ -345,18 +345,18 @@ class FilterbankCSP(object):
 
     @staticmethod   
     def collect_features_for_filter_selection(features, filters_for_filterband):
-        num_filters_per_fb = features[0].data.shape[1] / 2
-        num_filterbands = len(features)
+        n_filters_per_fb = features[0].data.shape[1] / 2
+        n_filterbands = len(features)
         first_features = deepcopy(features[0])
-        first_num_filters = filters_for_filterband[0]
-        first_features.data = first_features.data[:, range(first_num_filters) + range(-first_num_filters,0)]
+        first_n_filters = filters_for_filterband[0]
+        first_features.data = first_features.data[:, range(first_n_filters) + range(-first_n_filters,0)]
     
         all_features = first_features
-        for i in range(1, num_filterbands):
-            this_num_filters = min(num_filters_per_fb, filters_for_filterband[i])
-            if (this_num_filters > 0):
+        for i in range(1, n_filterbands):
+            this_n_filters = min(n_filters_per_fb, filters_for_filterband[i])
+            if (this_n_filters > 0):
                 next_features = deepcopy(features[i])
-                next_features.data = next_features.data[:, range(this_num_filters) + range(-this_num_filters,0)]
+                next_features.data = next_features.data[:, range(this_n_filters) + range(-this_n_filters,0)]
                 all_features = append_epo(all_features, next_features, classaxis=1)
         return all_features
 
@@ -377,24 +377,24 @@ class FilterbankCSP(object):
         return np.mean(test_accuracies)
 
     def select_features(self):
-        num_folds = len(self.train_feature)
-        num_pairs = len(self.train_feature[0])
-        num_features = self.num_features
-        self.selected_features = np.ones((num_folds, num_pairs, num_features), 
+        n_folds = len(self.train_feature)
+        n_pairs = len(self.train_feature[0])
+        n_features = self.n_features
+        self.selected_features = np.ones((n_folds, n_pairs, n_features), 
             dtype=np.int) * -1
         
         # Determine best features
-        for fold_nr in xrange(num_folds):
-            for pair_nr in xrange(num_pairs):
+        for fold_nr in xrange(n_folds):
+            for pair_nr in xrange(n_pairs):
                 features = self.train_feature[fold_nr][pair_nr]
                 this_feature_inds = select_features(features.axes[0], 
-                    features.data, num_features=num_features)
+                    features.data, n_features=n_features)
                 self.selected_features[fold_nr][pair_nr] = this_feature_inds
         assert np.all(self.selected_features >= 0) and np.all(self.selected_features < 
                 self.train_feature[0][0].data.shape[1])
         # Only retain selected best features
-        for fold_nr in xrange(num_folds):
-            for pair_nr in xrange(num_pairs):
+        for fold_nr in xrange(n_folds):
+            for pair_nr in xrange(n_pairs):
                 this_feature_inds = self.selected_features[fold_nr][pair_nr]
                 for feature_type in ['train_feature', 'train_feature_full_fold', 
                                     'test_feature', 'test_feature_full_fold']:
@@ -402,25 +402,25 @@ class FilterbankCSP(object):
                     features.data = features.data[:, this_feature_inds]
                     
     def train_classifiers(self):
-        num_folds = len(self.binary_csp.folds)
-        num_class_pairs = len(self.binary_csp.class_pairs)
-        self.clf = np.empty((num_folds, num_class_pairs), 
+        n_folds = len(self.binary_csp.folds)
+        n_class_pairs = len(self.binary_csp.class_pairs)
+        self.clf = np.empty((n_folds, n_class_pairs), 
             dtype=object)
-        for fold_i in range(num_folds):
-            for class_i in range(num_class_pairs):
+        for fold_i in range(n_folds):
+            for class_i in range(n_class_pairs):
                 train_feature = self.train_feature[fold_i, class_i]
                 clf = lda_train_scaled(train_feature, shrink=True)
                 self.clf[fold_i, class_i] = clf
                 
     def predict_outputs(self):
-        num_folds = len(self.binary_csp.folds)
-        num_class_pairs = len(self.binary_csp.class_pairs)
-        result_shape = (num_folds, num_class_pairs)
+        n_folds = len(self.binary_csp.folds)
+        n_class_pairs = len(self.binary_csp.class_pairs)
+        result_shape = (n_folds, n_class_pairs)
         self.train_accuracy = np.empty(result_shape, dtype=float)
         self.test_accuracy = np.empty(result_shape, dtype=float)
         self.train_pred_full_fold = np.empty(result_shape, dtype=object)
         self.test_pred_full_fold = np.empty(result_shape, dtype=object)
-        for fold_i in range(num_folds):
+        for fold_i in range(n_folds):
             log.info("Fold Nr: {:d}".format(fold_i + 1))
             for class_i, class_pair in enumerate(self.binary_csp.class_pairs):
                 clf = self.clf[fold_i, class_i]
@@ -465,23 +465,23 @@ class MultiClassWeightedVoting(object):
         self.class_pairs = class_pairs
         
     def run(self):
-        num_classes = 4 # for now hardcoded
-        num_folds = len(self.train_labels)
-        self.train_class_sums = np.empty(num_folds, dtype=object)
-        self.test_class_sums = np.empty(num_folds, dtype=object)
-        self.train_predicted_labels = np.empty(num_folds, dtype=object)
-        self.test_predicted_labels = np.empty(num_folds, dtype=object)
-        self.train_accuracy = np.ones(num_folds) * np.nan
-        self.test_accuracy = np.ones(num_folds) * np.nan
-        for fold_nr in range(num_folds):
+        n_classes = 4 # for now hardcoded
+        n_folds = len(self.train_labels)
+        self.train_class_sums = np.empty(n_folds, dtype=object)
+        self.test_class_sums = np.empty(n_folds, dtype=object)
+        self.train_predicted_labels = np.empty(n_folds, dtype=object)
+        self.test_predicted_labels = np.empty(n_folds, dtype=object)
+        self.train_accuracy = np.ones(n_folds) * np.nan
+        self.test_accuracy = np.ones(n_folds) * np.nan
+        for fold_nr in range(n_folds):
             log.info("Fold Nr: {:d}".format(fold_nr + 1))
             train_labels = self.train_labels[fold_nr]
             train_preds = self.train_preds[fold_nr]
-            train_class_sums = np.zeros((len(train_labels),num_classes))
+            train_class_sums = np.zeros((len(train_labels),n_classes))
             
             test_labels = self.test_labels[fold_nr]
             test_preds = self.test_preds[fold_nr]
-            test_class_sums = np.zeros((len(test_labels),num_classes))
+            test_class_sums = np.zeros((len(test_labels),n_classes))
             for pair_i, class_pair in enumerate(self.class_pairs):
                 this_train_preds = train_preds[pair_i]
                 assert len(this_train_preds) == len(train_labels) 
