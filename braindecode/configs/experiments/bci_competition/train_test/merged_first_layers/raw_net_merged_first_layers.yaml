@@ -1,30 +1,19 @@
 {
     extends: ['configs/experiments/raw_set.yaml'],
     templates: {
-        raw_net_no_drop_time_layers: [ 
+        raw_net_merged_layers: [ 
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, in_rows, in_cols]
             },
-            &shuffle !obj:lasagne.layers.DimshuffleLayer {
+            &spat_time_conv !obj:lasagne.layers.Conv2DLayer {
                 incoming: *in_layer,
-                pattern: [0,3,2,1],
-            },
-            &time_conv !obj:lasagne.layers.Conv2DLayer {
-                incoming: *shuffle,
                 num_filters: 40,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
-                name: 'time_conv',
-            },
-            &spat_conv !obj:braindecode.veganlasagne.layers.Conv2DAllColsLayer {
-                incoming: *time_conv,
-                num_filters: 40,
-                filter_size: [1, -1],
-                nonlinearity: !!python/name:theano.tensor.sqr ,
-                name: 'spat_conv',
+                name: 'spat_time_conv',
             },
             &pool !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
-                    incoming: *spat_conv,
+                    incoming: *spat_time_conv,
                     pool_size: [$pool_time_length,1],
                     stride: [$pool_time_stride,1],
                     mode: 'average_exc_pad',
@@ -45,13 +34,13 @@
             },
         ],
         raw_layer_names_to_norms: {
-            time_conv: 2.0,
-            spat_conv: 2.0,
+            spat_time_conv: $spat_time_conv_norm,
             final_dense: 0.5,
         }
     },
     variants: [[{
+        spat_time_conv_norm: [1.0, 2.0, 3.0],
         layer_names_to_norms: [$raw_layer_names_to_norms],
-        layers: [$raw_net_no_drop_time_layers],
+        layers: [$raw_net_merged_layers],
     }]]
 }

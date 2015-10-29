@@ -11,6 +11,7 @@ import pickle
 from braindecode.scripts.print_results import ResultPrinter
 import lasagne
 from pylearn2.config import yaml_parse
+from pprint import pprint
 
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
@@ -113,6 +114,8 @@ class ExperimentsRunner:
         starttime = time.time()
         
         train_dict = self._load_without_layers(train_str)
+        log.info("With params...")
+        pprint(train_dict['original_params'])
         dataset = train_dict['dataset'] 
         dataset.load()
         iterator = train_dict['exp_args']['iterator']
