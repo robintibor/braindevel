@@ -302,7 +302,7 @@ def plot_confusion_matrix(confusion_mat, figsize=None, colormap=cm.bwr):
     pyplot.clf()
     ax = fig.add_subplot(111)
     ax.set_aspect(1)
-    ax.imshow(np.array(augmented_conf_mat), cmap=colormap,  # @UndefinedVariable
+    ax.imshow(np.array(augmented_conf_mat), cmap=colormap,
         interpolation='nearest', alpha=0.6)
     width = len(confusion_mat)
     height = len(confusion_mat[0])
@@ -405,7 +405,7 @@ def plot_class_probs(probs, value_minmax=None):
     if value_minmax is None:
         value_minmax = np.max(np.abs(probs))
     fig = pyplot.figure(figsize=(2,6))
-    pyplot.imshow(np.atleast_2d(probs), interpolation='nearest', cmap=cm.bwr,  # @UndefinedVariable
+    pyplot.imshow(np.atleast_2d(probs), interpolation='nearest', cmap=cm.bwr,
                           origin='lower', vmin=-value_minmax, vmax=value_minmax)
     # hide normal x/y ticks but show some ticks for orientation in case two classes have almost same color
     fig.axes[0].get_xaxis().set_ticklabels([])
