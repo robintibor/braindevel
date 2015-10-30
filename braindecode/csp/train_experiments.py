@@ -14,6 +14,7 @@ import os
 from numpy.random import RandomState
 import pickle
 from braindecode.csp.results import CSPResult
+from braindecode.csp.print_results import CSPResultPrinter
 log = logging.getLogger(__name__)
 
 class CSPExperimentsRunner(ExperimentsRunner):
@@ -45,6 +46,9 @@ class CSPExperimentsRunner(ExperimentsRunner):
         with open(result_file_name, 'w') as resultfile:
             pickle.dump(result, resultfile)
 
+    def _print_results(self):
+        res_printer = CSPResultPrinter(self._folder_path)
+        res_printer.print_results()
     
 def setup_logging():
     """ Set up a root logger so that other modules can use logging

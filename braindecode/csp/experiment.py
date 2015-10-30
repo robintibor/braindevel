@@ -107,7 +107,7 @@ class CSPExperiment(object):
             low_width=4,
             high_width=4,
             filt_order=3,
-            segment_ival=[500,4000], 
+            segment_ival=[0,4000], 
             standardize=True,
             n_folds=5,
             n_top_bottom_csp_filters=None,
@@ -126,7 +126,14 @@ class CSPExperiment(object):
         del local_vars['self']
         self.__dict__.update(local_vars)
         # remember params for later result printing etc
+        # maybe delete this again?
         self.original_params = deepcopy(local_vars)
+        if self.original_params['cleaner'] is not None:
+            self.original_params['cleaner'] = self.original_params['cleaner'].__class__.__name__
+        if self.original_params['set_loader'] is not None:
+            self.original_params['set_loader'] = self.original_params['set_loader'].__class__.__name__
+        if self.original_params['ival_optimizer'] is not None:
+            self.original_params['ival_optimizer'] = self.original_params['ival_optimizer'].__class__.__name__
         # Default marker def is form our EEG 3-4 sec motor imagery dataset
         if self.marker_def is None:
             self.marker_def = {'1 - Right Hand': [1], '2 - Left Hand': [2], 

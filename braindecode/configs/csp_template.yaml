@@ -3,11 +3,18 @@
         save_path: $save_path,
         csp_train: !obj:braindecode.csp.experiment.CSPExperiment {
             set_loader: !obj:braindecode.datasets.loaders.$loader_type {
-                filename: $dataset_filename
+                filename: $dataset_filename,
+                load_sensor_names: $load_sensor_names,
             },
             sensor_names: $sensor_names,
             cleaner: $cleaner,
             resample_fs: $resample_fs,
+            min_freq: $min_freq,
+            max_freq: $max_freq,
+            low_width: $low_width,
+            high_width: $high_width,
+            last_low_freq: $last_low_freq,
+            filt_order: $filt_order,
             segment_ival: $segment_ival,
             standardize: $standardize,
             n_folds: $n_folds,
@@ -16,10 +23,10 @@
             n_selected_features: $n_selected_features,
             forward_steps: $forward_steps,
             backward_steps: $backward_steps,
-            min_freq: $min_freq,
-            max_freq: $max_freq,
-            low_width: $low_width,
-            high_width: $high_width,
-            last_low_freq: $last_low_freq,          
+            stop_when_no_improvement: $stop_when_no_improvement,
+            restricted_n_trials: $restricted_n_trials,
+            common_average_reference: $common_average_reference,
+            ival_optimizer: $ival_optimizer,
+            marker_def: $marker_def,
         }
 }

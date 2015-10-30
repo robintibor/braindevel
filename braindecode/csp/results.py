@@ -2,6 +2,7 @@ import numpy as np
 from pylearn2.utils import serial
 from copy import deepcopy
 
+
 class CSPResult(object):
     """ For storing a result"""
     def __init__(self, csp_trainer, parameters, training_time):
@@ -24,7 +25,8 @@ class CSPResult(object):
 
     def save(self, filename):
         serial.save(filename, self)
-    
+ 
+TrainCSPResult = CSPResult # backwards compatibility, printing earlier results   
 
 class CSPModel(object):
     # TODO: check if it even works/is needed?

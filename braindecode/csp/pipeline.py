@@ -39,7 +39,7 @@ class BinaryCSP(object):
     
     def run_fold(self, epo, bp_nr, fold_nr):  
         self.print_fold_nr(fold_nr) 
-        train_test = self.folds[fold_nr] 
+        train_test = self.folds[fold_nr]
         train_ind = train_test['train']
         test_ind = train_test['test']
         epo_train = select_epochs(epo, train_ind)
