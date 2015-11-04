@@ -2,6 +2,8 @@ from lasagne.layers import Conv2DLayer
 from lasagne import init
 from lasagne import nonlinearities
 import theano.tensor as T
+import lasagne
+import numpy as np
 
 class Conv2DAllColsLayer(Conv2DLayer):
     """Convolutional layer always convolving over the full height
@@ -21,3 +23,67 @@ class Conv2DAllColsLayer(Conv2DLayer):
              pad=pad, untie_biases=untie_biases,
              W=W, b=b, nonlinearity=nonlinearity,
              convolution=convolution, **kwargs)
+
+
+def reshape_for_stride_theano(topo_var, topo_shape, n_stride):
+    assert topo_shape[3] == 1
+    out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
+    reshaped_out=[]
+    n_filt = topo_shape[1]
+    reshape_shape = (topo_var.shape[0], n_filt, out_length, 1)
+    for i_stride in xrange(n_stride):
+        reshaped_this = T.ones(reshape_shape, dtype=np.float32) * np.nan
+        i_length = int(np.ceil((topo_shape[2] - i_stride) / float(n_stride)))
+        reshaped_this = T.set_subtensor(reshaped_this[:,:,:i_length], 
+            topo_var[:,:,i_stride::n_stride])
+        reshaped_out.append(reshaped_this)
+    reshaped_out = T.concatenate(reshaped_out)
+    return reshaped_out
+
+def get_output_shape_after_stride(input_shape, n_stride):
+    time_length_after = int(np.ceil(input_shape[2] / float(n_stride)))
+    output_shape = [None, input_shape[1], time_length_after, 1]
+    return output_shape
+
+class StrideReshapeLayer(lasagne.layers.Layer):
+    def __init__(self, incoming, n_stride, **kwargs):
+        self.n_stride = n_stride
+        super(StrideReshapeLayer, self).__init__(incoming, **kwargs)
+
+    def get_output_for(self, input, **kwargs):
+        return reshape_for_stride_theano(input, self.input_shape,self.n_stride)
+
+    def get_output_shape_for(self, input_shape):
+        assert input_shape[3] == 1, "Not tested for nonempty last dim"
+        return get_output_shape_after_stride(input_shape, self.n_stride)
+    
+class FinalReshapeLayer(lasagne.layers.Layer):
+    def get_output_for(self, input, **kwargs):
+        input = reshape_for_stride_theano(input, self.input_shape,
+            n_stride=self.input_shape[2])
+        return input.dimshuffle(1,0,2,3).reshape((self.input_shape[1],-1)).T
+    
+    def get_output_shape_for(self, input_shape):
+        assert input_shape[3] == 1, "Not tested for nonempty last dim"
+        return [None, input_shape[1]]
+    
+class RemoveNansLayer(lasagne.layers.Layer):
+    def get_output_for(self, input, **kwargs):
+        lengths_3rd_dim = get_3rd_dim_shapes_without_NaNs(self)
+        input_var = lasagne.layers.get_all_layers(self)[0].input_var
+        return input[:input_var.shape[0] * np.sum(lengths_3rd_dim)]
+    
+def get_3rd_dim_shapes_without_NaNs(layer):
+    all_layers = lasagne.layers.get_all_layers(layer)
+    cur_lengths = np.array([all_layers[0].output_shape[2]])
+    # todelay: maybe redo this by using get_output_shape_for function?
+    for l in all_layers:
+        if hasattr(l, 'filter_size'):
+            cur_lengths = cur_lengths - l.filter_size[0] + 1
+        if hasattr(l, 'pool_size'):
+            cur_lengths = cur_lengths - l.pool_size[0] + 1
+        if hasattr(l, 'n_stride'):
+            cur_lengths = np.array([int(np.ceil((length - i_stride) / 
+                                               float(l.n_stride)))
+                for length in cur_lengths for i_stride in range(l.n_stride)])
+    return cur_lengths
