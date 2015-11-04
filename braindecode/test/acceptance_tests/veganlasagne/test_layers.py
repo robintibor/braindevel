@@ -5,7 +5,15 @@ import numpy as np
 from braindecode.veganlasagne.layers import RemoveNansLayer, StrideReshapeLayer, FinalReshapeLayer
 from braindecode.test.util import to_4d_time_array, equal_without_nans,\
     allclose_without_nans
+    
+from lasagne.nonlinearities import softmax, identity
+from numpy.random import RandomState
+from braindecode.veganlasagne.pool import SumPool2dLayer
+from braindecode.veganlasagne.nonlinearities import safe_log
+from braindecode.veganlasagne.layers import StrideReshapeLayer
 
+def get_input_shape(network):
+    return lasagne.layers.get_all_layers(network)[0].output_shape
 
 def test_stride_reshape_layer():
     input_var = T.tensor4('inputs').astype(theano.config.floatX)
@@ -99,3 +107,83 @@ def test_stride_reshape_layer():
         [          np.nan,           np.nan,           np.nan,           np.nan]],
         dtype=np.float32),
         layer_activations[5])
+    
+def test_raw_net_trial_based_and_continuous():
+    softmax_rng = RandomState(3094839048)
+    orig_softmax_weights = softmax_rng.randn(4,20,54,1).astype(theano.config.floatX) * 0.01
+    
+    
+    lasagne.random.set_rng(RandomState(23903823))
+    
+    input_var = T.tensor4('inputs')
+    
+    epo_network = lasagne.layers.InputLayer(shape=[None,22,1200,1],
+                                        input_var=input_var)
+    # we have to switch channel dimension to height axis to not squash/convolve them away
+    epo_network = lasagne.layers.DimshuffleLayer(epo_network, pattern=(0,3,2,1))
+    epo_network = lasagne.layers.Conv2DLayer(epo_network, num_filters=20,filter_size=[30, 1], nonlinearity=identity)
+    epo_network = lasagne.layers.DropoutLayer(epo_network, p=0.5)
+    epo_network = lasagne.layers.Conv2DLayer(epo_network, num_filters=20,filter_size=[1, 22], nonlinearity=T.sqr)
+    epo_network = SumPool2dLayer(epo_network, pool_size=(100,1), stride=(20,1), mode='average_exc_pad')
+    epo_network = lasagne.layers.NonlinearityLayer(epo_network, nonlinearity=safe_log)
+    epo_network = lasagne.layers.DropoutLayer(epo_network, p=0.5)
+    epo_network = lasagne.layers.DenseLayer(epo_network, num_units=4,nonlinearity=softmax,
+                                        W=orig_softmax_weights.reshape(4,-1).T)
+    
+    preds = lasagne.layers.get_output(epo_network, deterministic=True)
+    pred_func = theano.function([input_var], preds)
+    
+    n_trials = 20
+    n_samples = 1200 + n_trials - 1
+    
+    rng = RandomState(343434216)
+    
+    orig_inputs = rng.randn(1, get_input_shape(epo_network)[1],n_samples,1).astype(
+        theano.config.floatX)
+    
+    # reshape to 2000 trials
+    
+    trialwise_inputs = [orig_inputs[:,:,start_i:start_i+1200] for start_i in range(n_trials)]
+    
+    trialwise_inputs = np.array(trialwise_inputs)[:,0]
+    
+    
+    lasagne.random.set_rng(RandomState(23903823))
+    input_var = T.tensor4('inputs')
+    
+    cnt_network = lasagne.layers.InputLayer(shape=[None,22,n_samples,1],
+                                        input_var=input_var)
+    # we have to switch channel dimension to height axis to not squash/convolve them away
+    cnt_network = lasagne.layers.DimshuffleLayer(cnt_network, pattern=(0,3,2,1))
+    cnt_network = lasagne.layers.Conv2DLayer(cnt_network, num_filters=20,
+        filter_size=[30, 1], nonlinearity=identity)
+    cnt_network = lasagne.layers.DropoutLayer(cnt_network, p=0.5)
+    cnt_network = lasagne.layers.Conv2DLayer(cnt_network, num_filters=20,
+                filter_size=[1, 22], nonlinearity=T.sqr)
+    cnt_network = SumPool2dLayer(cnt_network, pool_size=(100,1),
+        stride=(1,1), mode='average_exc_pad')
+    cnt_network = lasagne.layers.NonlinearityLayer(cnt_network,
+        nonlinearity=safe_log)
+    cnt_network = StrideReshapeLayer(cnt_network, n_stride=20)
+    cnt_network = lasagne.layers.DropoutLayer(cnt_network, p=0.5)
+    cnt_network = lasagne.layers.Conv2DLayer(cnt_network, num_filters=4,
+        filter_size=[54, 1], W=orig_softmax_weights[:,:,::-1,:], stride=(1,1),
+        nonlinearity=lasagne.nonlinearities.identity)
+    cnt_network = FinalReshapeLayer(cnt_network)
+    cnt_network = RemoveNansLayer(cnt_network)
+    cnt_network = lasagne.layers.NonlinearityLayer(cnt_network,
+        nonlinearity=softmax)
+    preds_cnt = lasagne.layers.get_output(cnt_network, deterministic=True)
+    pred_cnt_func = theano.function([input_var], preds_cnt)
+    
+    
+    results = []
+    batch_size = 5
+    for i_trial in xrange(0,len(trialwise_inputs),batch_size):
+        res =  pred_func(trialwise_inputs[i_trial:min(len(trialwise_inputs),
+            i_trial+batch_size)])
+        results.append(res)
+    results = np.array(results).squeeze()
+    res_cnt = pred_cnt_func(orig_inputs)
+    reshaped_results = np.concatenate(results)
+    assert np.allclose(reshaped_results, res_cnt[:n_trials])
