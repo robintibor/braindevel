@@ -18,25 +18,33 @@ class BalancedBatchIterator(object):
 
     def reset_rng(self):
         self.rng = RandomState(328774)
-
-def get_balanced_batches(num_trials, batch_size, rng, shuffle=True):
-    # We will use the test folds as our mini-batches,
-    # training fold indices are completely ignored here
-    # test folds should all be distinct and together be the complete set
-    n_batches = num_trials // batch_size
-    if n_batches > 1:
-        folds = KFold(num_trials, n_folds=n_batches, 
-                      shuffle=shuffle, random_state=rng)
-        test_folds = [f[1] for f in folds]
+        
+def get_balanced_batches(n_trials, batch_size, rng, shuffle):
+    n_batches = n_trials // batch_size
+    if n_batches > 0:
+        min_batch_size = n_trials // n_batches
+        n_batches_with_extra_trial =  n_trials % n_batches
     else:
-        # In case batch size is bigger than number of trials just return 
-        # all trial indices
-        batch = range(num_trials)
-        if (shuffle):
-            rng.shuffle(batch)
-        test_folds = [batch]
-    return test_folds
-
+        n_batches = 1
+        min_batch_size = n_trials
+        n_batches_with_extra_trial = 0
+    
+    assert n_batches_with_extra_trial < n_batches
+    all_inds = np.array(range(n_trials))
+    if shuffle:
+        rng.shuffle(all_inds)
+    i_trial = 0
+    end_trial = 0
+    batches = []
+    for i_batch in xrange(n_batches):
+        end_trial += min_batch_size
+        if i_batch < n_batches_with_extra_trial:
+            end_trial += 1
+        batch_inds = all_inds[range(i_trial, end_trial)]
+        batches.append(batch_inds)
+        i_trial = end_trial
+    assert i_trial == n_trials
+    return batches
 
 class WindowsIterator(object):
     def __init__(self, n_samples_per_window, batch_size, sample_axes_name=0,
