@@ -8,13 +8,13 @@ class BalancedBatchIterator(object):
         self.rng = RandomState(328774)
     
     def get_batches(self, dataset, shuffle):
-        num_trials = dataset.get_topological_view().shape[0]
-        
-        batches = get_balanced_batches(num_trials,
+        n_trials = dataset.get_topological_view().shape[0]
+        batches = get_balanced_batches(n_trials,
             batch_size=self.batch_size, rng=self.rng, shuffle=shuffle)
+        topo = dataset.get_topological_view()
+        y = dataset.y
         for batch_inds in batches:
-            yield (dataset.get_topological_view()[batch_inds],
-                dataset.y[batch_inds])
+            yield (topo[batch_inds], y[batch_inds])
 
     def reset_rng(self):
         self.rng = RandomState(328774)
@@ -28,7 +28,6 @@ def get_balanced_batches(n_trials, batch_size, rng, shuffle):
         n_batches = 1
         min_batch_size = n_trials
         n_batches_with_extra_trial = 0
-    
     assert n_batches_with_extra_trial < n_batches
     all_inds = np.array(range(n_trials))
     if shuffle:
@@ -115,3 +114,30 @@ def create_sample_window_batches(topo, y, batch_size,
         # this is too slow?
         batch_topo = batch_topo.astype(np.float32)
         yield batch_topo, batch_y
+
+class WindowsFromCntIterator(object):
+    def __init__(self, batch_size, input_time_length):
+        self.batch_size = batch_size
+        self.input_time_length = input_time_length
+        self.rng = RandomState(328774)
+    
+    def get_batches(self, dataset, shuffle):
+        predictable_samples = len(dataset.y) - self.input_time_length + 1
+        batches = get_balanced_batches(predictable_samples, 
+            self.batch_size, rng=self.rng, shuffle=shuffle)
+
+        topo = dataset.get_topological_view()
+        for batch_inds in batches:
+            topo_trials = []
+            topo_y = []
+            for i_start_sample in batch_inds:
+                end_sample = i_start_sample+self.input_time_length-1
+                topo_trials.append(topo[i_start_sample:end_sample+1])
+                topo_y.append(dataset.y[end_sample])
+
+            topo_batch = np.array(topo_trials).swapaxes(1,2)[:,:,:,:,0]
+            topo_y = np.array(topo_y)
+            yield (topo_batch, topo_y)
+
+    def reset_rng(self):
+        self.rng = RandomState(328774)

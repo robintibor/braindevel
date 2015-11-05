@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 import time
 import numpy as np
 import theano
+from sklearn.metrics import roc_auc_score
 
 class Monitor(object):
     __metaclass__ = ABCMeta
@@ -169,3 +170,38 @@ class DummyMisclassMonitor(Monitor):
 
     def monitor_epoch(self, monitor_chans):
         return
+
+def safe_roc_auc_score(y_true, y_score):
+    """Returns nan if targets only contain one class"""
+    if len(np.unique(y_true)) == 1:
+        return np.nan
+    else:
+        return roc_auc_score(y_true, y_score)
+    
+def auc_classes_mean(y, preds):
+    # nanmean to ignore classes that are not present
+    return np.nanmean([safe_roc_auc_score(
+            np.int32(y[:,i] == 1), preds[:,i]) 
+            for i in range(y.shape[1])])
+
+class AUCMeanMisclassMonitor():
+    def __init__(self, n_lost_border_samples=0):
+        self.n_lost_border_samples = n_lost_border_samples
+    
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_misclass".format(setname)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans):
+        return
+
+    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
+            all_batch_sizes, targets, dataset):
+        targets_arr = np.concatenate(targets)
+        all_preds_arr = np.concatenate(all_preds)
+        auc_mean = auc_classes_mean(targets_arr, all_preds_arr)
+        misclass = 1 - auc_mean
+        monitor_key = "{:s}_misclass".format(setname)
+        monitor_chans[monitor_key].append(float(misclass))
