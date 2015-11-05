@@ -199,9 +199,9 @@ class AUCMeanMisclassMonitor():
 
     def monitor_set(self, monitor_chans, setname, all_preds, losses, 
             all_batch_sizes, targets, dataset):
-        targets_arr = np.concatenate(targets)
+        #targets_arr = np.concatenate(targets)
         all_preds_arr = np.concatenate(all_preds)
-        auc_mean = auc_classes_mean(targets_arr, all_preds_arr)
+        auc_mean = auc_classes_mean(dataset.y, all_preds_arr)
         misclass = 1 - auc_mean
         monitor_key = "{:s}_misclass".format(setname)
         monitor_chans[monitor_key].append(float(misclass))
