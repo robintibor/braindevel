@@ -77,7 +77,12 @@ class Experiment(object):
     
     def create_theano_functions(self, target_var):
         if target_var is None:
-            target_var = T.ivector('targets')
+            if self.dataset.y.ndim == 1:
+                target_var = T.ivector('targets')
+            elif self.dataset.y.ndim == 2:
+                target_var = T.imatrix('targets')
+            else:
+                raise ValueError("expect y to either be a tensor or a matrix")
         prediction = lasagne.layers.get_output(self.final_layer)
         
         # test as in during testing not as in "test set"

@@ -7,7 +7,7 @@ import theano.tensor as T
 
 def test_window_misclass_monitor():
     inputs = T.ftensor4()
-    targets = T.vector()
+    targets = T.ivector()
     
     preds = T.stack((-(T.mean(inputs, axis=(1,2,3)) - 3),
         T.mean(inputs, axis=(1,2,3)) - 3,
@@ -16,7 +16,7 @@ def test_window_misclass_monitor():
     # should lead to predictions 0,1,1 which should lead to misclass 1/3.0
 
     topo_data = [range(i_trial,i_trial+6) for i_trial in range(3)]
-    topo_data = np.array(topo_data)[:,np.newaxis,:,np.newaxis]
+    topo_data = np.array(topo_data,dtype=np.float32)[:,np.newaxis,:,np.newaxis]
     
     y = np.int32(range(topo_data.shape[0]))
     dataset = DenseDesignMatrixWrapper(topo_view=topo_data, y=y, 
