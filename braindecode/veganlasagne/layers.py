@@ -61,19 +61,20 @@ class StrideReshapeLayer(lasagne.layers.Layer):
     
 class FinalReshapeLayer(lasagne.layers.Layer):
     def get_output_for(self, input, **kwargs):
+        # Put all samples into their own "batch row"
+        # afterwards tensor should have dims #predsamples x #classes x 1 x 1
         input = reshape_for_stride_theano(input, self.input_shape,
             n_stride=self.input_shape[2])
-        return input.dimshuffle(1,0,2,3).reshape((self.input_shape[1],-1)).T
-    
-    def get_output_shape_for(self, input_shape):
-        assert input_shape[3] == 1, "Not tested for nonempty last dim"
-        return [None, input_shape[1]]
-    
-class RemoveNansLayer(lasagne.layers.Layer):
-    def get_output_for(self, input, **kwargs):
+        # Reshape/flatten into #predsamples x #classes
+        input = input.dimshuffle(1,0,2,3).reshape((self.input_shape[1],-1)).T
+        # remove invalid values (possibly nans still contained before)
         lengths_3rd_dim = get_3rd_dim_shapes_without_NaNs(self)
         input_var = lasagne.layers.get_all_layers(self)[0].input_var
         return input[:input_var.shape[0] * np.sum(lengths_3rd_dim)]
+        
+    def get_output_shape_for(self, input_shape):
+        assert input_shape[3] == 1, "Not tested for nonempty last dim"
+        return [None, input_shape[1]]
     
 def get_3rd_dim_shapes_without_NaNs(layer):
     all_layers = lasagne.layers.get_all_layers(layer)
