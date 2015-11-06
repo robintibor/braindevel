@@ -2,7 +2,7 @@ import lasagne
 import theano
 import theano.tensor as T
 import numpy as np
-from braindecode.veganlasagne.layers import RemoveNansLayer, StrideReshapeLayer, FinalReshapeLayer
+from braindecode.veganlasagne.layers import StrideReshapeLayer, FinalReshapeLayer
 from braindecode.test.util import to_4d_time_array, equal_without_nans,\
     allclose_without_nans
     
@@ -10,7 +10,6 @@ from lasagne.nonlinearities import softmax, identity
 from numpy.random import RandomState
 from braindecode.veganlasagne.pool import SumPool2dLayer
 from braindecode.veganlasagne.nonlinearities import safe_log
-from braindecode.veganlasagne.layers import StrideReshapeLayer
 
 def get_input_shape(network):
     return lasagne.layers.get_all_layers(network)[0].output_shape
@@ -28,8 +27,7 @@ def test_stride_reshape_layer():
     network = lasagne.layers.Conv2DLayer(network, num_filters=4, filter_size=[2, 1],
                                          W=to_4d_time_array([[1,1], [-1,-1], [0.1,0.1], [-0.1,-0.1]]), stride=(1,1),
                                         nonlinearity=lasagne.nonlinearities.identity)
-    network = FinalReshapeLayer(network)
-    network = RemoveNansLayer(network)
+    network = FinalReshapeLayer(network, remove_invalids=False)
     
     preds_cnt = lasagne.layers.get_output(lasagne.layers.get_all_layers(network)[1:])
     pred_cnt_func = theano.function([input_var], preds_cnt)
@@ -170,7 +168,6 @@ def test_raw_net_trial_based_and_continuous():
         filter_size=[54, 1], W=orig_softmax_weights[:,:,::-1,:], stride=(1,1),
         nonlinearity=lasagne.nonlinearities.identity)
     cnt_network = FinalReshapeLayer(cnt_network)
-    cnt_network = RemoveNansLayer(cnt_network)
     cnt_network = lasagne.layers.NonlinearityLayer(cnt_network,
         nonlinearity=softmax)
     preds_cnt = lasagne.layers.get_output(cnt_network, deterministic=True)

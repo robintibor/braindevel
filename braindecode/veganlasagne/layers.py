@@ -25,14 +25,14 @@ class Conv2DAllColsLayer(Conv2DLayer):
              convolution=convolution, **kwargs)
 
 def reshape_for_stride_theano(topo_var, topo_shape, n_stride, 
-        fill_value=0):
+        invalid_fill_value=0):
     assert topo_shape[3] == 1
     out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
     reshaped_out=[]
     n_filt = topo_shape[1]
     reshape_shape = (topo_var.shape[0], n_filt, out_length, 1)
     for i_stride in xrange(n_stride):
-        reshaped_this = T.ones(reshape_shape, dtype=np.float32) * fill_value
+        reshaped_this = T.ones(reshape_shape, dtype=np.float32) * invalid_fill_value
         i_length = int(np.ceil((topo_shape[2] - i_stride) / float(n_stride)))
         reshaped_this = T.set_subtensor(reshaped_this[:,:,:i_length], 
             topo_var[:,:,i_stride::n_stride])
@@ -53,24 +53,31 @@ class StrideReshapeLayer(lasagne.layers.Layer):
 
     def get_output_for(self, input, **kwargs):
         return reshape_for_stride_theano(input, self.input_shape,self.n_stride,
-            fill_value=self.invalid_fill_value)
+            invalid_fill_value=self.invalid_fill_value)
 
     def get_output_shape_for(self, input_shape):
         assert input_shape[3] == 1, "Not tested for nonempty last dim"
         return get_output_shape_after_stride(input_shape, self.n_stride)
     
 class FinalReshapeLayer(lasagne.layers.Layer):
+    def __init__(self, incoming, remove_invalids=True, **kwargs):
+        self.remove_invalids = remove_invalids
+        super(FinalReshapeLayer,self).__init__(incoming, **kwargs)
+
     def get_output_for(self, input, **kwargs):
         # Put all samples into their own "batch row"
         # afterwards tensor should have dims #predsamples x #classes x 1 x 1
+        # fill value should never be needed, so it shd be safe to set to nan
         input = reshape_for_stride_theano(input, self.input_shape,
-            n_stride=self.input_shape[2])
+            n_stride=self.input_shape[2], invalid_fill_value=np.nan)
         # Reshape/flatten into #predsamples x #classes
         input = input.dimshuffle(1,0,2,3).reshape((self.input_shape[1],-1)).T
-        # remove invalid values (possibly nans still contained before)
-        lengths_3rd_dim = get_3rd_dim_shapes_without_NaNs(self)
-        input_var = lasagne.layers.get_all_layers(self)[0].input_var
-        return input[:input_var.shape[0] * np.sum(lengths_3rd_dim)]
+        if self.remove_invalids:
+            # remove invalid values (possibly nans still contained before)
+            lengths_3rd_dim = get_3rd_dim_shapes_without_NaNs(self)
+            input_var = lasagne.layers.get_all_layers(self)[0].input_var
+            input = input[:input_var.shape[0] * np.sum(lengths_3rd_dim)]
+        return input
         
     def get_output_shape_for(self, input_shape):
         assert input_shape[3] == 1, "Not tested for nonempty last dim"
