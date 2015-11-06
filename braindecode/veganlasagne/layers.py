@@ -24,15 +24,15 @@ class Conv2DAllColsLayer(Conv2DLayer):
              W=W, b=b, nonlinearity=nonlinearity,
              convolution=convolution, **kwargs)
 
-
-def reshape_for_stride_theano(topo_var, topo_shape, n_stride):
+def reshape_for_stride_theano(topo_var, topo_shape, n_stride, 
+        fill_value=0):
     assert topo_shape[3] == 1
     out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
     reshaped_out=[]
     n_filt = topo_shape[1]
     reshape_shape = (topo_var.shape[0], n_filt, out_length, 1)
     for i_stride in xrange(n_stride):
-        reshaped_this = T.ones(reshape_shape, dtype=np.float32) * np.nan
+        reshaped_this = T.ones(reshape_shape, dtype=np.float32) * fill_value
         i_length = int(np.ceil((topo_shape[2] - i_stride) / float(n_stride)))
         reshaped_this = T.set_subtensor(reshaped_this[:,:,:i_length], 
             topo_var[:,:,i_stride::n_stride])
@@ -46,12 +46,14 @@ def get_output_shape_after_stride(input_shape, n_stride):
     return output_shape
 
 class StrideReshapeLayer(lasagne.layers.Layer):
-    def __init__(self, incoming, n_stride, **kwargs):
+    def __init__(self, incoming, n_stride, invalid_fill_value=0, **kwargs):
         self.n_stride = n_stride
+        self.invalid_fill_value = invalid_fill_value
         super(StrideReshapeLayer, self).__init__(incoming, **kwargs)
 
     def get_output_for(self, input, **kwargs):
-        return reshape_for_stride_theano(input, self.input_shape,self.n_stride)
+        return reshape_for_stride_theano(input, self.input_shape,self.n_stride,
+            fill_value=self.invalid_fill_value)
 
     def get_output_shape_for(self, input_shape):
         assert input_shape[3] == 1, "Not tested for nonempty last dim"
