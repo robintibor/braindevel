@@ -83,6 +83,7 @@ def get_3rd_dim_shapes_without_NaNs(layer):
         if hasattr(l, 'pool_size'):
             cur_lengths = cur_lengths - l.pool_size[0] + 1
         if hasattr(l, 'n_stride'):
+            # maybe it should be floor not ceil?
             cur_lengths = np.array([int(np.ceil((length - i_stride) / 
                                                float(l.n_stride)))
                 for length in cur_lengths for i_stride in range(l.n_stride)])
