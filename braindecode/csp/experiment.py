@@ -121,7 +121,8 @@ class CSPExperiment(object):
             common_average_reference=False,
             ival_optimizer=None,
             shuffle=False,
-            marker_def=None):
+            marker_def=None,
+            clean_test=False):
         local_vars = locals()
         del local_vars['self']
         self.__dict__.update(local_vars)
@@ -155,6 +156,7 @@ class CSPExperiment(object):
         self.preprocess_set()
         self.remember_sensor_names()
         self.init_training_vars()
+        #self.clean()
         log.info("Running Training...")
         self.run_training()
 
@@ -166,14 +168,11 @@ class CSPExperiment(object):
             self.cnt)
         self.rejected_chans = np.array(rejected_chans)
         self.rejected_trials = np.array(rejected_trials)
-        self.clean_trials = np.array(clean_trials)
+        self.clean_trials = np.array(clean_trials)        
         # do not remove rejected channels yet to allow calling
         # this function several times with same result
 
     def preprocess_set(self):
-        # only remove rejected channels now so that clean function can
-        # be called multiple times without changing cleaning results
-        self.cnt = select_channels(self.cnt, self.rejected_chans, invert=True)
         if self.sensor_names is not None:
             self.sensor_names = sort_topologically(self.sensor_names)
             self.cnt = select_channels(self.cnt, self.sensor_names)
@@ -182,6 +181,7 @@ class CSPExperiment(object):
             self.cnt = resample_cnt(self.cnt, newfs=self.resample_fs)
         if self.common_average_reference is True:
             self.cnt = common_average_reference_cnt(self.cnt)
+            
 
     def remember_sensor_names(self):
         """ Just to be certain have correct sensor names, take them
@@ -195,24 +195,42 @@ class CSPExperiment(object):
         n_classes = len(self.marker_def)
         self.class_pairs = list(itertools.combinations(range(n_classes),2))
         # use only number of clean trials to split folds
-        n_clean_trials = len(self.clean_trials)
+       # n_clean_trials = len(self.clean_trials)
+        if self.clean_test is False:
+            n_trials = len(self.cnt)
+        else:
+            n_trials = len(self.clean_trials)
+        
         if self.restricted_n_trials is not None:
-            n_clean_trials = int(n_clean_trials * self.restricted_n_trials)
+            n_trials = int(n_trials * self.restricted_n_trials)
         if not self.shuffle:
-            folds = KFold(n_clean_trials, n_folds=self.n_folds, 
+            folds = KFold(n_trials, n_folds=self.n_folds, 
                 shuffle=False)
         else:
             rng = RandomState(903372376)
-            folds = KFold(n_clean_trials, n_folds=self.n_folds, 
+            folds = KFold(n_trials, n_folds=self.n_folds, 
                 shuffle=True, random_state=rng)
             
         # remap to original indices in unclean set(!)
-        self.folds = map(lambda fold: 
-            {'train': self.clean_trials[fold[0]], 
-             'test': self.clean_trials[fold[1]]},
-            folds)
+        if self.clean_test is False:
+            self.folds = map(lambda fold: 
+                {#'train': self.clean_trials[fold[0]], 
+                 #'test': self.clean_trials[fold[1]]},
+                'train': self.clean_trials[fold[0]], 
+                 'test': self.cnt[fold[1]]},
+                folds)
+        else:
+            self.folds = map(lambda fold: 
+                {'train': self.clean_trials[fold[0]], 
+                 'test': self.clean_trials[fold[1]]},
+                folds)
         if self.only_last_fold:
             self.folds = self.folds[-1:]
+            
+    def clean(self):
+        # only remove rejected channels now so that clean function can
+        # be called multiple times without changing cleaning results
+        self.cnt = select_channels(self.cnt, self.rejected_chans, invert=True)
 
     def run_training(self):
         self.binary_csp = BinaryCSP(self.cnt, self.filterbands, 
