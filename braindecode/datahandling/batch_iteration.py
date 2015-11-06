@@ -141,3 +141,31 @@ class WindowsFromCntIterator(object):
 
     def reset_rng(self):
         self.rng = RandomState(328774)
+        
+class CntWindowsFromCntIterator(object):
+    def __init__(self, input_time_length, n_sample_preds):
+        self.input_time_length = input_time_length
+        self.n_sample_preds = n_sample_preds
+        self.rng = RandomState(328774)
+    
+    def get_batches(self, dataset, shuffle):
+        n_samples = dataset.get_topological_view().shape[0]
+        n_lost_samples = self.input_time_length - self.n_sample_preds
+        start_end_blocks = []
+        for i_start_sample in range(0, n_samples - self.input_time_length + self.n_sample_preds, self.n_sample_preds):
+            i_adjusted_start = min(i_start_sample, n_samples - self.input_time_length)
+            start_end_blocks.append((i_adjusted_start, i_adjusted_start + self.input_time_length))
+        
+        block_inds = range(0, len(start_end_blocks))
+        if shuffle:
+            self.rng.shuffle(block_inds)
+            
+        topo = dataset.get_topological_view()
+        for i_block in block_inds:
+            start,end = start_end_blocks[i_block]
+            batch_topo = topo[start:end].swapaxes(0,2)
+            batch_y = dataset.y[start+n_lost_samples:end]
+            yield batch_topo, batch_y
+
+    def reset_rng(self):
+        self.rng = RandomState(328774)

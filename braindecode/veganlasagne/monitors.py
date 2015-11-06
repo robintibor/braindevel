@@ -185,8 +185,9 @@ def auc_classes_mean(y, preds):
             for i in range(y.shape[1])])
 
 class AUCMeanMisclassMonitor():
-    def __init__(self, n_lost_border_samples=0):
-        self.n_lost_border_samples = n_lost_border_samples
+    def __init__(self, input_time_length=None, n_sample_preds=None):
+        self.input_time_length = input_time_length
+        self.n_sample_preds = n_sample_preds
     
     def setup(self, monitor_chans, datasets):
         for setname in datasets:
@@ -199,8 +200,20 @@ class AUCMeanMisclassMonitor():
 
     def monitor_set(self, monitor_chans, setname, all_preds, losses, 
             all_batch_sizes, targets, dataset):
-        #targets_arr = np.concatenate(targets)
+        # remove last preds that were duplicates due to overlap of final windows
+        n_samples = len(dataset.y)
+        if self.input_time_length is not None:
+            assert all_preds[0].shape[0] == self.n_sample_preds
+            legitimate_last_preds = (n_samples - self.input_time_length) % self.n_sample_preds
+            if legitimate_last_preds == 0: # in this case there was no overlap(!)
+                legitimate_last_preds = self.n_sample_preds
+            all_preds[-1] = all_preds[-1][-legitimate_last_preds:]
+        
         all_preds_arr = np.concatenate(all_preds)
+        if self.input_time_length is not None:
+            n_lost_samples = self.input_time_length - self.n_sample_preds
+            all_preds_arr = np.append(np.zeros((n_lost_samples, 
+                dataset.y.shape[1]), dtype=np.int32), all_preds_arr, axis=0)
         auc_mean = auc_classes_mean(dataset.y, all_preds_arr)
         misclass = 1 - auc_mean
         monitor_key = "{:s}_misclass".format(setname)
