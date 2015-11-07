@@ -612,35 +612,18 @@ class SplitTrials(Preprocessor):
         dataset.set_topological_view(new_topo_view, 
             dataset.view_converter.axes)
         dataset.y = new_y
-
+    
 class OnlineAxiswiseStandardize(Preprocessor):
     """
-    Subtracts the mean and divides by the standard deviation, channelwise.
+    Subtracts the mean and divides by the standard deviation, axiswise.
     For the non-fittable datasets, goes over dataset trial by trial
     and uses data of trials seen so far to standardize next trial.
     ----------
-    global_mean : bool, optional
-        If `True`, subtract the (scalar) mean over every element
-        in the design matrix. If `False`, subtract the mean from
-        each column (feature) separately. Default is `False`.
-    global_std : bool, optional
-        If `True`, after centering, divide by the (scalar) standard
-        deviation of every element in the design matrix. If `False`,
-        divide by the column-wise (per-feature) standard deviation.
-        Default is `False`.
     std_eps : float, optional
         Stabilization factor added to the standard deviations before
         dividing, to prevent standard deviations very close to zero
         from causing the feature values to blow up too much.
         Default is `1e-4`.
-    new_factor: float, optional
-        Factor by how much to weight new variance/means higher, i.e.
-        2 means new variances are weighted twice as high as old ones
-        Default is 1
-    use_only_new: boolean, optional
-        Use only the new variances/means for standardization, ignore old values
-        from training set
-        Default is False
     axis: sequence, optional
     axis over which to do the standardization, 
     e.g. ('c', 0) means to compute means and variances for all 
@@ -650,15 +633,10 @@ class OnlineAxiswiseStandardize(Preprocessor):
     is standardized individually
     """
 
-    def __init__(self, global_mean=False, global_std=False, std_eps=1e-4,
-        new_factor=1, use_only_new=False, axis=('c', 0, 1)):
-        self._global_mean = global_mean
-        self._global_std = global_std
+    def __init__(self, std_eps=1e-5, axis=('c', 0, 1)):
         self._std_eps = std_eps
         self._mean = None
         self._std = None
-        self._new_factor = new_factor
-        self._use_only_new = use_only_new
         self.axis = axis
 
     def apply(self, dataset, can_fit=False):
@@ -680,13 +658,15 @@ class OnlineAxiswiseStandardize(Preprocessor):
             
             assert dataset.view_converter.axes[0] == 'b', ("batch axis should "
                 "be first")
-            new_topo = OnlineAxiswiseStandardize.standardize(topo_view,
-                standard_dim_inds,
+            dims_to_squash = None
+            if len(standard_dim_inds) > 1:
+                # first dim is 'b'-> batch, so needs to be ignored here :))
+                dims_to_squash = standard_dim_inds[1:]
+            new_topo = online_standardize(topo_view,
                 old_mean=self._mean,
                 old_std=self._std,
+                dims_to_squash=dims_to_squash,
                 n_old_trials=self._num_old_examples,
-                use_only_new=self._use_only_new,
-                new_factor=self._new_factor,
                 std_eps=self._std_eps)
             
             dataset.set_topological_view(new_topo, 
@@ -716,59 +696,24 @@ class OnlineAxiswiseStandardize(Preprocessor):
             if axis not in standard_axes]
         return tuple(unwanted_dims)
     
-    @staticmethod
-    def standardize(topo_view, standard_dim_inds, old_mean,
-        old_std, n_old_trials, use_only_new, new_factor, std_eps):
-        
-        newTopo = deepcopy(topo_view)
-        
-        for trial_i in xrange(newTopo.shape[0]):
-            if (trial_i > 0): # need two trials to compute a variance :)
-                num_new = trial_i + 1
-                new_mean = np.mean(topo_view[0:num_new],
-                    axis=standard_dim_inds, keepdims=True)
-                new_std = np.std(topo_view[0:num_new],
-                    axis=standard_dim_inds,  keepdims=True)
-                assert np.array_equal(new_mean.shape, old_mean.shape), (
-                    "new mean shape {:s} should be same as ".format(
-                        new_mean.shape) +
-                     "old mean shape {:s}".format(old_mean.shape))
-                assert np.array_equal(new_std.shape, old_std.shape)
-                # test: weigh new nums higher: 
-                num_new = round(num_new * new_factor)
-                if (not use_only_new):
-                    combined_mean = compute_combined_mean(n_old_trials,
-                        num_new, old_mean, new_mean)
-                    combined_std = compute_combined_std(n_old_trials, num_new,
-                        old_mean, new_mean, combined_mean, old_std, new_std)
-                else:
-                    combined_mean = new_mean
-                    combined_std = new_std
-            else:
-                assert trial_i == 0
-                combined_mean = old_mean
-                combined_std = old_std
-            newTopo[trial_i] = ((newTopo[trial_i] - combined_mean) /
-                (std_eps + combined_std))
-        return newTopo
-            
-    @staticmethod
-    def axeswise_mean_std(topo_view, channel_dim_i):
-        other_dims = range(topo_view.ndim)
-        other_dims.remove(channel_dim_i)
-        other_dims = tuple(other_dims)
-        # assuming channel is on axis 1, so only keeping this axis,
-        # reducing all others
-        mean = topo_view.mean(axis=other_dims, keepdims=True)
-        std = topo_view.std(axis=other_dims, keepdims=True)
-        # keep dimensions so that broadcast will work correctly
-        # http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html
-        # (training empty dims will be broadcasted to correct size)
-        # without this instead channel dimension might be incorrectly broadcast
-        # in topo_view due to empty trailing dim of topo_view
-        return mean,std
-    
-    
+# adapted from https://subluminal.wordpress.com/2008/07/31/running-standard-deviations/
+# using degree of freedom 0 which is default for numpy std
+# and also simplifies calculations even more
+def online_standardize(topo, n_old_trials, old_mean, old_std, dims_to_squash=None, std_eps=1e-5):
+    n = n_old_trials
+    mean = old_mean
+    power_avg = (old_std * old_std + old_mean * old_mean)
+    new_topo = deepcopy(topo)
+    for i_trial in xrange(len(topo)):
+        n += 1
+        this_topo = topo[i_trial]
+        if dims_to_squash is not None:
+            this_topo = np.mean(this_topo, axis=dims_to_squash, keepdims=True)
+        mean = mean + ((this_topo - mean) / n)
+        power_avg = power_avg + ((this_topo * this_topo - power_avg) / n)
+        std = np.sqrt((power_avg - mean * mean))
+        new_topo[i_trial] = ((topo[i_trial] - mean) / (std_eps + std))
+    return new_topo    
 
 class OnlineChannelwiseStandardize(ChannelwiseStandardize):
     """

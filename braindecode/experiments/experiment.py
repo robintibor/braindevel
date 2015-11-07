@@ -130,7 +130,7 @@ class Experiment(object):
             batch_generator = self.iterator.get_batches(datasets['train'],
                 shuffle=True)
             
-            with log_timing(log, None, final_msg='Time updates this epoch:'):
+            with log_timing(log, None, final_msg='Time updates following epoch:'):
                 for inputs, targets in batch_generator:
                     self.train_func(inputs, targets)
             self.monitor_epoch(datasets)

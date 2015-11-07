@@ -4,7 +4,6 @@ from lasagne import nonlinearities
 import theano.tensor as T
 import lasagne
 import numpy as np
-import theano
 
 class Conv2DAllColsLayer(Conv2DLayer):
     """Convolutional layer always convolving over the full height
@@ -29,12 +28,12 @@ def reshape_for_stride_theano(topo_var, topo_shape, n_stride,
         invalid_fill_value=0):
     assert topo_shape[3] == 1, ("Not tested for nonempty third dim, "
         "might work though")
-    # collect all new "rows", create a different
+    # Create a different
     # out tensor for each offset from 0 to stride (exclusive),
     # e.g. 0,1,2 for stride 3
-    # Then concatenate them together again
-    # from different variants (using scan, using output preallocation 
-    # + set_subtensor)
+    # Then concatenate them together again.
+    # From 4 different variants (this, using scan, using output preallocation 
+    # + set_subtensor, using scan + output preallocation + set_subtensor)
     # this was the fastest, but only by a few percent
     
     n_third_dim = int(np.ceil(topo_shape[2] / float(n_stride)))
