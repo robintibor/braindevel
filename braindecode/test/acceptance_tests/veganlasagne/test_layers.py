@@ -23,7 +23,6 @@ def test_stride_reshape_layer():
     network = lasagne.layers.Conv2DLayer(network, num_filters=1,filter_size=[2, 1],
                                          W=lasagne.init.Constant(1), stride=(1,1))
     network = StrideReshapeLayer(network, n_stride=2, invalid_fill_value=np.nan)
-    print network.output_shape
     network = lasagne.layers.Conv2DLayer(network, num_filters=4, filter_size=[2, 1],
                                          W=to_4d_time_array([[1,1], [-1,-1], [0.1,0.1], [-0.1,-0.1]]), stride=(1,1),
                                         nonlinearity=lasagne.nonlinearities.identity)
