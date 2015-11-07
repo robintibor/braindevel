@@ -117,3 +117,81 @@ def get_3rd_dim_shapes_without_Invalids(layer):
 
 def get_n_sample_preds(layer):
     return np.sum(get_3rd_dim_shapes_without_Invalids(layer))
+
+
+def reshape_for_stride_theano_scan_subtensor(topo_var, topo_shape, n_stride, 
+        invalid_fill_value=0):
+    assert topo_shape[3] == 1
+    out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
+    n_filt = topo_shape[1]
+    def fill_with_stride_samples(i_stride, topo_out, topo_var, topo_length):
+        i_length = T.cast(T.ceil((topo_shape[2] - i_stride) / float(n_stride)), dtype="int32")
+        i_start = i_stride*topo_var.shape[0]
+        i_end = i_start + topo_var.shape[0]
+        topo_out = T.set_subtensor(topo_out[i_start:i_end,:,:i_length], 
+            topo_var[:,:,i_stride::n_stride]) 
+        return topo_out
+    invalid_fill_value = np.array(invalid_fill_value).astype(theano.config.floatX)
+    output_var = T.alloc(invalid_fill_value, topo_var.shape[0] * n_stride,
+        topo_shape[1], out_length, topo_shape[3])
+    output_var = T.cast(output_var, dtype=theano.config.floatX)
+    reshaped_out, _ = theano.scan(fn=fill_with_stride_samples, sequences=[theano.tensor.arange(n_stride)],
+                                 non_sequences=[topo_var, topo_shape[2]],
+                                 outputs_info=output_var)
+    reshaped_out = reshaped_out[-1]
+    return reshaped_out
+
+def reshape_for_stride_theano_subtensor(topo_var, topo_shape, n_stride, 
+        invalid_fill_value=0):
+    assert topo_shape[3] == 1
+    out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
+    n_filt = topo_shape[1]
+    
+    output_var = T.alloc(invalid_fill_value, topo_var.shape[0] * n_stride,
+        topo_shape[1], out_length, topo_shape[3])
+    for i_stride in xrange(n_stride):
+        i_length = int(np.ceil((topo_shape[2] - i_stride) / float(n_stride)))
+        i_start = i_stride * topo_var.shape[0]
+        i_end = i_start + topo_var.shape[0]
+        output_var = T.set_subtensor(output_var[i_start:i_end,:,:i_length], 
+            topo_var[:,:,i_stride::n_stride])
+    return output_var
+
+def reshape_for_stride_theano_scan(topo_var, topo_shape, n_stride, 
+        invalid_fill_value=0):
+    assert topo_shape[3] == 1
+    out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
+    n_filt = topo_shape[1]
+    reshape_shape = (topo_var.shape[0], n_filt, out_length, 1)
+    def fill_with_stride_samples(i_stride, topo_var, topo_length):
+        reshaped_this = T.ones(reshape_shape, dtype=np.float32) * invalid_fill_value
+
+        i_length = T.cast(T.ceil((topo_shape[2] - i_stride) / float(n_stride)), dtype="int32")
+        i_start = i_stride * topo_var.shape[0]
+        i_end = i_start + topo_var.shape[0]
+        reshaped_this = T.set_subtensor(reshaped_this[:,:,:i_length], 
+            topo_var[:,:,i_stride::n_stride])
+        return reshaped_this
+    reshaped_out, _ = theano.scan(fn=fill_with_stride_samples, sequences=[theano.tensor.arange(n_stride)],
+                                 non_sequences=[topo_var, topo_shape[2]],
+                                 outputs_info=None)
+    print "reshaped out", reshaped_out
+    reshaped_out = reshaped_out.reshape((reshaped_out.shape[0] * reshaped_out.shape[1], 
+                                         reshaped_out.shape[2], reshaped_out.shape[3],
+                                       reshaped_out.shape[4]))
+    return reshaped_out
+
+class StrideReshapeLayerWithFunc(lasagne.layers.Layer):
+    def __init__(self, incoming, n_stride, stride_func, invalid_fill_value=0, **kwargs):
+        self.n_stride = n_stride
+        self.invalid_fill_value = invalid_fill_value
+        self.stride_func = stride_func
+        super(StrideReshapeLayerWithFunc, self).__init__(incoming, **kwargs)
+
+    def get_output_for(self, input, **kwargs):
+        return self.stride_func(input, self.input_shape,self.n_stride,
+            invalid_fill_value=self.invalid_fill_value)
+
+    def get_output_shape_for(self, input_shape):
+        assert input_shape[3] == 1, "Not tested for nonempty last dim"
+        return get_output_shape_after_stride(input_shape, self.n_stride)
