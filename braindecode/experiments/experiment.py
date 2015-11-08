@@ -114,7 +114,9 @@ class Experiment(object):
         self.run_until_second_stop()
 
     def run_until_early_stop(self):
+        log.info("Split/Preprocess datasets...")
         datasets = self.dataset_provider.get_train_valid_test(self.dataset)
+        log.info("...Done")
         self.create_monitors(datasets)
         self.run_until_stop(datasets, remember_best=True)
         

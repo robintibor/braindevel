@@ -5,6 +5,27 @@ import theano.tensor as T
 import lasagne
 import numpy as np
 
+def get_used_input_length(final_layer):
+    """ Determine how much input in the 0-axis
+     the layer actually uses,
+    assuming valid convolutions/poolings"""
+    
+    all_layers = lasagne.layers.get_all_layers(final_layer)
+    all_layers = all_layers[::-1]
+    # determine start size
+    for layer in all_layers:
+        if (len(layer.output_shape) == 4):
+            n_samples = layer.output_shape[2]
+            break
+    for layer in all_layers:
+        if hasattr(layer, 'stride'):
+            n_samples = (n_samples - 1) * layer.stride[0] + 1
+        if hasattr(layer, 'pool_size'):
+            n_samples = n_samples + layer.pool_size[0] - 1
+        if hasattr(layer, 'filter_size'):
+            n_samples = n_samples + layer.filter_size[0] - 1
+    return n_samples
+
 class Conv2DAllColsLayer(Conv2DLayer):
     """Convolutional layer always convolving over the full height
     of the layer before. See Conv2DLayer of lasagne for arguments.

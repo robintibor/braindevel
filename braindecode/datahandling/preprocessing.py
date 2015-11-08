@@ -619,21 +619,22 @@ class OnlineAxiswiseStandardize(Preprocessor):
     For the non-fittable datasets, goes over dataset trial by trial
     and uses data of trials seen so far to standardize next trial.
     ----------
+    axis: sequence, optional
+    axis over which to do the standardization, 
+        e.g. ('c', 0) means to compute means and variances for all 
+        channelx0 points and subtract/divide by them 
+        
+        Default is ('c', 0, 1) => all axes (order of axes do not matter), each feature
+        is standardized individually
+
     std_eps : float, optional
         Stabilization factor added to the standard deviations before
         dividing, to prevent standard deviations very close to zero
         from causing the feature values to blow up too much.
         Default is `1e-4`.
-    axis: sequence, optional
-    axis over which to do the standardization, 
-    e.g. ('c', 0) means to compute means and variances for all 
-    channelx0 points and subtract/divide by them 
-    
-    Default is ('c', 0, 1) => all axes (order of axes do not matter), each feature
-    is standardized individually
     """
 
-    def __init__(self, std_eps=1e-5, axis=('c', 0, 1)):
+    def __init__(self, axis=('c', 0, 1), std_eps=1e-5):
         self._std_eps = std_eps
         self._mean = None
         self._std = None

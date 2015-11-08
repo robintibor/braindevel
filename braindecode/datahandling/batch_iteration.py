@@ -143,10 +143,12 @@ class WindowsFromCntIterator(object):
         self.rng = RandomState(328774)
         
 class CntWindowsFromCntIterator(object):
-    def __init__(self, batch_size, input_time_length, n_sample_preds):
+    def __init__(self, batch_size, input_time_length, n_sample_preds,
+            oversample_targets=False):
         self.batch_size = batch_size
         self.input_time_length = input_time_length
         self.n_sample_preds = n_sample_preds
+        self.oversample_targets=oversample_targets
         self.rng = RandomState(328774)
     
     def get_batches(self, dataset, shuffle):
@@ -157,18 +159,37 @@ class CntWindowsFromCntIterator(object):
             i_adjusted_start = min(i_start_sample, n_samples - self.input_time_length)
             start_end_blocks.append((i_adjusted_start, i_adjusted_start + self.input_time_length))
         
+        if shuffle and self.oversample_targets:
+            # Hacky heuristic for oversampling...
+            # duplicate those blocks that contain
+            # more targets than the mean per block
+            # if they contian 2 times as much as mean,
+            # put them in 2 times, 3 times as much,
+            # put in 3 times, etc.
+            n_targets_in_block = []
+            for start, end in start_end_blocks:
+                n_targets_in_block.append(np.sum(dataset.y[start:end]))
+            mean_targets_in_block = np.mean(n_targets_in_block)
+            for i_block in xrange(len(start_end_blocks)):
+                target_ratio = int(np.round(n_targets_in_block[i_block] / 
+                    float(mean_targets_in_block)))
+                if target_ratio > 1:
+                    for _ in xrange(target_ratio - 1):
+                        start_end_blocks.append(start_end_blocks[i_block])
+            
         block_inds = range(0, len(start_end_blocks))
         if shuffle:
             self.rng.shuffle(block_inds)
             
+       
         topo = dataset.get_topological_view()
         for i_block in xrange(0,len(block_inds),self.batch_size):
-            n_blocks = min(self.batch_size, len(block_inds) - i_block)
+            batch_size = min(self.batch_size, len(block_inds) - i_block)
             # have to wrap into float32, cause np.nan upcasts to float64!
-            batch_topo = np.float32(np.ones((n_blocks, topo.shape[1],
+            batch_topo = np.float32(np.ones((batch_size, topo.shape[1],
                  self.input_time_length, topo.shape[3])) * np.nan)
-            batch_y = np.ones((self.n_sample_preds * n_blocks, dataset.y.shape[1])) * np.nan
-            for i_stride in xrange(n_blocks):
+            batch_y = np.ones((self.n_sample_preds * batch_size, dataset.y.shape[1])) * np.nan
+            for i_stride in xrange(batch_size):
                 i_actual_block = block_inds[i_block + i_stride]
                 start,end = start_end_blocks[i_actual_block]
                 # switch samples into last axis, (dim 2 shd be empty before)
@@ -186,7 +207,7 @@ class CntWindowsFromCntIterator(object):
             # batch 1 sample 1, batch 2 sample 1, ....
             # (because that is the order of the output of the model using stridereshape etc)
             n_classes = dataset.y.shape[1]
-            batch_y = batch_y.reshape(n_blocks,-1, n_classes).swapaxes(0,1).reshape(-1, n_classes)
+            batch_y = batch_y.reshape(batch_size,-1, n_classes).swapaxes(0,1).reshape(-1, n_classes)
             yield batch_topo, batch_y
     def reset_rng(self):
         self.rng = RandomState(328774)
