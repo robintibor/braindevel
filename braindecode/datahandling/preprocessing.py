@@ -661,7 +661,9 @@ class OnlineAxiswiseStandardize(Preprocessor):
             dims_to_squash = None
             if len(standard_dim_inds) > 1:
                 # first dim is 'b'-> batch, so needs to be ignored here :))
-                dims_to_squash = standard_dim_inds[1:]
+                # have to subtract 1 since batch dim is gone inside online
+                # standardize function
+                dims_to_squash = tuple(np.array(standard_dim_inds[1:]) - 1)
             new_topo = online_standardize(topo_view,
                 old_mean=self._mean,
                 old_std=self._std,
@@ -708,7 +710,7 @@ def online_standardize(topo, n_old_trials, old_mean, old_std, dims_to_squash=Non
         n += 1
         this_topo = topo[i_trial]
         if dims_to_squash is not None:
-            this_topo = np.mean(this_topo, axis=dims_to_squash, keepdims=True)
+            this_topo = np.mean(this_topo, axis=tuple(dims_to_squash), keepdims=True)
         mean = mean + ((this_topo - mean) / n)
         power_avg = power_avg + ((this_topo * this_topo - power_avg) / n)
         std = np.sqrt((power_avg - mean * mean))
