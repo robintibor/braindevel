@@ -143,7 +143,8 @@ class WindowsFromCntIterator(object):
         self.rng = RandomState(328774)
         
 class CntWindowsFromCntIterator(object):
-    def __init__(self, input_time_length, n_sample_preds):
+    def __init__(self, batch_size, input_time_length, n_sample_preds):
+        self.batch_size = batch_size
         self.input_time_length = input_time_length
         self.n_sample_preds = n_sample_preds
         self.rng = RandomState(328774)
@@ -161,10 +162,38 @@ class CntWindowsFromCntIterator(object):
             self.rng.shuffle(block_inds)
             
         topo = dataset.get_topological_view()
-        for i_block in block_inds:
-            start,end = start_end_blocks[i_block]
-            batch_topo = topo[start:end].swapaxes(0,2)
-            batch_y = dataset.y[start+n_lost_samples:end]
+        block_step = 1
+        if shuffle:
+            # Only use the batch size when shuffling
+            # makes it easier to later correctly get the predictions
+            # when you are just using one trial per batch
+            block_step = self.batch_size
+        #block_step = self.batch_size
+        for i_block in xrange(0,len(block_inds),block_step):
+            n_blocks = min(block_step, len(block_inds) - i_block)
+            # have to wrap into float32, cause np.nan upcasts to float64!
+            batch_topo = np.float32(np.ones((n_blocks, topo.shape[1],
+                 self.input_time_length, topo.shape[3])) * np.nan)
+            batch_y = np.ones((self.n_sample_preds * n_blocks, dataset.y.shape[1])) * np.nan
+            for i_stride in xrange(n_blocks):
+                i_actual_block = block_inds[i_block + i_stride]
+                start,end = start_end_blocks[i_actual_block]
+                # switch samples into last axis, (dim 2 shd be empty before)
+                assert topo.shape[2] == 1
+                batch_topo[i_stride] = topo[start:end].swapaxes(0,2)
+                start_y = self.n_sample_preds * i_stride
+                end_y = start_y + self.n_sample_preds
+                batch_y[start_y:end_y] = dataset.y[start+n_lost_samples:end]
+                
+            assert not np.any(np.isnan(batch_y))
+            batch_y = batch_y.astype(np.int32)
+            # reshape this from
+            # batch 1 sample 1(all classes), batch 1 sample 2 (all classes), ..., batch 1 sample n, batch 2 sample2, ...
+            # to
+            # batch 1 sample 1, batch 2 sample 1, ....
+            # (because that is the order of the output of the model using stridereshape etc)
+            n_classes = dataset.y.shape[1]
+            batch_y = batch_y.reshape(n_blocks,-1, n_classes).swapaxes(0,1).reshape(-1, n_classes)
             yield batch_topo, batch_y
 
     def reset_rng(self):
