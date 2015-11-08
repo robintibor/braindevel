@@ -203,11 +203,31 @@ class AUCMeanMisclassMonitor():
         # remove last preds that were duplicates due to overlap of final windows
         n_samples = len(dataset.y)
         if self.input_time_length is not None:
-            assert all_preds[0].shape[0] == self.n_sample_preds
+            assert all_preds[0].shape[0] % self.n_sample_preds == 0
+            # first reshape them all into proper time-course form
+            # i.e. from batch 1 sample 1, batch 2 sample 1, ...
+            # to batch 1 sample 1 batch 1 sample 2, ..., batch 2 sample1,...
+            for i_batch in xrange(len(all_preds)):
+                # just some sanity check
+                batch_size = all_preds[i_batch].shape[0] / self.n_sample_preds
+                assert batch_size == all_batch_sizes[i_batch]
+                n_classes = dataset.y.shape[1]
+                preds = all_preds[i_batch]
+                preds = preds.reshape(self.n_sample_preds,-1, n_classes).swapaxes(0,1).reshape(-1, n_classes)
+                all_preds[i_batch] = preds
+                
+            # fix the last predictions, they are partly duplications since the last window
+            # is made to fit into the timesignal (input time length always shifted by sample preds
+            # might not exactly fit into number of samples)
             legitimate_last_preds = (n_samples - self.input_time_length) % self.n_sample_preds
-            if legitimate_last_preds == 0: # in this case there was no overlap(!)
-                legitimate_last_preds = self.n_sample_preds
-            all_preds[-1] = all_preds[-1][-legitimate_last_preds:]
+            if legitimate_last_preds != 0: # in case = 0 there was no overlap, no need to do anything!
+                fixed_last_preds = all_preds[-1][-legitimate_last_preds:]
+                if all_batch_sizes[-1] > 1:
+                    # need to take valid sample preds from batches before
+                    samples_from_legit_batches = self.n_sample_preds * (all_batch_sizes[-1] - 1)
+                    fixed_last_preds = np.append(all_preds[-1][:samples_from_legit_batches], 
+                         fixed_last_preds, axis=0)
+                all_preds[-1] = fixed_last_preds
         
         all_preds_arr = np.concatenate(all_preds)
         if self.input_time_length is not None:

@@ -162,15 +162,8 @@ class CntWindowsFromCntIterator(object):
             self.rng.shuffle(block_inds)
             
         topo = dataset.get_topological_view()
-        block_step = 1
-        if shuffle:
-            # Only use the batch size when shuffling
-            # makes it easier to later correctly get the predictions
-            # when you are just using one trial per batch
-            block_step = self.batch_size
-        #block_step = self.batch_size
-        for i_block in xrange(0,len(block_inds),block_step):
-            n_blocks = min(block_step, len(block_inds) - i_block)
+        for i_block in xrange(0,len(block_inds),self.batch_size):
+            n_blocks = min(self.batch_size, len(block_inds) - i_block)
             # have to wrap into float32, cause np.nan upcasts to float64!
             batch_topo = np.float32(np.ones((n_blocks, topo.shape[1],
                  self.input_time_length, topo.shape[3])) * np.nan)
@@ -195,6 +188,5 @@ class CntWindowsFromCntIterator(object):
             n_classes = dataset.y.shape[1]
             batch_y = batch_y.reshape(n_blocks,-1, n_classes).swapaxes(0,1).reshape(-1, n_classes)
             yield batch_topo, batch_y
-
     def reset_rng(self):
         self.rng = RandomState(328774)
