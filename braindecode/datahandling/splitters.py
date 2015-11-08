@@ -4,6 +4,7 @@ from sklearn.cross_validation import KFold
 import numpy as np
 from collections import OrderedDict
 from numpy.random import RandomState
+from copy import deepcopy
 
 class TrainValidTestSplitter(object):
     __metaclass__ = ABCMeta
@@ -195,3 +196,9 @@ class PreprocessedSplitter(object):
             y=y_second,
             axes=full_set.view_converter.axes)
         return first_set, second_set
+
+class KaggleTrainValidTestSplitter(TrainValidTestSplitter):
+    def split_into_train_valid_test(self, dataset):
+        return OrderedDict([('train', deepcopy(dataset.train_set)),
+            ('valid', deepcopy(dataset.valid_set)), 
+            ('test',  deepcopy(dataset.test_set))])
