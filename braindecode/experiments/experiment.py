@@ -163,9 +163,6 @@ class Experiment(object):
     def monitor_epoch(self, all_datasets):
         self.monitor_manager.monitor_epoch(self.monitor_chans, all_datasets, 
             self.iterator)
-        #for monitor in self.monitors:
-        #    monitor.monitor_epoch(self.monitor_chans, self.pred_func,
-        #        self.loss_func, all_datasets, self.iterator)
 
     def print_epoch(self):
         # -1 due to doing one monitor at start of training

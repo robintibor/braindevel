@@ -93,6 +93,7 @@ class BCICompetition4Set2A(object):
     def __init__(self, filename, load_sensor_names=None):
         """ Constructor will not call superclass constructor yet"""
         self.__dict__.update(locals())
+        assert load_sensor_names is None, "Not implemented loading only specific sensors"
         del self.self
 
     def load(self):

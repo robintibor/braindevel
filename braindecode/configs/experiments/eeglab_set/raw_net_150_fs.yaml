@@ -1,0 +1,13 @@
+ {
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/raw_net_base.yaml',
+        'configs/experiments/eeglab_set/filenames.yaml',
+        'configs/experiments/eeglab_set/C_sensors.yaml',
+        'configs/experiments/150_fs.yaml'],
+    variants: [[
+    {
+        low_cut_off_hz: [0.5],
+        save_path: ['data/models/eeglab-set/raw-net-150-fs/'],
+    }
+    ]]
+}
