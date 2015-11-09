@@ -1,13 +1,13 @@
  {
     extends: ['configs/experiments/defaults.yaml',
         'configs/experiments/raw_net_no_drop_time.yaml',
-        'configs/experiments/eeglab_set/filenames.yaml',
-        'configs/experiments/eeglab_set/C_sensors.yaml',
+        'configs/experiments/4sec_movements/filenames.yaml',
+        'configs/experiments/4sec_movements/C_sensors.yaml',
         'configs/experiments/300_fs.yaml'],
     variants: [[
     {
         low_cut_off_hz: [0.5],
-        save_path: ['data/models/eeglab-set/no-drop-time/raw-net-300-fs/'],
+        save_path: ['data/models/4sec-movements/no-drop-time/raw-net-300-fs/'],
     }
     ]]
 }

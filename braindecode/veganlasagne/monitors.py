@@ -204,14 +204,11 @@ class AUCMeanMisclassMonitor():
         # remove last preds that were duplicates due to overlap of final windows
         n_samples = len(dataset.y)
         if self.input_time_length is not None:
-            all_preds = get_reshaped_cnt_preds(all_preds, n_samples, 
+            all_preds_arr = get_reshaped_cnt_preds(all_preds, n_samples, 
                 self.input_time_length, self.n_sample_preds)
+        else:
+            all_preds_arr = np.concatenate(all_preds)
         
-        all_preds_arr = np.concatenate(all_preds)
-        if self.input_time_length is not None:
-            n_lost_samples = self.input_time_length - self.n_sample_preds
-            all_preds_arr = np.append(np.zeros((n_lost_samples, 
-                dataset.y.shape[1]), dtype=np.int32), all_preds_arr, axis=0)
         auc_mean = auc_classes_mean(dataset.y, all_preds_arr)
         misclass = 1 - auc_mean
         monitor_key = "{:s}_misclass".format(setname)
@@ -221,9 +218,6 @@ def get_reshaped_cnt_preds(all_preds, n_samples, input_time_length,
         n_sample_preds):
     """Taking predictions from a multiple prediciton/parallel net
     and reshaping them into the proper timecourse, i.e. sample1,2,3,4...
-    Does not append zeros at the start for lost predictions.
-    This makes it possible to do that in different ways for evaluation kaggle set
-    which consists of 2 series
     """
     all_preds = deepcopy(all_preds)
     # first reshape them all into proper time-course form
@@ -251,4 +245,12 @@ def get_reshaped_cnt_preds(all_preds, n_samples, input_time_length,
             fixed_last_preds = np.append(all_preds[-1][:samples_from_legit_batches], 
                  fixed_last_preds, axis=0)
         all_preds[-1] = fixed_last_preds
-    return all_preds
+    
+    all_preds_arr = np.concatenate(all_preds)
+    
+    # Prepend zeros for the samples not predictable at the start
+    # of the dataset
+    n_lost_samples = input_time_length - n_sample_preds
+    all_preds_arr = np.append(np.zeros((n_lost_samples, 
+        n_classes), dtype=np.int32), all_preds_arr, axis=0)
+    return all_preds_arr
