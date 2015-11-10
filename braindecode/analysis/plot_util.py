@@ -226,31 +226,31 @@ def plot_misclasses_for_file(result_file_path):
     return fig
 
 def plot_misclasses_for_model(model, figure=None):
-    fig =  plot_train_valid_test_epochs(model.monitor.channels['train_y_misclass'].val_record,
-        model.monitor.channels['valid_y_misclass'].val_record,
-        model.monitor.channels['test_y_misclass'].val_record,
+    fig =  plot_train_valid_test_epochs(model.monitor.channels['train_misclass'],
+        model.monitor.channels['valid_misclass'],
+        model.monitor.channels['test_misclass'],
         figure=figure)
     pyplot.ylim(0, 1)
     return fig
 
-def plot_nlls_for_file(result_file_path, figure=None, start=None, stop=None):
+def plot_loss_for_file(result_file_path, figure=None, start=None, stop=None):
     assert result_file_path.endswith('result.pkl')
     if figure is None:
         figure = pyplot.figure()
     result = serial.load(result_file_path)
-    figure = plot_nlls(result,figure,start,stop)
+    figure = plot_loss_for_result(result,figure,start,stop)
     figure.suptitle(result_file_path)
     return figure
-def plot_nlls_for_model(model, figure=None):
-    return plot_train_valid_test_epochs(model.monitor.channels['train_y_nll'].val_record,
-        model.monitor.channels['valid_y_nll'].val_record,
-        model.monitor.channels['test_y_nll'].val_record,
+def plot_loss_for_model(model, figure=None):
+    return plot_train_valid_test_epochs(model.monitor.channels['train_loss'],
+        model.monitor.channels['valid_loss'],
+        model.monitor.channels['test_loss'],
         figure=figure)
 
 def plot_misclasses_for_result(result, figure=None):
-    fig =  plot_train_valid_test_epochs(result.monitor_channels['train_y_misclass'].val_record,
-        result.monitor_channels['valid_y_misclass'].val_record,
-        result.monitor_channels['test_y_misclass'].val_record,
+    fig =  plot_train_valid_test_epochs(result.monitor_channels['train_misclass'],
+        result.monitor_channels['valid_misclass'],
+        result.monitor_channels['test_misclass'],
         figure=figure)
     
     pyplot.ylim(0, 1)
@@ -265,13 +265,11 @@ def plot_train_valid_test_epochs(train, valid,test, figure=None):
     pyplot.legend(('train', 'valid', 'test'))
     return figure
 
-def plot_nlls(result, figure=None, start=None, stop=None):
-    return plot_train_valid_test_epochs(result.monitor_channels['train_y_nll'].val_record,
-        result.monitor_channels['valid_y_nll'].val_record,
-        result.monitor_channels['test_y_nll'].val_record,
+def plot_loss_for_result(result, figure=None, start=None, stop=None):
+    return plot_train_valid_test_epochs(result.monitor_channels['train_loss'],
+        result.monitor_channels['valid_loss'],
+        result.monitor_channels['test_loss'],
         figure=figure)
-
-
 
 def plot_confusion_matrix_for_averaged_result(result_folder, result_nr):
     """ Plot confusion matrix for averaged dataset result."""

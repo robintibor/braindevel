@@ -3,6 +3,12 @@ from scikits.samplerate import resample
 import pandas as pd
 import numpy as np
 import logging
+from copy import deepcopy
+from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
+import lasagne
+import theano
+from braindecode.veganlasagne.layers import get_n_sample_preds
+from braindecode.veganlasagne.monitors import get_reshaped_cnt_preds
 log = logging.getLogger(__name__)
 
 def load_train(train_folder, i_subject, i_series):
@@ -100,4 +106,89 @@ class KaggleGraspLiftSet(object):
             X_series = resample(X_series, 250.0/500.0, 'sinc_fastest')
             self.test_X_series[i_series] = X_series
 
+
+def create_submission_csv(folder_name, kaggle_set, iterator, preprocessor,
+        final_layer, submission_id):
+    ### Load and preprocess data
+    kaggle_set.load()
+    # remember test series lengths before and after resampling to more accurately pad predictions
+    # later (padding due to the lost samples)
+    kaggle_set.load_test_data()
+    test_series_lengths = [len(series) for series in kaggle_set.test_X_series] 
+    kaggle_set.resample_test_data()
+    test_series_lengths_resampled = [len(series) for series in kaggle_set.test_X_series] 
+    X_train = deepcopy(np.concatenate(kaggle_set.train_X_series)[:,:,np.newaxis,np.newaxis])
+    X_test = deepcopy(np.concatenate(kaggle_set.test_X_series)[:,:,np.newaxis,np.newaxis])
     
+    # create dense design matrix sets
+    train_set = DenseDesignMatrixWrapper(
+        topo_view=X_train, 
+        y=None, axes=('b','c',0,1))
+    fake_test_y = np.ones((len(X_test), 6))
+    test_set = DenseDesignMatrixWrapper(
+        topo_view=X_test, 
+        y=fake_test_y)
+    log.info("Preprocessing data...")
+    preprocessor.apply(train_set, can_fit=True)
+    preprocessor.apply(test_set, can_fit=False)
+    
+    ### Create prediction function and create predictions
+    log.info("Create prediciton functions...")
+    input_var = lasagne.layers.get_all_layers(final_layer)[0].input_var
+    predictions = lasagne.layers.get_output(final_layer, deterministic=True)
+    log.info("Make predictions...")
+    pred_fn = theano.function([input_var], predictions)
+    batch_gen = iterator.get_batches(test_set, shuffle=False)
+    all_preds = [pred_fn(batch[0]) for batch in batch_gen]
+    
+    ### Pad and reshape predictions
+    n_samples = test_set.get_topological_view().shape[0]
+    n_sample_preds = get_n_sample_preds(final_layer)
+    input_time_length = lasagne.layers.get_all_layers(final_layer)[0].shape[2]
+    all_preds_arr = get_reshaped_cnt_preds(all_preds, n_samples, input_time_length, n_sample_preds)
+    assert all_preds_arr.shape[0] == np.sum(test_series_lengths_resampled)
+    series_preds = [all_preds_arr[:test_series_lengths_resampled[0]],
+                    all_preds_arr[test_series_lengths_resampled[0]:]]
+    assert len(series_preds[0]) == test_series_lengths_resampled[0]
+    assert len(series_preds[1]) == test_series_lengths_resampled[1]
+    series_preds_duplicated = [np.repeat(preds, 2,axis=0) for preds in series_preds]
+    n_classes = all_preds_arr.shape[1]
+    missing_0 = test_series_lengths[0] - len(series_preds_duplicated[0])
+    full_preds_0 = np.append(np.zeros((missing_0, n_classes), dtype=np.float32), 
+                             series_preds_duplicated[0], axis=0)
+    missing_1 = test_series_lengths[1] - len(series_preds_duplicated[1])
+    full_preds_1 = np.append(np.zeros((missing_1, n_classes), dtype=np.float32),
+                             series_preds_duplicated[1], axis=0)
+    assert len(full_preds_0) == test_series_lengths[0]
+    assert len(full_preds_1) == test_series_lengths[1]
+
+    full_series_preds = [full_preds_0, full_preds_1]
+    combined_preds = np.append(full_preds_0, full_preds_1, axis=0)
+    assert sum([len(a) for a in full_series_preds]) == np.sum(test_series_lengths)
+    
+    ### Create csv 
+
+    log.info("Create csv...")
+    csv_filename =  "{:02d}".format(submission_id) + '.csv'
+    csv_filename = os.path.join(folder_name, csv_filename)
+    cols = ['HandStart','FirstDigitTouch',
+        'BothStartLoadPhase','LiftOff',
+        'Replace','BothReleased']
+
+    # collect ids
+    all_ids = []
+    all_preds = []
+    for i_series in (9,10):
+        id_prefix = "subj{:d}_series{:d}_".format(kaggle_set.i_subject, i_series)
+        this_preds = full_series_preds[i_series-9] # respect offsets
+        all_preds.extend(this_preds)
+        this_ids = [id_prefix + str(i_sample) for i_sample in range(this_preds.shape[0])]
+        all_ids.extend(this_ids)
+    all_ids = np.array(all_ids)
+    all_preds = np.array(all_preds)
+    submission = pd.DataFrame(index=all_ids,
+                              columns=cols,
+                              data=all_preds)
+
+    submission.to_csv(csv_filename, index_label='id',float_format='%.3f')
+    log.info("Done")

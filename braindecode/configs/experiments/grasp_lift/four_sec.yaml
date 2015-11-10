@@ -1,0 +1,14 @@
+{
+    extends: ['configs/experiments/grasp_lift/defaults.yaml',
+    'configs/experiments/grasp_lift/cnt_raw_net_no_drop_time.yaml'],
+    variants: [[{
+        input_time_length: [2000],
+        filter_time_length: [30],
+        pool_time_length: [50],
+        pool_time_stride: [10],
+        save_path: ['data/models/grasp-lift/4-sec/'],
+        use_test_as_valid: [false, true],
+        final_dense_length: [54],
+        n_sample_preds: [1392],
+    }]],
+}

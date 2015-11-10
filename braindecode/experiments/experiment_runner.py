@@ -1,4 +1,6 @@
 import logging
+from braindecode.datasets.grasp_lift import KaggleGraspLiftSet,\
+    create_submission_csv
 log = logging.getLogger(__name__)
 from glob import glob
 import yaml
@@ -119,12 +121,14 @@ class ExperimentsRunner:
         dataset = train_dict['dataset'] 
         dataset.load()
         iterator = train_dict['exp_args']['iterator']
-        batch_gen = iterator.get_batches(dataset, shuffle=True)
+        splitter = train_dict['dataset_splitter']
+        train_set = splitter.split_into_train_valid_test(dataset)['train']
+        batch_gen = iterator.get_batches(train_set, shuffle=True)
         dummy_batch_topo = batch_gen.next()[0]
         dataset_splitter = train_dict['dataset_splitter']
-        # TODO: change to new experiment class design
+
         assert 'in_sensors' in train_str
-        assert 'in_rows' in train_str
+        #not for cnt net assert 'in_rows' in train_str
         assert 'in_cols' in train_str
         
         train_str = train_str.replace('in_sensors',
@@ -188,6 +192,12 @@ class ExperimentsRunner:
         # Let's save model
         with open(model_file_name, 'w') as modelfile:
             pickle.dump(model, modelfile)
+            
+        if isinstance(dataset, KaggleGraspLiftSet):
+            create_submission_csv(self._folder_path,
+                exp.dataset, iterator,
+                train_dict['exp_args']['preprocessor'], 
+                final_layer, experiment_index)
     
     def _save_train_string(self, train_string, experiment_index):
         file_name = self._base_save_paths[experiment_index] + ".yaml"

@@ -199,14 +199,20 @@ class PreprocessedSplitter(object):
         return first_set, second_set
 
 class KaggleTrainValidTestSplitter(TrainValidTestSplitter):
+    def __init__(self, use_test_as_valid=False):
+        self.use_test_as_valid = use_test_as_valid
+
     def split_into_train_valid_test(self, dataset):
         # make into 4d tensors
-        X_train = np.concatenate(dataset.train_X_series[:6])[:,:,np.newaxis,np.newaxis]
-        X_valid = dataset.train_X_series[6][:,:,np.newaxis,np.newaxis]
+        i_valid_series = 6
+        if self.use_test_as_valid:
+            i_valid_series = 7
+        X_train = np.concatenate(dataset.train_X_series[:i_valid_series])[:,:,np.newaxis,np.newaxis]
+        X_valid = dataset.train_X_series[i_valid_series][:,:,np.newaxis,np.newaxis]
         X_test = dataset.train_X_series[7][:,:,np.newaxis,np.newaxis]
         
-        y_train = np.concatenate(dataset.train_y_series[:6])
-        y_valid = dataset.train_y_series[6]
+        y_train = np.concatenate(dataset.train_y_series[:i_valid_series])
+        y_valid = dataset.train_y_series[i_valid_series]
         y_test = dataset.train_y_series[7]
     
         # create dense design matrix sets
