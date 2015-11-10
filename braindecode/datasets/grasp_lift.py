@@ -118,19 +118,25 @@ def create_submission_csv(folder_name, kaggle_set, iterator, preprocessor,
     kaggle_set.resample_test_data()
     test_series_lengths_resampled = [len(series) for series in kaggle_set.test_X_series] 
     X_train = deepcopy(np.concatenate(kaggle_set.train_X_series)[:,:,np.newaxis,np.newaxis])
-    X_test = deepcopy(np.concatenate(kaggle_set.test_X_series)[:,:,np.newaxis,np.newaxis])
-    
+    X_test_0 = deepcopy(kaggle_set.test_X_series[0][:,:,np.newaxis,np.newaxis])
+    X_test_1 = deepcopy(kaggle_set.test_X_series[1][:,:,np.newaxis,np.newaxis])
+
     # create dense design matrix sets
     train_set = DenseDesignMatrixWrapper(
         topo_view=X_train, 
         y=None, axes=('b','c',0,1))
-    fake_test_y = np.ones((len(X_test), 6))
-    test_set = DenseDesignMatrixWrapper(
-        topo_view=X_test, 
+    fake_test_y = np.ones((len(X_test_0), 6))
+    test_set_0 = DenseDesignMatrixWrapper(
+        topo_view=X_test_0, 
+        y=fake_test_y)
+    fake_test_y = np.ones((len(X_test_1), 6))
+    test_set_1 = DenseDesignMatrixWrapper(
+        topo_view=X_test_1, 
         y=fake_test_y)
     log.info("Preprocessing data...")
     preprocessor.apply(train_set, can_fit=True)
-    preprocessor.apply(test_set, can_fit=False)
+    preprocessor.apply(test_set_0, can_fit=False)
+    preprocessor.apply(test_set_1, can_fit=False)
     
     ### Create prediction function and create predictions
     log.info("Create prediciton functions...")
@@ -138,21 +144,28 @@ def create_submission_csv(folder_name, kaggle_set, iterator, preprocessor,
     predictions = lasagne.layers.get_output(final_layer, deterministic=True)
     log.info("Make predictions...")
     pred_fn = theano.function([input_var], predictions)
-    batch_gen = iterator.get_batches(test_set, shuffle=False)
-    all_preds = [pred_fn(batch[0]) for batch in batch_gen]
+    batch_gen_0 = iterator.get_batches(test_set_0, shuffle=False)
+    all_preds_0 = [pred_fn(batch[0]) for batch in batch_gen_0]
+    batch_gen_1 = iterator.get_batches(test_set_1, shuffle=False)
+    all_preds_1 = [pred_fn(batch[0]) for batch in batch_gen_1]
     
     ### Pad and reshape predictions
-    n_samples = test_set.get_topological_view().shape[0]
     n_sample_preds = get_n_sample_preds(final_layer)
     input_time_length = lasagne.layers.get_all_layers(final_layer)[0].shape[2]
-    all_preds_arr = get_reshaped_cnt_preds(all_preds, n_samples, input_time_length, n_sample_preds)
-    assert all_preds_arr.shape[0] == np.sum(test_series_lengths_resampled)
-    series_preds = [all_preds_arr[:test_series_lengths_resampled[0]],
-                    all_preds_arr[test_series_lengths_resampled[0]:]]
+    
+    n_samples_0 = test_set_0.get_topological_view().shape[0]
+    preds_arr_0 = get_reshaped_cnt_preds(all_preds_0, n_samples_0, 
+        input_time_length, n_sample_preds)
+    n_samples_1 = test_set_1.get_topological_view().shape[0]
+    preds_arr_1 = get_reshaped_cnt_preds(all_preds_1, n_samples_1, 
+        input_time_length, n_sample_preds)
+
+    series_preds = [preds_arr_0, preds_arr_1]
     assert len(series_preds[0]) == test_series_lengths_resampled[0]
     assert len(series_preds[1]) == test_series_lengths_resampled[1]
     series_preds_duplicated = [np.repeat(preds, 2,axis=0) for preds in series_preds]
-    n_classes = all_preds_arr.shape[1]
+    n_classes = preds_arr_0.shape[1]
+    # pad missing ones with zeros
     missing_0 = test_series_lengths[0] - len(series_preds_duplicated[0])
     full_preds_0 = np.append(np.zeros((missing_0, n_classes), dtype=np.float32), 
                              series_preds_duplicated[0], axis=0)
@@ -163,7 +176,6 @@ def create_submission_csv(folder_name, kaggle_set, iterator, preprocessor,
     assert len(full_preds_1) == test_series_lengths[1]
 
     full_series_preds = [full_preds_0, full_preds_1]
-    combined_preds = np.append(full_preds_0, full_preds_1, axis=0)
     assert sum([len(a) for a in full_series_preds]) == np.sum(test_series_lengths)
     
     ### Create csv 

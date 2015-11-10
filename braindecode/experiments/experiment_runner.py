@@ -193,11 +193,11 @@ class ExperimentsRunner:
         with open(model_file_name, 'w') as modelfile:
             pickle.dump(model, modelfile)
             
-        if isinstance(dataset, KaggleGraspLiftSet):
+        if isinstance(dataset, KaggleGraspLiftSet) and splitter.use_test_as_valid:
             create_submission_csv(self._folder_path,
                 exp.dataset, iterator,
                 train_dict['exp_args']['preprocessor'], 
-                final_layer, experiment_index)
+                final_layer, experiment_index + 1)
     
     def _save_train_string(self, train_string, experiment_index):
         file_name = self._base_save_paths[experiment_index] + ".yaml"

@@ -4,11 +4,21 @@
     variants: [[{
         input_time_length: [2000],
         filter_time_length: [30],
-        pool_time_length: [50],
-        pool_time_stride: [10],
         save_path: ['data/models/grasp-lift/4-sec/'],
-        use_test_as_valid: [false, true],
+        use_test_as_valid: [false],
+        oversample_targets: [true, false],
+        imbalance_factor: [10,20,40,80],
         final_dense_length: [54],
-        n_sample_preds: [1392],
+        variants: [[{
+            n_sample_preds: [1392],
+            pool_time_length: [50],
+            pool_time_stride: [10],
+        },
+        {
+            n_sample_preds: [812],
+            pool_time_length: [100],
+            pool_time_stride: [20],
+        }
+        ]]
     }]],
 }
