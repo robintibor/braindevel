@@ -14,6 +14,7 @@ from braindecode.scripts.print_results import ResultPrinter
 import lasagne
 from pylearn2.config import yaml_parse
 from pprint import pprint
+import numpy as np
 
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
@@ -41,13 +42,14 @@ class ExperimentsRunner:
     
     def _create_base_save_paths_for_all_experiments(self):
         self._base_save_paths = []
+        self._folder_paths = [] # will be set inside function for later result printing
         for i in range(len(self._all_train_strs)):
             save_path = self._create_base_save_path(i)
             self._base_save_paths.append(save_path)
 
     def _create_base_save_path(self, experiment_index):
-        folder_path = self._create_save_folder_path() 
-        self._folder_path = folder_path # store for result printing
+        folder_path = self._create_save_folder_path(experiment_index) 
+        self._folder_paths.append(folder_path) # store for result printing
         result_nr = experiment_index + 1
         # try not to overwrite existing models, instead
         # use higher numbers
@@ -60,8 +62,8 @@ class ExperimentsRunner:
             result_nr = highest_result_nr + result_nr
         return os.path.join(folder_path, str(result_nr))
     
-    def _create_save_folder_path(self):
-        train_str = self._all_train_strs[0]
+    def _create_save_folder_path(self, experiment_index):
+        train_str = self._all_train_strs[experiment_index]
         folder_path = self._load_without_layers(train_str)['save_path']
         if (self._test):
             folder_path += '/test/'
@@ -180,8 +182,8 @@ class ExperimentsRunner:
                 result_or_results.append(res)
             model = exp_cv.all_layers
             
-        if not os.path.exists(self._folder_path):
-            os.makedirs(self._folder_path)
+        if not os.path.exists(self._folder_paths[experiment_index]):
+            os.makedirs(self._folder_paths[experiment_index])
         
         result_file_name = self._get_result_save_path(experiment_index)
         with open(result_file_name, 'w') as resultfile:
@@ -194,7 +196,7 @@ class ExperimentsRunner:
             pickle.dump(model, modelfile)
             
         if isinstance(dataset, KaggleGraspLiftSet) and splitter.use_test_as_valid:
-            create_submission_csv(self._folder_path,
+            create_submission_csv(self._folder_paths[experiment_index],
                 exp.dataset, iterator,
                 train_dict['exp_args']['preprocessor'], 
                 final_layer, experiment_index + 1)
@@ -209,5 +211,6 @@ class ExperimentsRunner:
         yaml_train_file.close()
 
     def _print_results(self):
-        res_printer = ResultPrinter(self._folder_path)
-        res_printer.print_results()
+        for folder_path in np.unique(self._folder_paths):
+            res_printer = ResultPrinter(folder_path)
+            res_printer.print_results()

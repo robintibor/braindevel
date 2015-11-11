@@ -340,7 +340,13 @@ class ResultPrinter:
         get_last_elem = np.vectorize(lambda a : a[-1])
         for key in misclass_keys:
             this_misclasses = [m[key] for m in misclasses]
-            this_final_misclasses = get_last_elem(this_misclasses)
+            if  np.array(this_misclasses[0][0]).shape != ():
+                this_final_misclasses = get_last_elem(this_misclasses)
+            else:
+                # can only happen in case all experiments have same number of
+                # epochs
+                this_final_misclasses = np.array(this_misclasses)[:,-1:]
+            
             # avg over folds if necessary
             this_final_avg_misclasses = np.mean(this_final_misclasses, axis=1)
             final_misclasses[key] = this_final_avg_misclasses
@@ -404,8 +410,9 @@ class ResultPrinter:
           ('use_test_as_valid', 'test=valid'),
           ('imbalance_factor', 'imba_factor'),
           ('n_sample_preds', 'preds'),
-          ('pool_time_stride', 'pool_stride'),
-          ('pool_time_length', 'pool_length'),
+          ('pool_time_stride', 'pool_str'),
+          ('pool_time_length', 'pool_len'),
+          ('oversample_targets', 'oversample'),
           ])
         for header in table_headers:
             pretty_header = header
