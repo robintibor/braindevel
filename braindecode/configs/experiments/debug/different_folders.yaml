@@ -1,0 +1,26 @@
+{
+    extends: ['configs/experiments/defaults.yaml',
+    'configs/experiments/debug/artificial_data.yaml',
+    'configs/experiments/debug/softmax_net.yaml'],
+    variants: [[
+        {
+            dataset_filename: [1,2,3],
+            max_epochs: [10],
+            variants: [[
+            {
+                save_path: ['data/models/debug/diff-folders-1/'],
+                max_increasing_epochs: [20],
+            },
+            {
+                save_path: ['data/models/debug/diff-folders-2/'],
+                max_increasing_epochs: [50,10],
+            },
+            {
+                save_path: ['data/models/debug/diff-folders-3/'],
+                max_increasing_epochs: [40],
+            },
+            ]],
+            
+        }
+    ]]
+}

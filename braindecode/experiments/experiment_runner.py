@@ -119,7 +119,8 @@ class ExperimentsRunner:
         
         train_dict = self._load_without_layers(train_str)
         log.info("With params...")
-        pprint(train_dict['original_params'])
+        if not self._quiet:
+            pprint(train_dict['original_params'])
         dataset = train_dict['dataset'] 
         dataset.load()
         iterator = train_dict['exp_args']['iterator']
@@ -214,3 +215,4 @@ class ExperimentsRunner:
         for folder_path in np.unique(self._folder_paths):
             res_printer = ResultPrinter(folder_path)
             res_printer.print_results()
+            print("\n")

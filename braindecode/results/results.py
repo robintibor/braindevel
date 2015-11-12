@@ -5,6 +5,9 @@ import numpy as np
 from copy import deepcopy
 from sklearn.metrics import confusion_matrix
 import itertools
+import logging
+from collections import Counter
+log = logging.getLogger(__name__)
 
 class Result:
     """ Empty class for holding result values"""
@@ -260,15 +263,34 @@ class DatasetAveragedResults:
         params_to_experiment = {}
         for experiment_i in range(len(params_without_dataset)):
             params = params_without_dataset[experiment_i]
+            # check if params already exist, if yes, add at appropriate parts
             if str(params) in params_to_experiment:
                 params_to_experiment[str(params)].append(experiment_i)
             else:
                 params_to_experiment[str(params)] = [experiment_i]
+        # same param ids will be like
+        # [[0,2,4], [3,5,8,9]] in case experiments 0,2,4 and 3,5,8,9 have the
+        # same parameters
         same_param_ids = params_to_experiment.values()
         # sort so that list of lists is sorted 
         # by lowest experiment id in each list => 
-        # appear in same oarder as in original table
-        return sorted(same_param_ids, key=np.min)
+        # appear in same order as in original table
+        same_param_ids = sorted(same_param_ids, key=np.min)
+        # check  that there are no duplicate filenames among same parameter "blocks"
+        original_params = self._result_pool.varying_params()
+        for i_averaged_result, same_param_id_arr in enumerate(same_param_ids):
+            all_dataset_filenames = [original_params[i]['dataset_filename'] for i in same_param_id_arr]
+            if len(all_dataset_filenames) != len(np.unique(all_dataset_filenames)):
+                log.warn("Duplicate filenames for dataset averaged result "
+                    "{:d}".format(i_averaged_result))
+                # from http://stackoverflow.com/a/11528581
+                duplicates = [item for item, count in Counter(all_dataset_filenames).iteritems() if count > 1]
+                log.warn("Duplicates {:s}".format(duplicates))
+        
+        # sort so that list of lists is sorted 
+        # by lowest experiment id in each list => 
+        # appear in same order as in original table
+        return same_param_ids
     
     def _create_results_one_param_set(self, experiment_ids):
         """ Create result for one sequence of experiment ids with same parameters"""
