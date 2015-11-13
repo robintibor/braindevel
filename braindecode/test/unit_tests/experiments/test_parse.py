@@ -1,4 +1,3 @@
-
 import yaml
 from braindecode.experiments.parse import (create_variants_recursively, 
     merge_parameters_and_templates, transform_vals_to_string_constructor,

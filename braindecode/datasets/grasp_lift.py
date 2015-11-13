@@ -7,6 +7,8 @@ from copy import deepcopy
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 import lasagne
 import theano
+from zipfile import ZipFile
+from zipfile import ZIP_DEFLATED
 from braindecode.veganlasagne.layers import get_n_sample_preds
 from braindecode.veganlasagne.monitors import get_reshaped_cnt_preds
 log = logging.getLogger(__name__)
@@ -107,7 +109,7 @@ class KaggleGraspLiftSet(object):
             self.test_X_series[i_series] = X_series
 
 
-def create_submission_csv(folder_name, kaggle_set, iterator, preprocessor,
+def create_submission_csv_for_one_subject(folder_name, kaggle_set, iterator, preprocessor,
         final_layer, submission_id):
     ### Load and preprocess data
     kaggle_set.load()
@@ -204,3 +206,15 @@ def create_submission_csv(folder_name, kaggle_set, iterator, preprocessor,
 
     submission.to_csv(csv_filename, index_label='id',float_format='%.3f')
     log.info("Done")
+
+def create_submission_csv_for_all_subjects(folder):
+    all_lines = []
+    for i in xrange(1,13,1):
+        content = open(os.path.join(folder, '{:02d}.csv'.format(i)), 'r').readlines()
+        if i == 1:
+            all_lines.append(content[0])
+        all_lines.extend(content[1:])
+    csv_str = "".join(all_lines)
+    submission_zip_file = ZipFile(os.path.join(folder,'all_submission.zip'), 'w', ZIP_DEFLATED)
+    submission_zip_file.writestr("4_sec_submission.csv", csv_str)
+    submission_zip_file.close()

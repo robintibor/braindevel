@@ -19,14 +19,14 @@
                 incoming: *time_conv,
                 num_filters: 40,
                 filter_size: [1, -1],
-                nonlinearity: !!python/name:theano.tensor.sqr ,
+                nonlinearity: $first_nonlin,
                 name: 'spat_conv',
             },
-            &pool !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
+            &pool !obj:braindecode.veganlasagne.pool.$first_pool_layer {
                     incoming: *spat_conv,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
-                    mode: 'average_exc_pad',
+                    mode: $first_pool_mode,
             },
             &reshape_pool !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool,
@@ -34,7 +34,7 @@
             },
             &log_1 !obj:lasagne.layers.NonlinearityLayer {
                     incoming: *reshape_pool,
-                    nonlinearity: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
+                    nonlinearity: $first_pool_nonlin ,
             },
             &drop_feature_1 !obj:lasagne.layers.DropoutLayer {
                 incoming: *log_1,
@@ -45,14 +45,14 @@
                 incoming: *drop_feature_1,
                 num_filters: 40,
                 filter_size: [$filter_time_length, 1],
-                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                nonlinearity: $later_nonlin ,
                 name: 'combined_conv_2',
             },
-            &pool_2 !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
+            &pool_2 !obj:braindecode.veganlasagne.pool.$pool_layers {
                     incoming: *combined_conv_2,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
-                    mode: 'average_exc_pad',
+                    mode: $pool_mode,
             },
             &reshape_pool_2 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_2,
@@ -60,7 +60,7 @@
             },
             &log_2 !obj:lasagne.layers.NonlinearityLayer {
                     incoming: *reshape_pool_2,
-                    nonlinearity: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
+                    nonlinearity: $later_pool_nonlin ,
             },
             &drop_feature_2 !obj:lasagne.layers.DropoutLayer {
                 incoming: *log_2,
@@ -70,14 +70,14 @@
                 incoming: *drop_feature_2,
                 num_filters: 40,
                 filter_size: [$filter_time_length, 1],
-                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                nonlinearity: $later_nonlin ,
                 name: 'combined_conv_3',
             },
-            &pool_3 !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
+            &pool_3 !obj:braindecode.veganlasagne.pool.$pool_layers {
                     incoming: *combined_conv_3,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
-                    mode: 'average_exc_pad',
+                    mode: $pool_mode,
             },
             &reshape_pool_3 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_3,
@@ -85,7 +85,7 @@
             },
             &log_3 !obj:lasagne.layers.NonlinearityLayer {
                     incoming: *reshape_pool_3,
-                    nonlinearity: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
+                    nonlinearity: $later_pool_nonlin ,
             },
             &drop_feature_3 !obj:lasagne.layers.DropoutLayer {
                 incoming: *log_3,
@@ -95,14 +95,14 @@
                 incoming: *drop_feature_3,
                 num_filters: 40,
                 filter_size: [$filter_time_length, 1],
-                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                nonlinearity: $later_nonlin ,
                 name: 'combined_conv_4',
             },
-            &pool_4 !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
+            &pool_4 !obj:braindecode.veganlasagne.pool.$pool_layers {
                     incoming: *combined_conv_4,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
-                    mode: 'average_exc_pad',
+                    mode: $pool_mode,
             },
             &reshape_pool_4 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_4,
@@ -110,7 +110,7 @@
             },
             &log_4 !obj:lasagne.layers.NonlinearityLayer {
                     incoming: *reshape_pool_4,
-                    nonlinearity: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
+                    nonlinearity: $later_pool_nonlin ,
             },
             &drop_feature_4 !obj:lasagne.layers.DropoutLayer {
                 incoming: *log_4,
@@ -120,14 +120,14 @@
                 incoming: *drop_feature_4,
                 num_filters: 40,
                 filter_size: [$filter_time_length, 1],
-                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                nonlinearity: $later_nonlin ,
                 name: 'combined_conv_5',
             },
-            &pool_5 !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
+            &pool_5 !obj:braindecode.veganlasagne.pool.$pool_layers {
                     incoming: *combined_conv_5,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
-                    mode: 'average_exc_pad',
+                    mode: $pool_mode,
             },
             &reshape_pool_5 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_5,
@@ -135,7 +135,7 @@
             },
             &log_5 !obj:lasagne.layers.NonlinearityLayer {
                     incoming: *reshape_pool_5,
-                    nonlinearity: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
+                    nonlinearity: $later_pool_nonlin ,
             },
             &drop_feature_5 !obj:lasagne.layers.DropoutLayer {
                 incoming: *log_5,
@@ -164,7 +164,12 @@
             combined_conv_4: 2.0,
             combined_conv_5: 2.0,
             final_dense: 0.5,
-        }
+        },
+        square: !!python/name:theano.tensor.sqr ,
+        identity: !!python/name:lasagne.nonlinearities.identity ,
+        relu: !!python/name:lasagne.nonlinearities.rectify ,
+        leaky_relu: !!python/name:lasagne.nonlinearities.leaky_rectify ,
+        safe_log: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
     },
     variants: [[{
         layer_names_to_norms: [$raw_layer_names_to_norms],

@@ -1,6 +1,6 @@
 import logging
-from braindecode.datasets.grasp_lift import KaggleGraspLiftSet,\
-    create_submission_csv
+from braindecode.datasets.grasp_lift import (KaggleGraspLiftSet,
+    create_submission_csv_for_one_subject)
 from braindecode.veganlasagne.layers import get_n_sample_preds
 import sys
 log = logging.getLogger(__name__)
@@ -214,9 +214,11 @@ class ExperimentsRunner:
         sys.setrecursionlimit(50000)
         with open(model_file_name, 'w') as modelfile:
             pickle.dump(model, modelfile)
-        sys.setrecursionlimit(old_limit)    
+        sys.setrecursionlimit(old_limit)
+        
+        # Makekaggle submission file for this subject 
         if isinstance(dataset, KaggleGraspLiftSet) and splitter.use_test_as_valid:
-            create_submission_csv(self._folder_paths[experiment_index],
+            create_submission_csv_for_one_subject(self._folder_paths[experiment_index],
                 exp.dataset, iterator,
                 train_dict['exp_args']['preprocessor'], 
                 final_layer, experiment_index + 1)

@@ -11,6 +11,39 @@
         pool_time_length: [3],
         pool_time_stride: [2],
         final_dense_length: [3],
-        n_sample_preds : [1000]# will be overwritten anyways
+        n_sample_preds : [1000], # will be overwritten anyways
+        dataset_filename: [1,2,3],
+        variants: [[
+            {
+                first_pool_layer: [SumPool2dLayer, Pool2DLayer],
+                first_nonlin: [$square],
+                first_pool_nonlin: [$safe_log],
+                first_pool_mode: ['average_exc_pad'],
+                variants: [[{
+                    later_nonlin: [$leaky_relu],
+                    later_pool_nonlin: [$identity],
+                    pool_mode: ['max', 'average_exc_pad'],
+                    pool_layers: [Pool2DLayer],
+                },
+                {
+                    later_nonlin: [$square],
+                    later_pool_nonlin: [$safe_log],
+                    pool_mode: ['average_exc_pad'],
+                    pool_layers: [SumPool2dLayer, Pool2DLayer],
+                },
+                
+                ]],
+            },
+            {
+                first_nonlin: [$leaky_relu],
+                first_pool_layer: [SumPool2dLayer, Pool2DLayer],
+                first_pool_mode: ['max', 'average_exc_pad'],
+                first_pool_nonlin: [$identity],
+                later_nonlin: [$leaky_relu],
+                pool_mode: ['max', 'average_exc_pad'],
+                later_pool_nonlin: [$identity],
+                pool_layers: [SumPool2dLayer, Pool2DLayer],
+            },
+        ]],
     }]],
 }
