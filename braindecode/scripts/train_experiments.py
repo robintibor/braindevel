@@ -33,6 +33,8 @@ def parse_command_line_arguments():
                              'template for all experiments')
     parser.add_argument('--quiet', action="store_true",
         help="Run algorithm quietly without progress output")
+    parser.add_argument('--debug', action="store_true",
+        help="Run with debug options.")
     parser.add_argument('--test', action="store_true",
         help="Run experiment on less features and less data to test it")
     parser.add_argument('--dryrun', action="store_true",
@@ -67,7 +69,9 @@ if __name__ == "__main__":
     args = parse_command_line_arguments()
 
     all_train_strs = create_experiment_yaml_strings_from_files(
-        args.experiments_file_name, args.template_file_name)
+        args.experiments_file_name, args.template_file_name, args.debug)
     exp_runner = ExperimentsRunner(quiet=args.quiet, start_id=args.startid,
-        stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle)
+        stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle,
+        debug=args.debug)
     exp_runner.run(all_train_strs)
+

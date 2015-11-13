@@ -1,6 +1,8 @@
 import logging
 from braindecode.datasets.grasp_lift import KaggleGraspLiftSet,\
     create_submission_csv
+from braindecode.veganlasagne.layers import get_n_sample_preds
+import sys
 log = logging.getLogger(__name__)
 from glob import glob
 import yaml
@@ -19,14 +21,15 @@ import numpy as np
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
             quiet=False, dry_run=False, cross_validation=False,
-            shuffle=False):
+            shuffle=False, debug=False):
         self._start_id = start_id
         self._stop_id = stop_id
         self._test = test
         self._quiet = quiet
         self._dry_run = dry_run
-        self._cross_validation=cross_validation
-        self._shuffle=shuffle
+        self._cross_validation = cross_validation
+        self._shuffle = shuffle
+        self._debug = debug
         
     def run(self, all_train_strs):
         if (self._quiet):
@@ -71,6 +74,8 @@ class ExperimentsRunner:
             folder_path += '/cross-validation/'
         if (self._shuffle):
             folder_path += '/shuffle/'
+        if (self._debug):
+            folder_path += '/debug/'
             
         return folder_path
     
@@ -142,6 +147,8 @@ class ExperimentsRunner:
             str(dummy_batch_topo.shape[3]))
         
         self._save_train_string(train_str, experiment_index)
+        
+        
         # reset rng for actual loading of layers, so you can reproduce it 
         # when you load the file later
         lasagne.random.set_rng(RandomState(9859295))
@@ -149,6 +156,11 @@ class ExperimentsRunner:
             
         layers = train_dict['layers']
         final_layer = layers[-1]
+        if (np.any([hasattr(l, 'n_stride') for l in layers])):
+            n_sample_preds =  get_n_sample_preds(final_layer)
+            log.info("Setting n_sample preds automatically to {:d}".format(n_sample_preds))
+            train_dict['exp_args']['monitors'][1].n_sample_preds = n_sample_preds
+            train_dict['exp_args']['iterator'].n_sample_preds = n_sample_preds
         
         if not self._cross_validation:
             exp = Experiment(final_layer, dataset, dataset_splitter,
@@ -187,15 +199,22 @@ class ExperimentsRunner:
             os.makedirs(self._folder_paths[experiment_index])
         
         result_file_name = self._get_result_save_path(experiment_index)
+        
         with open(result_file_name, 'w') as resultfile:
             pickle.dump(result_or_results, resultfile)
 
         log.info("Saving model...")
         model_file_name = self._get_model_save_path(experiment_index)
         # Let's save model
+        # set recursion limit very high to avoid problems saving
+        # see 
+        #https://github.com/lisa-lab/pylearn2/blob/74fd21b77f24620de442768cd15f22ad06c7fa2c/pylearn2/utils/serial.py#L102-L124
+        # and http://stackoverflow.com/questions/2134706/hitting-maximum-recursion-depth-using-pythons-pickle-cpickle
+        old_limit = sys.getrecursionlimit()
+        sys.setrecursionlimit(50000)
         with open(model_file_name, 'w') as modelfile:
             pickle.dump(model, modelfile)
-            
+        sys.setrecursionlimit(old_limit)    
         if isinstance(dataset, KaggleGraspLiftSet) and splitter.use_test_as_valid:
             create_submission_csv(self._folder_paths[experiment_index],
                 exp.dataset, iterator,

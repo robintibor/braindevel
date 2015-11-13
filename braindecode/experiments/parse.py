@@ -4,19 +4,22 @@ import yaml
 from string import Template
 from collections import deque
 import numpy as np
+import logging
+log = logging.getLogger(__name__)
 
 def transform_vals_to_string_constructor(loader, node):
     return dict([(v[0].value, yaml.serialize(v[1])) for v in node.value])
 
 def create_experiment_yaml_strings_from_files(config_filename, 
-        main_template_filename):
+        main_template_filename, debug=False):
     # First read out all files (check for extends attribute)
     # and transform to files to strings...
     # Then call creation of experiment yaml strings
     config_strings = create_config_strings(config_filename)
     with open(main_template_filename, 'r') as main_template_file:
         main_template_str = main_template_file.read()
-    return create_experiment_yaml_strings(config_strings, main_template_str)
+    return create_experiment_yaml_strings(config_strings, main_template_str,
+        debug=debug)
 
 def create_config_strings(config_filename):
     yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
@@ -36,10 +39,11 @@ def create_config_strings(config_filename):
     config_strings = config_strings[::-1]
     return config_strings
 
-def create_experiment_yaml_strings(all_config_strings, main_template_str):
+def create_experiment_yaml_strings(all_config_strings, main_template_str,
+        debug=False):
     """ Config strings should be from top file to bottom file."""
     config_objects = create_config_objects(all_config_strings)
-    final_params = create_params_from_config_objects(config_objects)
+    final_params = create_params_from_config_objects(config_objects, debug=debug)
    
     train_strings = []
     for i_config in range(len(final_params)):
@@ -55,9 +59,9 @@ def create_config_objects(all_config_strings):
         conf_str in all_config_strings]
     return config_objects
 
-def create_params_from_config_objects(config_objects):
+def create_params_from_config_objects(config_objects, debug=False):
     templates, variants = create_templates_variants_from_config_objects(
-        config_objects)
+        config_objects, debug=debug)
     final_params = merge_parameters_and_templates(variants, templates)
     # add original params for later printing
     for i_config in range(len(final_params)):
@@ -70,16 +74,25 @@ def create_params_from_config_objects(config_objects):
     unique_final_params = np.array(final_params)[np.sort(unique_inds)]
     return unique_final_params
 
-def create_templates_variants_from_config_objects(config_objects):
-    variants = []
+def create_templates_variants_from_config_objects(config_objects, debug=False):
+    all_variants = []
     templates = dict()
     for config_obj in config_objects:
         if 'variants' in config_obj:
             sub_variants = create_variants_recursively(config_obj['variants'])
-            variants = product_of_lists_of_dicts(variants, sub_variants)
+            all_variants = product_of_lists_of_dicts(all_variants, sub_variants)
         if 'templates' in config_obj:
             templates.update(config_obj['templates'])
-    return templates, variants
+    
+    # Set debug parameters if wanted
+    if debug:
+        log.info("Setting debug parameters")
+        for variant in all_variants:
+            variant['max_epochs'] = 1
+            variant['sensor_names'] = ['C3', 'C4', 'Cz']
+            
+    
+    return templates, all_variants
 
 
 def create_variants_recursively(variants):
@@ -186,9 +199,10 @@ def product_of_list_of_lists_of_dicts(list_of_lists):
 def merge_parameters_and_templates(all_parameters, templates):
     all_final_params = []
     for param_config in all_parameters:
-        processed_templates, params_without_template_params  = process_templates(
+        processed_templates  = process_templates(
             templates, param_config)
-        final_params = process_parameters_by_templates(params_without_template_params, processed_templates)
+        final_params = process_parameters_by_templates(param_config,
+            processed_templates)
         all_final_params.append(final_params)
     return all_final_params
 
@@ -201,7 +215,6 @@ def process_templates(templates, parameters):
     needed_template_names = filter(
         lambda value: isinstance(value, basestring) and value[0] == '$', 
         parameters.values())
-    parameters_without_template_parameters = copy(parameters)
     # remove $ at start! :)
     # e.g. ["$rect_lin", "$dropout"] => ["rect_lin", "dropout"]
     needed_template_names = [name[1:] for name in needed_template_names]
@@ -213,18 +226,8 @@ def process_templates(templates, parameters):
     # template: flat: [...$hidden_neurons...]
     # 1 => template: flat: [...8...]
     # 2 => processed_parameters .. {layers: "[...8...]", hidden_neurons:8, ...}
-    #   => parameters_without_template_parameters: .. {layers: "[...8...]",..}
     for template_name in needed_template_names:
         template_string = templates[template_name]
-        for param in parameters_without_template_parameters.keys():
-            if (('$' + param + ' ') in template_string or
-                ('$' + param + ',') in template_string  or
-                ('$' + param + ']') in template_string  or
-                ('$' + param + '}') in template_string  or
-                ('$' + param + "'") in template_string  or
-                ('$' + param + '"b') in template_string  or
-                ('$' + param + '\n') in template_string):
-                parameters_without_template_parameters.pop(param)
         template_string = Template(template_string).substitute(parameters)
         processed_templates[template_name] = template_string
 
@@ -235,7 +238,7 @@ def process_templates(templates, parameters):
         if '$' in template_string:
             new_str = Template(template_string).substitute(processed_templates)
             processed_templates[template_name] = new_str
-    return processed_templates, parameters_without_template_parameters
+    return processed_templates
 
 
 def process_parameters_by_templates(parameters, templates):
