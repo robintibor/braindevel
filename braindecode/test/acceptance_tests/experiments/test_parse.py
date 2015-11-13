@@ -114,4 +114,4 @@ def test_multiple_extended_filenames():
             "layer: {weight_init: 'funny glorot uniform template 8'\n, attribute_sub: 3}\n",
             "layer: {weight_init: 'funny glorot uniform template 10'\n, attribute_sub: 2}\n",
             "layer: {weight_init: 'funny glorot uniform template 10'\n, attribute_sub: 6}\n",
-            "layer: {weight_init: 'funny glorot uniform template 10'\n, attribute_sub: 3}\n"]       
+            "layer: {weight_init: 'funny glorot uniform template 10'\n, attribute_sub: 3}\n"]

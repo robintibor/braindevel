@@ -6,6 +6,9 @@ DOCTEST_FILES =  experiments/parse.py  datahandling/preprocessing.py
 unit-tests:
 	THEANO_FLAGS=mode=FAST_COMPILE,device=cpu,floatX=float32 py.test --doctest-modules test/unit_tests/ $(DOCTEST_FILES)
 
+unit-tests-verbose:
+	THEANO_FLAGS=mode=FAST_COMPILE,device=cpu,floatX=float32 py.test -vv --doctest-modules test/unit_tests/ $(DOCTEST_FILES)
+
 acceptance-tests:
 	THEANO_FLAGS=mode=FAST_COMPILE,device=cpu,floatX=float32 py.test -vv test/acceptance_tests
 
