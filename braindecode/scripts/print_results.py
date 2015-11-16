@@ -413,6 +413,10 @@ class ResultPrinter:
           ('pool_time_stride', 'pool_str'),
           ('pool_time_length', 'pool_len'),
           ('oversample_targets', 'oversample'),
+          ('first', '1st'),
+          ('average_exc_pad', 'mean'),
+          ('SumPool2dLayer', 'Sum'),
+          ('Pool2DLayer', 'Pool'),
           ])
         for header in table_headers:
             pretty_header = header

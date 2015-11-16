@@ -156,6 +156,10 @@ class ExperimentsRunner:
             
         layers = train_dict['layers']
         final_layer = layers[-1]
+        assert len(np.setdiff1d(layers, 
+            lasagne.layers.get_all_layers(final_layer))) == 0, ("All layers "
+            "should be used, unused {:s}".format(str(np.setdiff1d(layers, 
+            lasagne.layers.get_all_layers(final_layer)))))
         if (np.any([hasattr(l, 'n_stride') for l in layers])):
             n_sample_preds =  get_n_sample_preds(final_layer)
             log.info("Setting n_sample preds automatically to {:d}".format(n_sample_preds))
