@@ -153,7 +153,8 @@ def get_n_sample_preds(layer):
     preds_per_path = [np.sum(get_3rd_dim_shapes_without_invalids_for_layers(
         layers)) for layers in paths]
     # all path should have same length
-    assert len(np.unique(preds_per_path)) == 1
+    assert len(np.unique(preds_per_path)) == 1, ("All paths, should have same "
+        "lengths, pathlengths are" + str(preds_per_path))
     return preds_per_path[0]
 
 def get_all_paths(layer, treat_as_input=None):
