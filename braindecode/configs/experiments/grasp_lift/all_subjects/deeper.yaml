@@ -9,6 +9,7 @@
         save_path: ['data/models/grasp-lift/all-sub/deeper/'],
         use_test_as_valid: [false],
         oversample_targets: [true],
+        resample_half: [True],
         imbalance_factor: [20],
         pool_time_length: [3],
         pool_time_stride: [2],

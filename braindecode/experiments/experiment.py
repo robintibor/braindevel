@@ -92,7 +92,7 @@ class Experiment(object):
         try:
             loss = self.loss_expression(prediction, target_var).mean()
             test_loss = self.loss_expression(test_prediction, target_var).mean()
-        except ValueError:
+        except TypeError:
             loss = self.loss_expression(prediction, target_var, self.final_layer).mean()
             test_loss = self.loss_expression(test_prediction, target_var, self.final_layer).mean()
             

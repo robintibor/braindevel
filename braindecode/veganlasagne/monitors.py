@@ -107,6 +107,10 @@ class MisclassMonitor(Monitor):
             all_target_labels.extend(targets[i_batch])
         all_pred_labels = np.array(all_pred_labels)
         all_target_labels = np.array(all_target_labels)
+        
+        # in case of one hot encoding convert back to scalar class numbers
+        if all_target_labels.ndim == 2:
+            all_target_labels = np.argmax(all_target_labels, axis=1)
         misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
             float(len(all_target_labels)))
         monitor_key = "{:s}_misclass".format(setname)

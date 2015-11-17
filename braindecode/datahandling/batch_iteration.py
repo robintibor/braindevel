@@ -184,13 +184,23 @@ class CntWindowsFromCntIterator(object):
        
         topo = dataset.get_topological_view()
         for i_block in xrange(0,len(block_inds),self.batch_size):
-            batch_size = min(self.batch_size, len(block_inds) - i_block)
+            start_block_offset = 0
+            # make all batches have same size during training...
+            if shuffle and (i_block + self.batch_size > len(block_inds)):
+                start_block_offset = len(block_inds) - (i_block + self.batch_size)
+            
+            # make sure batch does not exceed bounds of blocks during testing
+            batch_size = min(self.batch_size, len(block_inds) - (i_block + start_block_offset))
             # have to wrap into float32, cause np.nan upcasts to float64!
             batch_topo = np.float32(np.ones((batch_size, topo.shape[1],
                  self.input_time_length, topo.shape[3])) * np.nan)
             batch_y = np.ones((self.n_sample_preds * batch_size, dataset.y.shape[1])) * np.nan
+            
+            if shuffle:
+                assert batch_size == self.batch_size, "During training all batches should have same size"
+            # i_stride is a confusing name here hmhm.. anyways all of this is confusing now
             for i_stride in xrange(batch_size):
-                i_actual_block = block_inds[i_block + i_stride]
+                i_actual_block = block_inds[i_block + i_stride+ start_block_offset]
                 start,end = start_end_blocks[i_actual_block]
                 # switch samples into last axis, (dim 2 shd be empty before)
                 assert topo.shape[2] == 1
