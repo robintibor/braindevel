@@ -25,6 +25,7 @@ def get_used_input_length(final_layer):
         if hasattr(layer, 'pool_size'):
             n_samples = n_samples + layer.pool_size[0] - 1
         if hasattr(layer, 'filter_size'):
+            assert layer.pad == (0,0)
             n_samples = n_samples + layer.filter_size[0] - 1
     return n_samples
 
@@ -61,7 +62,11 @@ def reshape_for_stride_theano(topo_var, topo_shape, n_stride,
     
     n_third_dim = int(np.ceil(topo_shape[2] / float(n_stride)))
     reshaped_out = []
-    reshape_shape = (topo_var.shape[0], topo_shape[1], n_third_dim, topo_shape[3])
+    if topo_shape[0] is not None:
+        zero_dim_len = topo_shape[0]
+    else:
+        zero_dim_len = topo_var.shape[0]
+    reshape_shape = (zero_dim_len, topo_shape[1], n_third_dim, topo_shape[3])
     for i_stride in xrange(n_stride):
         reshaped_this = T.ones(reshape_shape, dtype=np.float32) * invalid_fill_value
         i_length = int(np.ceil((topo_shape[2] - i_stride) / float(n_stride)))
@@ -73,7 +78,12 @@ def reshape_for_stride_theano(topo_var, topo_shape, n_stride,
 
 def get_output_shape_after_stride(input_shape, n_stride):
     time_length_after = int(np.ceil(input_shape[2] / float(n_stride)))
-    output_shape = [None, input_shape[1], time_length_after, 1]
+    if input_shape[0] is None:
+        batch_after = None
+    else:
+        batch_after = int(input_shape[0] * n_stride)
+        
+    output_shape = (batch_after, input_shape[1], time_length_after, 1)
     return output_shape
 
 class StrideReshapeLayer(lasagne.layers.Layer):
@@ -117,11 +127,18 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         # Reshape/flatten into #predsamples x #classes
         input = input.dimshuffle(1,2,0,3).reshape((self.input_shape[1],
             -1)).T
+            
         if self.remove_invalids:
             # remove invalid values (possibly nans still contained before)
             n_sample_preds = get_n_sample_preds(self)
             input_var = lasagne.layers.get_all_layers(self)[0].input_var
-            input = input[:input_var.shape[0] * n_sample_preds]
+            input_shape = lasagne.layers.get_all_layers(self)[0].shape
+            if input_shape[0] is not None:
+                trials = input_shape[0]
+            else:
+                trials = input_var.shape[0]
+                
+            input = input[:trials * n_sample_preds]
         return input
         
     def get_output_shape_for(self, input_shape):
@@ -134,11 +151,23 @@ def get_3rd_dim_shapes_without_invalids(layer):
     return get_3rd_dim_shapes_without_invalids_for_layers(all_layers)
 
 def get_3rd_dim_shapes_without_invalids_for_layers(all_layers):
+    # handle as special case that first layer is dim shuffle layer that shuffles last 2 dims.. 
+    # hack for the stupiding kaggle code
+    if hasattr(all_layers[1],  'pattern') and all_layers[1].pattern == (0,1,3,2):
+        all_layers = all_layers[1:]
+
     cur_lengths = np.array([all_layers[0].output_shape[2]])
     # todelay: maybe redo this by using get_output_shape_for function?
     for l in all_layers:
         if hasattr(l, 'filter_size'):
-            cur_lengths = cur_lengths - l.filter_size[0] + 1
+            if l.pad == (0,0):
+                cur_lengths = cur_lengths - l.filter_size[0] + 1
+            elif l.pad == ((l.filter_size[0] - 1) / 2, (l.filter_size[1] - 1) / 2):
+                cur_lengths = cur_lengths
+            else:
+                print l
+                raise ValueError("Not implemented this padding:", l.pad, l, l.filter_size)
+                
         if hasattr(l, 'pool_size'):
             cur_lengths = cur_lengths - l.pool_size[0] + 1
         if hasattr(l, 'n_stride'):

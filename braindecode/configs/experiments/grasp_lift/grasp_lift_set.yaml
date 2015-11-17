@@ -3,6 +3,7 @@
         grasp_lift_set: !obj:braindecode.datasets.grasp_lift.KaggleGraspLiftSet {
             data_folder: 'data/kaggle-grasp-lift/',
             i_subject: $dataset_filename,
+            resample_half: $resample_half,
         },
         grasp_lift_splitter: !obj:braindecode.datahandling.splitters.KaggleTrainValidTestSplitter {
             use_test_as_valid: $use_test_as_valid,

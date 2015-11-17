@@ -24,7 +24,7 @@ def load_train(train_folder, i_subject, i_series):
     labels= pd.read_csv(events_file_path)
     clean = data.drop(['id' ], axis=1)#remove id
     labels = labels.drop(['id' ], axis=1)#remove id
-    return clean,labels
+    return clean, labels
 
 def load_test(test_folder, i_subject, i_series):
     data_filename = 'subj{:d}_series{:d}_data.csv'.format(
@@ -35,10 +35,14 @@ def load_test(test_folder, i_subject, i_series):
     return clean
 
 class KaggleGraspLiftSet(object):
+    """ Dataset from the kaggle grasp lift competition.
+    resample_half true means resampling to 250 Hz (from original 500 Hz)
+    """
     reloadable=False
-    def __init__(self, data_folder, i_subject):
+    def __init__(self, data_folder, i_subject, resample_half):
         self.data_folder = data_folder
         self.i_subject = i_subject
+        self.resample_half = resample_half
         
     def ensure_is_loaded(self):
         if not hasattr(self, 'train_X_series'):
@@ -47,8 +51,9 @@ class KaggleGraspLiftSet(object):
     def load(self):
         log.info("Loading data...")
         self.load_data()
-        log.info("Resampling data...")
-        self.resample_data()
+        if self.resample_half:
+            log.info("Resampling data...")
+            self.resample_data()
         log.info("..Done.")
         # hack to allow experiment class to know targets will have two dimensions
         self.y = np.ones((1,1)) * np.nan
@@ -93,8 +98,9 @@ class KaggleGraspLiftSet(object):
         """Refers to test set from evaluation(without labels)"""
         log.info("Loading test data...")
         self.load_test_data()
-        log.info("Resampling test data...")
-        self.resample_test_data()
+        if self.resample_half:
+            log.info("Resampling test data...")
+            self.resample_test_data()
         log.info("..Done.")
 
     def load_test_data(self):
@@ -115,8 +121,9 @@ class AllSubjectsKaggleGraspLiftSet(object):
     """ Kaggle grasp lift set loading the data for all subjects """
     reloadable=False
 
-    def __init__(self, data_folder):
+    def __init__(self, data_folder, resample_half):
         self.data_folder = data_folder
+        self.resample_half = resample_half
         
     def ensure_is_loaded(self):
         if not hasattr(self, 'kaggle_sets'):
@@ -129,7 +136,8 @@ class AllSubjectsKaggleGraspLiftSet(object):
         self.y = np.ones((1,1)) * np.nan
         
     def create_kaggle_sets(self):
-        self.kaggle_sets = [KaggleGraspLiftSet(self.data_folder, i_sub) 
+        self.kaggle_sets = [
+            KaggleGraspLiftSet(self.data_folder, i_sub, self.resample_half) 
             for i_sub in range(1,13)]
         
     def load_kaggle_sets(self):
@@ -194,6 +202,8 @@ def create_submission_csv_for_one_subject(folder_name, kaggle_set, iterator, pre
     series_preds = [preds_arr_0, preds_arr_1]
     assert len(series_preds[0]) == test_series_lengths_resampled[0]
     assert len(series_preds[1]) == test_series_lengths_resampled[1]
+    assert False, ("TODO: here only duplicate if resample half is true for the dataset.. "
+        "also take care how to create submission cv if trained on all subjects")
     series_preds_duplicated = [np.repeat(preds, 2,axis=0) for preds in series_preds]
     n_classes = preds_arr_0.shape[1]
     # pad missing ones with zeros
@@ -245,5 +255,5 @@ def create_submission_csv_for_all_subjects(folder):
         all_lines.extend(content[1:])
     csv_str = "".join(all_lines)
     submission_zip_file = ZipFile(os.path.join(folder,'all_submission.zip'), 'w', ZIP_DEFLATED)
-    submission_zip_file.writestr("4_sec_submission.csv", csv_str)
+    submission_zip_file.writestr("submission.csv", csv_str)
     submission_zip_file.close()

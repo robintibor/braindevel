@@ -157,13 +157,13 @@
             },
         ],
         raw_layer_names_to_norms: {
-            time_conv: 2.0,
-            spat_conv: 2.0,
-            combined_conv_2: 2.0,
-            combined_conv_3: 2.0,
-            combined_conv_4: 2.0,
-            combined_conv_5: 2.0,
-            final_dense: 0.5,
+            time_conv: $conv_norm,
+            spat_conv: $conv_norm,
+            combined_conv_2: $conv_norm,
+            combined_conv_3: $conv_norm,
+            combined_conv_4: $conv_norm,
+            combined_conv_5: $conv_norm,
+            final_dense: $final_norm,
         },
         square: !!python/name:theano.tensor.sqr ,
         identity: !!python/name:lasagne.nonlinearities.identity ,
@@ -174,5 +174,7 @@
     variants: [[{
         layer_names_to_norms: [$raw_layer_names_to_norms],
         layers: [$raw_net_no_drop_time_layers],
+        final_norm: [0.5],
+        conv_norm: [2.0],
     }]]
 }

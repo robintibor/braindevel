@@ -22,5 +22,7 @@
         later_nonlin: [$leaky_relu],
         pool_mode: ['max'],
         num_filters: [40],
+        final_norm: [0.25],
+        resample_half: [True],
     }]],
 }

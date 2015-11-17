@@ -25,5 +25,6 @@
         num_filters: [40],
         max_increasing_epochs: [20],
         max_epochs: [300],
+        resample_half: [True],
     }]],
 }

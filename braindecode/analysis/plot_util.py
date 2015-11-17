@@ -9,7 +9,6 @@ from copy import deepcopy
 from pylearn2.utils import serial
 import os.path
 from matplotlib import gridspec
-from pydoc import classname
 
 def plot_head_signals(signals, sensor_names=None, figsize=(12,7), 
     plot_args=None):
@@ -222,7 +221,7 @@ def plot_misclasses_for_file(result_file_path):
     assert result_file_path.endswith('result.pkl')
     result = serial.load(result_file_path)
     fig = plot_misclasses_for_result(result)
-    fig.suptitle(result_file_path)
+    fig.suptitle("Misclass: " + result_file_path)
     return fig
 
 def plot_misclasses_for_model(model, figure=None):
@@ -239,8 +238,9 @@ def plot_loss_for_file(result_file_path, figure=None, start=None, stop=None):
         figure = pyplot.figure()
     result = serial.load(result_file_path)
     figure = plot_loss_for_result(result,figure,start,stop)
-    figure.suptitle(result_file_path)
+    figure.suptitle("Loss: " + result_file_path)
     return figure
+
 def plot_loss_for_model(model, figure=None):
     return plot_train_valid_test_epochs(model.monitor.channels['train_loss'],
         model.monitor.channels['valid_loss'],
