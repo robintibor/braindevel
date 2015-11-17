@@ -60,15 +60,18 @@ class KaggleGraspLiftSet(object):
         train_folder = os.path.join(self.data_folder, 'train/')
         for i_series in xrange(1,9):
             X_series, y_series = load_train(train_folder, self.i_subject, i_series)
-            self.train_X_series.append(X_series)
-            self.train_y_series.append(y_series)
+            # all sensor names should be the same :)
+            # so just set it here directly
+            if not hasattr(self, 'sensor_names'):
+                self.sensor_names = X_series.keys()
+            else:
+                assert np.array_equal(self.sensor_names, X_series.keys())
+            self.train_X_series.append(np.array(X_series).astype(np.float32))
+            self.train_y_series.append(np.array(y_series).astype(np.int32))
             
         assert len(self.train_X_series) == 8, "Should be 8 train series for each subject"
 
        
-        # all sensor names should be the same :)
-        # so just take first part
-        self.sensor_names = self.train_X_series[0].keys()
     
     def resample_data(self):
         for i_series in xrange(8):
@@ -99,7 +102,7 @@ class KaggleGraspLiftSet(object):
         self.test_X_series = []
         for i_series in xrange(9,11):
             X_series = load_test(test_folder, self.i_subject, i_series)
-            self.test_X_series.append(X_series)
+            self.test_X_series.append(np.array(X_series).astype(np.float32))
         assert len(self.test_X_series) == 2, "Should be 2 test series for each subject"
 
     def resample_test_data(self):
@@ -107,6 +110,32 @@ class KaggleGraspLiftSet(object):
             X_series = np.array(self.test_X_series[i_series]).astype(np.float32)
             X_series = resample(X_series, 250.0/500.0, 'sinc_fastest')
             self.test_X_series[i_series] = X_series
+
+class AllSubjectsKaggleGraspLiftSet(object):
+    """ Kaggle grasp lift set loading the data for all subjects """
+    reloadable=False
+
+    def __init__(self, data_folder):
+        self.data_folder = data_folder
+        
+    def ensure_is_loaded(self):
+        if not hasattr(self, 'kaggle_sets'):
+            self.load()
+    
+    def load(self):
+        self.create_kaggle_sets()
+        self.load_kaggle_sets()
+        # hack to allow experiment class to know targets will have two dimensions
+        self.y = np.ones((1,1)) * np.nan
+        
+    def create_kaggle_sets(self):
+        self.kaggle_sets = [KaggleGraspLiftSet(self.data_folder, i_sub) 
+            for i_sub in range(1,13)]
+        
+    def load_kaggle_sets(self):
+        for i_set, kaggle_set in enumerate(self.kaggle_sets):
+            log.info("Loading Subject {:d}...".format(i_set + 1))
+            kaggle_set.load()
 
 
 def create_submission_csv_for_one_subject(folder_name, kaggle_set, iterator, preprocessor,

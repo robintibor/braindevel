@@ -115,8 +115,7 @@ class ExperimentsRunner:
     def _run_experiment(self, i):
         train_str = self._all_train_strs[i]
         log.info("Now running {:d} of {:d}".format(i + 1, self._get_stop_id() + 1))
-        if not(self._dry_run):
-            self._run_experiments_with_string(i, train_str)
+        self._run_experiments_with_string(i, train_str)
     
     def _run_experiments_with_string(self, experiment_index, train_str):
         lasagne.random.set_rng(RandomState(9859295))
@@ -126,6 +125,10 @@ class ExperimentsRunner:
         log.info("With params...")
         if not self._quiet:
             pprint(train_dict['original_params'])
+        if self._dry_run:
+            # Do not do the loading or training...
+            # Only go until here to show the train params
+            return
         dataset = train_dict['dataset'] 
         dataset.load()
         iterator = train_dict['exp_args']['iterator']

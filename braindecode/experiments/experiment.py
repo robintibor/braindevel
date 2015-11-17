@@ -88,14 +88,21 @@ class Experiment(object):
         # test as in during testing not as in "test set"
         test_prediction = lasagne.layers.get_output(self.final_layer, 
             deterministic=True)
-        loss = self.loss_expression(prediction, target_var).mean()
-        test_loss = self.loss_expression(test_prediction, target_var).mean()
+        # Loss function might need layers or not...
+        try:
+            loss = self.loss_expression(prediction, target_var).mean()
+            test_loss = self.loss_expression(test_prediction, target_var).mean()
+        except ValueError:
+            loss = self.loss_expression(prediction, target_var, self.final_layer).mean()
+            test_loss = self.loss_expression(test_prediction, target_var, self.final_layer).mean()
+            
         # create parameter update expressions
         params = lasagne.layers.get_all_params(self.final_layer, trainable=True)
         updates = self.updates_expression(loss, params)
-        # put norm constraints on all layer, for now fixed to max kernel norm
-        # 2 and max col norm 0.5
-        updates = self.updates_modifier.modify(updates, self.final_layer)
+        if self.updates_modifier is not None:
+            # put norm constraints on all layer, for now fixed to max kernel norm
+            # 2 and max col norm 0.5
+            updates = self.updates_modifier.modify(updates, self.final_layer)
         input_var = lasagne.layers.get_all_layers(self.final_layer)[0].input_var
         # needed for resetting to best model after early stop
         self.all_params = updates.keys()

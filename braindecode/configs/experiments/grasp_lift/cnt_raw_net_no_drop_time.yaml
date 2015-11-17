@@ -10,14 +10,14 @@
             },
             &time_conv !obj:lasagne.layers.Conv2DLayer {
                 incoming: *shuffle,
-                num_filters: 40,
+                num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
                 name: 'time_conv',
             },
             &spat_conv !obj:braindecode.veganlasagne.layers.Conv2DAllColsLayer {
                 incoming: *time_conv,
-                num_filters: 40,
+                num_filters: $num_filters,
                 filter_size: [1, -1],
                 nonlinearity: !!python/name:theano.tensor.sqr ,
                 name: 'spat_conv',
@@ -62,6 +62,7 @@
         }
     },
     variants: [[{
+        #num_filters: [40], set this for old experiments!
         layer_names_to_norms: [$raw_layer_names_to_norms],
         layers: [$raw_net_no_drop_time_layers],
     }]]

@@ -229,3 +229,38 @@ class KaggleTrainValidTestSplitter(TrainValidTestSplitter):
         return OrderedDict([('train', deepcopy(train_set)),
             ('valid', deepcopy(valid_set)), 
             ('test',  deepcopy(test_set))])
+        
+
+class AllSubjectsKaggleTrainValidTestSplitter(TrainValidTestSplitter):
+    def __init__(self, use_test_as_valid=False):
+        self.use_test_as_valid = use_test_as_valid
+        
+    def split_into_train_valid_test(self, dataset):
+        # First split all sets individually, then merge them
+        one_set_splitter = KaggleTrainValidTestSplitter(
+            use_test_as_valid=self.use_test_as_valid)
+        splitted_sets = [one_set_splitter.split_into_train_valid_test(s) 
+            for s in dataset.kaggle_sets]
+        train_topos = [s['train'].get_topological_view() for s in splitted_sets]
+        train_ys = [s['train'].y for s in splitted_sets]
+        # create dense design matrix sets
+        train_set = DenseDesignMatrixWrapper(
+            topo_view=np.concatenate(train_topos, axis=0), 
+            y=np.concatenate(train_ys, axis=0), axes=('b','c',0,1))
+        
+        valid_topos = [s['valid'].get_topological_view() for s in splitted_sets]
+        valid_ys = [s['valid'].y for s in splitted_sets]
+        valid_set = DenseDesignMatrixWrapper(
+            topo_view=np.concatenate(valid_topos, axis=0), 
+            y=np.concatenate(valid_ys, axis=0), axes=('b','c',0,1))
+        
+        test_topos = [s['test'].get_topological_view() for s in splitted_sets]
+        test_ys = [s['test'].y for s in splitted_sets]
+        test_set = DenseDesignMatrixWrapper(
+            topo_view=np.concatenate(test_topos, axis=0), 
+            y=np.concatenate(test_ys, axis=0), axes=('b','c',0,1))
+        
+        return OrderedDict([('train', train_set),
+            ('valid', valid_set), 
+            ('test',  test_set)])
+    

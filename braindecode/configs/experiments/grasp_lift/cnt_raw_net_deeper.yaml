@@ -10,14 +10,14 @@
             },
             &time_conv !obj:lasagne.layers.Conv2DLayer {
                 incoming: *shuffle,
-                num_filters: 40,
+                num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
                 name: 'time_conv',
             },
             &spat_conv !obj:braindecode.veganlasagne.layers.Conv2DAllColsLayer {
                 incoming: *time_conv,
-                num_filters: 40,
+                num_filters: $num_filters,
                 filter_size: [1, -1],
                 nonlinearity: $first_nonlin,
                 name: 'spat_conv',
@@ -43,7 +43,7 @@
             
             &combined_conv_2 !obj:lasagne.layers.Conv2DLayer {
                 incoming: *drop_feature_1,
-                num_filters: 40,
+                num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: $later_nonlin ,
                 name: 'combined_conv_2',
@@ -68,7 +68,7 @@
             },
             &combined_conv_3 !obj:lasagne.layers.Conv2DLayer {
                 incoming: *drop_feature_2,
-                num_filters: 40,
+                num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: $later_nonlin ,
                 name: 'combined_conv_3',
@@ -93,7 +93,7 @@
             },
             &combined_conv_4 !obj:lasagne.layers.Conv2DLayer {
                 incoming: *drop_feature_3,
-                num_filters: 40,
+                num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: $later_nonlin ,
                 name: 'combined_conv_4',
@@ -118,7 +118,7 @@
             },
             &combined_conv_5 !obj:lasagne.layers.Conv2DLayer {
                 incoming: *drop_feature_4,
-                num_filters: 40,
+                num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: $later_nonlin ,
                 name: 'combined_conv_5',

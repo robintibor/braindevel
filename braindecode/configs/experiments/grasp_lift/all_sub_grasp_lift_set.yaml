@@ -1,0 +1,15 @@
+{
+    templates: {
+        all_sub_grasp_lift_set: !obj:braindecode.datasets.grasp_lift.AllSubjectsKaggleGraspLiftSet {
+            data_folder: 'data/kaggle-grasp-lift/',
+        },
+        all_sub_grasp_lift_splitter: !obj:braindecode.datahandling.splitters.AllSubjectsKaggleTrainValidTestSplitter {
+            use_test_as_valid: $use_test_as_valid,
+        }
+    },
+    variants:  [[{
+        dataset: [$all_sub_grasp_lift_set],
+        dataset_splitter: [$all_sub_grasp_lift_splitter],
+        use_test_as_valid: [false],
+    }]]
+}

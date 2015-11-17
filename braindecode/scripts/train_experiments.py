@@ -72,6 +72,6 @@ if __name__ == "__main__":
         args.experiments_file_name, args.template_file_name, args.debug)
     exp_runner = ExperimentsRunner(quiet=args.quiet, start_id=args.startid,
         stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle,
-        debug=args.debug)
+        debug=args.debug, dry_run=args.dryrun)
     exp_runner.run(all_train_strs)
 
