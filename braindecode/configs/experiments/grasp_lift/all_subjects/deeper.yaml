@@ -23,8 +23,10 @@
         later_pool_nonlin: [$identity],
         later_nonlin: [$leaky_relu],
         pool_mode: ['max'],
-        num_filters: [40,80,120],
+        num_filters: [40],#,80,120],
         max_increasing_epochs: [20],
         max_epochs: [300],
+        remove_baseline_mean: [True],
+        standardize_series_wise: [True]
     }]],
 }

@@ -4,7 +4,8 @@
             batch_size: $batch_size,
             input_time_length: $input_time_length,
             n_sample_preds: $n_sample_preds,
-            oversample_targets: $oversample_targets
+            oversample_targets: $oversample_targets,
+            remove_baseline_mean: $remove_baseline_mean,
         },
         auc_cnt_misclass_monitor: !obj:braindecode.veganlasagne.monitors.AUCMeanMisclassMonitor { 
             input_time_length: $input_time_length,
@@ -15,5 +16,6 @@
         misclass_monitor: [$auc_cnt_misclass_monitor],
         iterator: [$cnt_iterator],
         layers: [$raw_net_no_drop_time_layers],
+        remove_baseline_mean: [false],
     }]]
 }

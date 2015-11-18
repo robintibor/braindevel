@@ -144,11 +144,12 @@ class WindowsFromCntIterator(object):
         
 class CntWindowsFromCntIterator(object):
     def __init__(self, batch_size, input_time_length, n_sample_preds,
-            oversample_targets=False):
+            oversample_targets=False, remove_baseline_mean=False):
         self.batch_size = batch_size
         self.input_time_length = input_time_length
         self.n_sample_preds = n_sample_preds
         self.oversample_targets=oversample_targets
+        self.remove_baseline_mean = remove_baseline_mean
         self.rng = RandomState(328774)
     
     def get_batches(self, dataset, shuffle):
@@ -198,16 +199,22 @@ class CntWindowsFromCntIterator(object):
             
             if shuffle:
                 assert batch_size == self.batch_size, "During training all batches should have same size"
-            # i_stride is a confusing name here hmhm.. anyways all of this is confusing now
-            for i_stride in xrange(batch_size):
-                i_actual_block = block_inds[i_block + i_stride+ start_block_offset]
+            # i_batch_block is a confusing name here hmhm.. anyways all of this is confusing now
+            for i_batch_block in xrange(batch_size):
+                i_actual_block = block_inds[i_block + i_batch_block + start_block_offset]
                 start,end = start_end_blocks[i_actual_block]
                 # switch samples into last axis, (dim 2 shd be empty before)
                 assert topo.shape[2] == 1
-                batch_topo[i_stride] = topo[start:end].swapaxes(0,2)
-                start_y = self.n_sample_preds * i_stride
+                batch_topo[i_batch_block] = topo[start:end].swapaxes(0,2)
+                start_y = self.n_sample_preds * i_batch_block
                 end_y = start_y + self.n_sample_preds
                 batch_y[start_y:end_y] = dataset.y[start+n_lost_samples:end]
+               
+            if self.remove_baseline_mean:
+                batch_topo -= np.mean(
+                    # should produce mean per batchxchan
+                    batch_topo[:,:,:n_lost_samples,:], axis=(2,3),
+                    keepdims=True)
                 
             assert not np.any(np.isnan(batch_y))
             batch_y = batch_y.astype(np.int32)

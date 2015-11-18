@@ -11,6 +11,8 @@ from zipfile import ZipFile
 from zipfile import ZIP_DEFLATED
 from braindecode.veganlasagne.layers import get_n_sample_preds
 from braindecode.veganlasagne.monitors import get_reshaped_cnt_preds
+from braindecode.datahandling.preprocessing import exponential_running_mean,\
+    exponential_running_var_from_demeaned
 log = logging.getLogger(__name__)
 
 def load_train(train_folder, i_subject, i_series):
@@ -39,10 +41,12 @@ class KaggleGraspLiftSet(object):
     resample_half true means resampling to 250 Hz (from original 500 Hz)
     """
     reloadable=False
-    def __init__(self, data_folder, i_subject, resample_half):
+    def __init__(self, data_folder, i_subject, resample_half,
+            standardize=False):
         self.data_folder = data_folder
         self.i_subject = i_subject
         self.resample_half = resample_half
+        self.standardize = standardize
         
     def ensure_is_loaded(self):
         if not hasattr(self, 'train_X_series'):
@@ -54,6 +58,9 @@ class KaggleGraspLiftSet(object):
         if self.resample_half:
             log.info("Resampling data...")
             self.resample_data()
+        if self.standardize:
+            log.info("Standardizing data...")
+            self.standardize_data()
         log.info("..Done.")
         # hack to allow experiment class to know targets will have two dimensions
         self.y = np.ones((1,1)) * np.nan
@@ -76,8 +83,6 @@ class KaggleGraspLiftSet(object):
             
         assert len(self.train_X_series) == 8, "Should be 8 train series for each subject"
 
-       
-    
     def resample_data(self):
         for i_series in xrange(8):
             X_series = np.array(self.train_X_series[i_series]).astype(np.float32)
@@ -94,6 +99,31 @@ class KaggleGraspLiftSet(object):
             y_series = y_series[-len(X_series):]
             self.train_y_series[i_series] = y_series
 
+    def standardize_data(self):
+        factor_new = 0.01
+        for i_series in xrange(8):
+            X_series = self.train_X_series[i_series]
+            if i_series == 0:
+                means = exponential_running_mean(X_series, factor_new=factor_new,
+                    init_block_size=100, axis=None)
+                demeaned = X_series - means
+                stds = np.sqrt(exponential_running_var_from_demeaned(
+                    demeaned, factor_new, init_block_size=100, axis=None))
+            else:
+                start_mean = means[-1]
+                start_var = stds[-1] * stds[-1]
+                means = exponential_running_mean(X_series, factor_new=factor_new,
+                    start_mean=start_mean, axis=None)
+                demeaned = X_series - means
+                stds = np.sqrt(exponential_running_var_from_demeaned(
+                    demeaned, factor_new, start_var=start_var, axis=None))
+            standardized = demeaned / stds
+            self.train_X_series[i_series] = standardized
+        # for later test standardizing
+        self.final_std = stds[-1]
+        self.final_mean = means[-1]
+            
+
     def load_test(self):
         """Refers to test set from evaluation(without labels)"""
         log.info("Loading test data...")
@@ -101,6 +131,9 @@ class KaggleGraspLiftSet(object):
         if self.resample_half:
             log.info("Resampling test data...")
             self.resample_test_data()
+        if self.standardize:
+            log.info("Standardizing test data...")
+            self.standardize_test_data()
         log.info("..Done.")
 
     def load_test_data(self):
@@ -116,14 +149,29 @@ class KaggleGraspLiftSet(object):
             X_series = np.array(self.test_X_series[i_series]).astype(np.float32)
             X_series = resample(X_series, 250.0/500.0, 'sinc_fastest')
             self.test_X_series[i_series] = X_series
+            
+    def standardize_test_data(self):
+        factor_new = 0.01
+        for i_series in xrange(2):
+            X_series = self.test_X_series[i_series]
+            start_mean = self.final_mean
+            start_var = self.final_std * self.final_std
+            means = exponential_running_mean(X_series, factor_new=factor_new,
+                start_mean=start_mean, axis=None)
+            demeaned = X_series - means
+            stds = np.sqrt(exponential_running_var_from_demeaned(
+                demeaned, factor_new, start_var=start_var, axis=None))
+            standardized = demeaned / stds
+            self.test_X_series[i_series] = standardized
 
 class AllSubjectsKaggleGraspLiftSet(object):
     """ Kaggle grasp lift set loading the data for all subjects """
     reloadable=False
 
-    def __init__(self, data_folder, resample_half):
+    def __init__(self, data_folder, resample_half, standardize=False):
         self.data_folder = data_folder
         self.resample_half = resample_half
+        self.standardize = standardize
         
     def ensure_is_loaded(self):
         if not hasattr(self, 'kaggle_sets'):
@@ -137,14 +185,14 @@ class AllSubjectsKaggleGraspLiftSet(object):
         
     def create_kaggle_sets(self):
         self.kaggle_sets = [
-            KaggleGraspLiftSet(self.data_folder, i_sub, self.resample_half) 
+            KaggleGraspLiftSet(self.data_folder, i_sub, self.resample_half,
+                self.standardize) 
             for i_sub in range(1,13)]
         
     def load_kaggle_sets(self):
         for i_set, kaggle_set in enumerate(self.kaggle_sets):
             log.info("Loading Subject {:d}...".format(i_set + 1))
             kaggle_set.load()
-
 
 def create_submission_csv_for_one_subject(folder_name, kaggle_set, iterator, preprocessor,
         final_layer, submission_id):

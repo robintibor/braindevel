@@ -6,7 +6,7 @@
         dataset_filename: ["null"],
         input_time_length: [5000],
         filter_time_length: [30],
-        save_path: ['data/models/grasp-lift/all-sub/more-time/deeper/'],
+        save_path: ['data/models/grasp-lift/all-sub/more-time/no-resample/deeper/'],
         use_test_as_valid: [false],
         oversample_targets: [true],
         imbalance_factor: [20],
@@ -25,6 +25,6 @@
         num_filters: [40],
         max_increasing_epochs: [20],
         max_epochs: [300],
-        resample_half: [True],
+        resample_half: [False],
     }]],
 }

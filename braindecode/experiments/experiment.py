@@ -151,10 +151,11 @@ class Experiment(object):
     def setup_after_stop_training(self):
         self.remember_extension.reset_to_best_model(self.monitor_chans,
                 self.all_params)
+        loss_to_reach = self.monitor_chans['train_loss'][-1]
         self.stop_criterion = Or(stop_criteria=[
             MaxEpochs(num_epochs=self.remember_extension.best_epoch * 2),
-            ChanBelow(chan_name='valid_loss', 
-                target_value=self.monitor_chans['train_loss'][-1])])
+            ChanBelow(chan_name='valid_loss', target_value=loss_to_reach)])
+        log.info("Train loss to reach {:.5f}".format(loss_to_reach))
     
     def run_until_second_stop(self):
         datasets = self.dataset_provider.get_train_merged_valid_test(

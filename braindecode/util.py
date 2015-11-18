@@ -1,3 +1,6 @@
+from lasagne.init import Initializer
+import theano
+
 class FuncAndArgs(object):
     """Container for a function and its arguments. 
     Useful in case you want to pass a function and its arguments 
@@ -27,3 +30,20 @@ class FuncAndArgs(object):
         
     def __call__(self, *other_args, **other_kwargs):
         return self.apply(*other_args, **other_kwargs)
+    
+    
+def call_init(initializer):
+    return initializer()
+        
+        
+class InitWrapper(Initializer):
+    """ Ensures successive calls give same result.
+    For putting into yaml"""
+    def __init__(self, initializer):
+        self.initializer = initializer
+        self.W = None
+        
+    def sample(self, shape):
+        if self.W is None:
+            self.W = theano.shared(self.initializer(shape))
+        return self.W

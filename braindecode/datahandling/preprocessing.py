@@ -6,6 +6,7 @@ from pylearn2.utils import serial
 from copy import deepcopy
 import scipy.ndimage
 
+
 def exponential_running_mean(data, factor_new, start_mean=None,
     init_block_size=None, axis=None):
     """ Compute the running mean across axis 0.
@@ -13,99 +14,92 @@ def exponential_running_mean(data, factor_new, start_mean=None,
     Its mean * factor_new + so far computed mean * (1-factor_new).
     You can either specify a start mean or an init_block_size to 
     compute the start mean of. 
-    In any case one mean per datapoint in axis 0 is returned."""
-    assert not (start_mean is None and init_block_size is None), (""
+    In any case one mean per datapoint in axis 0 is returned.
+    If axis is None, no mean is computed but trial is simply used as is."""
+    assert not (start_mean is None and init_block_size is None), (
         "Need either an init block or a start mean")
-    assert start_mean is None or init_block_size is None, ("Can only use start mean"
+    assert start_mean is None or init_block_size is None, ("Can only use start mean "
                                                            "or init block size")
     assert factor_new <= 1.0    
     assert factor_new >= 0.0
-    if axis is None:
-        axis = tuple(range(1,np.array(data).ndim))
     if isinstance(axis, int):
         axis = (axis,)
-    #running_means = np.ones
     factor_old = 1 - factor_new
+    
+    # first preallocate the shape for the running means
+    # shape depends on which axes will be removed
+    running_mean_shape = list(data.shape)
+    if axis is not None:
+        for ax in axis:
+            running_mean_shape.pop(ax)
+    
+    running_means = (np.ones(running_mean_shape) * np.nan).astype(np.float32)
+    
     if start_mean is None:
         start_data = data[0:init_block_size]
-        axes_for_start_mean = (0,) + axis # also average across init trials
+        if axis is not None:
+            axes_for_start_mean = (0,) + axis # also average across init trials
+        else:
+            axes_for_start_mean = 0
         current_mean = np.mean(start_data, axis=axes_for_start_mean)
-        data = data[init_block_size:]
         # repeat mean for running means
-        running_means = [current_mean.copy() for _ in range(init_block_size)]
-        running_means = np.array(running_means)
+        running_means[:init_block_size] = current_mean
+        i_start = init_block_size
     else:
-        # do first iteraiton of loop to init running means with correct shape
-        # TODELAY: how to do this without this else clause? as it is basically
-        # copied code from loop for first iteration
-        first_mean = factor_new * np.mean(data[0:1], axis=axis) + factor_old * start_mean
-        data = data[1:]
-        running_means = np.array(first_mean) # wrap in array with one more dimension
-        current_mean = first_mean
+        current_mean = start_mean
+        i_start = 0
         
-    for i in range(len(data)):
-        next_mean = factor_new * np.mean(data[i:i+1], axis=axis) + factor_old * current_mean
-        running_means = np.concatenate((running_means, next_mean), axis=0)
+    for i in range(i_start, len(data)):
+        datapoint_mean = np.mean(data[i:i+1], axis=axis) if axis is not None else data[i:i+1]
+        next_mean = factor_new * datapoint_mean + factor_old * current_mean
+        running_means[i] = next_mean
         current_mean = next_mean
+    
+    assert not np.any(np.isnan(running_means))
     return running_means
-
-def exponential_running_var(data, running_means, factor_new, start_var=None,
-    init_block_size=None,   axis=None):
-    """ Compute the running var across axis 0.
-    For each datapoint in axis 0 its "running exponential var" is computed as:
-    Its (datapoint - its running mean)**2 * factor_new + so far computed var * (1-factor_new).
-    You can either specify a start mean or an initial block size to 
-    compute the start mean of. 
-    In any case one mean per datapoint in axis 0 is returned."""
-    assert not (start_var is None and init_block_size is None), (""
-        "Need either an init block or a start mean")
-    assert start_var is None or init_block_size is None, ("Can only use start mean"
-        "or init block size, not both")
-    assert factor_new <= 1.0    
-    assert factor_new >= 0.0
-    data = np.array(data)
-    if axis is None:
-        axis = tuple(range(1,np.array(data).ndim))
-    if isinstance(axis, int):
-        axis = (axis,)
-    # add missing dimensions to running means to prevent incorrect broadcasts
-    for i in range(1,np.array(data).ndim):
-        if i in axis:
-            running_means = np.expand_dims(running_means, i)
-    demeaned_data = data - running_means
-    return exponential_running_var_from_demeaned(demeaned_data,
-        factor_new, start_var, init_block_size, axis)
 
 def exponential_running_var_from_demeaned(demeaned_data, factor_new, start_var=None,
     init_block_size=None,   axis=None):
+    """ Compute the running var across axis 0 + given axis from demeaned data.
+    For each datapoint in axis 0 its "running exponential var" is computed as:
+    Its (datapoint)**2 * factor_new + so far computed var * (1-factor_new).
+    You can either specify a start var or an initial block size to 
+    compute the start var of. 
+    In any case one var per datapoint in axis 0 is returned.
+    If axis is None, no mean is computed but trial is simply used as is."""
     # TODELAY: split out if and else case into different functions
     # i.e. split apart a common function hjaving a start value (basically the loop)
     # and then split if and else into different functions
     factor_old = 1 - factor_new
-    # prealloc running vars for performance (otherwise much slower)
-    running_vars_shape = [len(demeaned_data)]
-    for i in range(1, demeaned_data.ndim):
-        if i not in axis:
-            running_vars_shape.append(demeaned_data.shape[i])
-    running_vars = np.ones(running_vars_shape) * np.nan
+    # first preallocate the shape for the running vars for performance (otherwise much slower)
+    # shape depends on which axes will be removed
+    running_vars_shape = list(demeaned_data.shape)
+    if axis is not None:
+        for ax in axis:
+            running_vars_shape.pop(ax)
+    running_vars = (np.ones(running_vars_shape) * np.nan).astype(np.float32)
+
     if start_var is None:
+        if axis is not None:
+            axes_for_start_var = (0,) + axis # also average across init trials
+        else:
+            axes_for_start_var = 0
         start_running_var = np.mean(np.square(demeaned_data[0:init_block_size]),
-             axis=axis)
-        start_running_var = np.mean(start_running_var, axis=0)
+             axis=axes_for_start_var)
         running_vars[0:init_block_size] = start_running_var
+        current_var = start_running_var
         start_i = init_block_size
     else:
-        first_start_var = np.mean(np.square(demeaned_data[0:1]), axis=axis)
-        first_start_var = first_start_var[0] # unwrap
-        first_var = factor_new * first_start_var + factor_old * start_var 
-        running_vars[0] = first_var
-        start_i = 1
-    current_var = running_vars[start_i-1]
+        current_var = start_var
+        start_i = 0
+        
     for i in range(start_i, len(demeaned_data)):
-        this_var = np.mean(np.square(demeaned_data[i:i+1]),axis=axis)
+        squared = np.square(demeaned_data[i:i+1])
+        this_var = np.mean(squared,axis=axis) if axis is not None else squared
         next_var = factor_new * this_var + factor_old * current_var
         running_vars[i] = next_var
         current_var = next_var
+    assert not np.any(np.isnan(running_vars))
     return running_vars
 
 
