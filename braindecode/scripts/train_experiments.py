@@ -69,7 +69,8 @@ if __name__ == "__main__":
     args = parse_command_line_arguments()
 
     all_train_strs = create_experiment_yaml_strings_from_files(
-        args.experiments_file_name, args.template_file_name, args.debug)
+        args.experiments_file_name, args.template_file_name, args.debug,
+        command_line_params=args.params)
     exp_runner = ExperimentsRunner(quiet=args.quiet, start_id=args.startid,
         stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle,
         debug=args.debug, dry_run=args.dryrun)

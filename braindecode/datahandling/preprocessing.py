@@ -25,16 +25,16 @@ def exponential_running_mean(data, factor_new, start_mean=None,
     if isinstance(axis, int):
         axis = (axis,)
     factor_old = 1 - factor_new
-    
+
     # first preallocate the shape for the running means
     # shape depends on which axes will be removed
     running_mean_shape = list(data.shape)
     if axis is not None:
         for ax in axis:
             running_mean_shape.pop(ax)
-    
+
     running_means = (np.ones(running_mean_shape) * np.nan).astype(np.float32)
-    
+
     if start_mean is None:
         start_data = data[0:init_block_size]
         if axis is not None:

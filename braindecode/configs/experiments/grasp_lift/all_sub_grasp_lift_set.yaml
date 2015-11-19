@@ -4,6 +4,7 @@
             data_folder: 'data/kaggle-grasp-lift/',
             resample_half: $resample_half,
             standardize: $standardize_series_wise,
+            last_subject: $last_subject,
         },
         all_sub_grasp_lift_splitter: !obj:braindecode.datahandling.splitters.AllSubjectsKaggleTrainValidTestSplitter {
             use_test_as_valid: $use_test_as_valid,
@@ -13,6 +14,6 @@
         dataset: [$all_sub_grasp_lift_set],
         dataset_splitter: [$all_sub_grasp_lift_splitter],
         use_test_as_valid: [false],
-        standardize_series_wise: [false],
+        last_subject: [12],
     }]]
 }

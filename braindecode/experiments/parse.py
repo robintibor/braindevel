@@ -11,7 +11,7 @@ def transform_vals_to_string_constructor(loader, node):
     return dict([(v[0].value, yaml.serialize(v[1])) for v in node.value])
 
 def create_experiment_yaml_strings_from_files(config_filename, 
-        main_template_filename, debug=False):
+        main_template_filename, debug=False, command_line_params=None):
     # First read out all files (check for extends attribute)
     # and transform to files to strings...
     # Then call creation of experiment yaml strings
@@ -19,7 +19,7 @@ def create_experiment_yaml_strings_from_files(config_filename,
     with open(main_template_filename, 'r') as main_template_file:
         main_template_str = main_template_file.read()
     return create_experiment_yaml_strings(config_strings, main_template_str,
-        debug=debug)
+        debug=debug, command_line_params=command_line_params)
 
 def create_config_strings(config_filename):
     yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
@@ -40,10 +40,11 @@ def create_config_strings(config_filename):
     return config_strings
 
 def create_experiment_yaml_strings(all_config_strings, main_template_str,
-        debug=False):
+        debug=False, command_line_params=None):
     """ Config strings should be from top file to bottom file."""
     config_objects = create_config_objects(all_config_strings)
-    final_params = create_params_from_config_objects(config_objects, debug=debug)
+    final_params = create_params_from_config_objects(config_objects, 
+        debug=debug, command_line_params=command_line_params)
    
     train_strings = []
     for i_config in range(len(final_params)):
@@ -59,9 +60,14 @@ def create_config_objects(all_config_strings):
         conf_str in all_config_strings]
     return config_objects
 
-def create_params_from_config_objects(config_objects, debug=False):
+def create_params_from_config_objects(config_objects, debug=False, 
+        command_line_params=None):
     templates, variants = create_templates_variants_from_config_objects(
         config_objects, debug=debug)
+    # update all params with command line params
+    if command_line_params is not None:
+        for param_dict in variants:
+            param_dict.update(command_line_params)
     final_params = merge_parameters_and_templates(variants, templates)
     # add original params for later printing
     for i_config in range(len(final_params)):

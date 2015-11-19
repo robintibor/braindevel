@@ -32,18 +32,8 @@ class FuncAndArgs(object):
         return self.apply(*other_args, **other_kwargs)
     
     
-def call_init(initializer):
-    return initializer()
-        
-        
-class InitWrapper(Initializer):
-    """ Ensures successive calls give same result.
-    For putting into yaml"""
-    def __init__(self, initializer):
-        self.initializer = initializer
-        self.W = None
-        
-    def sample(self, shape):
-        if self.W is None:
-            self.W = theano.shared(self.initializer(shape))
-        return self.W
+class GetAttr(object):
+    """ Hacky class for yaml to return attr of something.
+    Uses new to actually return completely different object... """
+    def __new__(cls, obj, attr):
+        return getattr(obj, attr) 

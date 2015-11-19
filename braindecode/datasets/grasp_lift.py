@@ -168,10 +168,12 @@ class AllSubjectsKaggleGraspLiftSet(object):
     """ Kaggle grasp lift set loading the data for all subjects """
     reloadable=False
 
-    def __init__(self, data_folder, resample_half, standardize=False):
+    def __init__(self, data_folder, resample_half, standardize=False,
+            last_subject=12):
         self.data_folder = data_folder
         self.resample_half = resample_half
         self.standardize = standardize
+        self.last_subject = last_subject
         
     def ensure_is_loaded(self):
         if not hasattr(self, 'kaggle_sets'):
@@ -187,7 +189,7 @@ class AllSubjectsKaggleGraspLiftSet(object):
         self.kaggle_sets = [
             KaggleGraspLiftSet(self.data_folder, i_sub, self.resample_half,
                 self.standardize) 
-            for i_sub in range(1,13)]
+            for i_sub in range(1,self.last_subject+1)]
         
     def load_kaggle_sets(self):
         for i_set, kaggle_set in enumerate(self.kaggle_sets):

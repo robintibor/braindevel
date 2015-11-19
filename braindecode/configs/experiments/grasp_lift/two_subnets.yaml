@@ -12,7 +12,7 @@
         pool_time_stride: [2],
         final_dense_length: [3],
         n_sample_preds : [1000], # will be overwritten anyways
-        dataset_filename: [4,5,6,7,8,9,10,11,12],#[1,2,3],
+        dataset_filename: [1,2,3,4,5,6,7,8,9,10,11,12],
         first_nonlin: [$leaky_relu],
         first_pool_nonlin: [$identity],
         first_pool_layer: [SumPool2dLayer],
@@ -27,5 +27,6 @@
         pool_time_stride_b: [16],
         resample_half: [True],
         num_filters: [40],
+        standardize_series_wise: [True],
     }]],
 }

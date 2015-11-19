@@ -175,7 +175,6 @@ class ExperimentsRunner:
             exp.setup()
             exp.run()
             endtime = time.time()
-            log.info("Saving result...")
             result_or_results = Result(parameters=train_dict['original_params'],
                 templates={}, 
                 training_time=endtime - starttime, 
@@ -207,6 +206,7 @@ class ExperimentsRunner:
         
         result_file_name = self._get_result_save_path(experiment_index)
         
+        log.info("Saving result...")
         with open(result_file_name, 'w') as resultfile:
             pickle.dump(result_or_results, resultfile)
 

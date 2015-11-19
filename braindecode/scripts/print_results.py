@@ -411,12 +411,19 @@ class ResultPrinter:
           ('imbalance_factor', 'imba_factor'),
           ('n_sample_preds', 'preds'),
           ('pool_time_stride', 'pool_str'),
-          ('pool_time_length', 'pool_len'),
+          ('pool_time_length', 'p_len'),
           ('oversample_targets', 'oversample'),
           ('first', '1st'),
           ('average_exc_pad', 'mean'),
           ('SumPool2dLayer', 'Sum'),
           ('Pool2DLayer', 'Pool'),
+          ('final_dense_length', 'final_len'),
+          ('batch_size', '#batch'),
+          ('preprocessor', 'preproc'),
+          ('standardize_series_wise', 'preproc_series'),
+          ('remove_baseline_mean', 'rm_baseline'),
+          ('input_time_length', 'input_len'),
+          ('online_chan_freq_wise', 'online_c_1'),
           ])
         for header in table_headers:
             pretty_header = header
