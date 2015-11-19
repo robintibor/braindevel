@@ -3,7 +3,7 @@ from wyrm.processing import lfilter, filtfilt
 import numpy as np
 from copy import deepcopy
 from braindecode.datahandling.preprocessing import (exponential_running_mean, 
-    exponential_running_var, OnlineAxiswiseStandardize)
+    exponential_running_var_from_demeaned, OnlineAxiswiseStandardize)
 from sklearn.covariance import LedoitWolf as LW
 import scikits.samplerate
 import re
@@ -534,13 +534,16 @@ def running_standardize_epo(epo, factor_new=0.9, init_block_size=50):
     assert factor_new <= 1.0 and factor_new >= 0.0
     running_means = exponential_running_mean(epo.data, factor_new=factor_new, 
         init_block_size=init_block_size, axis=1)
-    running_vars = exponential_running_var(epo.data, running_means, 
-        factor_new=factor_new, init_block_size=init_block_size, axis=1)
     running_means = np.expand_dims(running_means, 1)
+    demeaned_data = epo.data - running_means
+    running_vars = exponential_running_var_from_demeaned(demeaned_data,
+        running_means, factor_new=factor_new, init_block_size=init_block_size,
+        axis=1)
+    
     running_vars = np.expand_dims(running_vars, 1)
     running_std = np.sqrt(running_vars)
     
-    standardized_epo_data = (epo.data - running_means) / running_std
+    standardized_epo_data = demeaned_data / running_std
     return epo.copy(data=standardized_epo_data)
 
 def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):

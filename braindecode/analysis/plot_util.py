@@ -224,6 +224,16 @@ def plot_misclasses_for_file(result_file_path):
     fig.suptitle("Misclass: " + result_file_path)
     return fig
 
+def plot_misclasses_loss_for_file(result_file_path):
+    assert result_file_path.endswith('result.pkl')
+    fig = pyplot.figure()
+    result = serial.load(result_file_path)
+    plot_misclasses_for_result(result, fig)
+    plot_loss_for_result(result, fig)
+    
+    fig.suptitle("Misclass/Loss: " + result_file_path)
+    return fig
+
 def plot_misclasses_for_model(model, figure=None):
     fig =  plot_train_valid_test_epochs(model.monitor.channels['train_misclass'],
         model.monitor.channels['valid_misclass'],

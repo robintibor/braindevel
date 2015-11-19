@@ -1,3 +1,6 @@
+import logging
+log = logging.getLogger(__name__)
+
 """Classes that remember parameters during training, e.g.,
  remember best model so far"""
 
@@ -15,6 +18,7 @@ class RememberBest():
             self.best_epoch = i_epoch
             self.lowest_val = current_val
             self.best_params = dict([(p, p.get_value()) for p in all_params])
+            log.info("New best value: {:5f}".format(current_val))
 
     def reset_to_best_model(self, monitor_chans, all_params):
         for key in monitor_chans:
