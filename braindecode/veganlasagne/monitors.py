@@ -219,7 +219,7 @@ class AUCMeanMisclassMonitor():
         monitor_chans[monitor_key].append(float(misclass))
         
 def get_reshaped_cnt_preds(all_preds, n_samples, input_time_length,
-        n_sample_preds):
+        n_sample_preds, prepad_zeros=True):
     """Taking predictions from a multiple prediciton/parallel net
     and reshaping them into the proper timecourse, i.e. sample1,2,3,4...
     """
@@ -252,9 +252,10 @@ def get_reshaped_cnt_preds(all_preds, n_samples, input_time_length,
     
     all_preds_arr = np.concatenate(all_preds)
     
-    # Prepend zeros for the samples not predictable at the start
-    # of the dataset
-    n_lost_samples = input_time_length - n_sample_preds
-    all_preds_arr = np.append(np.zeros((n_lost_samples, 
-        n_classes), dtype=np.int32), all_preds_arr, axis=0)
+    if prepad_zeros:
+        # Prepend zeros for the samples not predictable at the start
+        # of the dataset
+        n_lost_samples = input_time_length - n_sample_preds
+        all_preds_arr = np.append(np.zeros((n_lost_samples, 
+            n_classes), dtype=np.int32), all_preds_arr, axis=0)
     return all_preds_arr

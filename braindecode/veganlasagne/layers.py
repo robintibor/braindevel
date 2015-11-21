@@ -79,11 +79,11 @@ def reshape_for_stride_theano(topo_var, topo_shape, n_stride,
 def get_output_shape_after_stride(input_shape, n_stride):
     time_length_after = int(np.ceil(input_shape[2] / float(n_stride)))
     if input_shape[0] is None:
-        batch_after = None
+        trials_after = None
     else:
-        batch_after = int(input_shape[0] * n_stride)
+        trials_after = int(input_shape[0] * n_stride)
         
-    output_shape = (batch_after, input_shape[1], time_length_after, 1)
+    output_shape = (trials_after, input_shape[1], time_length_after, 1)
     return output_shape
 
 class StrideReshapeLayer(lasagne.layers.Layer):
@@ -109,24 +109,24 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         # before we have sth like this (example where there was only a stride 2
         # in the computations before, and input lengh just 5)
         # showing with 1-based indexing here, sorry ;)
-        # batch 1 sample 1, batch 1 sample 3, batch 1 sample 5
-        # batch 2 sample 1, batch 2 sample 3, batch 2 sample 5
-        # batch 1 sample 2, batch 1 sample 4, batch 1 NaN/invalid
-        # batch 2 sample 2, batch 2 sample 4, batch 2 NaN/invalid
+        # trial 1 sample 1, trial 1 sample 3, trial 1 sample 5
+        # trial 2 sample 1, trial 2 sample 3, trial 2 sample 5
+        # trial 1 sample 2, trial 1 sample 4, trial 1 NaN/invalid
+        # trial 2 sample 2, trial 2 sample 4, trial 2 NaN/invalid
         # and this matrix for each filter/class... so if we transpose this matrix for
         # each filter, we get 
-        # batch 1 sample 1, batch 2 sample 1, batch 1 sample 2, batch 2 sample 2
-        # batch 1 sample 2, ...
+        # trial 1 sample 1, trial 2 sample 1, trial 1 sample 2, trial 2 sample 2
+        # trial 1 sample 2, ...
         # ...
         # after flattening past the filter dim we then have
-        # batch 1 sample 1, batch 2 sample1, ..., batch 1 sample 2, batch 2 sample 2
+        # trial 1 sample 1, trial 2 sample1, ..., trial 1 sample 2, trial 2 sample 2
         # which is our final output shape:
-        # (sample 1 for all batches), (sample 2 for all batches), etc
+        # (sample 1 for all trials), (sample 2 for all trials), etc
         # any further reshaping should happen outside of theano to speed up compilation
          
         # Reshape/flatten into #predsamples x #classes
-        input = input.dimshuffle(1,2,0,3).reshape((self.input_shape[1],
-            -1)).T
+        n_classes = self.input_shape[1]
+        input = input.dimshuffle(1,2,0,3).reshape((n_classes, -1)).T
             
         if self.remove_invalids:
             # remove invalid values (possibly nans still contained before)
@@ -139,6 +139,24 @@ class FinalReshapeLayer(lasagne.layers.Layer):
                 trials = input_var.shape[0]
                 
             input = input[:trials * n_sample_preds]
+        # possibly now do this:
+        """
+        n_sample_preds = get_n_sample_preds(self)
+        input_var = lasagne.layers.get_all_layers(self)[0].input_var
+        input_shape = lasagne.layers.get_all_layers(self)[0].shape
+        if input_shape[0] is not None:
+            trials = input_shape[0]
+        else:
+            trials = input_var.shape[0]
+        # transpose to classes x (samplepreds*trials)
+        # then reshape to classes x sample preds x trials, 
+        # dimshuffle to classes x trials x sample preds to flatten again to
+        # final output:
+        # (trial 1 all samples), (trial 2 all samples), ...
+        input = input.T.reshape(self.input_shape[1], 
+            n_sample_preds, trials).dimshuffle(0,2,1).reshape(n_classes, -1)
+        
+        """
         return input
         
     def get_output_shape_for(self, input_shape):

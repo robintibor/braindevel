@@ -104,11 +104,12 @@ class KaggleGraspLiftSet(object):
         for i_series in xrange(8):
             X_series = self.train_X_series[i_series]
             if i_series == 0:
+                init_block_size=8000
                 means = exponential_running_mean(X_series, factor_new=factor_new,
-                    init_block_size=100, axis=None)
+                    init_block_size=init_block_size, axis=None)
                 demeaned = X_series - means
                 stds = np.sqrt(exponential_running_var_from_demeaned(
-                    demeaned, factor_new, init_block_size=100, axis=None))
+                    demeaned, factor_new, init_block_size=init_block_size, axis=None))
             else:
                 start_mean = means[-1]
                 start_var = stds[-1] * stds[-1]
@@ -117,7 +118,8 @@ class KaggleGraspLiftSet(object):
                 demeaned = X_series - means
                 stds = np.sqrt(exponential_running_var_from_demeaned(
                     demeaned, factor_new, start_var=start_var, axis=None))
-            standardized = demeaned / stds
+            eps = 1e-6
+            standardized = demeaned / np.maximum(stds, eps)
             self.train_X_series[i_series] = standardized
         # for later test standardizing
         self.final_std = stds[-1]
@@ -161,7 +163,8 @@ class KaggleGraspLiftSet(object):
             demeaned = X_series - means
             stds = np.sqrt(exponential_running_var_from_demeaned(
                 demeaned, factor_new, start_var=start_var, axis=None))
-            standardized = demeaned / stds
+            eps = 1e-6
+            standardized = demeaned / np.maximum(stds, eps)
             self.test_X_series[i_series] = standardized
 
 class AllSubjectsKaggleGraspLiftSet(object):
@@ -184,7 +187,8 @@ class AllSubjectsKaggleGraspLiftSet(object):
         self.load_kaggle_sets()
         # hack to allow experiment class to know targets will have two dimensions
         self.y = np.ones((1,1)) * np.nan
-        
+       
+     
     def create_kaggle_sets(self):
         self.kaggle_sets = [
             KaggleGraspLiftSet(self.data_folder, i_sub, self.resample_half,
@@ -195,6 +199,27 @@ class AllSubjectsKaggleGraspLiftSet(object):
         for i_set, kaggle_set in enumerate(self.kaggle_sets):
             log.info("Loading Subject {:d}...".format(i_set + 1))
             kaggle_set.load()
+
+    def load_test(self):
+        for i_set, kaggle_set in enumerate(self.kaggle_sets):
+            log.info("Loading Test Subject {:d}...".format(i_set + 1))
+            kaggle_set.load_test()
+
+    def load_test_data(self):
+        for i_set, kaggle_set in enumerate(self.kaggle_sets):
+            log.info("Loading Test Data Subject {:d}...".format(i_set + 1))
+            kaggle_set.load_test_data()
+
+    def resample_test_data(self):
+        for i_set, kaggle_set in enumerate(self.kaggle_sets):
+            log.info("Resample Test Subject {:d}...".format(i_set + 1))
+            kaggle_set.resample_test_data()
+
+    def standardize_test_data(self):
+        for i_set, kaggle_set in enumerate(self.kaggle_sets):
+            log.info("Standardizing Test Subject {:d}...".format(i_set + 1))
+            kaggle_set.standardize_test_data()
+        
 
 def create_submission_csv_for_one_subject(folder_name, kaggle_set, iterator, preprocessor,
         final_layer, submission_id):
@@ -228,11 +253,11 @@ def create_submission_csv_for_one_subject(folder_name, kaggle_set, iterator, pre
     preprocessor.apply(test_set_1, can_fit=False)
     
     ### Create prediction function and create predictions
-    log.info("Create prediciton functions...")
+    log.info("Create prediction functions...")
     input_var = lasagne.layers.get_all_layers(final_layer)[0].input_var
     predictions = lasagne.layers.get_output(final_layer, deterministic=True)
-    log.info("Make predictions...")
     pred_fn = theano.function([input_var], predictions)
+    log.info("Make predictions...")
     batch_gen_0 = iterator.get_batches(test_set_0, shuffle=False)
     all_preds_0 = [pred_fn(batch[0]) for batch in batch_gen_0]
     batch_gen_1 = iterator.get_batches(test_set_1, shuffle=False)
