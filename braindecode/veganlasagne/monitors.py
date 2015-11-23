@@ -219,27 +219,16 @@ class AUCMeanMisclassMonitor():
         monitor_chans[monitor_key].append(float(misclass))
         
 def get_reshaped_cnt_preds(all_preds, n_samples, input_time_length,
-        n_sample_preds, prepad_zeros=True):
-    """Taking predictions from a multiple prediciton/parallel net
-    and reshaping them into the proper timecourse, i.e. sample1,2,3,4...
+        n_sample_preds):
+    """Taking predictions from a multiple prediction/parallel net
+    and removing the last predictions (from last batch) which are duplicated.
     """
     all_preds = deepcopy(all_preds)
-    # first reshape them all into proper time-course form
-    # i.e. from batch 1 sample 1, batch 2 sample 1, ...
-    # to batch 1 sample 1 batch 1 sample 2, ..., batch 2 sample1,...
-    for i_batch in xrange(len(all_preds)):
-        # just some sanity check
-        assert  all_preds[i_batch].shape[0] % n_sample_preds == 0
-        batch_size = all_preds[i_batch].shape[0] / n_sample_preds
-        preds = all_preds[i_batch]
-        n_classes = all_preds[i_batch].shape[1]
-        preds = preds.reshape(n_sample_preds,batch_size, n_classes).swapaxes(0,1).reshape(-1, n_classes)
-        all_preds[i_batch] = preds
-        
     # fix the last predictions, they are partly duplications since the last window
-    # is made to fit into the timesignal (input time length always shifted by sample preds
+    # is made to fit into the timesignal 
+    # sample preds
     # might not exactly fit into number of samples)
-    legitimate_last_preds = (n_samples - input_time_length) % n_sample_preds
+    legitimate_last_preds = n_samples % n_sample_preds
     if legitimate_last_preds != 0: # in case = 0 there was no overlap, no need to do anything!
         fixed_last_preds = all_preds[-1][-legitimate_last_preds:]
         final_batch_size = all_preds[-1].shape[0] / n_sample_preds
@@ -252,10 +241,4 @@ def get_reshaped_cnt_preds(all_preds, n_samples, input_time_length,
     
     all_preds_arr = np.concatenate(all_preds)
     
-    if prepad_zeros:
-        # Prepend zeros for the samples not predictable at the start
-        # of the dataset
-        n_lost_samples = input_time_length - n_sample_preds
-        all_preds_arr = np.append(np.zeros((n_lost_samples, 
-            n_classes), dtype=np.int32), all_preds_arr, axis=0)
     return all_preds_arr

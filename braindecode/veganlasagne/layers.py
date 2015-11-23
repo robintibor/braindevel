@@ -120,10 +120,12 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         # ...
         # after flattening past the filter dim we then have
         # trial 1 sample 1, trial 2 sample1, ..., trial 1 sample 2, trial 2 sample 2
-        # which is our final output shape:
+        # which is our output shape which allows to remove invalids easily:
         # (sample 1 for all trials), (sample 2 for all trials), etc
-        # any further reshaping should happen outside of theano to speed up compilation
          
+        # After removal of invalids,
+        #  we reshape again to (trial 1 all samples), (trial 2 all samples)
+        
         # Reshape/flatten into #predsamples x #classes
         n_classes = self.input_shape[1]
         input = input.dimshuffle(1,2,0,3).reshape((n_classes, -1)).T
@@ -139,9 +141,9 @@ class FinalReshapeLayer(lasagne.layers.Layer):
                 trials = input_var.shape[0]
                 
             input = input[:trials * n_sample_preds]
-        # possibly now do this:
-        """
-        n_sample_preds = get_n_sample_preds(self)
+        
+        # reshape to (trialsxsamples) again, i.e.
+        # (trial1 all samples), (trial 2 all samples), ...
         input_var = lasagne.layers.get_all_layers(self)[0].input_var
         input_shape = lasagne.layers.get_all_layers(self)[0].shape
         if input_shape[0] is not None:
@@ -153,10 +155,9 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         # dimshuffle to classes x trials x sample preds to flatten again to
         # final output:
         # (trial 1 all samples), (trial 2 all samples), ...
-        input = input.T.reshape(self.input_shape[1], 
-            n_sample_preds, trials).dimshuffle(0,2,1).reshape(n_classes, -1)
+        input = input.T.reshape((self.input_shape[1], 
+            -1, trials)).dimshuffle(0,2,1).reshape((n_classes, -1)).T
         
-        """
         return input
         
     def get_output_shape_for(self, input_shape):

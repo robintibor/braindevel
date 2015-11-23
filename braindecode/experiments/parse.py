@@ -11,7 +11,8 @@ def transform_vals_to_string_constructor(loader, node):
     return dict([(v[0].value, yaml.serialize(v[1])) for v in node.value])
 
 def create_experiment_yaml_strings_from_files(config_filename, 
-        main_template_filename, debug=False, command_line_params=None):
+        main_template_filename, debug=False, command_line_params=None,
+        only_first_five_sets=False):
     # First read out all files (check for extends attribute)
     # and transform to files to strings...
     # Then call creation of experiment yaml strings
@@ -19,7 +20,8 @@ def create_experiment_yaml_strings_from_files(config_filename,
     with open(main_template_filename, 'r') as main_template_file:
         main_template_str = main_template_file.read()
     return create_experiment_yaml_strings(config_strings, main_template_str,
-        debug=debug, command_line_params=command_line_params)
+        debug=debug, command_line_params=command_line_params,
+        only_first_five_sets=only_first_five_sets)
 
 def create_config_strings(config_filename):
     yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
@@ -40,11 +42,12 @@ def create_config_strings(config_filename):
     return config_strings
 
 def create_experiment_yaml_strings(all_config_strings, main_template_str,
-        debug=False, command_line_params=None):
+        debug=False, command_line_params=None, only_first_five_sets=False):
     """ Config strings should be from top file to bottom file."""
     config_objects = create_config_objects(all_config_strings)
     final_params = create_params_from_config_objects(config_objects, 
-        debug=debug, command_line_params=command_line_params)
+        debug=debug, command_line_params=command_line_params,
+        only_first_five_sets=only_first_five_sets)
    
     train_strings = []
     for i_config in range(len(final_params)):
@@ -61,9 +64,9 @@ def create_config_objects(all_config_strings):
     return config_objects
 
 def create_params_from_config_objects(config_objects, debug=False, 
-        command_line_params=None):
+        command_line_params=None, only_first_five_sets=False):
     templates, variants = create_templates_variants_from_config_objects(
-        config_objects, debug=debug)
+        config_objects, debug=debug, only_first_five_sets=only_first_five_sets)
     # update all params with command line params
     if command_line_params is not None:
         for param_dict in variants:
@@ -80,7 +83,8 @@ def create_params_from_config_objects(config_objects, debug=False,
     unique_final_params = np.array(final_params)[np.sort(unique_inds)]
     return unique_final_params
 
-def create_templates_variants_from_config_objects(config_objects, debug=False):
+def create_templates_variants_from_config_objects(config_objects, debug=False,
+        only_first_five_sets=False):
     all_variants = []
     templates = dict()
     for config_obj in config_objects:
@@ -90,12 +94,25 @@ def create_templates_variants_from_config_objects(config_objects, debug=False):
         if 'templates' in config_obj:
             templates.update(config_obj['templates'])
     
+    # Constrain to only first 5 datasets...
+    if only_first_five_sets:
+        all_filenames = []
+        for variant in all_variants:
+            if variant['dataset_filename'] not in all_filenames:
+                all_filenames.append(variant['dataset_filename'])
+        wanted_filenames = all_filenames[:5]
+        all_variants = [var 
+            for var in all_variants 
+            if var['dataset_filename'] in wanted_filenames]
+         
+    
     # Set debug parameters if wanted
     if debug:
         log.info("Setting debug parameters")
         for variant in all_variants:
             variant['max_epochs'] = 1
             variant['sensor_names'] = ['C3', 'C4', 'Cz']
+            variant['load_sensor_names'] = ['C3', 'C4', 'Cz']
             
     
     return templates, all_variants

@@ -1,4 +1,3 @@
-from sklearn.cross_validation import KFold
 from numpy.random import RandomState
 import numpy as np
 
@@ -80,9 +79,8 @@ def create_sample_window_batches(topo, y, batch_size,
 
     n_batches = n_flat_trials // batch_size
     if (n_batches > 1):
-        folds = KFold(n_flat_trials,n_folds=n_batches,
-                      random_state=rng, shuffle=shuffle)
-        all_batch_inds = [f[1] for f in folds]
+        all_batch_inds = get_balanced_batches(n_flat_trials,batch_size=batch_size,
+                      rng=rng, shuffle=shuffle)
     else:
         all_batch_inds = [range(n_flat_trials)]
         if shuffle:
@@ -155,10 +153,19 @@ class CntWindowsFromCntIterator(object):
     def get_batches(self, dataset, shuffle):
         n_samples = dataset.get_topological_view().shape[0]
         n_lost_samples = self.input_time_length - self.n_sample_preds
+        # Create blocks with start and end sample for entire dataset
         start_end_blocks = []
-        for i_start_sample in range(0, n_samples - self.input_time_length + self.n_sample_preds, self.n_sample_preds):
+        last_input_sample = n_samples - self.input_time_length
+        
+        # To get predictions for all samples, add a block at the start that
+        # accounts for the lost samples at the start
+        n_sample_start = -n_lost_samples
+        n_sample_stop = last_input_sample + self.n_sample_preds
+        for i_start_sample in range(n_sample_start, n_sample_stop, 
+                self.n_sample_preds):
             i_adjusted_start = min(i_start_sample, n_samples - self.input_time_length)
             start_end_blocks.append((i_adjusted_start, i_adjusted_start + self.input_time_length))
+        
         
         if shuffle and self.oversample_targets:
             # Hacky heuristic for oversampling...
@@ -169,7 +176,7 @@ class CntWindowsFromCntIterator(object):
             # put in 3 times, etc.
             n_targets_in_block = []
             for start, end in start_end_blocks:
-                n_targets_in_block.append(np.sum(dataset.y[start:end]))
+                n_targets_in_block.append(np.sum(dataset.y[start+n_lost_samples:end]))
             mean_targets_in_block = np.mean(n_targets_in_block)
             for i_block in xrange(len(start_end_blocks)):
                 target_ratio = int(np.round(n_targets_in_block[i_block] / 
@@ -184,7 +191,7 @@ class CntWindowsFromCntIterator(object):
             
        
         topo = dataset.get_topological_view()
-        for i_block in xrange(0,len(block_inds),self.batch_size):
+        for i_block in xrange(0, len(block_inds), self.batch_size):
             start_block_offset = 0
             # make all batches have same size during training...
             if shuffle and (i_block + self.batch_size > len(block_inds)):
@@ -205,11 +212,22 @@ class CntWindowsFromCntIterator(object):
                 start,end = start_end_blocks[i_actual_block]
                 # switch samples into last axis, (dim 2 shd be empty before)
                 assert topo.shape[2] == 1
-                batch_topo[i_batch_block] = topo[start:end].swapaxes(0,2)
+                # check if start is negative and end positive
+                # could happen from padding blocks at start
+                if start >= 0 or (start < 0 and end < 0):
+                    batch_topo[i_batch_block] = topo[start:end].swapaxes(0,2)
+                else:
+                    assert start < 0 and end >= 0
+                    # do wrap around padding
+                    batch_topo[i_batch_block] = np.concatenate((topo[start:],
+                        topo[:end])).swapaxes(0,2)
+                assert start + n_lost_samples >= 0, ("Wrapping should only "
+                    "account for lost samples at start and never lead "
+                    "to negative y inds")
                 start_y = self.n_sample_preds * i_batch_block
                 end_y = start_y + self.n_sample_preds
                 batch_y[start_y:end_y] = dataset.y[start+n_lost_samples:end]
-               
+    
             if self.remove_baseline_mean:
                 batch_topo -= np.mean(
                     # should produce mean per batchxchan
@@ -218,13 +236,7 @@ class CntWindowsFromCntIterator(object):
                 
             assert not np.any(np.isnan(batch_y))
             batch_y = batch_y.astype(np.int32)
-            # reshape this from
-            # batch 1 sample 1(all classes), batch 1 sample 2 (all classes), ..., batch 1 sample n, batch 2 sample2, ...
-            # to
-            # batch 1 sample 1, batch 2 sample 1, ....
-            # (because that is the order of the output of the model using stridereshape etc)
-            n_classes = dataset.y.shape[1]
-            batch_y = batch_y.reshape(batch_size,-1, n_classes).swapaxes(0,1).reshape(-1, n_classes)
             yield batch_topo, batch_y
+
     def reset_rng(self):
         self.rng = RandomState(328774)

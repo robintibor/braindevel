@@ -21,7 +21,7 @@ import numpy as np
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
             quiet=False, dry_run=False, cross_validation=False,
-            shuffle=False, debug=False):
+            shuffle=False, debug=False, only_first_five_sets=False):
         self._start_id = start_id
         self._stop_id = stop_id
         self._test = test
@@ -30,6 +30,7 @@ class ExperimentsRunner:
         self._cross_validation = cross_validation
         self._shuffle = shuffle
         self._debug = debug
+        self._only_first_five_sets = only_first_five_sets
         
     def run(self, all_train_strs):
         if (self._quiet):
@@ -76,6 +77,8 @@ class ExperimentsRunner:
             folder_path += '/shuffle/'
         if (self._debug):
             folder_path += '/debug/'
+        if (self._only_first_five_sets):
+            folder_path += '/first5/'
             
         return folder_path
     
