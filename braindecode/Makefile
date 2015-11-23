@@ -14,3 +14,5 @@ acceptance-tests:
 
 run-ipython-notebooks-top-level:
 	. ../../../motor-imagery/ipython-notebooks-metagpu/venv/bin/activate && cd /home/schirrmr && ipython notebook --profile=nbserver
+run-ipython-notebooks-top-level-test:
+	. ../../../motor-imagery/ipython-notebooks-metagpu/venv/bin/activate_test && cd /home/schirrmr && ipython notebook --profile=nbserver
