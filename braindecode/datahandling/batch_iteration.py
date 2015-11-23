@@ -157,8 +157,8 @@ class CntWindowsFromCntIterator(object):
         start_end_blocks = []
         last_input_sample = n_samples - self.input_time_length
         
-        # To get predictions for all samples, add a block at the start that
-        # accounts for the lost samples at the start
+        # To get predictions for all samples, also block at the start that
+        # account for the lost samples at the start
         n_sample_start = -n_lost_samples
         n_sample_stop = last_input_sample + self.n_sample_preds
         for i_start_sample in range(n_sample_start, n_sample_stop, 
@@ -185,31 +185,18 @@ class CntWindowsFromCntIterator(object):
                     for _ in xrange(target_ratio - 1):
                         start_end_blocks.append(start_end_blocks[i_block])
             
-        block_inds = range(0, len(start_end_blocks))
-        if shuffle:
-            self.rng.shuffle(block_inds)
-            
+        block_ind_batches = get_balanced_batches(len(start_end_blocks), 
+            batch_size=self.batch_size, rng=self.rng, shuffle=shuffle)
        
         topo = dataset.get_topological_view()
-        for i_block in xrange(0, len(block_inds), self.batch_size):
-            start_block_offset = 0
-            # make all batches have same size during training...
-            if shuffle and (i_block + self.batch_size > len(block_inds)):
-                start_block_offset = len(block_inds) - (i_block + self.batch_size)
-            
-            # make sure batch does not exceed bounds of blocks during testing
-            batch_size = min(self.batch_size, len(block_inds) - (i_block + start_block_offset))
+        for block_inds in block_ind_batches:
+            batch_size = len(block_inds)
             # have to wrap into float32, cause np.nan upcasts to float64!
             batch_topo = np.float32(np.ones((batch_size, topo.shape[1],
                  self.input_time_length, topo.shape[3])) * np.nan)
             batch_y = np.ones((self.n_sample_preds * batch_size, dataset.y.shape[1])) * np.nan
-            
-            if shuffle:
-                assert batch_size == self.batch_size, "During training all batches should have same size"
-            # i_batch_block is a confusing name here hmhm.. anyways all of this is confusing now
-            for i_batch_block in xrange(batch_size):
-                i_actual_block = block_inds[i_block + i_batch_block + start_block_offset]
-                start,end = start_end_blocks[i_actual_block]
+            for i_batch_block, i_block in enumerate(block_inds):
+                start,end = start_end_blocks[i_block]
                 # switch samples into last axis, (dim 2 shd be empty before)
                 assert topo.shape[2] == 1
                 # check if start is negative and end positive
@@ -224,9 +211,10 @@ class CntWindowsFromCntIterator(object):
                 assert start + n_lost_samples >= 0, ("Wrapping should only "
                     "account for lost samples at start and never lead "
                     "to negative y inds")
-                start_y = self.n_sample_preds * i_batch_block
-                end_y = start_y + self.n_sample_preds
-                batch_y[start_y:end_y] = dataset.y[start+n_lost_samples:end]
+                batch_start_y = self.n_sample_preds * i_batch_block
+                batch_end_y = batch_start_y + self.n_sample_preds
+                batch_y[batch_start_y:batch_end_y] = (
+                    dataset.y[start+n_lost_samples:end])
     
             if self.remove_baseline_mean:
                 batch_topo -= np.mean(
@@ -236,7 +224,7 @@ class CntWindowsFromCntIterator(object):
                 
             assert not np.any(np.isnan(batch_y))
             batch_y = batch_y.astype(np.int32)
-            yield batch_topo, batch_y
+            yield batch_topo, batch_y 
 
     def reset_rng(self):
         self.rng = RandomState(328774)

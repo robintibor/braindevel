@@ -40,9 +40,9 @@ def test_windows_iterator():
     assert np.array_equal([6,7], batches[1][0][6].squeeze())
     
 def test_cnt_windows_iterator():
-    iterator = CntWindowsFromCntIterator(batch_size=3, input_time_length=6,
-        n_sample_preds=4)
-
+    iterator = CntWindowsFromCntIterator(batch_size=2, input_time_length=6,
+            n_sample_preds=4)
+    
     in_topo = to_4d_time_array(range(20)).swapaxes(2,0)
     y = np.outer(range(20), np.ones(4))
     in_set = DenseDesignMatrixWrapper(topo_view=in_topo, y=y)
@@ -55,10 +55,10 @@ def test_cnt_windows_iterator():
     assert np.array_equal(np.outer([0,1,2,3,4,5,6,7,8,9,10,11], np.ones(4)), batches[0][1])
     assert np.array_equal([range(10,16), range(14,20)], batches[1][0].squeeze())
     assert np.array_equal(np.outer([12,13,14,15,16,17,18,19], np.ones(4)), batches[1][1])
-    
+
 def test_cnt_windows_iterator_shuffle():
     #Random Regression test, values should not change unless randomization changes...
-    iterator = CntWindowsFromCntIterator(batch_size=3, input_time_length=6, n_sample_preds=4)
+    iterator = CntWindowsFromCntIterator(batch_size=2, input_time_length=6, n_sample_preds=4)
     iterator.reset_rng()
     
     in_topo = to_4d_time_array(range(20)).swapaxes(2,0)
@@ -69,9 +69,9 @@ def test_cnt_windows_iterator_shuffle():
     assert 2 == len(batches)
     assert np.array_equal([range(6,12), [18,19] + range(4), range(10,16)], batches[0][0].squeeze())
     assert np.array_equal(np.outer([8,9,10,11,0,1,2,3,12,13,14,15], np.ones(4)), batches[0][1])
-    assert np.array_equal([range(10,16), range(14,20), range(2,8)], batches[1][0].squeeze())
-    assert np.array_equal(np.outer([12,13,14,15,16,17,18,19,4,5,6,7], np.ones(4)), batches[1][1])
-    
+    assert np.array_equal([range(14,20), range(2,8)], batches[1][0].squeeze())
+    assert np.array_equal(np.outer([16,17,18,19,4,5,6,7], np.ones(4)), batches[1][1])
+
 def test_cnt_windows_iterator_oversample():
     iterator = CntWindowsFromCntIterator(batch_size=3, input_time_length=6, n_sample_preds=4, oversample_targets=True)
     iterator.reset_rng()
