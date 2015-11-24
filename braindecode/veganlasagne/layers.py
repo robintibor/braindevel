@@ -205,6 +205,25 @@ def get_n_sample_preds(layer):
         "lengths, pathlengths are" + str(preds_per_path))
     return preds_per_path[0]
 
+
+def get_input_time_length(layer):
+    return lasagne.layers.get_all_layers(layer)[0].shape[2]
+
+def get_model_input_window(cnt_model):
+    return get_input_time_length(cnt_model) - get_n_sample_preds(cnt_model)
+
+def get_model_input_windows_in_folder(folder_name):
+    models = get_models_in_folder(folder_name)
+    return [get_model_input_window(m) for m in models]
+
+def get_models_in_folder(folder_name):
+    from glob import glob
+    files = glob(folder_name + '/*[0-9].pkl')
+    sorted_files = sorted(files,
+        key=lambda f: int(f.split('/')[-1].split('.')[0]))
+    models = [np.load(f) for f in sorted_files]
+    return models
+
 def get_all_paths(layer, treat_as_input=None):
     """
     This function gathers all paths through the net ending at the given final layer.

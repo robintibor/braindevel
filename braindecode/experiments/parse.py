@@ -105,6 +105,10 @@ def create_templates_variants_from_config_objects(config_objects, debug=False,
             for var in all_variants 
             if var['dataset_filename'] in wanted_filenames]
          
+    # regression check since that is confusing maybe
+    for var in all_variants:
+        assert not 'only_last_fold' in var, ("Will be set by cross validation "
+         "argument of the runner")
     
     # Set debug parameters if wanted
     if debug:
