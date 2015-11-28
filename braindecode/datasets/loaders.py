@@ -46,6 +46,9 @@ class BBCIDataset(object):
         if self.load_sensor_names is None:
             # if no sensor names given, take all EEG-chans
             EEG_sensor_names = filter(lambda s: not s.startswith('E'), all_sensor_names)
+            EEG_sensor_names = filter(lambda s: not s.startswith('Microphone'), EEG_sensor_names)
+            assert len(EEG_sensor_names) == 128, "Recheck this code if you have different sensors..."
+            #print EEG_sensor_names
             # sort sensors topologically to allow networks to exploit topology
             self.load_sensor_names = sort_topologically(EEG_sensor_names)
         chan_inds = self.determine_chan_inds(all_sensor_names, 

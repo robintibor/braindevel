@@ -1,8 +1,8 @@
 {
     templates: {
-        raw_net_no_drop_time_layers: [ 
+        cnt_raw_net_deep_batch_norm: [ 
            &in_layer !obj:lasagne.layers.InputLayer {
-                shape: [null, in_sensors, in_rows, in_cols]
+                shape: [null, in_sensors, $input_time_length, in_cols]
             },
             &shuffle !obj:lasagne.layers.DimshuffleLayer {
                 incoming: *in_layer,
@@ -22,14 +22,23 @@
                 nonlinearity: $first_nonlin,
                 name: 'spat_conv',
             },
+            &spat_norm !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *spat_conv,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+            },
             &pool !obj:braindecode.veganlasagne.pool.$first_pool_layer {
-                    incoming: *spat_conv,
+                    incoming: *spat_norm,
                     pool_size: [$pool_time_length,1],
-                    stride: [$pool_time_stride,1],
+                    stride: [1,1],
                     mode: $first_pool_mode,
             },
-            &log_1 !obj:lasagne.layers.NonlinearityLayer {
+            &reshape_pool !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool,
+                    n_stride: $pool_time_stride,
+            },
+            &log_1 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *reshape_pool,
                     nonlinearity: $first_pool_nonlin ,
             },
             &drop_feature_1 !obj:lasagne.layers.DropoutLayer {
@@ -44,14 +53,23 @@
                 nonlinearity: $later_nonlin ,
                 name: 'combined_conv_2',
             },
+            &batch_norm_2 !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *combined_conv_2,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+            },
             &pool_2 !obj:braindecode.veganlasagne.pool.$pool_layers {
-                    incoming: *combined_conv_2,
+                    incoming: *batch_norm_2,
                     pool_size: [$pool_time_length,1],
-                    stride: [$pool_time_stride,1],
+                    stride: [1,1],
                     mode: $pool_mode,
             },
-            &log_2 !obj:lasagne.layers.NonlinearityLayer {
+            &reshape_pool_2 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_2,
+                    n_stride: $pool_time_stride,
+            },
+            &log_2 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *reshape_pool_2,
                     nonlinearity: $later_pool_nonlin ,
             },
             &drop_feature_2 !obj:lasagne.layers.DropoutLayer {
@@ -65,14 +83,23 @@
                 nonlinearity: $later_nonlin ,
                 name: 'combined_conv_3',
             },
+            &batch_norm_3 !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *combined_conv_3,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+            },
             &pool_3 !obj:braindecode.veganlasagne.pool.$pool_layers {
-                    incoming: *combined_conv_3,
+                    incoming: *batch_norm_3,
                     pool_size: [$pool_time_length,1],
-                    stride: [$pool_time_stride, 1],
+                    stride: [1,1],
                     mode: $pool_mode,
             },
-            &log_3 !obj:lasagne.layers.NonlinearityLayer {
+            &reshape_pool_3 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_3,
+                    n_stride: $pool_time_stride,
+            },
+            &log_3 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *reshape_pool_3,
                     nonlinearity: $later_pool_nonlin ,
             },
             &drop_feature_3 !obj:lasagne.layers.DropoutLayer {
@@ -86,14 +113,23 @@
                 nonlinearity: $later_nonlin ,
                 name: 'combined_conv_4',
             },
+            &batch_norm_4 !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *combined_conv_4,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+            },
             &pool_4 !obj:braindecode.veganlasagne.pool.$pool_layers {
-                    incoming: *combined_conv_4,
+                    incoming: *batch_norm_4,
                     pool_size: [$pool_time_length,1],
-                    stride: [$pool_time_stride,1],
+                    stride: [1,1],
                     mode: $pool_mode,
             },
-            &log_4 !obj:lasagne.layers.NonlinearityLayer {
+            &reshape_pool_4 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_4,
+                    n_stride: $pool_time_stride,
+            },
+            &log_4 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *reshape_pool_4,
                     nonlinearity: $later_pool_nonlin ,
             },
             &drop_feature_4 !obj:lasagne.layers.DropoutLayer {
@@ -107,25 +143,42 @@
                 nonlinearity: $later_nonlin ,
                 name: 'combined_conv_5',
             },
+            &batch_norm_5 !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *combined_conv_5,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+            },
             &pool_5 !obj:braindecode.veganlasagne.pool.$pool_layers {
-                    incoming: *combined_conv_5,
+                    incoming: *batch_norm_5,
                     pool_size: [$pool_time_length,1],
-                    stride: [$pool_time_stride,1],
+                    stride: [1,1],
                     mode: $pool_mode,
             },
-            &log_5 !obj:lasagne.layers.NonlinearityLayer {
+            &reshape_pool_5 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_5,
+                    n_stride: $pool_time_stride,
+            },
+            &log_5 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *reshape_pool_5,
                     nonlinearity: $later_pool_nonlin ,
             },
             &drop_feature_5 !obj:lasagne.layers.DropoutLayer {
                 incoming: *log_5,
                 p: 0.5,
             },
-            &final_dense !obj:lasagne.layers.DenseLayer {
+            &final_dense !obj:lasagne.layers.Conv2DLayer {
                 incoming: *drop_feature_5,
-                num_units: $n_classes,
-                nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+                num_filters: 6,
+                filter_size: [$final_dense_length, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
                 name: 'final_dense',
+            },
+            &final_reshape !obj:braindecode.veganlasagne.layers.FinalReshapeLayer {
+                    incoming: *final_dense,
+            },
+            &final_sigmoid !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *final_reshape,
+                    nonlinearity: !!python/name:lasagne.nonlinearities.sigmoid ,
             },
         ],
         raw_layer_names_to_norms: {
@@ -145,19 +198,9 @@
     },
     variants: [[{
         layer_names_to_norms: [$raw_layer_names_to_norms],
-        layers: [$raw_net_no_drop_time_layers],
+        layers: [$cnt_raw_net_deep_batch_norm],
         final_norm: [0.5],
         conv_norm: [2.0],
-        first_nonlin: [$leaky_relu],
-        first_pool_nonlin: [$identity],
-        first_pool_layer: [SumPool2dLayer],
-        first_pool_mode: ['max'],
-        pool_layers: [Pool2DLayer],
-        later_pool_nonlin: [$identity],
-        later_nonlin: [$leaky_relu],
-        pool_mode: ['max'],
-        pool_time_length: [3],
-        pool_time_stride: [2],
-        n_classes: [4],
+        batch_norm_alpha: [0.1], #0.01,0.5,0.9 were tested and slihtly worse... no big differences though
     }]]
 }

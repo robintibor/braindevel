@@ -1,6 +1,6 @@
 {
     templates: {
-        raw_net_no_drop_time_layers: [ 
+        cnt_raw_net_deep: [ 
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, $input_time_length, in_cols]
             },
@@ -173,7 +173,7 @@
     },
     variants: [[{
         layer_names_to_norms: [$raw_layer_names_to_norms],
-        layers: [$raw_net_no_drop_time_layers],
+        layers: [$cnt_raw_net_deep],
         final_norm: [0.5],
         conv_norm: [2.0],
     }]]

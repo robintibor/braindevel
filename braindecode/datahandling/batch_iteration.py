@@ -139,7 +139,7 @@ class WindowsFromCntIterator(object):
 
     def reset_rng(self):
         self.rng = RandomState(328774)
-        
+
 class CntWindowsFromCntIterator(object):
     def __init__(self, batch_size, input_time_length, n_sample_preds,
             oversample_targets=False, remove_baseline_mean=False):

@@ -1,0 +1,9 @@
+{
+    extends: ['configs/experiments/grasp_lift/all_subjects/deeper_more_time.yaml',
+    'configs/experiments/grasp_lift/cnt_raw_net_deeper_batch_norm.yaml'],
+    variants: [[{
+        batch_size: [42],
+        use_test_as_valid: [True],
+        save_path: ['data/models/grasp-lift/all-sub/deeper/batch-norm/'],
+    }]],
+}

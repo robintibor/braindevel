@@ -10,18 +10,18 @@ file_prefix = \
 cd ${HOME}/braindecode/code/braindecode/
 export PYTHONPATH=$PYTHONPATH:`pwd`/../
 # add stuff for cudnn
-export LD_LIBRARY_PATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$LD_LIBRARY_PATH
-export LIBRARY_PATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$LIBRARY_PATH
-export CPATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$CPATH
+#export LD_LIBRARY_PATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$LD_LIBRARY_PATH
+#export LIBRARY_PATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$LIBRARY_PATH
+#export CPATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$CPATH
 
 ## once you have cuda > 7.0 and can use cudnnv3:
-#export LD_LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LD_LIBRARY_PATH
-#export LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LIBRARY_PATH
-#export CPATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$CPATH
+export LD_LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LD_LIBRARY_PATH
+export LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LIBRARY_PATH
+export CPATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$CPATH
 
 echo "Working directory is $PWD"
 
-export CUDA_VISIBLE_DEVICES=`cat ${HOME}/${JOB_ID}_${SGE_TASK_ID}_${JOB_NAME}`
+#export CUDA_VISIBLE_DEVICES=`cat ${HOME}/${JOB_ID}_${SGE_TASK_ID}_${JOB_NAME}`
 export GPU_ID=0
 echo HOME=$HOME
 echo USER=$USER
@@ -33,7 +33,7 @@ echo CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
 echo GPU_ID=$GPU_ID
 echo $CMD
 
-export THEANO_FLAGS="floatX=float32,device=gpu${GPU_ID},nvcc.fastmath=True,force_device=True"
+export THEANO_FLAGS="floatX=float32,device=gpu${GPU_ID},nvcc.fastmath=True,force_device=True,compiledir=/tmp/${JOB_ID}.${SGE_TASK_ID}.meta_gpu-rz.q/"
 echo THEANO_FLAGS=$THEANO_FLAGS
 """
 def generate_cluster_job(sys_args):

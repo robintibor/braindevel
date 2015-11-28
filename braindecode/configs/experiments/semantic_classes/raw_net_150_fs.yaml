@@ -1,0 +1,15 @@
+ {
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/raw_net_no_drop_time.yaml',
+        'configs/experiments/150_fs.yaml',
+        'configs/experiments/semantic_classes/filenames.yaml'],
+    variants: [[
+    {
+        low_cut_off_hz: [0.5],
+        save_path: ['data/models/semantic-classes/raw-net-150-fs/'],
+        cleaner: [$normal_cleaner, $no_cleaner],
+        sensor_names: [$C_sensors, $all_EEG_sensors],
+        num_filters: [20,40,60],
+    }
+    ]]
+}

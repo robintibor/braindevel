@@ -117,6 +117,7 @@ def create_templates_variants_from_config_objects(config_objects, debug=False,
             variant['max_epochs'] = 1
             variant['sensor_names'] = ['C3', 'C4', 'Cz']
             variant['load_sensor_names'] = ['C3', 'C4', 'Cz']
+            variant['last_subject'] = 1
             
     
     return templates, all_variants
@@ -226,7 +227,7 @@ def product_of_list_of_lists_of_dicts(list_of_lists):
 def merge_parameters_and_templates(all_parameters, templates):
     all_final_params = []
     for param_config in all_parameters:
-        processed_templates  = process_templates(
+        processed_templates = process_templates(
             templates, param_config)
         final_params = process_parameters_by_templates(param_config,
             processed_templates)

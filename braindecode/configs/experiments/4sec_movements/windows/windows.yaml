@@ -1,0 +1,14 @@
+{
+    templates: {
+        window_iterator: !obj:braindecode.datahandling.batch_iteration.WindowsIterator {
+            batch_size: $batch_size,
+            n_samples_per_window: $n_samples_per_window,
+            n_sample_stride: $n_sample_stride,
+        },
+        window_misclass: !obj:braindecode.veganlasagne.monitors.WindowMisclassMonitor {},
+    },
+    variants: [[{
+        misclass_monitor: [$window_misclass],
+        iterator: [$window_iterator],
+    }]]
+}
