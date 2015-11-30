@@ -9,7 +9,9 @@ import lasagne
 import theano
 from zipfile import ZipFile
 from zipfile import ZIP_DEFLATED
-from braindecode.veganlasagne.layers import get_n_sample_preds
+import StringIO
+from braindecode.veganlasagne.layers import get_n_sample_preds,\
+    get_model_input_window
 from braindecode.veganlasagne.monitors import get_reshaped_cnt_preds
 from braindecode.datahandling.preprocessing import exponential_running_mean,\
     exponential_running_var_from_demeaned
@@ -332,3 +334,101 @@ def create_submission_csv_for_all_subjects(folder):
     submission_zip_file = ZipFile(os.path.join(folder,'all_submission.zip'), 'w', ZIP_DEFLATED)
     submission_zip_file.writestr("submission.csv", csv_str)
     submission_zip_file.close()
+
+def create_submission_csv_for_all_subject_model(folder_name, 
+        all_sub_kaggle_set, dataset_provider, iterator, final_layer,
+        submission_id):
+    all_sub_kaggle_set.load()
+    assert all_sub_kaggle_set.resample_half == False, ("Not implemented for "
+        "resample half")
+    all_sub_kaggle_set.load_test()
+    # following line will just do the preprocessing already on the train set...
+    dataset_provider.get_train_merged_valid_test(all_sub_kaggle_set)
+    test_sets_per_subj = []
+    for i_subject in range(12):
+        kaggle_set = all_sub_kaggle_set.kaggle_sets[i_subject]
+        this_sets = []
+        for i_test_series in range(2):
+            # Get input
+            X_test = kaggle_set.test_X_series[i_test_series][:,:,np.newaxis,np.newaxis]
+            fake_test_y = np.ones((len(X_test), 6))
+            test_set = DenseDesignMatrixWrapper(
+                topo_view=X_test, 
+                y=fake_test_y)
+            if dataset_provider.preprocessor is not None:
+                dataset_provider.preprocessor.apply(test_set, can_fit=False)
+            this_sets.append(test_set)
+        assert len(this_sets) == 2
+        test_sets_per_subj.append(this_sets)
+    
+    ### Create prediction function and create predictions
+    log.info("Create prediction functions...")
+    input_var = lasagne.layers.get_all_layers(final_layer)[0].input_var
+    predictions = lasagne.layers.get_output(final_layer, deterministic=True)
+    pred_fn = theano.function([input_var], predictions)
+    log.info("Setup iterator...")
+    n_sample_preds = get_n_sample_preds(final_layer)
+    iterator.n_sample_preds = n_sample_preds
+    log.info("Make predictions...")
+    preds_per_subject = []
+    for i_subject in range(12):
+        log.info("Predictions for Subject {:d}...".format(i_subject + 1))
+        test_sets_subj = test_sets_per_subj[i_subject]
+        preds = get_y_for_subject(pred_fn, test_sets_subj[0], test_sets_subj[1],
+                         iterator, final_layer)
+        preds_per_subject.append(preds)
+    log.info("Done")
+    log.info("Create csv...")
+    cols = ['HandStart','FirstDigitTouch',
+    'BothStartLoadPhase','LiftOff',
+    'Replace','BothReleased']
+    # collect ids
+    all_ids = []
+    all_preds = []
+    for i_subject in range(12):
+        pred_subj_per_series = preds_per_subject[i_subject]
+        for i_series in (9,10):
+            id_prefix = "subj{:d}_series{:d}_".format(i_subject+1, i_series)
+            this_preds = pred_subj_per_series[i_series-9] # respect offsets
+            all_preds.extend(this_preds)
+            this_ids = [id_prefix + str(i_sample) for i_sample in range(this_preds.shape[0])]
+            all_ids.extend(this_ids)
+            
+    all_ids = np.array(all_ids)
+    all_preds = np.array(all_preds)
+    assert all_ids.shape == (3144171,)
+    assert all_preds.shape == (3144171,6)
+    submission = pd.DataFrame(index=all_ids,
+                              columns=cols,
+                              data=all_preds)
+    
+    
+    
+    csv_output = StringIO.StringIO()
+    submission.to_csv(csv_output, index_label='id',float_format='%.3f')
+    csv_str = csv_output.getvalue()
+    
+    log.info("Create zip...")
+    zip_file_name = os.path.join(folder_name, "{:d}.zip".format(submission_id))
+    submission_zip_file = ZipFile(zip_file_name, 'w', ZIP_DEFLATED)
+    submission_zip_file.writestr("submission.csv", csv_str)
+    submission_zip_file.close()
+    log.info("Done")
+
+def get_y_for_subject(pred_fn, test_set_0, test_set_1, iterator, final_layer):
+    """Assumes there was no resampling!!"""
+    batch_gen_0 = iterator.get_batches(test_set_0, shuffle=False)
+    all_preds_0 = [pred_fn(batch[0]) for batch in batch_gen_0]
+    batch_gen_1 = iterator.get_batches(test_set_1, shuffle=False)
+    all_preds_1 = [pred_fn(batch[0]) for batch in batch_gen_1]
+    n_sample_preds = get_n_sample_preds(final_layer)
+    input_time_length = lasagne.layers.get_all_layers(final_layer)[0].shape[2]
+    
+    n_samples_0 = test_set_0.get_topological_view().shape[0]
+    preds_arr_0 = get_reshaped_cnt_preds(all_preds_0, n_samples_0, 
+        input_time_length, n_sample_preds)
+    n_samples_1 = test_set_1.get_topological_view().shape[0]
+    preds_arr_1 = get_reshaped_cnt_preds(all_preds_1, n_samples_1, 
+        input_time_length, n_sample_preds)
+    series_preds = [preds_arr_0, preds_arr_1]
+    return series_preds

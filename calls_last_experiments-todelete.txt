@@ -1,0 +1,4 @@
+./scripts/train_experiments.py configs/experiments/grasp_lift/all_subjects/deeper_more_time.yaml --params batch_size=48 standardize_series_wise=True preprocessor=null input_time_length=5500 pool_time_stride=3 pool_time_length=3 last_subject=12 final_dense_length=1 remove_baseline_mean=False
+
+./scripts/train_experiments.py configs/experiments/grasp_lift/all_subjects/deeper_more_time.yaml --params batch_size=48 standardize_series_wise=True preprocessor=null input_time_length=5500 pool_time_stride=3 pool_time_length=3 last_subject=12 final_dense_length=1 remove_baseline_mean=False use_test_as_valid=True save_path=data/models/grasp-lift/all-sub/more-time/no-resample/deeper/submission/
+

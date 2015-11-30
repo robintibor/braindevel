@@ -234,13 +234,6 @@ def plot_misclasses_loss_for_file(result_file_path):
     fig.suptitle("Misclass/Loss: " + result_file_path)
     return fig
 
-def plot_misclasses_for_model(model, figure=None):
-    fig =  plot_train_valid_test_epochs(model.monitor.channels['train_misclass'],
-        model.monitor.channels['valid_misclass'],
-        model.monitor.channels['test_misclass'],
-        figure=figure)
-    pyplot.ylim(0, 1)
-    return fig
 
 def plot_loss_for_file(result_file_path, figure=None, start=None, stop=None):
     assert result_file_path.endswith('result.pkl')
@@ -251,19 +244,22 @@ def plot_loss_for_file(result_file_path, figure=None, start=None, stop=None):
     figure.suptitle("Loss: " + result_file_path)
     return figure
 
-def plot_loss_for_model(model, figure=None):
-    return plot_train_valid_test_epochs(model.monitor.channels['train_loss'],
-        model.monitor.channels['valid_loss'],
-        model.monitor.channels['test_loss'],
-        figure=figure)
+def add_early_stop_boundary(monitor_channels):
+    """Plot early stop boundary as black vertical line into plot
+    Determine it by epoch with largest difference in runtime."""
+    runtimes_after_first = monitor_channels['runtime'][1:]
+    i_last_epoch_before_early_stop = np.argmax(np.abs(runtimes_after_first - 
+        np.mean(runtimes_after_first)))
+    pyplot.axvline(i_last_epoch_before_early_stop, color='black', lw=1)
+
 
 def plot_misclasses_for_result(result, figure=None):
     fig =  plot_train_valid_test_epochs(result.monitor_channels['train_misclass'],
         result.monitor_channels['valid_misclass'],
         result.monitor_channels['test_misclass'],
         figure=figure)
-    
     pyplot.ylim(0, 1)
+    add_early_stop_boundary(result.monitor_channels)
     return fig
 
 def plot_train_valid_test_epochs(train, valid,test, figure=None):
@@ -276,10 +272,13 @@ def plot_train_valid_test_epochs(train, valid,test, figure=None):
     return figure
 
 def plot_loss_for_result(result, figure=None, start=None, stop=None):
-    return plot_train_valid_test_epochs(result.monitor_channels['train_loss'],
+    fig = plot_train_valid_test_epochs(result.monitor_channels['train_loss'],
         result.monitor_channels['valid_loss'],
         result.monitor_channels['test_loss'],
         figure=figure)
+    
+    add_early_stop_boundary(result.monitor_channels)
+    return fig
 
 def plot_confusion_matrix_for_averaged_result(result_folder, result_nr):
     """ Plot confusion matrix for averaged dataset result."""

@@ -1,0 +1,20 @@
+ {
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/150_fs.yaml',
+        'configs/experiments/raw_set.yaml',
+        'configs/experiments/raw_net_deeper_batch_norm.yaml',
+        'configs/experiments/semantic_classes/filenames.yaml'],
+    variants: [[
+    {
+        low_cut_off_hz: [0.5],
+        save_path: ['data/models/semantic-classes/raw-net-deeper/batch-norm/'],
+        pool_time_length: [2],
+        pool_time_stride: [2],
+        filter_time_length: [10],
+        cleaner: [$normal_cleaner, $no_cleaner],
+        sensor_names: [$C_sensors, $all_EEG_sensors],
+        num_filters: [80,160],
+        batch_norm_alpha: [0.1],
+    }
+    ]]
+}

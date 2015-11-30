@@ -1,6 +1,7 @@
 import logging
 from braindecode.datasets.grasp_lift import (KaggleGraspLiftSet,
-    create_submission_csv_for_one_subject)
+    create_submission_csv_for_one_subject, AllSubjectsKaggleGraspLiftSet,
+    create_submission_csv_for_all_subject_model)
 from braindecode.veganlasagne.layers import get_n_sample_preds
 import sys
 log = logging.getLogger(__name__)
@@ -232,6 +233,12 @@ class ExperimentsRunner:
                 exp.dataset, iterator,
                 train_dict['exp_args']['preprocessor'], 
                 final_layer, experiment_index + 1)
+        elif isinstance(dataset, AllSubjectsKaggleGraspLiftSet) and splitter.use_test_as_valid:
+            create_submission_csv_for_all_subject_model(
+                self._folder_paths[experiment_index],
+                exp.dataset, exp.dataset_provider, iterator,
+                final_layer, experiment_index + 1)
+            
     
     def _save_train_string(self, train_string, experiment_index):
         file_name = self._base_save_paths[experiment_index] + ".yaml"
