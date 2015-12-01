@@ -3,7 +3,21 @@
     'configs/experiments/grasp_lift/cnt_raw_net_deeper_batch_norm.yaml'],
     variants: [[{
         batch_size: [42],
-        use_test_as_valid: [True],
         save_path: ['data/models/grasp-lift/all-sub/deeper/batch-norm/'],
+        
+        ## new:
+        variants: [[{
+            filter_time_length: [12],
+            final_dense_length: [10],
+        },
+        {
+            filter_time_length: [8],
+            final_dense_length: [12],
+        },
+        {
+            filter_time_length: [20],
+            final_dense_length: [6],
+        },
+        ]]
     }]],
 }

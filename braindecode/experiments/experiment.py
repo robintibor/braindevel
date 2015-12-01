@@ -9,8 +9,10 @@ import logging
 from pylearn2.utils.timing import log_timing
 from copy import deepcopy
 from braindecode.datahandling.splitters import (SingleFoldSplitter,
-    PreprocessedSplitter)
-from braindecode.veganlasagne.monitors import MonitorManager
+    PreprocessedSplitter, FixedTrialSplitter)
+from braindecode.veganlasagne.monitors import MonitorManager, MisclassMonitor,\
+    LossMonitor, RuntimeMonitor
+from braindecode.datahandling.batch_iteration import BalancedBatchIterator
 log = logging.getLogger(__name__)
 
 class ExperimentCrossValidation():
@@ -44,10 +46,30 @@ class ExperimentCrossValidation():
             self.all_layers.append(deepcopy(exp.final_layer))
             self.all_monitor_chans.append(deepcopy(exp.monitor_chans))
 
+def create_default_experiment(final_layer, dataset, num_epochs=100):
+    n_trials = len(dataset.X)
+    splitter = FixedTrialSplitter(n_train_trials=n_trials // 2, 
+        valid_set_fraction=0.2)
+    monitors = [MisclassMonitor(), LossMonitor(),RuntimeMonitor()]
+    stop_criterion = MaxEpochs(num_epochs)
+    exp = Experiment(final_layer, dataset, splitter, preprocessor=None,
+        iterator=BalancedBatchIterator(batch_size=45),
+        loss_expression=lasagne.objectives.categorical_crossentropy,
+        updates_expression=lasagne.updates.adam,
+        updates_modifier=None,
+        monitors=monitors, 
+        stop_criterion=stop_criterion)
+    return exp
+    
+    
+    
+    
+    
+
 class Experiment(object):
     def __init__(self, final_layer, dataset, splitter, preprocessor,
-            iterator, loss_expression, updates_expression, 
-            updates_modifier, monitors, stop_criterion):
+            iterator, loss_expression, updates_expression, updates_modifier,
+            monitors, stop_criterion):
         self.final_layer = final_layer
         self.dataset = dataset
         self.dataset_provider = PreprocessedSplitter(splitter, preprocessor)

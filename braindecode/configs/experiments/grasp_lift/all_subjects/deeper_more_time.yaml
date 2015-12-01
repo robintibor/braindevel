@@ -3,9 +3,7 @@
     variants: [[{
         input_time_length: [5500],
         filter_time_length: [30],
-        #save_path: ['data/models/grasp-lift/all-sub/more-time/no-resample/deeper/'],
-        save_path: ['data/models/grasp-lift/all-sub/more-time/no-resample/deeper/submission/'],
-        use_test_as_valid: [True],
+        save_path: ['data/models/grasp-lift/all-sub/more-time/no-resample/deeper/'],
         
         pool_time_length: [3],
         pool_time_stride: [3],

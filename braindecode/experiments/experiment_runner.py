@@ -2,7 +2,8 @@ import logging
 from braindecode.datasets.grasp_lift import (KaggleGraspLiftSet,
     create_submission_csv_for_one_subject, AllSubjectsKaggleGraspLiftSet,
     create_submission_csv_for_all_subject_model)
-from braindecode.veganlasagne.layers import get_n_sample_preds
+from braindecode.veganlasagne.layers import (get_n_sample_preds,
+    get_model_input_window)
 import sys
 log = logging.getLogger(__name__)
 from glob import glob
@@ -167,11 +168,15 @@ class ExperimentsRunner:
             lasagne.layers.get_all_layers(final_layer))) == 0, ("All layers "
             "should be used, unused {:s}".format(str(np.setdiff1d(layers, 
             lasagne.layers.get_all_layers(final_layer)))))
+        # set n sample perds in case of cnt model
         if (np.any([hasattr(l, 'n_stride') for l in layers])):
             n_sample_preds =  get_n_sample_preds(final_layer)
-            log.info("Setting n_sample preds automatically to {:d}".format(n_sample_preds))
+            log.info("Setting n_sample preds automatically to {:d}".format(
+                n_sample_preds))
             train_dict['exp_args']['monitors'][1].n_sample_preds = n_sample_preds
             train_dict['exp_args']['iterator'].n_sample_preds = n_sample_preds
+            log.info("Input window length is {:d}".format(
+                get_model_input_window(final_layer)))
         
         if not self._cross_validation:
             exp = Experiment(final_layer, dataset, dataset_splitter,

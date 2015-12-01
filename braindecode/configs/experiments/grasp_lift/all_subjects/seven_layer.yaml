@@ -1,0 +1,11 @@
+{
+    extends: ['configs/experiments/grasp_lift/all_subjects/deeper_more_time.yaml',
+    'configs/experiments/grasp_lift/cnt_raw_net_7_layer.yaml'],
+    variants: [[{
+        batch_size: [38],
+        pool_time_length: [2],
+        pool_time_stride: [2],
+        final_dense_length: [1],
+        save_path: ['data/models/grasp-lift/all-sub/7-layer/'],
+    }]],
+}
