@@ -134,6 +134,13 @@ class ExperimentsRunner:
             # Do not do the loading or training...
             # Only go until here to show the train params
             return
+        
+        #
+        #if fakeData:
+        # load layers, load data with dimensions of the layer
+        # create experiment with max epochs 2, run
+        #    dataset = load dataset with the dimensions of the 
+
         dataset = train_dict['dataset'] 
         dataset.load()
         iterator = train_dict['exp_args']['iterator']
@@ -243,6 +250,9 @@ class ExperimentsRunner:
                 self._folder_paths[experiment_index],
                 exp.dataset, exp.dataset_provider, iterator,
                 final_layer, experiment_index + 1)
+        elif splitter.use_test_as_valid:
+            raise ValueError("Splitter has use test as valid set, but unknown dataset" 
+                "" + str(dataset))
             
     
     def _save_train_string(self, train_string, experiment_index):
