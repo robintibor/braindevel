@@ -5,6 +5,8 @@ from braindecode.datasets.grasp_lift import (KaggleGraspLiftSet,
 from braindecode.veganlasagne.layers import (get_n_sample_preds,
     get_model_input_window)
 import sys
+from braindecode.veganlasagne.stopping import MaxEpochs
+from braindecode.datahandling.splitters import FixedTrialSplitter
 log = logging.getLogger(__name__)
 from glob import glob
 import yaml
@@ -23,7 +25,8 @@ import numpy as np
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
             quiet=False, dry_run=False, cross_validation=False,
-            shuffle=False, debug=False, only_first_five_sets=False):
+            shuffle=False, debug=False, only_first_five_sets=False,
+            batch_test=False):
         self._start_id = start_id
         self._stop_id = stop_id
         self._test = test
@@ -33,6 +36,7 @@ class ExperimentsRunner:
         self._shuffle = shuffle
         self._debug = debug
         self._only_first_five_sets = only_first_five_sets
+        self._batch_test=batch_test
         
     def run(self, all_train_strs):
         if (self._quiet):
@@ -135,12 +139,53 @@ class ExperimentsRunner:
             # Only go until here to show the train params
             return
         
-        #
-        #if fakeData:
+        if self._batch_test:
+        # TODO: put into function
         # load layers, load data with dimensions of the layer
         # create experiment with max epochs 2, run
-        #    dataset = load dataset with the dimensions of the 
-
+            from braindecode.datasets.random import RandomSet
+            train_str = train_str.replace('in_cols', '1')
+            train_str = train_str.replace('in_sensors', '32')
+            train_dict =  yaml_parse.load(train_str)
+            layers = train_dict['layers']
+            final_layer = layers[-1]
+            n_chans = layers[0].shape[1]
+            n_classes = final_layer.output_shape[1]
+            n_samples = 500000
+            # set n sample perds in case of cnt model
+            if (np.any([hasattr(l, 'n_stride') for l in layers])):
+                n_sample_preds =  get_n_sample_preds(final_layer)
+                log.info("Setting n_sample preds automatically to {:d}".format(
+                    n_sample_preds))
+                train_dict['exp_args']['monitors'][1].n_sample_preds = n_sample_preds
+                train_dict['exp_args']['iterator'].n_sample_preds = n_sample_preds
+                log.info("Input window length is {:d}".format(
+                    get_model_input_window(final_layer)))
+                # make at least batches
+                n_samples = int(n_sample_preds * 1.5 * 200)
+            dataset = RandomSet(topo_shape=[n_samples, n_chans, 1, 1], 
+                y_shape=[n_samples, n_classes]) 
+            dataset.load()
+            splitter = FixedTrialSplitter(n_train_trials=int(n_samples*0.8), 
+                valid_set_fraction=0.1)
+            train_dict['exp_args']['preprocessor'] = None
+            train_dict['exp_args']['stop_criterion'] = MaxEpochs(1)
+            train_dict['exp_args']['iterator'].batch_size = 1
+            # TODO: set stop criterion to max epochs =1
+            #  change batch_size in iterator
+            exp = Experiment(final_layer, dataset, splitter,
+                **train_dict['exp_args'])
+            exp.setup()
+            exp.run_until_early_stop()
+            datasets = exp.dataset_provider.get_train_valid_test(exp.dataset)
+            for batch_size in range(32,200,5):
+                train_dict['exp_args']['stop_criterion'].num_epochs += 2
+                log.info("Running with batch size {:d}".format(batch_size))
+                train_dict['exp_args']['iterator'].batch_size = batch_size
+                exp.run_until_stop(datasets, remember_best=False)
+            return
+            
+            
         dataset = train_dict['dataset'] 
         dataset.load()
         iterator = train_dict['exp_args']['iterator']

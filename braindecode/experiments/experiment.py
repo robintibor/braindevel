@@ -61,11 +61,6 @@ def create_default_experiment(final_layer, dataset, num_epochs=100):
         stop_criterion=stop_criterion)
     return exp
     
-    
-    
-    
-    
-
 class Experiment(object):
     def __init__(self, final_layer, dataset, splitter, preprocessor,
             iterator, loss_expression, updates_expression, updates_modifier,

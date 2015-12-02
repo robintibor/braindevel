@@ -35,6 +35,8 @@ def parse_command_line_arguments():
         help="Run algorithm quietly without progress output")
     parser.add_argument('--debug', action="store_true",
         help="Run with debug options.")
+    parser.add_argument('--batchtest', action="store_true",
+        help="Try which batch size still works for the memory on the gpu....")
     parser.add_argument('--test', action="store_true",
         help="Run experiment on less features and less data to test it")
     parser.add_argument('--dryrun', action="store_true",
@@ -77,6 +79,6 @@ if __name__ == "__main__":
     exp_runner = ExperimentsRunner(quiet=args.quiet, start_id=args.startid,
         stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle,
         debug=args.debug, dry_run=args.dryrun, 
-        only_first_five_sets=args.first_five_sets)
+        only_first_five_sets=args.first_five_sets,batch_test=args.batchtest)
     exp_runner.run(all_train_strs)
 
