@@ -6,18 +6,18 @@
         save_path: ['data/models/grasp-lift/all-sub/deeper/batch-norm/'],
         
         ## new:
-        variants: [[{
-            filter_time_length: [12],
-            final_dense_length: [10],
-        },
-        {
-            filter_time_length: [8],
-            final_dense_length: [12],
-        },
-        {
-            filter_time_length: [20],
-            final_dense_length: [6],
-        },
-        ]]
+#        variants: [[{
+#            filter_time_length: [12],
+#            final_dense_length: [10],
+#        },
+#        {
+#            filter_time_length: [8],
+#            final_dense_length: [12],
+#        },
+#        {
+#            filter_time_length: [20],
+#            final_dense_length: [6],
+#        },
+#        ]]
     }]],
 }

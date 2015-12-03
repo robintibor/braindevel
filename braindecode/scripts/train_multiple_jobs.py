@@ -7,8 +7,9 @@ import time
 if __name__ == "__main__":
     if len(sys.argv) < 2 or len(sys.argv) > 4:
         print("Usage: ./scripts/train_multiple_jobs.py queuename configfilename  [start] [stop] [step] [train_flags]")
-    queue_name = sys.argv[1]
-    assert queue_name in  ["rz", "tf"]
+    queue = sys.argv[1]
+    assert queue in  ["rz", "tf", "test", "rzx"]
+    
     config_filename = sys.argv[2]
     start = 1
     stop = 144
@@ -32,7 +33,7 @@ if __name__ == "__main__":
             time.sleep(60)
         i_stop = min(i_start + step - 1, stop)
         command = "{:s} {:s} {:s} --start {:d} --stop {:d} {:s}".format(
-            train_script_file, queue_name, config_filename, i_start, i_stop, 
+            train_script_file, queue, config_filename, i_start, i_stop, 
             train_arg_string)
         subprocess.call([command],shell=True)
         #print command
