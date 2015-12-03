@@ -10,8 +10,7 @@ import theano
 from zipfile import ZipFile
 from zipfile import ZIP_DEFLATED
 import StringIO
-from braindecode.veganlasagne.layers import get_n_sample_preds,\
-    get_model_input_window
+from braindecode.veganlasagne.layers import get_n_sample_preds
 from braindecode.veganlasagne.monitors import get_reshaped_cnt_preds
 from braindecode.datahandling.preprocessing import exponential_running_mean,\
     exponential_running_var_from_demeaned

@@ -6,6 +6,51 @@ import lasagne
 import numpy as np
 from collections import deque
 from copy import copy
+from copy import deepcopy
+import sys
+
+def transform_to_normal_net(final_layer):
+    """ Transforms cnt/parallel prediction net to a normal net."""
+    # copy old model, need to set sys recursion limit up to make sure it can be copied
+    old_limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(50000)
+    new_final_layer = deepcopy(final_layer)
+    sys.setrecursionlimit(old_limit)
+
+    # remove stride reshape layers and instead set strides to conv/pool layers again
+    # also replace final reshape with flattening layer
+    all_layers = lasagne.layers.get_all_layers(new_final_layer)
+    last_stride = None
+    for i_layer in xrange(len(all_layers) - 1,-1,-1):
+        if hasattr(all_layers[i_layer], 'remove_invalids'):
+            # replace with final reshape with flattening layer
+            all_layers[i_layer + 1].input_layer = lasagne.layers.FlattenLayer(all_layers[i_layer - 1])
+        if hasattr(all_layers[i_layer], 'n_stride'):
+            # just remove stride reshape layers
+            all_layers[i_layer + 1].input_layer = all_layers[i_layer - 1]
+            last_stride = all_layers[i_layer].n_stride
+        if hasattr(all_layers[i_layer], 'stride') and last_stride is not None:
+            # should work for pool and conv layers as both use stride member variable
+            # for stride
+            all_layers[i_layer].stride = (last_stride, all_layers[i_layer].stride[1])
+            last_stride = None
+
+    # Fix shapes by iterating through layers... 
+    # Use original input window, only
+    # 3rd dim has to be fixed other dims can remain the same
+    all_layers = lasagne.layers.get_all_layers(new_final_layer)
+    input_time_window = get_model_input_window(final_layer)
+    all_layers[0].shape = [None,all_layers[0].shape[1],input_time_window,all_layers[0].shape[3]]
+    for l in all_layers[1:]:
+        l.input_shape = l.input_layer.output_shape
+    
+    return new_final_layer
+
+def get_input_var(final_layer):
+    return lasagne.layers.get_all_layers(final_layer)[0].input_var
+
+def get_input_shape(final_layer):
+    return lasagne.layers.get_all_layers(final_layer)[0].shape
 
 def get_used_input_length(final_layer):
     """ Determine how much input in the 0-axis
@@ -210,7 +255,7 @@ def get_input_time_length(layer):
     return lasagne.layers.get_all_layers(layer)[0].shape[2]
 
 def get_model_input_window(cnt_model):
-    return get_input_time_length(cnt_model) - get_n_sample_preds(cnt_model)
+    return get_input_time_length(cnt_model) - get_n_sample_preds(cnt_model) + 1
 
 def get_model_input_windows_in_folder(folder_name):
     models = get_models_in_folder(folder_name)
