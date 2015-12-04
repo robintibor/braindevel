@@ -1,6 +1,6 @@
 import numpy as np
 
-def bps_and_freqs(weights, axis=1, sampling_rate=150.0, n=None):
+def bps_and_freqs(weights, sampling_rate, axis=1, n=None):
     bps = np.abs(np.fft.rfft(weights, axis=axis, n=n))
     n_samples = n
     if n_samples is None:
