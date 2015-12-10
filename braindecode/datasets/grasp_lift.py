@@ -200,7 +200,12 @@ class AllSubjectsKaggleGraspLiftSet(object):
         for i_set, kaggle_set in enumerate(self.kaggle_sets):
             log.info("Loading Subject {:d}...".format(i_set + 1))
             kaggle_set.load()
-
+            
+    def standardize_train_data(self):
+        for i_set, kaggle_set in enumerate(self.kaggle_sets):
+            log.info("Standardizing Train Subject {:d}...".format(i_set + 1))
+            kaggle_set.standardize_data()
+    
     def load_test(self):
         for i_set, kaggle_set in enumerate(self.kaggle_sets):
             log.info("Loading Test Subject {:d}...".format(i_set + 1))
