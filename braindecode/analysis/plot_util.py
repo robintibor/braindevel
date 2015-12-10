@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import  pyplot
 from matplotlib import cm
 from braindecode.datasets.sensor_positions import (get_C_sensors_sorted, 
-    get_sensor_pos, tight_C_positions)
+    get_sensor_pos, tight_C_positions, cap_positions)
 from braindecode.results.results import (
     DatasetAveragedResults, compute_confusion_matrix)
 from copy import deepcopy
@@ -428,7 +428,8 @@ def plot_class_probs(probs, value_minmax=None):
 
 def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
     figsize=(8,4.5), yticks = None, yticklabels=None, 
-    correctness_matrices = None, colormap=cm.bwr):
+    correctness_matrices = None, colormap=cm.coolwarm,
+    sensor_map=cap_positions):
     """ figsize ignored if figure given """
     # for now hack it here... giving freq labels with 2 hz width if likely
     # that this is correct ind of input
@@ -444,7 +445,7 @@ def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
     assert len(matrices) == len(sensor_names), "need sensor names for all sensor matrices"
     if figure is None:
         figure = pyplot.figure(figsize=figsize)
-    sensor_positions = [get_sensor_pos(name) for name in sensor_names]
+    sensor_positions = [get_sensor_pos(name, sensor_map) for name in sensor_names]
     sensor_positions = np.array(sensor_positions) # #sensors x 2(row and col) x1(for some reason:)) 
     maxima = np.max(sensor_positions, axis =0)
     minima = np.min(sensor_positions, axis =0)
@@ -464,7 +465,7 @@ def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
     for i in xrange(0, len(matrices)):
         sensor_name = sensor_names[i]
         sensor_pos = sensor_positions[i]
-        assert np.all(sensor_pos == get_sensor_pos(sensor_name))
+        assert np.all(sensor_pos == get_sensor_pos(sensor_name, sensor_map))
         # Transform to flat sensor pos
         row = sensor_pos[0]
         col = sensor_pos[1]

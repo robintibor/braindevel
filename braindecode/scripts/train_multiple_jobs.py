@@ -35,5 +35,5 @@ if __name__ == "__main__":
         command = "{:s} {:s} {:s} --start {:d} --stop {:d} {:s}".format(
             train_script_file, queue, config_filename, i_start, i_stop, 
             train_arg_string)
+        
         subprocess.call([command],shell=True)
-        #print command

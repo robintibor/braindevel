@@ -7,9 +7,11 @@ if __name__ == "__main__":
     queue = sys.argv[1]
     assert queue in['tf', 'rz', 'rzx', 'test'], ("only know "
         "rz, rzx, tf and test queues, not: " + queue)
-    queue_name = "meta_gpu-{:s}"
-    if queue == 'rzx':
-        queue_name = "meta_gpux-rz"
+    if queue != 'rzx':
+        queue_name = "meta_gpu-{:s}.q".format(queue)
+    else:
+        queue_name = "meta_gpux-rz.q"
+
     if sys.argv[2].startswith('metagpu'):
         hostname = sys.argv[2]
         print("Running on {:s}".format(hostname))
@@ -19,10 +21,10 @@ if __name__ == "__main__":
         hostname = None
     job_filepath = generate_cluster_job(job_args)
     if hostname is not None:
-        command = "qsub -l hostname={:s} -q meta_gpu-{:s}.q {:s}".format(
-            hostname, queue, job_filepath)
+        command = "qsub -l hostname={:s} -q {:s}.q {:s}".format(
+            hostname, queue_name, job_filepath)
     else:
-        command = "qsub -q {:s}.q {:s}".format(queue_name, job_filepath)
+        command = "qsub -q {:s} {:s}".format(queue_name, job_filepath)
     print("Running:\n" + command)
     subprocess.call([command],shell=True)
     

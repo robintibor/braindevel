@@ -284,18 +284,22 @@ class ExperimentsRunner:
             pickle.dump(model, modelfile)
         sys.setrecursionlimit(old_limit)
         
-        # Makekaggle submission file for this subject 
+        # Possibly make kaggle submission file
         if isinstance(dataset, KaggleGraspLiftSet) and splitter.use_test_as_valid:
+            experiment_save_id = int(
+                self._base_save_paths[experiment_index].split("/")[-1])
             create_submission_csv_for_one_subject(self._folder_paths[experiment_index],
                 exp.dataset, iterator,
                 train_dict['exp_args']['preprocessor'], 
-                final_layer, experiment_index + 1)
+                final_layer, experiment_save_id)
         elif isinstance(dataset, AllSubjectsKaggleGraspLiftSet) and splitter.use_test_as_valid:
+            experiment_save_id = int(
+                self._base_save_paths[experiment_index].split("/")[-1])
             create_submission_csv_for_all_subject_model(
                 self._folder_paths[experiment_index],
                 exp.dataset, exp.dataset_provider, iterator,
-                final_layer, experiment_index + 1)
-        elif splitter.use_test_as_valid:
+                final_layer, experiment_save_id)
+        elif hasattr(splitter, 'use_test_as_valid') and splitter.use_test_as_valid:
             raise ValueError("Splitter has use test as valid set, but unknown dataset" 
                 "" + str(dataset))
             
