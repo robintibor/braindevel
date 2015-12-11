@@ -9,6 +9,7 @@ from copy import deepcopy
 from pylearn2.utils import serial
 import os.path
 from matplotlib import gridspec
+import seaborn
 
 def plot_head_signals(signals, sensor_names=None, figsize=(12,7), 
     plot_args=None):
@@ -58,7 +59,8 @@ def plot_head_signals(signals, sensor_names=None, figsize=(12,7),
     return figure
 
 def plot_head_signals_tight(signals, sensor_names=None, figsize=(12,7),
-        plot_args=None, hspace=0.35, sensor_map=tight_C_positions):
+        plot_args=None, hspace=0.35, sensor_map=tight_C_positions,
+        tsplot=False):
     assert sensor_names is None or len(signals) == len(sensor_names), ("need "
         "sensor names for all sensor matrices")
     assert sensor_names is not None
@@ -91,7 +93,10 @@ def plot_head_signals_tight(signals, sensor_names=None, figsize=(12,7),
             ax = figure.add_subplot(rows, cols, subplot_ind, sharey=first_ax,
                 sharex=first_ax)
         signal = signals[i]
-        ax.plot(signal, **plot_args)
+        if tsplot is False:
+            ax.plot(signal, **plot_args)
+        else:
+            seaborn.tsplot(signal.T, ax=ax, **plot_args)
         ax.set_title(sensor_name)
         ax.set_yticks([])
         if len(signal) == 600:
