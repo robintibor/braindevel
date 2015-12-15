@@ -7,8 +7,8 @@ gevent.signal(signal.SIGQUIT, gevent.kill)
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect(("127.0.0.1", 1234))
 
-s.send(np.array([2], dtype=np.int32).tobytes())
-s.send(np.array([3], dtype=np.int32).tobytes())
+s.send(np.array([32], dtype=np.int32).tobytes())
+s.send(np.array([50], dtype=np.int32).tobytes())
 while True:
-    s.send(np.array([[0.0, 1.0, 2.0], [3.0,4.0,5.0]], dtype=np.float32).tobytes(order='F'))
-    gevent.sleep(1)
+    s.send(np.array(np.ones((2,50), dtype=np.float32)).tobytes(order='F'))
+    gevent.sleep(0.01)
