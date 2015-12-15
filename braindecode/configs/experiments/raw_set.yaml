@@ -7,21 +7,20 @@
                     load_sensor_names: $load_sensor_names,
                 },
                 segment_ival: [$trial_start, $trial_stop],
-                cnt_preprocessors: [
-                    [
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            cleaner: $cleaner,
+            sensor_names: $sensor_names,
+        },
+        default_cnt_preprocessors: [[
                         !!python/name:braindecode.mywyrm.processing.resample_cnt , 
                         {'newfs': $resample_fs},
                     ],
                     [
                         !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
                         {'low_cut_off_hz': $low_cut_off_hz}
-                    ],
-                ],
-                marker_def: $marker_def,
-            },
-            cleaner: $cleaner,
-            sensor_names: $sensor_names,
-        },
+        ]],
         markers_4_class: {'1': [1], '2': [2], '3': [3], '4': [4]},
         markers_3_class: {'1': [1], '2': [2], '3': [3]},
         no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
@@ -41,6 +40,7 @@
         four_eog_sensors: ['EOG_R', 'EOG_D','EOG_U','EOG_L'], # todo:make it work again eventually...
     },
     variants: [[{
+        cnt_preprocessors: [$default_cnt_preprocessors],
         trial_start: [0],
         trial_stop: [4000],
         load_sensor_names: ["null"],

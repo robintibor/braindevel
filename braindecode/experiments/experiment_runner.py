@@ -284,6 +284,9 @@ class ExperimentsRunner:
             pickle.dump(model, modelfile)
         sys.setrecursionlimit(old_limit)
         
+        param_file_name = model_file_name.replace('.pkl', '.npy')
+        np.save(param_file_name, lasagne.layers.get_all_param_values(model))
+        
         # Possibly make kaggle submission file
         if isinstance(dataset, KaggleGraspLiftSet) and splitter.use_test_as_valid:
             experiment_save_id = int(

@@ -9,6 +9,19 @@ import scikits.samplerate
 import re
 import wyrm.types
 
+def exponential_standardize_cnt(cnt):
+    cnt_data = cnt.data
+    init_block_size=8000
+    factor_new = 0.001
+    means = exponential_running_mean(cnt_data, factor_new=factor_new,
+        init_block_size=init_block_size, axis=None)
+    demeaned = cnt_data - means
+    stds = np.sqrt(exponential_running_var_from_demeaned(
+        demeaned, factor_new, init_block_size=init_block_size, axis=None))
+    eps = 1e-4
+    standardized_data = demeaned / np.maximum(stds, eps)
+    return cnt.copy(data=standardized_data)
+
 def online_standardize_epo(epo_train, epo_test):
     standard_dim_inds=(0,1)
     std_eps = 1e-4
