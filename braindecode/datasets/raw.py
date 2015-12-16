@@ -12,10 +12,11 @@ class SignalMatrix(DenseDesignMatrix):
     def __init__(self, signal_processor,
         sensor_names='all', limits=None, start=None, stop=None,
         axes=('b', 'c', 0, 1),
-        unsupervised_preprocessor=None):
+        unsupervised_preprocessor=None,
+        sort_topological=True):
 
         # sort sensors topologically to allow networks to exploit topology
-        if (sensor_names is not None) and (sensor_names  is not 'all'):
+        if (sensor_names is not None) and (sensor_names  is not 'all') and sort_topological:
             sensor_names = sort_topologically(sensor_names)
         self.__dict__.update(locals())
         del self.self       

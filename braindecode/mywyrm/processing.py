@@ -18,7 +18,7 @@ def exponential_standardize_cnt(cnt):
     demeaned = cnt_data - means
     stds = np.sqrt(exponential_running_var_from_demeaned(
         demeaned, factor_new, init_block_size=init_block_size, axis=None))
-    eps = 1e-7
+    eps = 1e-4
     standardized_data = demeaned / np.maximum(stds, eps)
     return cnt.copy(data=standardized_data)
 

@@ -24,7 +24,7 @@ class BBCIDataset(object):
         with h5py.File(self.filename, 'r') as h5file:
             samples = int(h5file['nfo']['T'][0,0])
             cnt_signal_shape = (samples, len(wanted_chan_inds))
-            continuous_signal = np.empty(cnt_signal_shape, dtype=np.float64)
+            continuous_signal = np.empty(cnt_signal_shape, dtype=np.float32)
             for chan_ind_arr, chan_ind_set  in enumerate(wanted_chan_inds):
                 chan_set_name = 'ch' + str(chan_ind_set + 1)
                 # first 0 to unpack into vector, before it is 1xN matrix

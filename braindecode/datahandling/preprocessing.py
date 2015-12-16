@@ -30,7 +30,8 @@ def exponential_running_mean(data, factor_new, start_mean=None,
     You can either specify a start mean or an init_block_size to 
     compute the start mean of. 
     In any case one mean per datapoint in axis 0 is returned.
-    If axis is None, no mean is computed but trial is simply used as is."""
+    If axis is None, no mean is computed per datapoint but datapoint
+    is simply used as is."""
     assert not (start_mean is None and init_block_size is None), (
         "Need either an init block or a start mean")
     assert start_mean is None or init_block_size is None, ("Can only use start mean "
