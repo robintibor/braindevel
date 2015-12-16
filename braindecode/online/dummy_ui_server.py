@@ -1,15 +1,13 @@
 import gevent.server
 import signal
-import numpy as np
 
 def handle(socket, address):
     print ("new connection")
     # using a makefile because we want to use readline()
+    socket_file = socket.makefile()
     while True:
-        i_sample = socket.recv(8)
-        i_sample = np.fromstring(i_sample, dtype=np.int64)
-        preds = socket.recv(4 * 4)
-        preds = np.fromstring(preds, dtype=np.float32)
+        i_sample = socket_file.readline()
+        preds = socket_file.readline()
         print i_sample
         print preds
     
