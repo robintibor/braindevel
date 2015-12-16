@@ -6,7 +6,6 @@ import lasagne
 from pylearn2.config import yaml_parse
 from braindecode.online.predictor import OnlinePredictor
 from gevent import socket
-
 log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
@@ -44,10 +43,9 @@ class PredictionServer(gevent.server.StreamServer):
                 pred, i_sample = self.predictor.pop_last_prediction_and_sample_ind()
                 log.info("Prediction for sample {:d}:\n{:s}".format(
                     i_sample, pred))
-                
+
                 answer_socket.sendall("{:d}\n".format(i_sample))#, dtype=np.int32).tobytes())
                 answer_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
-                #answer_socket.sendall(pred.astype(np.float32).tobytes())
                 
     
 if __name__ == '__main__':

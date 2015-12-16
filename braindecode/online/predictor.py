@@ -35,9 +35,11 @@ class OnlinePredictor(object):
             next_means = exponential_running_mean(samples, factor_new=0.001,
                 start_mean=self.running_mean)
             demeaned = samples - next_means
-            next_vars = exponential_running_var_from_demeaned(samples,
+            next_vars = exponential_running_var_from_demeaned(demeaned,
                 factor_new=0.001, start_var=self.running_var)
             standardized = demeaned / np.maximum(eps, np.sqrt(next_vars))
+            self.running_mean = next_means[-1]
+            self.running_var = next_vars[-1]
             return standardized
         else:
             self.running_mean = np.mean(samples, axis=0)

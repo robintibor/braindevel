@@ -6,6 +6,21 @@ from pylearn2.utils import serial
 from copy import deepcopy
 import scipy.ndimage
 
+def exponential_running_standardize(data, factor_new, init_block_size=None,
+        start_mean=None, start_var=None, axis=None, eps=1e-4):
+    assert ((init_block_size is None and (start_mean is not None) and 
+        (start_var is not None)) or 
+        ((init_block_size is not None) and 
+            start_mean is None and start_var is None)), ("Supply either "
+                "init block size or start values...")
+    means = exponential_running_mean(data, factor_new=factor_new,
+        init_block_size=init_block_size, start_mean=start_mean, axis=axis)
+    demeaned = data - means
+    stds = np.sqrt(exponential_running_var_from_demeaned(
+        demeaned, factor_new=factor_new, init_block_size=init_block_size,
+        start_var=start_var, axis=axis))
+    standardized_data = demeaned / np.maximum(stds, eps)
+    return standardized_data
 
 def exponential_running_mean(data, factor_new, start_mean=None,
     init_block_size=None, axis=None):
@@ -20,7 +35,7 @@ def exponential_running_mean(data, factor_new, start_mean=None,
         "Need either an init block or a start mean")
     assert start_mean is None or init_block_size is None, ("Can only use start mean "
                                                            "or init block size")
-    assert factor_new <= 1.0    
+    assert factor_new <= 1.0
     assert factor_new >= 0.0
     if isinstance(axis, int):
         axis = (axis,)
@@ -41,7 +56,8 @@ def exponential_running_mean(data, factor_new, start_mean=None,
             axes_for_start_mean = (0,) + axis # also average across init trials
         else:
             axes_for_start_mean = 0
-        current_mean = np.mean(start_data, axis=axes_for_start_mean)
+        current_mean = np.mean(start_data, keepdims=True, 
+            axis=axes_for_start_mean)
         # repeat mean for running means
         running_means[:init_block_size] = current_mean
         i_start = init_block_size
@@ -50,7 +66,10 @@ def exponential_running_mean(data, factor_new, start_mean=None,
         i_start = 0
         
     for i in range(i_start, len(data)):
-        datapoint_mean = np.mean(data[i:i+1], axis=axis) if axis is not None else data[i:i+1]
+        if axis is not None:
+            datapoint_mean = np.mean(data[i:i+1], axis=axis, keepdims=True)
+        else:
+            datapoint_mean = data[i:i+1]
         next_mean = factor_new * datapoint_mean + factor_old * current_mean
         running_means[i] = next_mean
         current_mean = next_mean
@@ -85,7 +104,7 @@ def exponential_running_var_from_demeaned(demeaned_data, factor_new, start_var=N
         else:
             axes_for_start_var = 0
         start_running_var = np.mean(np.square(demeaned_data[0:init_block_size]),
-             axis=axes_for_start_var)
+             axis=axes_for_start_var, keepdims=True)
         running_vars[0:init_block_size] = start_running_var
         current_var = start_running_var
         start_i = init_block_size
@@ -95,7 +114,10 @@ def exponential_running_var_from_demeaned(demeaned_data, factor_new, start_var=N
         
     for i in range(start_i, len(demeaned_data)):
         squared = np.square(demeaned_data[i:i+1])
-        this_var = np.mean(squared,axis=axis) if axis is not None else squared
+        if axis is not None:
+            this_var = np.mean(squared, axis=axis, keepdims=True)
+        else:
+            this_var = squared
         next_var = factor_new * this_var + factor_old * current_var
         running_vars[i] = next_var
         current_var = next_var
