@@ -47,8 +47,8 @@ class BBCIDataset(object):
             # if no sensor names given, take all EEG-chans
             EEG_sensor_names = filter(lambda s: not s.startswith('E'), all_sensor_names)
             EEG_sensor_names = filter(lambda s: not s.startswith('Microphone'), EEG_sensor_names)
-            assert len(EEG_sensor_names) == 128, "Recheck this code if you have different sensors..."
-            #print EEG_sensor_names
+            assert len(EEG_sensor_names) == 128 or len(EEG_sensor_names) == 16, (
+                "Recheck this code if you have different sensors...")
             # sort sensors topologically to allow networks to exploit topology
             self.load_sensor_names = sort_topologically(EEG_sensor_names)
         chan_inds = self.determine_chan_inds(all_sensor_names, 
@@ -77,8 +77,6 @@ class BBCIDataset(object):
         with h5py.File(self.filename, 'r') as h5file:
             event_times_in_ms = h5file['mrk']['time'][:,0]
             event_classes = h5file['mrk']['event']['desc'][0]
-        # expect epoched set with always 2000 samples per epoch 
-        # compare to matlab samples from tonio lab
         cnt.markers =  zip(event_times_in_ms, event_classes)
 
     @staticmethod

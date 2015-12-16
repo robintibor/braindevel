@@ -3,7 +3,8 @@ from wyrm.processing import lfilter, filtfilt
 import numpy as np
 from copy import deepcopy
 from braindecode.datahandling.preprocessing import (exponential_running_mean, 
-    exponential_running_var_from_demeaned, OnlineAxiswiseStandardize)
+    exponential_running_var_from_demeaned, OnlineAxiswiseStandardize,
+    exponential_running_standardize)
 from sklearn.covariance import LedoitWolf as LW
 import scikits.samplerate
 import re
@@ -11,15 +12,12 @@ import wyrm.types
 
 def exponential_standardize_cnt(cnt):
     cnt_data = cnt.data
-    init_block_size=8000
+    init_block_size=1000
     factor_new = 0.001
-    means = exponential_running_mean(cnt_data, factor_new=factor_new,
-        init_block_size=init_block_size, axis=None)
-    demeaned = cnt_data - means
-    stds = np.sqrt(exponential_running_var_from_demeaned(
-        demeaned, factor_new, init_block_size=init_block_size, axis=None))
     eps = 1e-4
-    standardized_data = demeaned / np.maximum(stds, eps)
+    standardized_data = exponential_running_standardize(cnt_data, 
+        factor_new=factor_new, init_block_size=init_block_size, axis=None, 
+        eps=eps)
     return cnt.copy(data=standardized_data)
 
 def online_standardize_epo(epo_train, epo_test):
