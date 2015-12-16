@@ -62,13 +62,15 @@ def parse_command_line_arguments():
         default='172.30.1.145', help='Hostname/IP of the UI server')
     parser.add_argument('--port', action='store',
         default=30000, help='Port of the UI server')
+    parser.add_argument('--modelfile', action='store',
+        default='data/models/raw-net-500-fs/81', 
+        help='Basename of the modelfile')
     args = parser.parse_args()
     return args
 
-def main(ui_hostname, ui_port):
+def main(ui_hostname, ui_port, base_name):
     hostname = ''
     port = 1234
-    base_name = 'data/models/raw-net-500-fs/23'
     params = np.load(base_name + '.npy')
     train_dict = yaml_parse.load(open(base_name + '.yaml', 'r'))
     model = train_dict['layers'][-1]
@@ -88,6 +90,6 @@ if __name__ == '__main__':
     logging.basicConfig()
     gevent.signal(signal.SIGQUIT, gevent.kill)
     args = parse_command_line_arguments()
-    main(args.host, args.port)
+    main(args.host, args.port, args.modelfile)
     
     
