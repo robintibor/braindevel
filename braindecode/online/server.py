@@ -38,7 +38,7 @@ class PredictionServer(gevent.server.StreamServer):
                 array += in_socket.recv(n_bytes - len(array))
             array = np.fromstring(array, dtype=np.float32)
             array = array.reshape(n_rows, n_cols, order='F')
-            self.predictor.receive_sample_block(array.T)
+            self.predictor.receive_samples(array.T)
             if self.predictor.has_new_prediction():
                 pred, i_sample = self.predictor.pop_last_prediction_and_sample_ind()
                 log.info("Prediction for sample {:d}:\n{:s}".format(
