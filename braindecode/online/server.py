@@ -75,7 +75,7 @@ def main(ui_hostname, ui_port, base_name):
     train_dict = yaml_parse.load(open(base_name + '.yaml', 'r'))
     model = train_dict['layers'][-1]
     lasagne.layers.set_all_param_values(model, params)
-    data_processor = StandardizeProcessor(factor_new=1e-4)
+    data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(model)
     predictor = OnlinePredictor(data_processor, online_model, pred_freq=100)
     server = PredictionServer((hostname, port), predictor=predictor,
