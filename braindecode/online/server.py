@@ -48,7 +48,8 @@ class PredictionServer(gevent.server.StreamServer):
                 pred, i_sample = self.predictor.pop_last_prediction_and_sample_ind()
                 log.info("Prediction for sample {:d}:\n{:s}".format(
                     i_sample, pred))
-                ui_socket.sendall("{:d}\n".format(i_sample))
+                # +1 to convert 0-based ot 1-based indexing
+                ui_socket.sendall("{:d}\n".format(i_sample + 1))
                 ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
                 
 

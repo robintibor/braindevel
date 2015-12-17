@@ -12,8 +12,8 @@ class OnlinePredictor(object):
         
     def initialize(self, n_chans):
         self.data_processor.initialize(n_chans)
-        self.i_sample = 0
-        self.i_last_pred = 0
+        self.n_samples = 0
+        self.i_last_pred = -1
         self.last_pred = None
         self.model.initialize()
         self.n_samples_pred_window = self.model.get_n_samples_pred_window()
@@ -21,19 +21,21 @@ class OnlinePredictor(object):
     def receive_samples(self, samples):
         """Expect samples in timexchan format"""
         self.data_processor.process_samples(samples)
-        self.i_sample += len(samples)
+        self.n_samples += len(samples)
         if self.should_do_next_prediction():
             self.predict()
             
     def should_do_next_prediction(self):
-        return (self.i_sample > self.n_samples_pred_window and 
-            self.i_sample > (self.i_last_pred + self.pred_freq))
+        return (self.n_samples >= self.n_samples_pred_window and 
+            self.n_samples > (self.i_last_pred + self.pred_freq))
     
     def predict(self):
         # Compute how many samples we already have past the
         # sample we wanted to predict
-        n_samples_after_pred = min(self.i_sample - self.n_samples_pred_window,
-            self.i_sample - self.i_last_pred - self.pred_freq)
+        # keep in mind: n_samples = n_samples (number of samples)
+        n_samples_after_pred = min(self.n_samples - 
+            self.n_samples_pred_window,
+            self.n_samples - self.i_last_pred - self.pred_freq - 1)
         assert n_samples_after_pred < self.pred_freq, ("Other case "
             "not implemented yet")
         start = -self.n_samples_pred_window - n_samples_after_pred
@@ -42,7 +44,8 @@ class OnlinePredictor(object):
             end = None
         topo = self.data_processor.get_samples(start, end)
         self.last_pred = self.model.predict(topo)
-        self.i_last_pred = self.i_sample - n_samples_after_pred
+        # -1 since we have 0-based indexing in python
+        self.i_last_pred = self.n_samples - n_samples_after_pred - 1
     
     def pop_last_prediction_and_sample_ind(self):
         last_pred = self.last_pred
