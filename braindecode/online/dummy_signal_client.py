@@ -9,10 +9,13 @@ gevent.signal(signal.SIGQUIT, gevent.kill)
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect(("127.0.0.1", 1234))
 
-s.send(np.array([32], dtype=np.int32).tobytes())
-s.send(np.array([50], dtype=np.int32).tobytes())
+n_chans = 32
+n_samples = 50
+s.send(np.array([n_chans], dtype=np.int32).tobytes())
+s.send(np.array([n_samples], dtype=np.int32).tobytes())
 rng = RandomState(874363)
 while True:
-    arr = rng.rand(2,50).astype(np.float32)
+    arr = rng.rand(n_chans,n_samples).astype(np.float32)
     s.send(arr.tobytes(order='F'))
-    gevent.sleep(0.002)
+    # make sleep time with realistic sampling rate
+    gevent.sleep((1 / 500.0) * 50)
