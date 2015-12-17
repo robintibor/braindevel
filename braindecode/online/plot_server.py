@@ -17,7 +17,6 @@ class PlotServer(gevent.server.StreamServer):
                  'AF4', 'AF8', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6',
                  'FC1', 'FCz', 'FC2', 'C3', 'C1', 'Cz', 'C2', 'C4', 'CP3',
                  'CP1', 'CPz', 'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz']
-
         super(PlotServer, self).__init__(listener, handle=handle, spawn=spawn)
 
     def handle(self, in_socket, address):
@@ -32,8 +31,8 @@ class PlotServer(gevent.server.StreamServer):
         n_numbers = n_rows * n_cols
         n_bytes = n_numbers * 4 # float32
         log.info("Numbers in total:  {:d}".format(n_numbers))
-        live_plot = LivePlot()
-        live_plot._initPlots(self.sensor_names)
+        live_plot = LivePlot(plot_freq=150)
+        live_plot.initPlots(self.sensor_names)
 
         while True:
             array = ''
@@ -42,9 +41,6 @@ class PlotServer(gevent.server.StreamServer):
             array = np.fromstring(array, dtype=np.float32)
             array = array.reshape(n_rows, n_cols, order='F')
             live_plot.accept_samples(array.T)
-                
-
-
 
 def main():
     hostname = ''

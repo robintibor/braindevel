@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 import sys
 import argparse
 import numpy as np
+#import seaborn
 
 # prevent seaborn import
 def plot_sensor_signals(signals, sensor_names=None, figsize=None, 
@@ -53,51 +54,72 @@ def plot_sensor_signals(signals, sensor_names=None, figsize=None,
     return figure
 
 class LivePlot:
+    
+    def __init__(self, plot_freq, range_update_freq=None):
+        self._plot_freq = plot_freq
+        self._range_update_freq = range_update_freq
+        if self._range_update_freq is None:
+            self._range_update_freq = self._plot_freq * 6
+    
     def showLivePlots(self, intervalInSec, durationInSec):
         self._plotIntervalInSec = intervalInSec
         self._totalDurationInSec = durationInSec
         self._initPlots(self._sensor_names)
         self._continouslyUpdatePlots()
         
-    def _initPlots(self, sensor_names):
-        self.n_samples = 0
-        self.i_last_plot = 0
-        self.i_last_range_update = 0
+    def initPlots(self, sensor_names):
+        self._sensor_names = sensor_names
+        self._init_figure()
+        self._init_data()
+        self.init_counters()
+        
+
+    def _init_figure(self):
         plt.ion()
         plt.show()
-        n_sensors = len(sensor_names)
-        self._sensor_names = sensor_names
-        self._data = dict()
-        for sensor_name in sensor_names:
-            self._data[sensor_name] = RingBuffer(np.sin(np.linspace(0,10,1000)))
+        n_sensors = len(self._sensor_names)
         self.fig = plot_sensor_signals(np.outer(np.ones(n_sensors), 
             np.sin(np.linspace(0,10,1000))),
             self._sensor_names, figsize=(12,12))
         self.fig.suptitle("EEG Sensors")
+        self.fig.canvas.draw()
 
-        
+    def _init_data(self):
+        self._data = dict()
+        for sensor_name in self._sensor_names:
+            self._data[sensor_name] = RingBuffer(np.sin(np.linspace(0,10,1000)))
+    
+    def init_counters(self):
+        self.n_samples = 0
+        self.i_last_plot = 0
+        self.i_last_range_update = 0
+
     def accept_samples(self, samples):
         """Samples should be in time x chan format"""
         for i_sensor, sensor_name in enumerate(self._sensor_names):
             self._data[sensor_name].extend(samples[:,i_sensor])
         self.n_samples += len(samples)
-        if self.n_samples - self.i_last_range_update > 500:
+        if self.n_samples - self.i_last_range_update > self._range_update_freq:
             self._setRangeOfAllPlotsToMaxMin()
             self.i_last_range_update = self.n_samples
-        if self.n_samples - self.i_last_plot > 250:
+        if self.n_samples - self.i_last_plot > self._plot_freq:
             self._updateAllPlots()
             self.i_last_plot = self.n_samples
-    
+            
+            self.fig.canvas.update()
+            self.fig.canvas.flush_events()
         
     def _updateAllPlots(self):
         for sensor_name in self._sensor_names:
             self._updatePlot(sensor_name, self._data[sensor_name])
-        plt.pause(0.001)
+        #plt.pause(0.001)
 
     def _updatePlot(self, sensor_name, new_data):
         ax = self.fig.axes[self._sensor_names.index(sensor_name)]
         line = ax.lines[0]
         line.set_ydata(new_data)
+        
+        ax.draw_artist(line)
     
     def _continouslyUpdatePlots(self):
         self._lastRangeUpdate = 0
