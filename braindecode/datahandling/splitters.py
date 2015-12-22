@@ -225,10 +225,9 @@ class KaggleTrainValidTestSplitter(TrainValidTestSplitter):
         test_set = DenseDesignMatrixWrapper(
              topo_view=X_test,
              y=y_test, axes=('b','c',0,1))
-        # deepcopy probably not necessary.. just to be safe :))
-        return OrderedDict([('train', deepcopy(train_set)),
-            ('valid', deepcopy(valid_set)), 
-            ('test',  deepcopy(test_set))])
+        return OrderedDict([('train', train_set),
+            ('valid', valid_set), 
+            ('test',  test_set)])
         
 
 class AllSubjectsKaggleTrainValidTestSplitter(TrainValidTestSplitter):

@@ -8,6 +8,8 @@ from collections import deque
 from copy import copy
 from copy import deepcopy
 import sys
+from lasagne.utils import as_tuple
+from lasagne.theano_extensions import padding
 
 def transform_to_normal_net(final_layer):
     """ Transforms cnt/parallel prediction net to a normal net."""
@@ -345,3 +347,129 @@ def get_all_paths(layer, treat_as_input=None):
 
 
     return all_paths
+
+def unfold_filters(channel_weights, kernel_weights):
+    """ Unfolds bc and b01 weights into prober bc01 weights """
+    return T.batched_tensordot(channel_weights.dimshuffle(0,1,'x'),
+        kernel_weights.dimshuffle(0,'x', 1,2), axes=((2), (1)))
+
+class SeparableConv2DLayer(Conv2DLayer):
+    """ Doing a separable convolution (channel and 2d-filter convolution) by unfolding weights.
+    Basically regularizes weights to be a combination of channel weights and 2d-kernels.
+    """
+    def __init__(self, incoming, num_filters, filter_size, stride=(1, 1),
+                 pad=0, untie_biases=False,
+                 W=init.GlorotUniform(), b=init.Constant(0.),
+                 nonlinearity=nonlinearities.rectify,
+                 convolution=T.nnet.conv2d, **kwargs):
+        super(Conv2DLayer, self).__init__(incoming, **kwargs)
+        if nonlinearity is None:
+            self.nonlinearity = nonlinearities.identity
+        else:
+            self.nonlinearity = nonlinearity
+
+        self.num_filters = num_filters
+        self.filter_size = as_tuple(filter_size, 2)
+        self.stride = as_tuple(stride, 2)
+        self.untie_biases = untie_biases
+        self.convolution = convolution
+
+        if pad == 'same':
+            if any(s % 2 == 0 for s in self.filter_size):
+                raise NotImplementedError(
+                    '`same` padding requires odd filter size.')
+
+        if pad == 'valid':
+            self.pad = (0, 0)
+        elif pad in ('full', 'same'):
+            self.pad = pad
+        else:
+            self.pad = as_tuple(pad, 2, int)
+
+        self.W = self.add_param(W, self.get_W_shape(), name="W")
+        if b is None:
+            self.b = None
+        else:
+            if self.untie_biases:
+                biases_shape = (num_filters, self.output_shape[2], self.
+                                output_shape[3])
+            else:
+                biases_shape = (num_filters,)
+            self.b = self.add_param(b, biases_shape, name="b",
+                                    regularizable=False)
+
+    def get_W_shape(self):
+        """Get the shape of the weight matrix `W`.
+        Returns
+        -------
+        tuple of int
+            The shape of the weight matrix.
+        """
+        num_input_channels = self.input_shape[1]
+        return (self.num_filters, num_input_channels + 
+                self.filter_size[0] * self.filter_size[1])
+
+
+    def get_unfolded_W_shape(self):
+        num_input_channels = self.input_shape[1]
+        return (self.num_filters, num_input_channels, self.filter_size[0],
+                self.filter_size[1])
+    
+    def get_output_for(self, input, input_shape=None, **kwargs):
+        # The optional input_shape argument is for when get_output_for is
+        # called directly with a different shape than self.input_shape.
+        if input_shape is None:
+            input_shape = self.input_shape
+            
+        n_chans = self.input_shape[1]
+        channel_weights = self.W[:, :n_chans]
+        kernel_weights = self.W[:,n_chans:]
+        kernel_weights = kernel_weights.reshape((self.num_filters,
+            self.filter_size[0], self.filter_size[1]))
+        
+        unfolded_W = unfold_filters(channel_weights, kernel_weights)
+
+        if self.stride == (1, 1) and self.pad == 'same':
+            # simulate same convolution by cropping a full convolution
+            conved = self.convolution(input, unfolded_W, subsample=self.stride,
+                                      image_shape=input_shape,
+                                      filter_shape=self.get_unfolded_W_shape(),
+                                      border_mode='full')
+            crop_x = self.filter_size[0] // 2
+            crop_y = self.filter_size[1] // 2
+            conved = conved[:, :, crop_x:-crop_x or None,
+                            crop_y:-crop_y or None]
+        else:
+            # no padding needed, or explicit padding of input needed
+            if self.pad == 'full':
+                border_mode = 'full'
+                pad = [(0, 0), (0, 0)]
+            elif self.pad == 'same':
+                border_mode = 'valid'
+                pad = [(self.filter_size[0] // 2,
+                        self.filter_size[0] // 2),
+                       (self.filter_size[1] // 2,
+                        self.filter_size[1] // 2)]
+            else:
+                border_mode = 'valid'
+                pad = [(self.pad[0], self.pad[0]), (self.pad[1], self.pad[1])]
+            if pad != [(0, 0), (0, 0)]:
+                input = padding.pad(input, pad, batch_ndim=2)
+                input_shape = (input_shape[0], input_shape[1],
+                               None if input_shape[2] is None else
+                               input_shape[2] + pad[0][0] + pad[0][1],
+                               None if input_shape[3] is None else
+                               input_shape[3] + pad[1][0] + pad[1][1])
+            conved = self.convolution(input, unfolded_W, subsample=self.stride,
+                                      image_shape=input_shape,
+                                      filter_shape=self.get_unfolded_W_shape(),
+                                      border_mode=border_mode)
+
+        if self.b is None:
+            activation = conved
+        elif self.untie_biases:
+            activation = conved + self.b.dimshuffle('x', 0, 1, 2)
+        else:
+            activation = conved + self.b.dimshuffle('x', 0, 'x', 'x')
+
+        return self.nonlinearity(activation)

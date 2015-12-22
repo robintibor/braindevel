@@ -2,23 +2,11 @@
     extends: ['configs/experiments/grasp_lift/all_subjects/deeper_more_time.yaml',
     'configs/experiments/grasp_lift/cnt_raw_net_network_in_network.yaml'],
     variants: [[{
-        batch_size: [42],
+        batch_size: [45],
         save_path: ['data/models/grasp-lift/all-sub/five-layer-net-in-net/'],
-        num_filters: [80],
-        
-        ## new:
-#        variants: [[{
-#            filter_time_length: [12],
-#            final_dense_length: [10],
-#        },
-#        {
-#            filter_time_length: [8],
-#            final_dense_length: [12],
-#        },
-#        {
-#            filter_time_length: [20],
-#            final_dense_length: [6],
-#        },
-#        ]]
+        num_filters: [80,120,140],# 80
+        preprocessor: ["null"],
+        standardize_series_wise: [False],
+        remove_baseline_mean: [True],        
     }]],
 }
