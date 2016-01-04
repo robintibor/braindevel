@@ -18,14 +18,14 @@
   variants: [[{
         dataset_filename: [
             '/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/DeBaHL1_1-21.BBCI.mat',
-            #'/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/FeHeHL1_1-21.BBCI.mat',     
+            '/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/FeHeHL1_1-21.BBCI.mat',     
             '/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/LeMoHL1_1-21.BBCI.mat',
             '/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/MaVoHL1_1-21.BBCI.mat',
             '/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/ReKaHL1_1-21.BBCI.mat',  
-            #'/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/SiCoHL1_1-22.BBCI.mat',
+            '/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/SiCoHL1_1-22.BBCI.mat',
             '/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/ThHoHL1_1-21.BBCI.mat',  
-            #'/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/TiMoHL1_1-21.BBCI.mat',
-            #'/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/VeRaHL1_1-24.BBCI.mat',
+            '/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/TiMoHL1_1-21.BBCI.mat',
+            '/home/fiederer/lavinia/braindecode/braindecode/data/semantic-classes/VeRaHL1_1-24.BBCI.mat',
         ],
         loader_type: [BBCIDataset],
         sensor_names: [$C_sensors],

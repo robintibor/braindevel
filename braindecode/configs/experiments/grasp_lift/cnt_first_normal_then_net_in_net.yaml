@@ -1,14 +1,14 @@
 {
     templates: {
-        cnt_standard_cnn_net: [ 
+        cnt_raw_net_deep_batch_norm: [ 
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, $input_time_length, in_cols]
             },
-            &combined_conv_1 !obj:braindecode.veganlasagne.layers.$first_layer_type {
+            &combined_conv_1 !obj:lasagne.layers.Conv2DLayer {
                 incoming: *in_layer,
                 num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
-                nonlinearity: $first_nonlin ,
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
                 name: 'combined_conv_1',
             },
             &batch_norm_1 !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
@@ -34,9 +34,15 @@
                 incoming: *log_1,
                 p: 0.5,
             },
-            
-            &combined_conv_2 !obj:lasagne.layers.Conv2DLayer {
+            &filt_conv_2 !obj:lasagne.layers.Conv2DLayer {
                 incoming: *drop_feature_1,
+                num_filters: $num_filters,
+                filter_size: [1, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'combined_conv_2',
+            },
+            &combined_conv_2 !obj:lasagne.layers.Conv2DLayer {
+                incoming: *filt_conv_2,
                 num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: $later_nonlin ,
@@ -65,8 +71,15 @@
                 incoming: *log_2,
                 p: 0.5,
             },
-            &combined_conv_3 !obj:lasagne.layers.Conv2DLayer {
+            &filt_conv_3 !obj:lasagne.layers.Conv2DLayer {
                 incoming: *drop_feature_2,
+                num_filters: $num_filters,
+                filter_size: [1, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'combined_conv_3',
+            },
+            &combined_conv_3 !obj:lasagne.layers.Conv2DLayer {
+                incoming: *filt_conv_3,
                 num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: $later_nonlin ,
@@ -95,8 +108,15 @@
                 incoming: *log_3,
                 p: 0.5,
             },
-            &combined_conv_4 !obj:lasagne.layers.Conv2DLayer {
+            &filt_conv_4 !obj:lasagne.layers.Conv2DLayer {
                 incoming: *drop_feature_3,
+                num_filters: $num_filters,
+                filter_size: [1, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'combined_conv_4',
+            },
+            &combined_conv_4 !obj:lasagne.layers.Conv2DLayer {
+                incoming: *filt_conv_4,
                 num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: $later_nonlin ,
@@ -125,8 +145,15 @@
                 incoming: *log_4,
                 p: 0.5,
             },
-            &combined_conv_5 !obj:lasagne.layers.Conv2DLayer {
+            &filt_conv_5 !obj:lasagne.layers.Conv2DLayer {
                 incoming: *drop_feature_4,
+                num_filters: $num_filters,
+                filter_size: [1, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'combined_conv_5',
+            },
+            &combined_conv_5 !obj:lasagne.layers.Conv2DLayer {
+                incoming: *filt_conv_5,
                 num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: $later_nonlin ,
@@ -185,9 +212,8 @@
         safe_log: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
     },
     variants: [[{
-        first_layer_type: [Conv2DLayer],
         layer_names_to_norms: [$raw_layer_names_to_norms],
-        layers: [$cnt_standard_cnn_net],
+        layers: [$cnt_raw_net_deep_batch_norm],
         final_norm: [0.5],
         conv_norm: [2.0],
         batch_norm_alpha: [0.1], #0.01,0.5,0.9 were tested and slihtly worse... no big differences though

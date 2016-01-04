@@ -10,11 +10,9 @@ import scikits.samplerate
 import re
 import wyrm.types
 
-def exponential_standardize_cnt(cnt):
+def exponential_standardize_cnt(cnt, init_block_size=1000, factor_new=1e-3,
+    eps=1e-4):
     cnt_data = cnt.data
-    init_block_size=1000
-    factor_new = 0.001
-    eps = 1e-4
     standardized_data = exponential_running_standardize(cnt_data, 
         factor_new=factor_new, init_block_size=init_block_size, axis=None, 
         eps=eps)
