@@ -14,8 +14,7 @@ log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
     def __init__(self, listener, predictor, ui_hostname, ui_port, 
-        handle=None, backlog=None, spawn='default',
-        **ssl_args):
+            handle=None, backlog=None, spawn='default', **ssl_args):
         self.predictor = predictor
         self.ui_hostname = ui_hostname
         self.ui_port = ui_port
@@ -25,6 +24,7 @@ class PredictionServer(gevent.server.StreamServer):
         log.info('New connection from {:s}!'.format(str(address)))
         ui_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         ui_socket.connect((self.ui_hostname, self.ui_port))
+        print("connected to zu server")
         assert np.little_endian, "Should be in little endian"
         n_rows = in_socket.recv(4)
         n_rows = np.fromstring(n_rows, dtype=np.int32)[0]
@@ -51,20 +51,18 @@ class PredictionServer(gevent.server.StreamServer):
                 # +1 to convert 0-based ot 1-based indexing
                 ui_socket.sendall("{:d}\n".format(i_sample + 1))
                 ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
-                
-
 
 def parse_command_line_arguments():
     parser = argparse.ArgumentParser(
         description="""Launch server for online decoding.
-        Example: online/server.py --host 172.30.1.145 --port 30000"""
+        Example: online/server.py --host 172.30.2.129 --port 30000"""
     )
     parser.add_argument('--host', action='store',
-        default='172.30.1.145', help='Hostname/IP of the UI server')
+        default='172.30.2.129', help='Hostname/IP of the UI server')
     parser.add_argument('--port', action='store',
         default=30000, help='Port of the UI server')
     parser.add_argument('--modelfile', action='store',
-        default='data/models/raw-net-500-fs/81', 
+        default='data/models/raw-net-512/5', 
         help='Basename of the modelfile')
     args = parser.parse_args()
     return args

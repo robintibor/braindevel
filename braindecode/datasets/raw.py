@@ -1,7 +1,7 @@
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 import numpy as np
 from wyrm.processing import select_channels, select_epochs
-from mywyrm.processing import segment_dat_fast
+from braindecode.mywyrm.processing import segment_dat_fast
 import logging
 from braindecode.datasets.sensor_positions import sort_topologically
 from pylearn2.format.target_format import OneHotFormatter
