@@ -1,6 +1,7 @@
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 import numpy as np
 from wyrm.processing import select_channels, select_epochs
+from mywyrm.processing import segment_dat_fast
 import logging
 from braindecode.datasets.sensor_positions import sort_topologically
 from pylearn2.format.target_format import OneHotFormatter
@@ -124,8 +125,15 @@ class CleanSignalMatrix(SignalMatrix):
         log.info("Cleaning set...")
         (rejected_chans, rejected_trials, clean_trials) = self.cleaner.clean(
             self.signal_processor.cnt)
+        # In case this is not true due to different segment ivals of
+        # cleaner and real data, try to standardize variable name for
+        # segment ival of cleaner, e.g. to segment_ival
+        all_trial_epo = segment_dat_fast(self.signal_processor.cnt,
+            self.signal_processor.marker_def,
+                 self.signal_processor.segment_ival)
+        
         assert np.array_equal(np.union1d(clean_trials, rejected_trials),
-            range(len(self.signal_processor.cnt.markers))), ("All trials should "
+            range(all_trial_epo.data.shape[0])), ("All trials should "
                 "either be clean or rejected.")
         assert np.intersect1d(clean_trials, rejected_trials).size == 0, ("All "
             "trials should either be clean or rejected.")

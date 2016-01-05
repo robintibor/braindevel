@@ -23,7 +23,7 @@
         ]],
         markers_4_class: {'1': [1], '2': [2], '3': [3], '4': [4]},
         markers_3_class: {'1': [1], '2': [2], '3': [3]},
-        no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
+        no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { segment_ival: [$trial_start, $trial_stop]},
         # TODO: whole cleaner now fixed for 3class and eog 4 sensors.. make it work flexible again..
         normal_cleaner: !obj:braindecode.mywyrm.clean.SingleSetCleaner {
             eog_set: !obj:braindecode.datasets.loaders.$loader_type {

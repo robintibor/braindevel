@@ -42,7 +42,8 @@ class ExperimentsRunner:
         if (self._quiet):
             self._log_only_warnings()
         self._all_train_strs = all_train_strs
-        log.info("Running {:d} experiments".format(len(all_train_strs)))
+        log.info("Running {:d} experiments".format(self._get_stop_id() + 1 - 
+            self._get_start_id()))
         self._create_base_save_paths_for_all_experiments()
         self._run_all_experiments()
     
