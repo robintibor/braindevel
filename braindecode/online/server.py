@@ -20,12 +20,13 @@ log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
     def __init__(self, listener, predictor, ui_hostname, ui_port, 
-        plot_sensors,
+        plot_sensors, save_data,
             handle=None, backlog=None, spawn='default', **ssl_args):
         self.predictor = predictor
         self.ui_hostname = ui_hostname
         self.ui_port = ui_port
         self.plot_sensors = plot_sensors
+        self.save_data = save_data
         super(PredictionServer, self).__init__(listener, handle=handle, spawn=spawn)
 
 
@@ -47,8 +48,9 @@ class PredictionServer(gevent.server.StreamServer):
             n_rows, n_cols)
         
 
-        self.make_predictions_and_save_data(self, chan_names, n_rows, n_cols, n_bytes,
+        self.make_predictions_and_save_data(chan_names, n_rows, n_cols, n_bytes,
         in_socket, ui_socket)
+        self.stop()
 
     def connect_to_ui_server(self):
         ui_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -129,7 +131,8 @@ class PredictionServer(gevent.server.StreamServer):
 
     def make_predictions_and_save_data(self, chan_names, n_rows, n_cols, n_bytes,
         in_socket, ui_socket):
-        data_saver = DataSaver(chan_names)
+        if self.save_data:
+            data_saver = DataSaver(chan_names)
         self.predictor.initialize(n_chans=n_rows - 1) # one is a marker chan(!)
         while True:
             array = self.read_until_bytes_received_or_enter_pressed(in_socket,
@@ -140,7 +143,8 @@ class PredictionServer(gevent.server.StreamServer):
             array = np.fromstring(array, dtype=np.float32)
             array = array.reshape(n_rows, n_cols, order='F')
             sensor_samples = array[:-1,:]
-            data_saver.append_samples(array.T)
+            if self.save_data:
+                data_saver.append_samples(array.T)
             self.predictor.receive_samples(sensor_samples.T)
             if self.predictor.has_new_prediction():
                 pred, i_sample = self.predictor.pop_last_prediction_and_sample_ind()
@@ -149,7 +153,8 @@ class PredictionServer(gevent.server.StreamServer):
                 # +1 to convert 0-based to 1-based indexing
                 ui_socket.sendall("{:d}\n".format(i_sample + 1))
                 ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
-        data_saver.save()
+        if self.save_data:
+            data_saver.save()
 
 class DataSaver(object):
     """ Remember and save data streamed during an online session."""
@@ -189,10 +194,12 @@ def parse_command_line_arguments():
         help='Basename of the modelfile')
     parser.add_argument('--noplot', action='store_true',
         help="Don't show plots of the sensors first...")
+    parser.add_argument('--nosave', action='store_true',
+        help="Don't save data...")
     args = parser.parse_args()
     return args
 
-def main(ui_hostname, ui_port, base_name, plot_sensors):
+def main(ui_hostname, ui_port, base_name, plot_sensors, save_data):
     assert np.little_endian, "Should be in little endian"
     hostname = ''
     port = 1234
@@ -204,7 +211,8 @@ def main(ui_hostname, ui_port, base_name, plot_sensors):
     online_model = OnlineModel(model)
     predictor = OnlinePredictor(data_processor, online_model, pred_freq=100)
     server = PredictionServer((hostname, port), predictor=predictor,
-        ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors)
+        ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
+        save_data=save_data)
     log.setLevel("DEBUG")
     log.info("Starting server")
     server.start()
@@ -215,6 +223,6 @@ if __name__ == '__main__':
     logging.basicConfig()
     gevent.signal(signal.SIGQUIT, gevent.kill)
     args = parse_command_line_arguments()
-    main(args.host, args.port, args.modelfile, not args.noplot)
+    main(args.host, args.port, args.modelfile, not args.noplot, not args.nosave)
     
     
