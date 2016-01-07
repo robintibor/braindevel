@@ -48,7 +48,7 @@ class PredictionServer(gevent.server.StreamServer):
                 pred, i_sample = self.predictor.pop_last_prediction_and_sample_ind()
                 log.info("Prediction for sample {:d}:\n{:s}".format(
                     i_sample, pred))
-                # +1 to convert 0-based ot 1-based indexing
+                # +1 to convert 0-based to 1-based indexing
                 ui_socket.sendall("{:d}\n".format(i_sample + 1))
                 ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
 
@@ -62,7 +62,7 @@ def parse_command_line_arguments():
     parser.add_argument('--port', action='store',
         default=30000, help='Port of the UI server')
     parser.add_argument('--modelfile', action='store',
-        default='data/models/raw-net-512/5', 
+        default='data/models/raw-net-512/3', 
         help='Basename of the modelfile')
     args = parser.parse_args()
     return args

@@ -21,16 +21,14 @@ class RememberPredictionsServer(gevent.server.StreamServer):
         # using a makefile because we want to use readline()
         socket_file = socket.makefile()
         while True:
-            print "Number of predictions", len(self.i_pred_samples) + 1
             i_sample = socket_file.readline()
             preds = socket_file.readline()
-            print i_sample
-            print preds
+            print "Number of predictions", len(self.i_pred_samples) + 1
+            print i_sample[:-1]
+            print preds[:-1]
             self.all_preds.append(preds)
             self.i_pred_samples.append(i_sample)
             print("")
-    
-
     
 def start_remember_predictions_server():
     hostname = ''
@@ -39,7 +37,6 @@ def start_remember_predictions_server():
     server.start()
     print("Started server")
     return server
-
 
 def send_file_data():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -52,15 +49,15 @@ def send_file_data():
     
     
     offline_execution_set = BBCIDataset('data/four-sec-dry-32-sensors/' + 
-        'MaVoMuSc_dryEEG32S003.BBCI.mat')
+        'MaVoMuSc_dryEEG32S001_2.BBCI.mat')
 
     cnt = offline_execution_set.load()
     cnt_data = cnt.data.astype(np.float32)
     
     
     i_block = 0
-    while i_block < 500:
-        arr = cnt_data[i_block * n_samples:i_block*n_samples +n_samples,:].T
+    while i_block < 400:
+        arr = cnt_data[i_block * n_samples:i_block*n_samples + n_samples,:].T
         s.send(arr.tobytes(order='F'))
         i_block +=1
         gevent.sleep(0)
@@ -109,19 +106,17 @@ if __name__ == "__main__":
     
     y_signal = create_y_signal(cnt, trial_len=512*4)
     i_pred_samples = [int(line[:-1]) for line in server.i_pred_samples]
-    i_pred_samples_arr = np.array(i_pred_samples)
+    # -1 to convert from 1 to 0-based indexing
+    i_pred_samples_arr = np.array(i_pred_samples) - 1
     preds = [[float(num_str) for num_str in line_str[:-1].split(' ')] 
         for line_str in server.all_preds]
     preds_arr = np.array(preds)
-    
-    input_start = 0
-    input_end = i_pred_samples_arr[-1] + 500
+
+    input_start = 499
+    input_end = i_pred_samples_arr[-1] + 1
     interpolated_classes = y_signal[input_start:input_end].T
     interpolate_fn = interpolate.interp1d(i_pred_samples_arr, preds_arr.T,
                                          bounds_error=False, fill_value=0)
     interpolated_preds = interpolate_fn(range(input_start,input_end))
     corrcoeffs = np.corrcoef(interpolated_preds, interpolated_classes)[:4,4:]
     print corrcoeffs
-    
-    
-  
