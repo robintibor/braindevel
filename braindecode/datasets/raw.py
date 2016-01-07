@@ -7,6 +7,20 @@ from braindecode.datasets.sensor_positions import sort_topologically
 from pylearn2.format.target_format import OneHotFormatter
 log = logging.getLogger(__name__)
 
+def load_cnt_processed(full_set):
+    full_set.load_full_set()
+    full_set.determine_clean_trials_and_chans()
+    full_set.select_sensors()
+    log.info("Preprocessing set...")
+    full_set.signal_processor.preprocess_continuous_signal()
+    return full_set.signal_processor.cnt
+
+def load_cnt_unprocessed(full_set):
+    full_set.load_full_set()
+    full_set.determine_clean_trials_and_chans()
+    full_set.select_sensors()
+    return full_set.signal_processor.cnt
+
 class SignalMatrix(DenseDesignMatrix):
     """ This loads EEG signal datasets and puts them in a Dense Design Matrix.
     Signal processor needs to load """

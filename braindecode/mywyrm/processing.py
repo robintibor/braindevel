@@ -10,6 +10,23 @@ import scikits.samplerate
 import re
 import wyrm.types
 
+def create_y_signal(cnt, n_samples_per_trial):
+    fs = cnt.fs
+    event_samples_and_classes = [(int(np.round(m[0] * fs/1000.0)), m[1]) for m in cnt.markers]
+    return get_y_signal(cnt.data, event_samples_and_classes, n_samples_per_trial)
+
+def get_y_signal(cnt_data, event_samples_and_classes, n_samples_per_trial):
+        # Generate class "signals", rest always inbetween trials
+    y = np.zeros((cnt_data.shape[0], 4), dtype=np.int32)
+
+    y[:,2] = 1 # put rest class everywhere
+    for i_sample, marker in event_samples_and_classes:
+        i_class = marker - 1
+        # set rest to zero, correct class to 1
+        y[i_sample:i_sample+n_samples_per_trial,2] = 0 
+        y[i_sample:i_sample+n_samples_per_trial,i_class] = 1 
+    return y
+
 def exponential_standardize_cnt(cnt, init_block_size=1000, factor_new=1e-3,
     eps=1e-4):
     cnt_data = cnt.data

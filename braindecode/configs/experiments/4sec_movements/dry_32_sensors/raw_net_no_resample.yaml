@@ -13,8 +13,8 @@
     variants: [[
     {
         low_cut_off_hz: [0.5],
-        n_samples_per_window: [500],
-        n_sample_stride: [150],
+        n_samples_per_window: [512],
+        n_sample_stride: [50],
         save_path: ['data/models/4sec-movements/windows/dry-32-sensors/'],
         sensor_names: ["null"],
         cnt_preprocessors: [$cnt_standardize],

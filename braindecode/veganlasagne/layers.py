@@ -10,6 +10,20 @@ from copy import deepcopy
 import sys
 from lasagne.utils import as_tuple
 from lasagne.theano_extensions import padding
+import theano
+
+def calculate_predictions(data, start,stop,stride, window_len, pred_fn):
+    preds = []
+    for i_end_sample in xrange(start,stop,stride):
+        i_start_sample = i_end_sample - window_len + 1
+        preds.append(pred_fn(data[i_start_sample:i_end_sample+1].T[None,:,:,None]))
+    return np.array(preds).squeeze()
+    
+def create_pred_fn(model):
+    output = lasagne.layers.get_output(model, deterministic=True)
+    inputs = lasagne.layers.get_all_layers(model)[0].input_var
+    pred_fn = theano.function([inputs], output)
+    return pred_fn
 
 def transform_to_normal_net(final_layer):
     """ Transforms cnt/parallel prediction net to a normal net."""
