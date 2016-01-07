@@ -30,40 +30,25 @@ class PredictionServer(gevent.server.StreamServer):
 
 
     def handle(self, in_socket, address):
+        # Connect to UI Server
         log.info('New connection from {:s}!'.format(str(address)))
         ui_socket = self.connect_to_ui_server()
         log.info("Connected to UI Server")
+        
+        # Receive Header
         chan_names, n_rows, n_cols = self.receive_header(in_socket)
         n_numbers = n_rows * n_cols
         n_bytes = n_numbers * 4 # float32
         log.info("Numbers in total:  {:d}".format(n_numbers))
         
+        # Possibly plot
         if self.plot_sensors:
             self.plot_sensors_until_enter_press(chan_names, in_socket, n_bytes,
             n_rows, n_cols)
         
 
-        data_saver = DataSaver(chan_names)
-        self.predictor.initialize(n_chans=n_rows - 1) # one is a marker chan(!)
-        while True:
-            array = self.read_until_bytes_received_or_enter_pressed(in_socket,
-                n_bytes)
-            if array is None:
-                # enter was pressed! quit! :)
-                break;
-            array = np.fromstring(array, dtype=np.float32)
-            array = array.reshape(n_rows, n_cols, order='F')
-            sensor_samples = array[:-1,:]
-            data_saver.append_samples(array.T)
-            self.predictor.receive_samples(sensor_samples.T)
-            if self.predictor.has_new_prediction():
-                pred, i_sample = self.predictor.pop_last_prediction_and_sample_ind()
-                log.info("Prediction for sample {:d}:\n{:s}".format(
-                    i_sample, pred))
-                # +1 to convert 0-based to 1-based indexing
-                ui_socket.sendall("{:d}\n".format(i_sample + 1))
-                ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
-        data_saver.save()
+        self.make_predictions_and_save_data(self, chan_names, n_rows, n_cols, n_bytes,
+        in_socket, ui_socket)
 
     def connect_to_ui_server(self):
         ui_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -138,10 +123,33 @@ class PredictionServer(gevent.server.StreamServer):
                 if s == sys.stdin:
                     _ = sys.stdin.readline()
                     enter_pressed = True
-            #gevent.sleep(0.01)
         
         live_plot.close()
         log.info("Plot finished")
+
+    def make_predictions_and_save_data(self, chan_names, n_rows, n_cols, n_bytes,
+        in_socket, ui_socket):
+        data_saver = DataSaver(chan_names)
+        self.predictor.initialize(n_chans=n_rows - 1) # one is a marker chan(!)
+        while True:
+            array = self.read_until_bytes_received_or_enter_pressed(in_socket,
+                n_bytes)
+            if array is None:
+                # enter was pressed! quit! :)
+                break;
+            array = np.fromstring(array, dtype=np.float32)
+            array = array.reshape(n_rows, n_cols, order='F')
+            sensor_samples = array[:-1,:]
+            data_saver.append_samples(array.T)
+            self.predictor.receive_samples(sensor_samples.T)
+            if self.predictor.has_new_prediction():
+                pred, i_sample = self.predictor.pop_last_prediction_and_sample_ind()
+                log.info("Prediction for sample {:d}:\n{:s}".format(
+                    i_sample, pred))
+                # +1 to convert 0-based to 1-based indexing
+                ui_socket.sendall("{:d}\n".format(i_sample + 1))
+                ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
+        data_saver.save()
 
 class DataSaver(object):
     """ Remember and save data streamed during an online session."""
