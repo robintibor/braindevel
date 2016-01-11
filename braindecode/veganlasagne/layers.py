@@ -383,7 +383,8 @@ class SeparableConv2DLayer(Conv2DLayer):
                  W=init.GlorotUniform(), b=init.Constant(0.),
                  nonlinearity=nonlinearities.rectify,
                  convolution=T.nnet.conv2d, **kwargs):
-        super(Conv2DLayer, self).__init__(incoming, **kwargs)
+        super(Conv2DLayer, self).__init__(incoming, num_filters, filter_size,
+            **kwargs)
         if nonlinearity is None:
             self.nonlinearity = nonlinearities.identity
         else:
