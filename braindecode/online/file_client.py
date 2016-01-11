@@ -39,25 +39,37 @@ def start_remember_predictions_server():
     return server
 
 def send_file_data():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(("127.0.0.1", 1234))
-    
-    n_chans = 32
-    n_samples = 50
-    s.send(np.array([n_chans], dtype=np.int32).tobytes())
-    s.send(np.array([n_samples], dtype=np.int32).tobytes())
-    
-    
+    print("Loading file...")
     offline_execution_set = BBCIDataset('data/four-sec-dry-32-sensors/' + 
         'MaVoMuSc_dryEEG32S001_2.BBCI.mat')
 
     cnt = offline_execution_set.load()
     cnt_data = cnt.data.astype(np.float32)
+    print("Done.")
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(("127.0.0.1", 1234))
+    
+    chan_names = ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3',
+            'AFz', 'AF4', 'AF8', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6',
+            'FC1', 'FCz', 'FC2', 'C3', 'C1', 'Cz', 'C2', 'C4', 'CP3', 'CP1',
+             'CPz', 'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz', 'marker']
+    
+    chan_line = " ".join(chan_names) + "\n"
+    s.send(chan_line)
+    n_chans = 33
+    n_samples = 50
+    s.send(np.array([n_chans], dtype=np.int32).tobytes())
+    s.send(np.array([n_samples], dtype=np.int32).tobytes())
+    
     
     
     i_block = 0
     while i_block < 400:
         arr = cnt_data[i_block * n_samples:i_block*n_samples + n_samples,:].T
+        # chan x time
+        # add fake marker
+        arr = np.concatenate((arr, np.zeros((1,arr.shape[1]))), axis=0).astype(
+            np.float32)
         s.send(arr.tobytes(order='F'))
         i_block +=1
         gevent.sleep(0)

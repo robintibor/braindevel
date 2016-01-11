@@ -54,7 +54,6 @@ def plot_sensor_signals(signals, sensor_names=None, figsize=None,
     return figure
 
 class LivePlot:
-    
     def __init__(self, plot_freq, range_update_freq=None):
         self._plot_freq = plot_freq
         self._range_update_freq = range_update_freq
@@ -154,6 +153,9 @@ class LivePlot:
               sensorMeans[sensor_name] + totalMax + padding
                 )
         
+
+    def close(self):
+        plt.close()
 
 def parseCommandLineArguments():
         parser = argparse.ArgumentParser(description='Live Plotting all the sensors :)')
