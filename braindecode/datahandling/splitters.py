@@ -3,14 +3,58 @@ from sklearn.cross_validation import KFold
 import numpy as np
 from collections import OrderedDict
 from numpy.random import RandomState
-from copy import deepcopy
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
+
 
 class TrainValidTestSplitter(object):
     __metaclass__ = ABCMeta
     @abstractmethod
     def split_into_train_valid_test(self, dataset):
         raise NotImplementedError("Subclass needs to implement this")
+    
+class SeveralSetsSplitter(TrainValidTestSplitter):
+    def __init__(self, use_test_as_valid=False):
+        self.use_test_as_valid = use_test_as_valid
+
+    def split_into_train_valid_test(self, sets_container):
+        # merge all sets before last into one...
+        # left out, final set, is test set
+        if self.use_test_as_valid: # remember python indexing is 0-based..
+            i_final_set = len(sets_container.sets) - 1
+        else:
+            i_final_set = len(sets_container.sets) - 2
+        topos = [s.get_topological_view() for s in sets_container.sets[:i_final_set+1]]
+        ys = [s.y for s in sets_container.sets[:i_final_set+1]]
+        
+            
+        
+        full_topo = np.concatenate(topos, axis=0)
+        full_y = np.concatenate(ys, axis=0)
+        train_valid_set = DenseDesignMatrixWrapper(
+            topo_view=full_topo, y=full_y,
+            axes=sets_container.sets[0].view_converter.axes)
+        
+        train, valid = split_into_two_sets(train_valid_set, last_set_fraction=0.1)
+        test = sets_container.sets[-1]
+        return OrderedDict([('train', train), ('valid',valid),('test', test)])
+
+def split_into_two_sets(full_set, last_set_fraction=0.1):
+    topo = full_set.get_topological_view()
+    y = full_set.y
+    n_trials = len(full_set.y)
+    
+    i_last_first_set_trial = n_trials - 1 - int(last_set_fraction * n_trials)
+    
+    first_set = DenseDesignMatrixWrapper(
+        topo_view=topo[0:i_last_first_set_trial+1], 
+        y=y[0:i_last_first_set_trial+1], 
+        axes=full_set.view_converter.axes)
+    second_set = DenseDesignMatrixWrapper(
+        topo_view=topo[i_last_first_set_trial+1:], 
+        y=y[i_last_first_set_trial+1:], 
+        axes=full_set.view_converter.axes)
+    
+    return first_set, second_set
 
 class FixedTrialSplitter(TrainValidTestSplitter):
     def __init__(self, n_train_trials, valid_set_fraction):

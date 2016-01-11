@@ -59,9 +59,12 @@ class SignalMatrix(DenseDesignMatrix):
         if topo_view.ndim == 3:
             topo_view = np.expand_dims(topo_view, axis=3)
         topo_view = np.ascontiguousarray(np.copy(topo_view))
-        y = [event_class for time, event_class in self.signal_processor.epo.markers]
-        assert np.array_equal(self.signal_processor.epo.axes[0] + 1, y), ("trial axes should"
-            "have same event labels (offset by 1 due to 0 and 1-based indexing")
+        y = self.signal_processor.epo.axes[0] + 1
+        other_y = [event_class for time, event_class in self.signal_processor.epo.markers]
+        assert np.array_equal(y, other_y[:len(y)]), ("trial axes should"
+            "have same event labels as markers "
+            "(offset by 1 due to 0 and 1-based indexing), except for out of "
+            "bounds trials")
 
         topo_view, y = self.adjust_for_start_stop_limits(topo_view, y)
 

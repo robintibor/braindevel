@@ -6,7 +6,8 @@ from braindecode.veganlasagne.layers import (get_n_sample_preds,
     get_model_input_window)
 import sys
 from braindecode.veganlasagne.stopping import MaxEpochs
-from braindecode.datahandling.splitters import FixedTrialSplitter
+from braindecode.datahandling.splitters import FixedTrialSplitter,\
+    SeveralSetsSplitter
 log = logging.getLogger(__name__)
 from glob import glob
 import yaml
@@ -129,6 +130,10 @@ class ExperimentsRunner:
     
     def _run_experiments_with_string(self, experiment_index, train_str):
         lasagne.random.set_rng(RandomState(9859295))
+        # Save train string now, will be overwritten later after 
+        # input dimensions determined, save now for debug in
+        # case of crash
+        self._save_train_string(train_str, experiment_index)
         starttime = time.time()
         
         train_dict = self._load_without_layers(train_str)
@@ -303,9 +308,11 @@ class ExperimentsRunner:
                 self._folder_paths[experiment_index],
                 exp.dataset, exp.dataset_provider, iterator,
                 final_layer, experiment_save_id)
+        elif isinstance(splitter, SeveralSetsSplitter):
+            pass # nothing to do in this case
         elif hasattr(splitter, 'use_test_as_valid') and splitter.use_test_as_valid:
-            raise ValueError("Splitter has use test as valid set, but unknown dataset" 
-                "" + str(dataset))
+            raise ValueError("Splitter has use test as valid set, but unknown dataset type" 
+                "" + str(dataset.__class__.__name__))
             
     
     def _save_train_string(self, train_string, experiment_index):

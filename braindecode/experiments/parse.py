@@ -234,6 +234,18 @@ def merge_parameters_and_templates(all_parameters, templates):
         all_final_params.append(final_params)
     return all_final_params
 
+def merge_dicts(*dict_args):
+    '''
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    http://stackoverflow.com/a/26853961
+    '''
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
+
+
 def process_templates(templates, parameters):
     """Substitute parameters within templates, return substituted templates, 
     only returns those templates actually needed by the parameters. """
@@ -247,6 +259,13 @@ def process_templates(templates, parameters):
     # e.g. ["$rect_lin", "$dropout"] => ["rect_lin", "dropout"]
     needed_template_names = [name[1:] for name in needed_template_names]
     
+    # now also go through template strings see if a template appears there
+    for template_name in templates:
+        for other_template_name in templates:
+            template = templates[other_template_name]
+            if '$' + template_name in template:
+                needed_template_names.append(template_name)
+    
     # now for any needed template, first substitute any $-placeholders
     # _within_ the template with a value from the parameter.
     # Then replace the parameter itself with the template
@@ -254,18 +273,35 @@ def process_templates(templates, parameters):
     # template: flat: [...$hidden_neurons...]
     # 1 => template: flat: [...8...]
     # 2 => processed_parameters .. {layers: "[...8...]", hidden_neurons:8, ...}
+    
+    # we make another hack: actual template variables within templates
+    # should not be replaced as they will be properly replaced in next step
+    # therefore create a dict that maps template name back to itself (with
+    # $ infront as marker again)
+    template_names = templates.keys()
+    template_to_template = dict(zip(template_names, ['$' + k for k in template_names]))
+    templates_and_parameters = merge_dicts(template_to_template, parameters)
     for template_name in needed_template_names:
         template_string = templates[template_name]
-        template_string = Template(template_string).substitute(parameters)
+        template_string = Template(template_string).substitute(templates_and_parameters)
         processed_templates[template_name] = template_string
 
     # Now it can still happen that a template has been replaced by another template
-    # Try to fix this also
-    for template_name in processed_templates.keys():
-        template_string = processed_templates[template_name]
-        if '$' in template_string:
-            new_str = Template(template_string).substitute(processed_templates)
-            processed_templates[template_name] = new_str
+    # This is fixed in this loop
+    # We do it until there are no more dollars in the parameters..
+    unprocessed_template_exists = True
+    i = 0
+    while unprocessed_template_exists and i < 100:
+        unprocessed_template_exists = False
+        for template_name in processed_templates.keys():
+            template_string = processed_templates[template_name]
+            if '$' in template_string:
+                new_str = Template(template_string).substitute(processed_templates)
+                processed_templates[template_name] = new_str
+                unprocessed_template_exists = True
+        i+=1
+    if i == 100:
+        raise ValueError("Could not replace all templates")
     return processed_templates
 
 

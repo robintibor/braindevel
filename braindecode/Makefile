@@ -13,4 +13,4 @@ acceptance-tests:
 	THEANO_FLAGS=mode=FAST_COMPILE,device=cpu,floatX=float32 py.test -vv test/acceptance_tests
 
 run-ipython-notebooks-top-level:
-	. ../../../motor-imagery/ipython-notebooks-metagpu/venv/bin/activate && cd /home/schirrmr && ipython notebook --profile=nbserver
+	. ../../../motor-imagery/ipython-notebooks-metagpu/venv/bin/activate && cd /home/schirrmr && jupyter notebook --config=/home/schirrmr/.jupyter/profile_nbserver/ipython_config.py

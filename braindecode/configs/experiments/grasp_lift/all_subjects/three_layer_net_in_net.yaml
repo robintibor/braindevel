@@ -1,20 +1,20 @@
 {
     extends: ['configs/experiments/grasp_lift/all_subjects/deeper.yaml',
-    'configs/experiments/grasp_lift/cnt_four_layer_net_in_net.yaml'],
+    'configs/experiments/grasp_lift/cnt_3_layer_net_in_net.yaml'],
     variants: [[{
         batch_size: [45],
-        save_path: ['data/models/grasp-lift/all-sub/four-layer-net-in-net/'],
+        save_path: ['data/models/grasp-lift/all-sub/three-layer-net-in-net/'],
         num_filters: [80],# 80
         preprocessor: ["null"],
         standardize_series_wise: [False],
-        remove_baseline_mean: [True],
+        remove_baseline_mean: [True],        
         
-        input_time_length: [5500],
+        input_time_length: [3500],
         filter_time_length: [30],
         
         pool_time_length: [3],
         pool_time_stride: [3],
-        final_dense_length: [1],#[5,25],
+        final_dense_length: [1,5,10],#[5,25],
         max_increasing_epochs: [20],
         max_epochs: [300],
         resample_half: [False],

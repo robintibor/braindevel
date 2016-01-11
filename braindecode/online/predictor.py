@@ -56,7 +56,6 @@ class OnlinePredictor(object):
     def has_new_prediction(self):
         return self.last_pred is not None
              
-            
 def make_predictions_with_online_predictor(predictor, cnt_data, block_len,
         window_len, input_start, input_end, sample_stride):
     predictor.initialize(n_chans=cnt_data.shape[1])
@@ -68,12 +67,12 @@ def make_predictions_with_online_predictor(predictor, cnt_data, block_len,
         predictor.receive_samples(block)
         if predictor.has_new_prediction():
             pred, i_sample = predictor.pop_last_prediction_and_sample_ind()
-            assert (i_sample + 1) % predictor.pred_freq == 0
+            assert ((i_sample + 1) - window_len) % predictor.pred_freq == 0
             all_preds.append(pred)
             i_pred_samples.append(i_sample)
 
 
     preds = np.array(all_preds).squeeze()
     i_pred_sample_arr = np.array(i_pred_samples) + input_start - window_len + 1
-    assert np.array_equal(i_pred_sample_arr, range(input_start,input_end+1,sample_stride))
+    #assert np.array_equal(i_pred_sample_arr, range(input_start,input_end+1,sample_stride))
     return i_pred_sample_arr, preds       

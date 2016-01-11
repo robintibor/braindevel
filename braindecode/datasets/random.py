@@ -12,7 +12,7 @@ class RandomSet(DenseDesignMatrixWrapper):
     def load(self): 
         rng = RandomState(328764)
         topo = rng.rand(*self.topo_shape).astype(np.float32)
-        y = rng.rand(*self.y_shape)        
+        y = rng.rand(*self.y_shape)
         # make from random things between 0 and 1
         # to only 0 and 1
         y = (y ==  np.max(y, axis=1, keepdims=True)).astype(np.int32)

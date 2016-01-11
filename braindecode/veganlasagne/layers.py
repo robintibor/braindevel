@@ -12,6 +12,13 @@ from lasagne.utils import as_tuple
 from lasagne.theano_extensions import padding
 import theano
 
+def print_layers(final_layer):
+    """Print all layers, including all output shapes """
+    all_layers = lasagne.layers.get_all_layers(final_layer)
+    for i, layer in enumerate(all_layers):
+        print("{:2d} {:25s} {:s}".format(i, layer.__class__.__name__,
+            layer.output_shape))
+
 def calculate_predictions(data, start,stop,stride, window_len, pred_fn):
     preds = []
     for i_end_sample in xrange(start,stop,stride):

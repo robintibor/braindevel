@@ -3,6 +3,8 @@ import numpy as np
 import re
 from braindecode.datasets.sensor_positions import sort_topologically
 import wyrm.types
+import logging
+log = logging.getLogger(__name__)
 
 class BBCIDataset(object):
     def __init__(self, filename, load_sensor_names=None):
@@ -146,4 +148,53 @@ class BCICompetition4Set2A(object):
                         ['ms', '#'])
             cnt.fs = fs
             cnt.markers = markers
+        return cnt
+
+class HDF5StreamedSet(object):
+    """Our very own minimalistic format how data is stored when streamed during an online
+     experiment."""
+    
+    def __init__(self, filename, load_sensor_names=None):
+        self.__dict__.update(locals())
+        del self.self
+
+    def load(self):
+        """ This function actually loads the data. Will be called by the 
+        get dataset lazy loading function""" 
+        with h5py.File(self.filename, 'r') as h5file:
+            all_data = np.array(h5file['cnt_samples'])
+            sensor_names = h5file['chan_names'][:32]
+            
+            if self.load_sensor_names is None:
+                cnt_data = all_data[:,:32]
+                wanted_sensor_names = sensor_names
+            else:
+                log.warn("Load sensor names may lead to different results for "
+                    "this set class compared to others")
+                chan_inds = [sensor_names.tolist().index(s)
+                    for s in self.load_sensor_names]
+                cnt_data = all_data[:,chan_inds]
+                wanted_sensor_names = self.load_sensor_names
+            
+            marker = all_data[:,32]
+            fs = 512.0
+            time_steps = np.arange(len(cnt_data)) * 1000.0 / fs
+            cnt = wyrm.types.Data(cnt_data,axes=[time_steps, 
+                wanted_sensor_names], names=['time', 'channel'],
+                units=['ms', '#'])
+            cnt.fs = fs
+            
+            # Reconstruct markers
+            pause = marker == 0
+            boundaries = np.diff(pause)
+            inds_boundaries = np.flatnonzero(boundaries)
+            # first sample of next class is at inds_boundaries + 1 always..
+            event_samples_and_classes = [(i + 1, int(marker[i + 1])) 
+                for i in inds_boundaries]
+            event_samples_and_classes = [pair for 
+                pair in event_samples_and_classes if pair[1] != 0]
+            event_ms_and_classes = [((pair[0] * 1000.0 / cnt.fs), pair[1]) for 
+                pair in event_samples_and_classes]
+            cnt.markers = event_ms_and_classes
+            
         return cnt

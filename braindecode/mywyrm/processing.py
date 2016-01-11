@@ -576,7 +576,16 @@ def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     nyq_freq = 0.5 * cnt.fs
     low = low_cut_hz / nyq_freq
     high = high_cut_hz / nyq_freq
-    b, a = scipy.signal.butter(filt_order, [low, high], btype='band')
+    b, a = scipy.signal.butter(filt_order, [low, high], btype='bandpass')
+    
+    cnt_bandpassed = lfilter(cnt,b,a)
+    return cnt_bandpassed
+
+def bandstop_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
+    nyq_freq = 0.5 * cnt.fs
+    low = low_cut_hz / nyq_freq
+    high = high_cut_hz / nyq_freq
+    b, a = scipy.signal.butter(filt_order, [low, high], btype='bandstop')
     
     cnt_bandpassed = lfilter(cnt,b,a)
     return cnt_bandpassed
