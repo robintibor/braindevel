@@ -67,4 +67,5 @@ def transform_to_cnt_activations(time_activations, n_sample_preds, n_samples):
         # if equal to zero actually all last preds are ok!
         act_time_series = np.concatenate(relevant_acts, axis=1)
     assert act_time_series.shape[1] == n_samples
+    
     return act_time_series
