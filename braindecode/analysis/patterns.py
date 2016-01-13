@@ -2,6 +2,24 @@ import numpy as np
 import lasagne
 import theano.tensor
 import theano.tensor as T
+
+def transform_conv_weights_to_patterns(conv_weights, topo, activations):
+    """Assume weights are bc0, not having fourth dimension..in case of fourth dimension,
+    please recheck code
+    Assuming topo is bc01, assuming activations is bc01"""
+    kernel_length = conv_weights.shape[2]
+    # create topo with virtual channels
+    topo_transformed = transform_train_topo(topo, kernel_length)
+    topo_transformed = topo_transformed.transpose(1,0,2,3)
+    topo_transformed = topo_transformed.reshape(topo_transformed.shape[0],-1)
+    ## flatten and put channel/unit dimension first
+    acts_out_for_cov = activations.transpose(1,0,2,3)
+    acts_out_for_cov = acts_out_for_cov.reshape(acts_out_for_cov.shape[0], -1)
+    conv_vectors = conv_weights.reshape(conv_weights.shape[0],-1)
+    flat_patterns = transform_weights_to_patterns(conv_vectors, topo_transformed, acts_out_for_cov)
+    unflat_patterns = flat_patterns.reshape(*conv_weights.shape)
+    return unflat_patterns
+
 def transform_raw_net_to_spat_temp_patterns(final_layer, train_topo):
     """ Assumes that net consists of "separated" conv in first two layers"""
     
@@ -37,7 +55,8 @@ def transform_raw_net_to_spat_temp_patterns(final_layer, train_topo):
     combined_weights = get_combined_weights_rawnet(final_layer)
     
     combined_vectors = combined_weights.reshape(combined_weights.shape[0],-1)
-    flat_patterns = transform_weights_to_patterns(combined_vectors, new_train_topo_for_cov, acts_out_for_cov)
+    flat_patterns = transform_weights_to_patterns(combined_vectors,
+        new_train_topo_for_cov, acts_out_for_cov)
     unflat_patterns = flat_patterns.reshape(*combined_weights.shape)
     return unflat_patterns
 
@@ -55,6 +74,7 @@ def get_combined_weights_rawnet(final_layer):
     return combined_weights
 
 def transform_train_topo(train_topo, kernel_length):
+    """Expects bc01 format. """
     new_train_topo = np.empty((train_topo.shape[0], train_topo.shape[1] * kernel_length,
                          train_topo.shape[2] - kernel_length + 1, 1))
     n_chans = train_topo.shape[1]
@@ -71,13 +91,14 @@ def transform_train_topo(train_topo, kernel_length):
     return new_train_topo
 
 def transform_weights_to_patterns(weights, inputs, outputs):
-    """ Inputs are expected in features x samples/trials structure"""
+    """ Inputs are expected in features x samples/trials structure.
+    See http://www.sciencedirect.com/science/article/pii/S1053811913010914
+    Theorem 1."""
     input_cov = np.cov(inputs)
     output_cov = np.cov(outputs)
     patterns = np.dot(input_cov, weights.T)
-    patterns = np.dot(patterns, output_cov).T
+    patterns = np.dot(patterns, np.linalg.pinv(output_cov)).T
     return patterns
-
 
 def compute_soft_weights_patterns(final_layer, train_topo):
     """Returns in bc0 format, i.e. class x input filter x time"""

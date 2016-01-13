@@ -2,6 +2,7 @@ from tempfile import NamedTemporaryFile
 from matplotlib import pyplot as plt
 from IPython.display import HTML
 from matplotlib import animation
+import numpy as np
 
 VIDEO_TAG = """<video controls>
  <source src="data:video/x-m4v;base64,{0}" type="video/mp4">
@@ -27,7 +28,8 @@ def show_animation(*args, **kwargs):
     anim = animation.FuncAnimation(*args, **kwargs)
     return display_animation(anim)
 
-def head_signals_tight_movie(fig, data, title):
+def movie_head_signals_tight(fig, data, title):
+    plt.ylim(-np.max(np.abs(data)), np.max(np.abs(data)))
     fig_title = fig.suptitle(title, fontsize=16)
     # initialization function: plot the background of each frame
     def init():
@@ -37,6 +39,7 @@ def head_signals_tight_movie(fig, data, title):
                 line.set_data(range(30), [0] * 30)
                 changed_lines.append(line)
         return changed_lines
+
 
     # animation function.  This is called sequentially
     def animate(frame_data):

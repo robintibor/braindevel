@@ -443,7 +443,7 @@ def plot_class_probs(probs, value_minmax=None):
 def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
     figsize=(8, 4.5), yticks=None, yticklabels=None,
     correctness_matrices=None, colormap=cm.coolwarm,
-    sensor_map=cap_positions):
+    sensor_map=cap_positions, vmax=None, vmin=None):
     """ figsize ignored if figure given """
     # for now hack it here... giving freq labels with 2 hz width if likely
     # that this is correct ind of input
@@ -485,6 +485,10 @@ def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
         col = sensor_pos[1]
         subplot_ind = (row - min_row) * cols + col - min_col + 1  # +1 as matlab uses based indexing
         
+        if vmin is None:
+            vmin = -2 * mean_abs_weight
+        if vmax is None:
+            vmax = 2 * mean_abs_weight
         if first_ax is None:
             ax = figure.add_subplot(rows, cols, subplot_ind)
             first_ax = ax
@@ -499,7 +503,7 @@ def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
             #    vmin=-mean_abs_weight * 2, vmax= mean_abs_weight * 2)
             ax.pcolorfast(chan_matrix.T,
                  cmap=colormap,  # origin='lower', #interpolation='nearest',#aspect='auto'
-                vmin=-mean_abs_weight * 2, vmax=mean_abs_weight * 2)
+                vmin=vmin, vmax=vmax)
             # ax.imshow(chan_matrix.T,
             #    interpolation='nearest', cmap=cm.bwr, origin='lower', 
             #    vmin=-mean_abs_weight * 2, vmax= mean_abs_weight * 2,
@@ -511,7 +515,7 @@ def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
             ax.imshow(
                 np.ma.masked_where(correctness_mat < 0, chan_matrix * correctness_mat).T,
                 interpolation='nearest', cmap=cm.bwr, origin='lower',
-                vmin=-mean_abs_weight * 2, vmax=mean_abs_weight * 2)
+                vmin=vmin, vmax=vmax)
             # use yellow/brown for red(positive) incorrect values
             # (mask out correct or blue=negative values)
             # also take minus the values as otherwise they go from
@@ -522,14 +526,14 @@ def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
                     np.logical_or(correctness_mat > 0, chan_matrix < 0),
                     - (chan_matrix * correctness_mat)).T,
                 interpolation='nearest', cmap=cm.YlOrBr, origin='lower',
-                vmin=0, vmax=mean_abs_weight * 2)
+                vmin=0, vmax=vmax)
             # use purple for blue(negative) incorrect values
             ax.imshow(
                 np.ma.masked_where(
                     np.logical_or(correctness_mat > 0, chan_matrix >= 0),
                     chan_matrix * correctness_mat).T,
                 interpolation='nearest', cmap=cm.PuRd, origin='lower',
-                vmin=0, vmax=mean_abs_weight * 2)
+                vmin=0, vmax=vmax)
         ax.set_xticks([])
         ax.set_yticks(yticks)
         ax.set_yticklabels(yticklabels)
