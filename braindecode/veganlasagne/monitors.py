@@ -242,3 +242,39 @@ def get_reshaped_cnt_preds(all_preds, n_samples, input_time_length,
     all_preds_arr = np.concatenate(all_preds)
     
     return all_preds_arr
+
+
+class CntTrialMisclassMonitor(Monitor):
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_misclass".format(setname)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans):
+        return
+
+    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
+            all_batch_sizes, all_targets, dataset):
+        """Assuming one hot encoding for now"""
+        all_pred_labels = []
+        all_target_labels = []
+        for i_batch in range(len(all_batch_sizes)):
+            trial_preds = all_preds[i_batch]
+            trial_pred_label = np.argmax(np.sum(trial_preds, axis=0))
+            targets = all_targets[i_batch]
+            
+            assert np.sum(np.max(targets, axis=0)) == 1, ("Trial should only "
+                 "have one class")
+            assert np.sum(targets) == len(targets), ("Every sample should have "
+                                                    "one positive marker")
+            target_label = np.argmax(np.max(targets, axis=0))
+            all_pred_labels.append(trial_pred_label)
+            all_target_labels.append(target_label)
+        all_pred_labels = np.array(all_pred_labels)
+        all_target_labels = np.array(all_target_labels)
+        
+        misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
+            float(len(all_target_labels)))
+        monitor_key = "{:s}_misclass".format(setname)
+        monitor_chans[monitor_key].append(float(misclass))

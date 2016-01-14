@@ -149,6 +149,54 @@ class BCICompetition4Set2A(object):
             cnt.fs = fs
             cnt.markers = markers
         return cnt
+    
+def convert_test_files_add_markers():
+    """ Just for documentation purposes put this here ..."""
+    for i_subject in xrange(1,10):
+        combined_filename = 'data/bci-competition-iv/2a-combined/A0{:d}TE.mat'.format(i_subject)
+        test_filename = 'data/bci-competition-iv/2a/A0{:d}E.mat'.format(i_subject)
+    
+        combined_set = BCICompetition4Set2A(combined_filename)
+        combined_cnt = combined_set.load()
+    
+        test_h5_file = h5py.File(test_filename, 'a')
+        class_labels = np.array(combined_cnt.markers)[288:, 1]
+        del test_h5_file['header']['Classlabel']
+        test_h5_file['header'].create_dataset('Classlabel', data=class_labels[np.newaxis,:].astype(np.float64))
+    
+        # load and change event type only for class labels
+        event_type = test_h5_file['header']['EVENT']['TYP'][:]
+        if np.any(event_type[0] == 783):
+            event_type[0, event_type[0] == 783] = class_labels.astype(np.float64) + 768
+    
+        del test_h5_file['header']['EVENT']['TYP']
+        test_h5_file['header']['EVENT'].create_dataset('TYP', data=event_type)
+    
+        test_h5_file.close()
+    
+    
+        test_h5_file = h5py.File(test_filename, 'r')
+        assert np.array_equal(class_labels, test_h5_file['header']['Classlabel'][0,:])
+    
+        event_type_in_file = test_h5_file['header']['EVENT']['TYP'][0,:]
+        trial_mask = np.array([ev in [769, 770, 771, 772, 783] for ev in event_type_in_file])
+    
+        assert np.array_equal(event_type_in_file[trial_mask]- 768, class_labels)
+    
+        test_h5_file.close()
+    
+        
+    # Final check over datasets
+    for i_subject in xrange(1,10):
+        combined_filename = 'data/bci-competition-iv/2a-combined/A0{:d}TE.mat'.format(i_subject)
+        test_filename = 'data/bci-competition-iv/2a/A0{:d}E.mat'.format(i_subject)
+    
+        combined_set = BCICompetition4Set2A(combined_filename)
+        combined_cnt = combined_set.load()
+        test_set = BCICompetition4Set2A(test_filename)
+        test_cnt = test_set.load()
+        assert np.array_equal(np.array(test_cnt.markers)[:,1],
+                   np.array(combined_cnt.markers)[288:,1])
 
 class HDF5StreamedSet(object):
     """Our very own minimalistic format how data is stored when streamed during an online

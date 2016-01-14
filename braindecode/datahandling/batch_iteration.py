@@ -222,9 +222,117 @@ class CntWindowsFromCntIterator(object):
                     batch_topo[:,:,:n_lost_samples,:], axis=(2,3),
                     keepdims=True)
                 
+            assert not np.any(np.isnan(batch_topo))
             assert not np.any(np.isnan(batch_y))
             batch_y = batch_y.astype(np.int32)
             yield batch_topo, batch_y 
 
     def reset_rng(self):
         self.rng = RandomState(328774)
+        
+        
+        
+class CntWindowTrialIterator(object):
+    def __init__(self, batch_size, input_time_length, n_sample_preds,
+            remove_baseline_mean=False):
+        self.batch_size = batch_size
+        self.input_time_length = input_time_length
+        self.n_sample_preds = n_sample_preds
+        self.remove_baseline_mean = remove_baseline_mean
+        self.rng = RandomState(328774)
+        
+    def reset_rng(self):
+        self.rng = RandomState(328774)
+    
+    def get_batches(self, dataset, shuffle):
+        i_trial_starts, i_trial_ends = compute_trial_start_end_samples(dataset.y)
+        assert i_trial_ends[0] - i_trial_starts[0] + 1 >= self.n_sample_preds, (
+            "Trial should be longer than number of sample preds, "
+            "Trial length: {:d}, sample preds {:d}...".format(
+                i_trial_ends[0] - i_trial_starts[0] + 1,
+                self.n_sample_preds))
+        start_end_blocks_per_trial = self.compute_start_end_block_inds(
+            i_trial_starts, i_trial_ends)
+        
+        topo = dataset.get_topological_view()
+        y = dataset.y
+        
+        if shuffle:
+            return self.yield_shuffled_block_batches(topo, y, start_end_blocks_per_trial)
+        else:
+            return self.yield_trial_ordered_block_batches(topo, y, start_end_blocks_per_trial)
+        
+    def compute_start_end_block_inds(self, i_trial_starts, i_trial_ends):
+        # create start stop indices for all batches still 2d trial -> start stop
+        start_end_blocks_per_trial = []
+        for i_trial in xrange(len(i_trial_starts)):
+            i_window_end = i_trial_starts[i_trial] - 1
+            start_end_blocks = []
+            while i_window_end  < i_trial_ends[i_trial]:
+                i_window_end += self.n_sample_preds
+                i_adjusted_end = min(i_window_end, i_trial_ends[i_trial])
+                i_window_start = i_adjusted_end - self.input_time_length + 1
+                start_end_blocks.append((i_window_start, i_adjusted_end))
+        
+            # check that block is correct, all predicted samples should be the trial samples
+            all_predicted_samples = [range(start_end[1] - self.n_sample_preds + 1, 
+                start_end[1]+1) for start_end in start_end_blocks]
+            # this check takes about 50 ms in performance test
+            # whereas loop itself takes only 5 ms.. deactivate it if not necessary
+            assert np.array_equal(range(i_trial_starts[i_trial], i_trial_ends[i_trial] + 1), 
+                           np.unique(np.concatenate(all_predicted_samples)))
+
+            start_end_blocks_per_trial.append(start_end_blocks)
+        return start_end_blocks_per_trial
+    
+    def yield_shuffled_block_batches(self, topo, y, start_end_blocks_per_trial):
+        start_end_blocks_flat = np.concatenate(start_end_blocks_per_trial)
+        self.rng.shuffle(start_end_blocks_flat)
+
+        for i_block in xrange(0, len(start_end_blocks_flat), self.batch_size):
+            i_block_stop = min(i_block + self.batch_size, len(start_end_blocks_flat))
+            start_end_blocks = start_end_blocks_flat[i_block:i_block_stop]
+            batch = create_batch(topo,y, start_end_blocks, self.n_sample_preds)
+            yield batch
+            
+    def yield_trial_ordered_block_batches(self, topo, y, start_end_blocks_per_trial):
+        for i_trial in xrange(len(start_end_blocks_per_trial)):
+            batch = create_batch(topo, y, start_end_blocks_per_trial[i_trial],
+                self.n_sample_preds)
+            yield batch
+        
+        
+def compute_trial_start_end_samples(y):
+    trial_part = np.sum(y, 1) == 1
+    boundaries = np.diff(trial_part.astype(np.int32))
+    i_trial_starts = np.flatnonzero(boundaries == 1) + 1
+    i_trial_ends = np.flatnonzero(boundaries == -1)
+    # it can happen that a trial is only partially there since the
+    # cnt signal was split in the middle of a trial
+    # for now just remove these
+    # use that start marker should always be before or equal to end marker
+    if i_trial_starts[0] > i_trial_ends[0]:
+        # cut out first trial which only has end marker
+        i_trial_ends = i_trial_ends[1:]
+    if i_trial_starts[-1] > i_trial_ends[-1]:
+        # cut out last trial which only has start marker
+        i_trial_starts = i_trial_starts[:-1]
+    
+    assert(len(i_trial_starts) == len(i_trial_ends))
+    assert(np.all(i_trial_starts < i_trial_ends))
+
+    # just checking that all trial lengths are equal
+    trial_len = i_trial_ends[0] - i_trial_starts[0]
+    assert all([stop - start == trial_len 
+                for start,stop in zip(i_trial_starts, i_trial_ends)]), (
+        "All trial lengths should be equal, otherwise recheck code below...")
+    return i_trial_starts, i_trial_ends
+
+def create_batch(topo, y, start_end_blocks, n_sample_preds):
+    batch_y = [y[end-n_sample_preds+1:end+1] 
+        for _, end in start_end_blocks]
+    batch_topo = [topo[start:end+1].swapaxes(0,2)
+        for start, end in start_end_blocks]
+    batch_y = np.concatenate(batch_y).astype(np.int32)
+    batch_topo = np.concatenate(batch_topo).astype(np.float32)
+    return batch_topo, batch_y

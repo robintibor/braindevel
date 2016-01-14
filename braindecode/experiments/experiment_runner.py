@@ -226,8 +226,10 @@ class ExperimentsRunner:
             lasagne.layers.get_all_layers(final_layer))) == 0, ("All layers "
             "should be used, unused {:s}".format(str(np.setdiff1d(layers, 
             lasagne.layers.get_all_layers(final_layer)))))
-        # set n sample perds in case of cnt model
+        # Set n sample preds in case of cnt model
         if (np.any([hasattr(l, 'n_stride') for l in layers])):
+            # Can this be moved up and duplication in if clause( batch test,
+            # more above) be removed?
             n_sample_preds =  get_n_sample_preds(final_layer)
             log.info("Setting n_sample preds automatically to {:d}".format(
                 n_sample_preds))
