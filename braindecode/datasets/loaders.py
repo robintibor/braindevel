@@ -1,10 +1,13 @@
-import h5py
-import numpy as np
+import os.path
 import re
-from braindecode.datasets.sensor_positions import sort_topologically
+import numpy as np
+import h5py
 import wyrm.types
 import logging
 log = logging.getLogger(__name__)
+from braindecode.datasets.sensor_positions import sort_topologically
+from wyrm.processing import append_cnt
+
 
 class BBCIDataset(object):
     def __init__(self, filename, load_sensor_names=None):
@@ -197,6 +200,34 @@ def convert_test_files_add_markers():
         test_cnt = test_set.load()
         assert np.array_equal(np.array(test_cnt.markers)[:,1],
                    np.array(combined_cnt.markers)[288:,1])
+
+class BCICompetition4Set2aAllSubjects(object):
+    """For All Subjects.
+    train_or_test should be the string 'train' or the string 'test'"""
+    def __init__(self, folder, train_or_test, i_last_subject=9, load_sensor_names=None):
+        """ Constructor will not call superclass constructor yet"""
+        assert load_sensor_names is None, "Not implemented loading only specific sensors"
+        self.folder = folder
+        self.train_or_test = train_or_test
+        self.load_sensor_names = load_sensor_names
+        self.i_last_subject = i_last_subject
+        
+    def load(self):
+        if self.train_or_test == 'train':
+            suffix = 'T'
+        elif self.train_or_test == 'test':
+            suffix = 'E'
+        else:
+            raise ValueError("Please pass either 'train' or "
+                "'test', got {:s}".format(self.train_or_test))
+        
+        filenames = [os.path.join(self.folder, 'A0{:d}{:s}.mat'.format(
+            i_subject,suffix)) 
+            for i_subject in xrange(1,self.i_last_subject + 1)]
+        cnts = [BCICompetition4Set2A(name).load() for name in filenames]
+
+        combined_cnt = reduce(append_cnt, cnts)
+        return combined_cnt
 
 class HDF5StreamedSet(object):
     """Our very own minimalistic format how data is stored when streamed during an online

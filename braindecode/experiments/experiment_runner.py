@@ -26,7 +26,7 @@ import numpy as np
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
             quiet=False, dry_run=False, cross_validation=False,
-            shuffle=False, debug=False, only_first_five_sets=False,
+            shuffle=False, debug=False, only_first_n_sets=False,
             batch_test=False):
         self._start_id = start_id
         self._stop_id = stop_id
@@ -36,7 +36,7 @@ class ExperimentsRunner:
         self._cross_validation = cross_validation
         self._shuffle = shuffle
         self._debug = debug
-        self._only_first_five_sets = only_first_five_sets
+        self._only_first_n_sets = only_first_n_sets
         self._batch_test=batch_test
         
     def run(self, all_train_strs):
@@ -85,8 +85,8 @@ class ExperimentsRunner:
             folder_path += '/shuffle/'
         if (self._debug):
             folder_path += '/debug/'
-        if (self._only_first_five_sets):
-            folder_path += '/first5/'
+        if (self._only_first_n_sets is not False):
+            folder_path += '/first{:d}/'.format(self._only_first_n_sets)
             
         return folder_path
     
@@ -133,7 +133,8 @@ class ExperimentsRunner:
         # Save train string now, will be overwritten later after 
         # input dimensions determined, save now for debug in
         # case of crash
-        self._save_train_string(train_str, experiment_index)
+        if not self._dry_run:
+            self._save_train_string(train_str, experiment_index)
         starttime = time.time()
         
         train_dict = self._load_without_layers(train_str)
@@ -331,3 +332,26 @@ class ExperimentsRunner:
             res_printer = ResultPrinter(folder_path)
             res_printer.print_results()
             print("\n")
+
+def create_experiment(yaml_filename):
+    """Utility function to create experiment from yaml file"""
+    train_dict = yaml_parse.load(open(yaml_filename, 'r'))
+    layers = train_dict['layers']
+    final_layer = layers[-1]
+    dataset = train_dict['dataset'] 
+    splitter = train_dict['dataset_splitter']
+    if (np.any([hasattr(l, 'n_stride') for l in layers])):
+        n_sample_preds =  get_n_sample_preds(final_layer)
+        log.info("Setting n_sample preds automatically to {:d}".format(
+            n_sample_preds))
+        train_dict['exp_args']['monitors'][1].n_sample_preds = n_sample_preds
+        train_dict['exp_args']['iterator'].n_sample_preds = n_sample_preds
+        log.info("Input window length is {:d}".format(
+            get_model_input_window(final_layer)))
+    exp = Experiment(final_layer, dataset, splitter,
+                    **train_dict['exp_args'])
+    assert len(np.setdiff1d(layers, 
+        lasagne.layers.get_all_layers(final_layer))) == 0, ("All layers "
+        "should be used, unused {:s}".format(str(np.setdiff1d(layers, 
+        lasagne.layers.get_all_layers(final_layer)))))
+    return exp

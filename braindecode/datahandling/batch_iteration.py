@@ -250,16 +250,20 @@ class CntWindowTrialIterator(object):
                 self.n_sample_preds))
         start_end_blocks_per_trial = self.compute_start_end_block_inds(
             i_trial_starts, i_trial_ends)
-        
+
         topo = dataset.get_topological_view()
         y = dataset.y
-        
+
         if shuffle:
             return self.yield_shuffled_block_batches(topo, y, start_end_blocks_per_trial)
         else:
             return self.yield_trial_ordered_block_batches(topo, y, start_end_blocks_per_trial)
         
     def compute_start_end_block_inds(self, i_trial_starts, i_trial_ends):
+        # possibly remove first trial if it is too early
+        while i_trial_starts[0] < self.input_time_length:
+            i_trial_starts = i_trial_starts[1:]
+            i_trial_ends = i_trial_ends[1:] 
         # create start stop indices for all batches still 2d trial -> start stop
         start_end_blocks_per_trial = []
         for i_trial in xrange(len(i_trial_starts)):
