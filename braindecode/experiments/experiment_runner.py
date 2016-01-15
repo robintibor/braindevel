@@ -199,7 +199,7 @@ class ExperimentsRunner:
         train_set = splitter.split_into_train_valid_test(dataset)['train']
         batch_gen = iterator.get_batches(train_set, shuffle=True)
         dummy_batch_topo = batch_gen.next()[0]
-        dataset_splitter = train_dict['dataset_splitter']
+        del train_set
 
         assert 'in_sensors' in train_str
         #not for cnt net assert 'in_rows' in train_str
@@ -239,7 +239,7 @@ class ExperimentsRunner:
                 get_model_input_window(final_layer)))
         
         if not self._cross_validation:
-            exp = Experiment(final_layer, dataset, dataset_splitter,
+            exp = Experiment(final_layer, dataset, splitter,
                 **train_dict['exp_args'])
             exp.setup()
             exp.run()

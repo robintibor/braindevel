@@ -15,7 +15,6 @@
     variants: [[{
         misclass_monitor: [$auc_cnt_misclass_monitor],
         iterator: [$cnt_iterator],
-        layers: [$raw_net_no_drop_time_layers],
         remove_baseline_mean: [false],
     }]]
 }

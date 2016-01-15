@@ -13,8 +13,10 @@ class TrainValidTestSplitter(object):
         raise NotImplementedError("Subclass needs to implement this")
     
 class SeveralSetsSplitter(TrainValidTestSplitter):
-    def __init__(self, use_test_as_valid=False):
+    def __init__(self, valid_set_fraction=0.1,
+        use_test_as_valid=False):
         self.use_test_as_valid = use_test_as_valid
+        self.valid_set_fraction = 0.1
 
     def split_into_train_valid_test(self, sets_container):
         # merge all sets before last into one...
@@ -34,11 +36,12 @@ class SeveralSetsSplitter(TrainValidTestSplitter):
             topo_view=full_topo, y=full_y,
             axes=sets_container.sets[0].view_converter.axes)
         
-        train, valid = split_into_two_sets(train_valid_set, last_set_fraction=0.1)
+        train, valid = split_into_two_sets(train_valid_set, 
+            last_set_fraction=self.valid_set_fraction)
         test = sets_container.sets[-1]
         return OrderedDict([('train', train), ('valid',valid),('test', test)])
 
-def split_into_two_sets(full_set, last_set_fraction=0.1):
+def split_into_two_sets(full_set, last_set_fraction):
     topo = full_set.get_topological_view()
     y = full_set.y
     n_trials = len(full_set.y)

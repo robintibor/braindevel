@@ -1,0 +1,27 @@
+{
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/two_file_cnt_set.yaml',
+        'configs/experiments/0_2_4_hz_highpass.yaml',
+        'configs/experiments/bci_competition/cnt/cnt_iterator_monitor.yaml',
+        'configs/experiments/bci_competition/cnt/cnt_4_layer_net_in_net.yaml',
+        'configs/experiments/bci_competition/cnt/filenames.yaml',
+        'configs/experiments/bci_competition/cnt/defaults.yaml',
+        ],
+    variants: [[
+    {        
+        filter_time_length: [20],
+        save_path: ['data/models/bci-competition/cnt/4-layer/'],
+        variants: [[{
+            input_time_length: [1500],
+            trial_start: [0],
+        },{
+            input_time_length: [1200],
+            trial_start: [2500],
+        },{
+            input_time_length: [1000],
+            trial_start: [3000],
+        },
+        ]],
+    }
+    ]]
+ }

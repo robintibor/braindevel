@@ -168,9 +168,6 @@ def cartesian_dict_of_lists_product(params):
     value_product = [x for x in apply(itertools.product, params.values())]
     return [dict(zip(params.keys(), values)) for values in value_product]
 
-def merge_dicts(a, b):
-    return dict(a.items() + b.items())
-
 def merge_lists(list_of_lists):
     return list(itertools.chain(*list_of_lists))
 
@@ -260,11 +257,18 @@ def process_templates(templates, parameters):
     needed_template_names = [name[1:] for name in needed_template_names]
     
     # now also go through template strings see if a template appears there
-    for template_name in templates:
-        for other_template_name in templates:
-            template = templates[other_template_name]
-            if '$' + template_name in template:
-                needed_template_names.append(template_name)
+    new_template_found = True
+    while new_template_found:
+        new_template_found = False
+        for a_needed_template_name in needed_template_names:
+            template = templates[a_needed_template_name]
+            for template_name in templates:
+                if (('$' + template_name) in template and 
+                        template_name not in needed_template_names):
+                    needed_template_names.append(template_name)
+                    new_template_found = True
+                    if '$resample_fs' in templates[template_name]:
+                        print template_name
     
     # now for any needed template, first substitute any $-placeholders
     # _within_ the template with a value from the parameter.
@@ -282,6 +286,8 @@ def process_templates(templates, parameters):
     template_to_template = dict(zip(template_names, ['$' + k for k in template_names]))
     templates_and_parameters = merge_dicts(template_to_template, parameters)
     for template_name in needed_template_names:
+        if '$resample_fs' in templates[template_name]:
+            print template_name
         template_string = templates[template_name]
         template_string = Template(template_string).substitute(templates_and_parameters)
         processed_templates[template_name] = template_string

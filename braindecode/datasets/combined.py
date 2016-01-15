@@ -9,8 +9,7 @@ class CombinedSet(object):
         for dataset in self.sets:
             dataset.ensure_is_loaded()
     def load(self):
-        # TODO: change this please...
-        self.y = np.zeros((1))
         for dataset in self.sets:
             dataset.load()
-            
+        # hack to have correct y dimensions
+        self.y = self.sets[-1].y[0:1]

@@ -189,7 +189,7 @@ def auc_classes_mean(y, preds):
             np.int32(y[:,i] == 1), preds[:,i]) 
             for i in range(y.shape[1])])
 
-class AUCMeanMisclassMonitor():
+class AUCMeanMisclassMonitor(Monitor):
     def __init__(self, input_time_length=None, n_sample_preds=None):
         self.input_time_length = input_time_length
         self.n_sample_preds = n_sample_preds

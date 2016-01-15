@@ -231,14 +231,11 @@ class CntWindowsFromCntIterator(object):
         self.rng = RandomState(328774)
         
         
-        
 class CntWindowTrialIterator(object):
-    def __init__(self, batch_size, input_time_length, n_sample_preds,
-            remove_baseline_mean=False):
+    def __init__(self, batch_size, input_time_length, n_sample_preds):
         self.batch_size = batch_size
         self.input_time_length = input_time_length
         self.n_sample_preds = n_sample_preds
-        self.remove_baseline_mean = remove_baseline_mean
         self.rng = RandomState(328774)
         
     def reset_rng(self):
