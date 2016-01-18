@@ -9,7 +9,7 @@ import argparse
 def setup_logging():
     """ Set up a root logger so that other modules can use logging
     Adapted from scripts/train.py from pylearn"""
-        
+
     root_logger = logging.getLogger()
     prefix = '%(asctime)s '
     formatter = CustomFormatter(prefix=prefix)

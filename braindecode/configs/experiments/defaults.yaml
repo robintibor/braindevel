@@ -22,7 +22,7 @@
                 !obj:braindecode.veganlasagne.monitors.LossMonitor {},
                 $misclass_monitor,
                 !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
-            ],
+        ],
         default_misclass: !obj:braindecode.veganlasagne.monitors.MisclassMonitor {},
         max_norm_modifier: !obj:braindecode.veganlasagne.update_modifiers.MaxNormConstraint {
             layer_names_to_norms: $layer_names_to_norms,
