@@ -337,3 +337,19 @@ def create_batch(topo, y, start_end_blocks, n_sample_preds):
     batch_y = np.concatenate(batch_y).astype(np.int32)
     batch_topo = np.concatenate(batch_topo).astype(np.float32)
     return batch_topo, batch_y
+
+def transform_batches_of_trials(batches, n_sample_preds,
+    n_samples_per_trial):
+    """Utility function to merge batches back into trials.
+    Assumes batches are in trials x batches x channels x 0 x 1 format"""
+    # restrict to relevant part
+    batches = np.array(batches)[:,:,:,-n_sample_preds:]
+    n_batches_per_trial = batches.shape[1]
+    # first concatenate all batches except last one of each trial,
+    # since last one contains overlap with the one before
+    trial_batches = np.concatenate(batches[:,:-1].transpose(1,0,2,3), axis=2)
+    legitimate_last_preds = n_samples_per_trial - n_sample_preds * (n_batches_per_trial - 1)
+    trial_batches = np.append(trial_batches, batches[:,-1,:,-legitimate_last_preds:],axis=2)
+    return trial_batches
+    
+    

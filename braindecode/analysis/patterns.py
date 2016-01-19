@@ -9,7 +9,7 @@ def transform_conv_weights_to_patterns(conv_weights, topo, activations):
     Assuming topo is bc01, assuming activations is bc01"""
     kernel_length = conv_weights.shape[2]
     # create topo with virtual channels
-    topo_transformed = transform_train_topo(topo, kernel_length)
+    topo_transformed = add_time_delayed_channels(topo, kernel_length)
     topo_transformed = topo_transformed.transpose(1,0,2,3)
     topo_transformed = topo_transformed.reshape(topo_transformed.shape[0],-1)
     ## flatten and put channel/unit dimension first
@@ -46,7 +46,7 @@ def transform_raw_net_to_spat_temp_patterns(final_layer, train_topo):
     # create train topo with virtual channels
     #kernel_length = combined_weights.shape[-1]
     kernel_length = layers[1].filter_size[0]
-    new_train_topo = transform_train_topo(train_topo, kernel_length)
+    new_train_topo = add_time_delayed_channels(train_topo, kernel_length)
     ## flatten and put channel/unit dimension first
     new_train_topo_for_cov = new_train_topo.transpose(1,0,2,3)
     new_train_topo_for_cov = new_train_topo_for_cov.reshape(
@@ -73,11 +73,11 @@ def get_combined_weights_rawnet(final_layer):
     combined_weights = combined_weights.squeeze()
     return combined_weights
 
-def transform_train_topo(train_topo, kernel_length):
+def add_time_delayed_channels(topo, kernel_length):
     """Expects bc01 format. """
-    new_train_topo = np.empty((train_topo.shape[0], train_topo.shape[1] * kernel_length,
-                         train_topo.shape[2] - kernel_length + 1, 1))
-    n_chans = train_topo.shape[1]
+    new_topo = np.empty((topo.shape[0], topo.shape[1] * kernel_length,
+                         topo.shape[2] - kernel_length + 1, 1))
+    n_chans = topo.shape[1]
 
     for i_sample in xrange(kernel_length):
         # do only take samples from 0 to ... n-30, 1..n-29 etc.
@@ -86,9 +86,9 @@ def transform_train_topo(train_topo, kernel_length):
         if end == 0:
             end = None
         for i_chan in xrange(n_chans):
-            new_train_topo[:, i_chan*kernel_length+i_sample, :] = \
-                train_topo[:,i_chan,i_sample:end]
-    return new_train_topo
+            new_topo[:, i_chan*kernel_length+i_sample, :] = \
+                topo[:,i_chan,i_sample:end]
+    return new_topo
 
 def transform_weights_to_patterns(weights, inputs, outputs):
     """ Inputs are expected in features x samples/trials structure.
