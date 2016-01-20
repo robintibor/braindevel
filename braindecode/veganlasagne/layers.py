@@ -173,7 +173,7 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         self.remove_invalids = remove_invalids
         super(FinalReshapeLayer,self).__init__(incoming, **kwargs)
 
-    def get_output_for(self, input, **kwargs):
+    def get_output_for(self, input, input_var=None, **kwargs):
         # before we have sth like this (example where there was only a stride 2
         # in the computations before, and input lengh just 5)
         # showing with 1-based indexing here, sorry ;)
@@ -197,27 +197,23 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         # Reshape/flatten into #predsamples x #classes
         n_classes = self.input_shape[1]
         input = input.dimshuffle(1,2,0,3).reshape((n_classes, -1)).T
-            
-        if self.remove_invalids:
-            # remove invalid values (possibly nans still contained before)
-            n_sample_preds = get_n_sample_preds(self)
+        if input_var is None:
             input_var = lasagne.layers.get_all_layers(self)[0].input_var
-            input_shape = lasagne.layers.get_all_layers(self)[0].shape
-            if input_shape[0] is not None:
-                trials = input_shape[0]
-            else:
-                trials = input_var.shape[0]
-                
-            input = input[:trials * n_sample_preds]
-        
-        # reshape to (trialsxsamples) again, i.e.
-        # (trial1 all samples), (trial 2 all samples), ...
-        input_var = lasagne.layers.get_all_layers(self)[0].input_var
         input_shape = lasagne.layers.get_all_layers(self)[0].shape
         if input_shape[0] is not None:
             trials = input_shape[0]
         else:
             trials = input_var.shape[0]
+            
+        if self.remove_invalids:
+            # remove invalid values (possibly nans still contained before)
+            n_sample_preds = get_n_sample_preds(self)
+                
+            input = input[:trials * n_sample_preds]
+        
+        # reshape to (trialsxsamples) again, i.e.
+        # (trial1 all samples), (trial 2 all samples), ...
+        # By doing this:
         # transpose to classes x (samplepreds*trials)
         # then reshape to classes x sample preds x trials, 
         # dimshuffle to classes x trials x sample preds to flatten again to

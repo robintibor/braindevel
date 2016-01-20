@@ -40,9 +40,7 @@ def transform_to_time_activations(activations, all_batch_sizes):
         reshaped_act = batch_act.swapaxes(0,1).reshape(n_chans, n_stride, -1)
         reshaped_act = reshaped_act.swapaxes(1,2).reshape(n_chans, batch_size, -1).swapaxes(0,1)
         transformed_activations.append(reshaped_act)
-    return transformed_activations
-        
-
+    return np.array(transformed_activations)
             
 def transform_to_cnt_activations(time_activations, n_sample_preds, n_samples):
     """Time series of activations over whole dataset."""
