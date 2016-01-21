@@ -10,4 +10,8 @@ def load_model(filename):
             l.flip_filters = True
             l.convolution = T.nnet.conv2d
             l.n = 2
+        # fix final reshape layer
+        if hasattr(l, 'remove_invalids') and not hasattr(l, 'flatten'):
+            l.flatten = True
+            
     return model

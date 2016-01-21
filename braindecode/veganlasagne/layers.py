@@ -169,8 +169,10 @@ class StrideReshapeLayer(lasagne.layers.Layer):
         return get_output_shape_after_stride(input_shape, self.n_stride)
     
 class FinalReshapeLayer(lasagne.layers.Layer):
-    def __init__(self, incoming, remove_invalids=True, **kwargs):
+    def __init__(self, incoming, remove_invalids=True, flatten=True,
+             **kwargs):
         self.remove_invalids = remove_invalids
+        self.flatten = flatten
         super(FinalReshapeLayer,self).__init__(incoming, **kwargs)
 
     def get_output_for(self, input, input_var=None, **kwargs):
@@ -219,8 +221,16 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         # dimshuffle to classes x trials x sample preds to flatten again to
         # final output:
         # (trial 1 all samples), (trial 2 all samples), ...
+        
+        # if not flatten, instead reshape to:
+        #  trials x classes/filters x sample preds x emptydim
         input = input.T.reshape((self.input_shape[1], 
-            -1, trials)).dimshuffle(0,2,1).reshape((n_classes, -1)).T
+            -1, trials))
+        if self.flatten:
+            input = input.dimshuffle(0,2,1).reshape((n_classes, -1)).T
+        else:
+            input = input.dimshuffle(2,0,1,'x')
+            
         
         return input
         

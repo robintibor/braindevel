@@ -20,6 +20,14 @@ def plot_mean_and_std(data, axis=0, color=None):
     ax = plt.gca()
     ax.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.2, color=color)
 
+def plot_with_tube(x,y,deviation, axis=0, color=None):
+    if color is None:
+        color = seaborn.color_palette()[0]
+    plt.plot(x,y, color=color)
+    ax = plt.gca()
+    ax.fill_between(x, y - deviation, y + deviation, alpha=0.2, color=color)
+
+
 
 def plot_head_signals(signals, sensor_names=None, figsize=(12, 7),
     plot_args=None):

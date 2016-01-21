@@ -4,26 +4,15 @@
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, $input_time_length, in_cols]
             },
-            &shuffle !obj:lasagne.layers.DimshuffleLayer {
+            &combined_conv_1 !obj:lasagne.layers.Conv2DLayer {
                 incoming: *in_layer,
-                pattern: [0,3,2,1],
-            },
-            &time_conv !obj:lasagne.layers.Conv2DLayer {
-                incoming: *shuffle,
                 num_filters: $num_filters,
                 filter_size: [$filter_time_length, 1],
-                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
-                name: 'time_conv',
-            },
-            &spat_conv !obj:braindecode.veganlasagne.layers.Conv2DAllColsLayer {
-                incoming: *time_conv,
-                num_filters: $num_filters,
-                filter_size: [1, -1],
-                nonlinearity: $first_nonlin,
-                name: 'spat_conv',
+                nonlinearity: $first_nonlin ,
+                name: 'combined_conv_1',
             },
             &pool !obj:braindecode.veganlasagne.pool.$first_pool_layer {
-                    incoming: *spat_conv,
+                    incoming: *combined_conv_1,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
                     mode: $first_pool_mode,
@@ -115,8 +104,7 @@
             },
         ],
         raw_layer_names_to_norms: {
-            time_conv: $conv_norm,
-            spat_conv: $conv_norm,
+            combined_conv_1: $conv_norm,
             combined_conv_2: $conv_norm,
             combined_conv_3: $conv_norm,
             combined_conv_4: $conv_norm,
