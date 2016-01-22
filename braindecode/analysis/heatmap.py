@@ -3,8 +3,28 @@ import theano.tensor as T
 import numpy as np
 import theano
 import lasagne
+from theano.tensor.nnet import conv2d
+
 pool_fun = None
 
+def conv_z_plus_in_relevances(out_relevances, inputs, weights):
+    weights_plus = weights * (weights > 0)
+    norm_for_relevance = conv2d(inputs.dimshuffle('x',0,1,2), weights_plus)[0]
+    normed_relevances = out_relevances / norm_for_relevance
+    # upconv
+    in_relevances = conv2d(normed_relevances.dimshuffle('x',0,1,2), 
+                           weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], border_mode='full')[0]
+    in_relevances_proper = in_relevances * inputs
+    return in_relevances_proper
+
+def create_back_conv_z_plus_fn():
+    inputs = T.ftensor3()
+    weights = T.ftensor4()
+    out_relevances = T.ftensor3()
+    in_relevances = conv_z_plus_in_relevances(out_relevances, inputs, weights)
+    back_relevance_conv_fn = theano.function([out_relevances, inputs, weights],
+                                         in_relevances)
+    return back_relevance_conv_fn
 def back_relevance_dense_layer(out_relevances, in_activations, weights, rule):
     assert rule in ['w_sqr', 'z_plus']
     # for tests where i put int numbers
@@ -45,8 +65,12 @@ def back_relevance_dense_layer_as_in_paper(out_relevances, in_activations, weigh
         Z = np.dot(V.T, in_activations)
         return in_activations * np.dot(V, (out_relevances / Z))
 
-def back_relevance_conv(out_relevances, in_activations, conv_weights, rule):
-    assert rule in ['w_sqr', 'z_plus']
+def back_relevance_conv(out_relevances, in_activations, conv_weights, rule,
+        min_in=None, max_in=None):
+    assert rule in ['w_sqr', 'z_plus', 'z_b']
+    if z_b:
+        assert min_in is not None
+        assert max_in is not None
     # for tests where i put int numbers
     conv_weights = np.array(conv_weights, dtype=np.float32)
     out_relevances = np.array(out_relevances, dtype=np.float32)
@@ -64,6 +88,8 @@ def back_relevance_conv(out_relevances, in_activations, conv_weights, rule):
                     relevant_input = in_activations[:,out_x:out_x+kernel_size[0],
                               out_y:out_y+kernel_size[1]]
                     adapted_weights = adapted_weights * relevant_input
+                if rule == 'z_b':
+                    raise ValueError()
                 scaled_weights = adapted_weights / float(np.sum(adapted_weights))
                 if np.sum(adapted_weights) == 0:
                     scaled_weights[:] = 1 / float(np.prod(scaled_weights.shape))
