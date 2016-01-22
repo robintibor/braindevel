@@ -1,14 +1,14 @@
 import theano.tensor as T
 import theano
 import numpy as np
-from braindecode.analysis.cluster import distance_to_cluster
+from braindecode.analysis.cluster import mean_min_distance_to_cluster
 
 def test_distance_to_cluster():
     wanted_activations_var = T.ftensor4()
     
     actual_activations_var = T.ftensor3()
     
-    cost_var = distance_to_cluster(actual_activations_var, 
+    cost_var = mean_min_distance_to_cluster(actual_activations_var, 
         wanted_activations_var,  n_cluster_samples=2)
     
     cost_fn = theano.function([actual_activations_var,
