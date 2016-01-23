@@ -5,7 +5,6 @@ import theano
 import lasagne
 from theano.tensor.nnet import conv2d
 
-pool_fun = None
 
 def conv_z_plus_in_relevances(out_relevances, inputs, weights):
     weights_plus = weights * (weights > 0)
@@ -25,6 +24,7 @@ def create_back_conv_z_plus_fn():
     back_relevance_conv_fn = theano.function([out_relevances, inputs, weights],
                                          in_relevances)
     return back_relevance_conv_fn
+
 def back_relevance_dense_layer(out_relevances, in_activations, weights, rule):
     assert rule in ['w_sqr', 'z_plus']
     # for tests where i put int numbers
@@ -68,10 +68,12 @@ def back_relevance_dense_layer_as_in_paper(out_relevances, in_activations, weigh
 def back_relevance_conv(out_relevances, in_activations, conv_weights, rule,
         min_in=None, max_in=None):
     assert rule in ['w_sqr', 'z_plus', 'z_b']
-    if z_b:
+    if rule == 'z_b':
         assert min_in is not None
         assert max_in is not None
-    # for tests where i put int numbers
+        assert min_in <= 0
+        assert max_in >= 0
+    # for tests if you want to use int numbers
     conv_weights = np.array(conv_weights, dtype=np.float32)
     out_relevances = np.array(out_relevances, dtype=np.float32)
     in_activations = np.array(in_activations, dtype=np.float32)
@@ -89,7 +91,16 @@ def back_relevance_conv(out_relevances, in_activations, conv_weights, rule,
                               out_y:out_y+kernel_size[1]]
                     adapted_weights = adapted_weights * relevant_input
                 if rule == 'z_b':
-                    raise ValueError()
+                    relevant_input = in_activations[:,out_x:out_x+kernel_size[0],
+                              out_y:out_y+kernel_size[1]]
+                    adapted_weights = relevant_weights * relevant_input
+                    # will be positive as min in is negative....
+                    offset_negative_in = (-relevant_weights *
+                        (relevant_weights > 0) * min_in)
+                    # will be positive as max in is positive....
+                    offset_positive_in = (-relevant_weights *
+                        (relevant_weights < 0) * max_in)
+                    adapted_weights += offset_negative_in + offset_positive_in
                 scaled_weights = adapted_weights / float(np.sum(adapted_weights))
                 if np.sum(adapted_weights) == 0:
                     scaled_weights[:] = 1 / float(np.prod(scaled_weights.shape))
@@ -98,14 +109,20 @@ def back_relevance_conv(out_relevances, in_activations, conv_weights, rule,
                               out_y:out_y+kernel_size[1]] += relevance_to_add
     return in_relevances
 
-def back_relevance_pool(out_relevances, in_activations, pool_size, pool_stride):
-    # FIrst create pool function if it doesn't exist
+pool_fun = None
+def back_relevance_pool_new(out_relevances, in_activations, pool_size, pool_stride):
+    # First create pool function if it doesn't exist
     global pool_fun
     if pool_fun is None:
         inputs = T.ftensor3()
         output = downsample.max_pool_2d(inputs,ds=(2,2),mode='sum')#, ignore_border=True)
         pool_fun = theano.function([inputs], output)
     assert pool_size == pool_stride, "At the moment only support pool size and stride same"
+    assert np.array_equal(pool_size, [2,2])
+    # for tests if you want to use int numbers
+    out_relevances = np.array(out_relevances, dtype=np.float32)
+    in_activations = np.array(in_activations, dtype=np.float32)
+
     # have to upsample relevances and compute sums of activations per pool region
     upsampled_relevances = np.repeat(np.repeat(out_relevances,pool_size[0],  axis=1), 
                                      pool_size[1], axis=2)
@@ -118,10 +135,36 @@ def back_relevance_pool(out_relevances, in_activations, pool_size, pool_stride):
     in_relevances = scaled_activations * upsampled_relevances
     return in_relevances
 
+def back_relevance_pool(out_relevances, in_activations, pool_size,
+        pool_stride):
+    # for tests if you want to use int numbers
+    out_relevances = np.array(out_relevances, dtype=np.float32)
+    in_activations = np.array(in_activations, dtype=np.float32)
+    assert in_activations.shape[0] == out_relevances.shape[0]
+
+    in_relevances = np.zeros(in_activations.shape, dtype=np.float32)
+    for out_filt in xrange(out_relevances.shape[0]):
+        for out_x in xrange(out_relevances.shape[1]):
+            for out_y in xrange(out_relevances.shape[2]):
+                in_x = out_x * pool_stride[0]
+                in_y = out_y * pool_stride[1]
+                in_x_stop = in_x+pool_size[0]
+                in_y_stop = in_y+pool_size[1]
+                relevant_inputs = in_activations[out_filt, in_x:in_x_stop,
+                    in_y:in_y_stop]
+                scaled_inputs = relevant_inputs / np.sum(relevant_inputs)
+                if np.sum(relevant_inputs) == 0:
+                    scaled_inputs = relevant_inputs + 1/relevant_inputs.size
+                scaled_relevance = scaled_inputs * out_relevances[out_filt,
+                    out_x, out_y]
+                in_relevances[out_filt, in_x:in_x_stop, 
+                    in_y:in_y_stop] += scaled_relevance
+    return in_relevances
+
 def compute_heatmap(out_relevances, all_activations_per_layer, all_layers, 
-        all_rules):
+        all_rules, min_in=None, max_in=None):
     for rule in all_rules:
-        assert rule in ['w_sqr', 'z_plus', None]
+        assert rule in ['w_sqr', 'z_plus', 'z_b', None]
     # stop before first layer...as it should be input layer...
     # and we alwasys need activations from before
     for i_layer in xrange(len(all_layers)-1, 0,-1):
@@ -141,7 +184,7 @@ def compute_heatmap(out_relevances, all_activations_per_layer, all_layers,
         elif hasattr(layer, 'filter_size'):
             conv_weights = layer.W.get_value()
             out_relevances = back_relevance_conv(out_relevances, in_activations,
-                conv_weights, rule)
+                conv_weights, rule, min_in, max_in)
         else:
             raise ValueError("Trying to propagate through unknown layer")
         if out_relevances.shape != in_activations.shape:

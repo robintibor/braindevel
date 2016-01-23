@@ -1,6 +1,6 @@
 import numpy as np
 from braindecode.analysis.heatmap import (back_relevance_conv,
-    back_relevance_dense_layer)
+    back_relevance_dense_layer, back_relevance_pool)
 
 def test_conv_w_sqr():
     out_relevances = np.array([[[1,0,0]]]).astype(np.float32)
@@ -71,3 +71,20 @@ def test_dense_z_plus():
                            np.array([1,0,3]),
                            np.array([[0,1,2,3,4], [9,3,4,-5,1],[0,0,5,-2,2]]), 
                           'z_plus'))
+
+def test_pool():
+    out_rel = [[[1,3,2]]]
+    in_act = [[[1, 4, 3, 0.3, 4, 6]]]
+    pool_size =(1,2)
+    pool_stride = (1,2)
+    in_relevance = back_relevance_pool(out_rel, in_act, pool_size, pool_stride)
+    assert np.allclose(in_relevance, [[[0.2,0.8, 3*3/3.3, 3*0.3/3.3, 0.8,1.2]]])
+    
+    # Case with stride!=size
+    out_rel = [[[1,4]]]
+    in_act = [[[1, 2, 6, 4, 5]]]
+    pool_size =(1,3)
+    pool_stride = (1,2)
+    in_relevance = back_relevance_pool(out_rel, in_act, pool_size, pool_stride)
+    assert np.allclose(in_relevance, [[[1/9.0,2/9.0, 204/90.0, 
+        16/15.0, 20/15.0]]])
