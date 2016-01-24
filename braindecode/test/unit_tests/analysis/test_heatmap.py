@@ -2,7 +2,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 from braindecode.analysis.heatmap import (back_relevance_conv,
-    back_relevance_dense_layer, back_relevance_pool, back_pool_relevances,
+    back_relevance_dense_layer, back_relevance_pool, relevance_pool,
     create_back_conv_z_b_fn, create_back_conv_w_sqr_fn, create_back_dense_fn)
 
 def test_conv_w_sqr():
@@ -177,7 +177,7 @@ def test_pool_theano():
     pool_size =(1,2)
     pool_stride = (1,2)
     
-    in_relevances_var = back_pool_relevances(out_rel_var, inputs_var, pool_size, pool_stride)
+    in_relevances_var = relevance_pool(out_rel_var, inputs_var, pool_size, pool_stride)
     pool_relevance_fn = theano.function([out_rel_var,inputs_var], in_relevances_var)
     out_rel = [[[1,3,2]]]
     in_act = [[[1, 4, 3, 0.3, 4, 6]]]
@@ -189,7 +189,7 @@ def test_pool_theano():
     pool_size =(1,3)
     pool_stride = (1,2)
     
-    in_relevances_var = back_pool_relevances(out_rel_var, inputs_var, pool_size, pool_stride)
+    in_relevances_var = relevance_pool(out_rel_var, inputs_var, pool_size, pool_stride)
     pool_relevance_fn = theano.function([out_rel_var,inputs_var], in_relevances_var)
     out_rel = [[[1,4]]]
     in_act = [[[1, 2, 6, 4, 5]]]
