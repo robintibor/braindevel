@@ -28,6 +28,7 @@ def create_heatmap(out_relevances, input_trial, all_layers,
     Expects a single input trial not a batch. Similarly a single output relevance"""
     # First make all rules correct in case just rule for first layer
     # and remaining layers given
+    
     if len(all_rules) == 2 and (not len(all_layers) == 2):
         # then expect that there is rule for layers until first weights
         # and after
@@ -39,6 +40,7 @@ def create_heatmap(out_relevances, input_trial, all_layers,
             layer = all_layers[i_layer]
             if hasattr(layer, 'W'):
                 first_weight_found = True
+            i_layer += 1
         # make remaning layers use 2nd rule
         real_all_rules.extend([all_rules[1]] * (len(all_layers) - i_layer))
         all_rules = real_all_rules
@@ -161,7 +163,7 @@ def relevance_conv_w_sqr(out_relevances, weights):
 
 def relevance_conv_z_plus(out_relevances, inputs, weights):
     # hack for negative inputs
-    inputs = T.abs_(inputs)
+    #inputs = T.abs_(inputs)
     weights_plus = weights * T.gt(weights, 0)
     norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), weights_plus)[0]
     # prevent division by 0...
