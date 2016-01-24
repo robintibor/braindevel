@@ -5,28 +5,48 @@ import lasagne
 from theano.tensor.nnet import conv2d
 from braindecode.veganlasagne.layers import get_input_shape
 
-def create_heatmap_fn(all_layers, rules, min_in=None, max_in=None):
+def create_heatmap_fn(all_layers, rules, min_in=None, max_in=None,
+        return_all=False):
     # only using single trial, so one less dim than input shape
     if len(get_input_shape(all_layers[-1])) == 2:
         input_trial = T.fvector()
     elif len(get_input_shape(all_layers[-1])) == 4:
         input_trial = T.ftensor3()
-    assert len(all_layers[-1].output_shape) == 2
     # again, just single trial:
-    out_relevances = T.fvector()
+    if len(all_layers[-1].output_shape) == 2:
+        out_relevances = T.fvector()
+    elif len(all_layers[-1].output_shape) == 4:
+        out_relevances = T.ftensor3()
     heatmap = create_heatmap(out_relevances, input_trial, all_layers, rules,
-                            min_in, max_in)
+                            min_in, max_in, return_all)
     heatmap_fn = theano.function([out_relevances, input_trial], heatmap)         
     return heatmap_fn
 
 def create_heatmap(out_relevances, input_trial, all_layers, 
-        all_rules, min_in=None, max_in=None):
+        all_rules, min_in=None, max_in=None, return_all=False):
     """Theano expression for computing the heatmap.
     Expects a single input trial not a batch. Similarly a single output relevance"""
-    
+    # First make all rules correct in case just rule for first layer
+    # and remaining layers given
+    if len(all_rules) == 2 and (not len(all_layers) == 2):
+        # then expect that there is rule for layers until first weights
+        # and after
+        real_all_rules = []
+        i_layer = 0
+        first_weight_found = False
+        while not first_weight_found:
+            real_all_rules.append(all_rules[0])
+            layer = all_layers[i_layer]
+            if hasattr(layer, 'W'):
+                first_weight_found = True
+        # make remaning layers use 2nd rule
+        real_all_rules.extend([all_rules[1]] * (len(all_layers) - i_layer))
+        all_rules = real_all_rules
+        
     for rule in all_rules:
         assert rule in ['w_sqr', 'z_plus', 'z_b', None]
-    assert len(all_rules) == len(all_layers)
+    assert len(all_rules) == len(all_layers), ("number of rules "
+        "{:d} number layers {:d}".format(len(all_rules), len(all_layers)))
     
     if input_trial.ndim == 1:
         input_var = input_trial.dimshuffle('x',0)
@@ -37,6 +57,7 @@ def create_heatmap(out_relevances, input_trial, all_layers,
     
     assert len(activations_per_layer) == len(all_layers)
     
+    all_heatmaps = []
     # stop before first layer...as it should be input layer...
     # and we always need activations from before
     for i_layer in xrange(len(all_layers)-1, 0,-1):
@@ -55,11 +76,26 @@ def create_heatmap(out_relevances, input_trial, all_layers,
         elif hasattr(layer, 'filter_size'):
             out_relevances = relevance_conv(out_relevances, in_activations,
                 layer.W, rule, min_in, max_in)
+        elif (isinstance(layer, lasagne.layers.DropoutLayer) or
+            isinstance(layer, lasagne.layers.NonlinearityLayer) or
+            isinstance(layer, lasagne.layers.FlattenLayer)):
+            pass
+        elif isinstance(layer, lasagne.layers.DimshuffleLayer):
+            pattern = layer.pattern
+            reverse_pattern = np.array([pattern.index(i) for i in range(len(pattern))])
+            reverse_pattern = (reverse_pattern[1:]-1).tolist()
+            # starting at 1 since no trial axis there..
+            out_relevances = out_relevances.dimshuffle(reverse_pattern)
         else:
-            raise ValueError("Trying to propagate through unknown layer")
+            raise ValueError("Trying to propagate through unknown layer "
+                "{:s}".format(layer.__class__.__name__))
         if out_relevances.shape != in_activations.shape:
             out_relevances = out_relevances.reshape(in_activations.shape)
-    return out_relevances
+        all_heatmaps.append(out_relevances)
+    if return_all:
+        return all_heatmaps[::-1]
+    else:
+        return all_heatmaps[-1]
 
 def compute_heatmap(out_relevances, all_activations_per_layer, all_layers, 
         all_rules, min_in=None, max_in=None):
@@ -87,8 +123,11 @@ def compute_heatmap(out_relevances, all_activations_per_layer, all_layers,
             conv_weights = layer.W.get_value()
             out_relevances = back_relevance_conv(out_relevances, in_activations,
                 conv_weights, rule, min_in, max_in)
+        elif isinstance(layer, lasagne.layers.DropoutLayer):
+            pass
         else:
-            raise ValueError("Trying to propagate through unknown layer")
+            raise ValueError("Trying to propagate through unknown layer "
+                "{:s}".format(layer.__class__.__name__))
         if out_relevances.shape != in_activations.shape:
             out_relevances = out_relevances.reshape(in_activations.shape)
     return out_relevances
@@ -121,6 +160,8 @@ def relevance_conv_w_sqr(out_relevances, weights):
     return in_relevances
 
 def relevance_conv_z_plus(out_relevances, inputs, weights):
+    # hack for negative inputs
+    inputs = T.abs_(inputs)
     weights_plus = weights * T.gt(weights, 0)
     norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), weights_plus)[0]
     # prevent division by 0...
@@ -140,7 +181,7 @@ def relevance_conv_z_b(out_relevances, inputs, weights, min_in, max_in):
     weights_b += T.gt(weights, 0) * weights * -min_in
 
     norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), weights)[0]
-    norms_for_relevances += T.sum(weights_b)
+    norms_for_relevances += T.sum(weights_b, axis=(1,2,3)).dimshuffle(0,'x','x')
     # prevent division by 0...
     norms_for_relevances += T.eq(norms_for_relevances, 0) * 1
     normed_relevances = out_relevances / norms_for_relevances
@@ -156,10 +197,9 @@ def relevance_conv_z_b(out_relevances, inputs, weights, min_in, max_in):
     in_relevances = in_relevances_data + in_relevances_b
     return in_relevances
 
-
 def relevance_dense(out_relevances, in_activations, weights, rule,
     min_in=None, max_in=None):
-    """Mostly copied from paper Supplementary pseudocode:
+    """Mostly copied from paper supplementary pseudocode:
     http://arxiv.org/abs/1512.02479"""
     assert rule in ['w_sqr', 'z_plus', 'z_b']
     # weights are features x output_units => input_units x output_units

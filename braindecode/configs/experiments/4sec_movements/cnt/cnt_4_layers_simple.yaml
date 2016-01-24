@@ -7,7 +7,9 @@
         'configs/experiments/4sec_movements/cnt/defaults.yaml',
         ],
     variants: [[
-    {        
+    {
+        first_nonlin: [$relu],
+        later_nonlin: [$relu],
         filter_time_length: [20],
         save_path: ['data/models/4sec-movements/cnt/4-layer/simple/'],
         variants: [[

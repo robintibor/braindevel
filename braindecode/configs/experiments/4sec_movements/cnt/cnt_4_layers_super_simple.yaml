@@ -12,6 +12,9 @@
         input_time_length: [1000],
         trial_start: [3000],
         save_path: ['data/models/4sec-movements/cnt/4-layer/super-simple/'],
+        
+        first_nonlin: [$relu],
+        later_nonlin: [$relu],
         variants: [[
         {
             pool_length: [2],
