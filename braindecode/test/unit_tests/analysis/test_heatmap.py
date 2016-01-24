@@ -1,6 +1,9 @@
 import numpy as np
+import theano
+import theano.tensor as T
 from braindecode.analysis.heatmap import (back_relevance_conv,
-    back_relevance_dense_layer, back_relevance_pool)
+    back_relevance_dense_layer, back_relevance_pool, back_pool_relevances,
+    create_back_conv_z_b_fn)
 
 def test_conv_w_sqr():
     out_relevances = np.array([[[1,0,0]]]).astype(np.float32)
@@ -56,6 +59,23 @@ def test_conv_z_plus():
     in_relevances = back_relevance_conv(out_relevances, in_activations,weights, rule='z_plus')
     assert np.allclose([[[3/4.0, 131/44.0, 36/11.0]]], in_relevances)
     
+def test_conv_z_b():
+    out_rel = [[[3,4]]]
+    in_act = [[[1,-2,3]]]
+    weights = np.array([[[[-2,3]]]])[:,:,::-1,::-1]
+    in_relevances = back_relevance_conv(out_rel,in_act,weights,
+        'z_b', min_in=-2, max_in=4)
+    assert np.allclose([[[3,48/27.0,60/27.0]]], in_relevances)
+
+def test_conv_z_b_theano():
+    conv_z_b_fn = create_back_conv_z_b_fn(-2,4)
+
+    out_rel = np.array([[[3,4]]], dtype=np.float32)
+    in_act = np.array([[[1,-2,3]]], dtype=np.float32)
+    weights = np.array([[[[-2,3]]]], dtype=np.float32)[:,:,::-1,::-1]
+    in_relevances = conv_z_b_fn(out_rel,in_act,weights)
+    assert np.allclose([[[3,48/27.0,60/27.0]]], in_relevances)
+        
 def test_dense_z_plus():
     out_relevances = np.array([0,2,1], dtype=np.float32)
     weights = np.array([[1,1,1], [2,2.25,0]], dtype=np.float32)
@@ -88,3 +108,29 @@ def test_pool():
     in_relevance = back_relevance_pool(out_rel, in_act, pool_size, pool_stride)
     assert np.allclose(in_relevance, [[[1/9.0,2/9.0, 204/90.0, 
         16/15.0, 20/15.0]]])
+    
+def test_pool_theano():
+    inputs_var = T.ftensor3()
+    out_rel_var = T.ftensor3()
+    pool_size =(1,2)
+    pool_stride = (1,2)
+    
+    in_relevances_var = back_pool_relevances(out_rel_var, inputs_var, pool_size, pool_stride)
+    pool_relevance_fn = theano.function([out_rel_var,inputs_var], in_relevances_var)
+    out_rel = [[[1,3,2]]]
+    in_act = [[[1, 4, 3, 0.3, 4, 6]]]
+    in_relevance = pool_relevance_fn(np.array(out_rel, dtype=np.float32), np.array(in_act, dtype=np.float32))
+    assert np.allclose(in_relevance, [[[0.2,0.8, 3*3/3.3, 3*0.3/3.3, 0.8,1.2]]])
+    
+    inputs_var = T.ftensor3()
+    out_rel_var = T.ftensor3()
+    pool_size =(1,3)
+    pool_stride = (1,2)
+    
+    in_relevances_var = back_pool_relevances(out_rel_var, inputs_var, pool_size, pool_stride)
+    pool_relevance_fn = theano.function([out_rel_var,inputs_var], in_relevances_var)
+    out_rel = [[[1,4]]]
+    in_act = [[[1, 2, 6, 4, 5]]]
+    in_relevance = pool_relevance_fn(out_rel, in_act)
+    assert np.allclose(in_relevance, [[[1/9.0,2/9.0, 204/90.0, 16/15.0, 20/15.0]]])
+        

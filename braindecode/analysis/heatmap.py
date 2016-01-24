@@ -5,22 +5,87 @@ import theano
 import lasagne
 from theano.tensor.nnet import conv2d
 
-
 def conv_z_plus_in_relevances(out_relevances, inputs, weights):
     weights_plus = weights * (weights > 0)
-    norm_for_relevance = conv2d(inputs.dimshuffle('x',0,1,2), weights_plus)[0]
-    normed_relevances = out_relevances / norm_for_relevance
+    norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), weights_plus)[0]
+    # prevent division by 0...
+    norms_for_relevances += ((norms_for_relevances == 0) * 1)
+    normed_relevances = out_relevances / norms_for_relevances
     # upconv
     in_relevances = conv2d(normed_relevances.dimshuffle('x',0,1,2), 
                            weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], border_mode='full')[0]
     in_relevances_proper = in_relevances * inputs
     return in_relevances_proper
 
+
+def conv_z_b_in_relevances(out_relevances, inputs, weights, min_in, max_in):
+    assert min_in < 0
+    assert max_in > 0
+    weights_b = (weights < 0) * weights * -max_in
+    weights_b += (weights > 0) * weights * -min_in
+
+    norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), weights)[0]
+    norms_for_relevances += T.sum(weights_b)
+    # prevent division by 0...
+    norms_for_relevances += ((norms_for_relevances == 0) * 1)
+    normed_relevances = out_relevances / norms_for_relevances
+    # upconv data
+    in_relevances_data = conv2d(normed_relevances.dimshuffle('x',0,1,2), 
+                           weights.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+                           border_mode='full')[0]
+    in_relevances_data *= inputs
+    # upconv weight offsets to enforce positivity
+    in_relevances_b = conv2d(normed_relevances.dimshuffle('x',0,1,2), 
+                           weights_b.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+                           border_mode='full')[0]
+    in_relevances = in_relevances_data + in_relevances_b
+    return in_relevances
+
+def back_pool_relevances(out_relevances, inputs, pool_size, pool_stride):
+    pool_ones_shape = [1, 1, pool_size[0], pool_size[1]]
+    pool_ones = T.ones(pool_ones_shape, dtype=np.float32)
+    norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), 
+                           pool_ones, subsample=pool_stride, 
+                           border_mode='valid')[0]
+    # prevent division by 0...
+    # the relevance which had norm zero will not be redistributed anyways..
+    # so it doesnt matter which normlaization factor you choose ehre,
+    # only thing is to prevent NaNs...
+    # however this means heatmapping is no longer completely preserving
+    # 
+    norms_for_relevances += ((norms_for_relevances == 0) * 1)
+    normed_relevances = out_relevances / norms_for_relevances
+    # stride has to be taken into account, see 
+    # http://stackoverflow.com/a/28752057/1469195
+    upsampled_relevances = T.zeros((normed_relevances.shape[0], 
+        normed_relevances.shape[1] * pool_stride[0] - pool_stride[0] + 1, 
+        normed_relevances.shape[2] * pool_stride[1] - pool_stride[1] + 1, 
+        ), dtype=np.float32)
+    upsampled_relevances = T.set_subtensor(
+        upsampled_relevances[:, ::pool_stride[0], ::pool_stride[1]], 
+        normed_relevances)
+    
+    in_relevances = conv2d(upsampled_relevances.dimshuffle('x',0,1,2), 
+                           pool_ones, subsample=(1,1),
+                           border_mode='full')[0]
+    in_relevances = in_relevances * inputs
+    return in_relevances
+
 def create_back_conv_z_plus_fn():
     inputs = T.ftensor3()
     weights = T.ftensor4()
     out_relevances = T.ftensor3()
     in_relevances = conv_z_plus_in_relevances(out_relevances, inputs, weights)
+    back_relevance_conv_fn = theano.function([out_relevances, inputs, weights],
+                                         in_relevances)
+    return back_relevance_conv_fn
+
+def create_back_conv_z_b_fn(min_in, max_in):
+    inputs = T.ftensor3()
+    weights = T.ftensor4()
+    out_relevances = T.ftensor3()
+    in_relevances = conv_z_b_in_relevances(out_relevances, inputs, weights,
+        min_in, max_in)
     back_relevance_conv_fn = theano.function([out_relevances, inputs, weights],
                                          in_relevances)
     return back_relevance_conv_fn
@@ -107,32 +172,6 @@ def back_relevance_conv(out_relevances, in_activations, conv_weights, rule,
                 relevance_to_add = scaled_weights * out_relevances[out_filt, out_x, out_y] 
                 in_relevances[:,out_x:out_x+kernel_size[0],
                               out_y:out_y+kernel_size[1]] += relevance_to_add
-    return in_relevances
-
-pool_fun = None
-def back_relevance_pool_new(out_relevances, in_activations, pool_size, pool_stride):
-    # First create pool function if it doesn't exist
-    global pool_fun
-    if pool_fun is None:
-        inputs = T.ftensor3()
-        output = downsample.max_pool_2d(inputs,ds=(2,2),mode='sum')#, ignore_border=True)
-        pool_fun = theano.function([inputs], output)
-    assert pool_size == pool_stride, "At the moment only support pool size and stride same"
-    assert np.array_equal(pool_size, [2,2])
-    # for tests if you want to use int numbers
-    out_relevances = np.array(out_relevances, dtype=np.float32)
-    in_activations = np.array(in_activations, dtype=np.float32)
-
-    # have to upsample relevances and compute sums of activations per pool region
-    upsampled_relevances = np.repeat(np.repeat(out_relevances,pool_size[0],  axis=1), 
-                                     pool_size[1], axis=2)
-    region_pooled_activation = pool_fun(in_activations)
-    upsampled_sum_activation = np.repeat(np.repeat(region_pooled_activation, pool_size[0],  axis=1), 
-                                         pool_size[1], axis=2)
-    scaled_activations = in_activations / upsampled_sum_activation
-    # fix those activations where there was a 0 pooling output.. just distribute equally
-    scaled_activations[np.isnan(scaled_activations)] = 1 / float(np.prod(pool_size))
-    in_relevances = scaled_activations * upsampled_relevances
     return in_relevances
 
 def back_relevance_pool(out_relevances, in_activations, pool_size,
