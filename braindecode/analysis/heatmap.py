@@ -1,15 +1,26 @@
-from theano.tensor.signal import downsample
 import theano.tensor as T
 import numpy as np
 import theano
 import lasagne
 from theano.tensor.nnet import conv2d
 
+def conv_w_sqr_relevances(out_relevances, inputs, weights):
+    weights_sqr = weights * weights
+    weights_norm = T.sum(weights_sqr, axis=(1,2,3), keepdims=True)
+    # prevent division by zero
+    weights_norm = weights_norm + (T.eq(weights_norm, 0) * 1)
+    weights_scaled = weights_sqr / weights_norm
+    # upconv
+    in_relevances = conv2d(out_relevances.dimshuffle('x',0,1,2), 
+                           weights_scaled.dimshuffle(1,0,2,3)[:,:,::-1,::-1],
+                           border_mode='full')[0]
+    return in_relevances
+
 def conv_z_plus_in_relevances(out_relevances, inputs, weights):
-    weights_plus = weights * (weights > 0)
+    weights_plus = weights * T.gt(weights, 0)
     norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), weights_plus)[0]
     # prevent division by 0...
-    norms_for_relevances += ((norms_for_relevances == 0) * 1)
+    norms_for_relevances += T.eq(norms_for_relevances, 0) * 1
     normed_relevances = out_relevances / norms_for_relevances
     # upconv
     in_relevances = conv2d(normed_relevances.dimshuffle('x',0,1,2), 
@@ -21,13 +32,13 @@ def conv_z_plus_in_relevances(out_relevances, inputs, weights):
 def conv_z_b_in_relevances(out_relevances, inputs, weights, min_in, max_in):
     assert min_in < 0
     assert max_in > 0
-    weights_b = (weights < 0) * weights * -max_in
-    weights_b += (weights > 0) * weights * -min_in
+    weights_b = T.lt(weights, 0) * weights * -max_in
+    weights_b += T.gt(weights, 0) * weights * -min_in
 
     norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), weights)[0]
     norms_for_relevances += T.sum(weights_b)
     # prevent division by 0...
-    norms_for_relevances += ((norms_for_relevances == 0) * 1)
+    norms_for_relevances += T.eq(norms_for_relevances, 0) * 1
     normed_relevances = out_relevances / norms_for_relevances
     # upconv data
     in_relevances_data = conv2d(normed_relevances.dimshuffle('x',0,1,2), 
@@ -41,35 +52,55 @@ def conv_z_b_in_relevances(out_relevances, inputs, weights, min_in, max_in):
     in_relevances = in_relevances_data + in_relevances_b
     return in_relevances
 
-def back_pool_relevances(out_relevances, inputs, pool_size, pool_stride):
-    pool_ones_shape = [1, 1, pool_size[0], pool_size[1]]
-    pool_ones = T.ones(pool_ones_shape, dtype=np.float32)
-    norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), 
-                           pool_ones, subsample=pool_stride, 
-                           border_mode='valid')[0]
-    # prevent division by 0...
-    # the relevance which had norm zero will not be redistributed anyways..
-    # so it doesnt matter which normlaization factor you choose ehre,
-    # only thing is to prevent NaNs...
-    # however this means heatmapping is no longer completely preserving
-    # 
-    norms_for_relevances += ((norms_for_relevances == 0) * 1)
-    normed_relevances = out_relevances / norms_for_relevances
-    # stride has to be taken into account, see 
-    # http://stackoverflow.com/a/28752057/1469195
-    upsampled_relevances = T.zeros((normed_relevances.shape[0], 
-        normed_relevances.shape[1] * pool_stride[0] - pool_stride[0] + 1, 
-        normed_relevances.shape[2] * pool_stride[1] - pool_stride[1] + 1, 
-        ), dtype=np.float32)
-    upsampled_relevances = T.set_subtensor(
-        upsampled_relevances[:, ::pool_stride[0], ::pool_stride[1]], 
-        normed_relevances)
-    
-    in_relevances = conv2d(upsampled_relevances.dimshuffle('x',0,1,2), 
-                           pool_ones, subsample=(1,1),
-                           border_mode='full')[0]
-    in_relevances = in_relevances * inputs
-    return in_relevances
+
+def relevance_dense(out_relevances, in_activations, weights, rule,
+    min_in=None, max_in=None):
+    """Mostly copied from paper Supplementary pseudocode:
+    http://arxiv.org/abs/1512.02479"""
+    assert rule in ['w_sqr', 'z_plus', 'z_b']
+    # weights are features x output_units => input_units x output_units
+    # in_activations are input_units
+    if rule == 'w_sqr':
+        W_adapted = weights * weights
+        Z = T.sum(W_adapted, axis=0, keepdims=True)
+        # prevent division by 0...
+        Z += T.eq(Z, 0) * 1
+        N = W_adapted / Z
+        return T.dot(N, out_relevances)
+    elif rule == 'z_plus':
+        V = weights * T.gt(weights, 0)
+        Z = T.dot(V.T, in_activations)
+        # prevent division by 0...
+        Z += T.eq(Z, 0) * 1
+        return in_activations * T.dot(V, (out_relevances / Z))
+    elif rule == 'z_b':
+        assert min_in is not None
+        assert max_in is not None
+        assert min_in <= 0
+        assert max_in >= 0
+        U = weights * T.lt(weights, 0)
+        V = weights * T.gt(weights, 0)
+        R_Norm = T.dot(weights.T, in_activations)
+        # we only expect two global min in and max in values
+        # therefore no need to do dot product here just multiply and um
+        R_Norm -= T.sum(V * min_in, axis=0)
+        R_Norm -= T.sum(U * max_in, axis=0)
+        # prevent division by 0...
+        R_Norm += T.eq(R_Norm, 0) * 1
+        N = out_relevances / R_Norm
+        in_relevances = in_activations * (T.dot(weights, N))
+        in_relevances -= min_in * (T.dot(V, N))
+        in_relevances -= max_in * (T.dot(U, N))
+        return in_relevances
+
+def create_back_conv_w_sqr_fn():
+    inputs = T.ftensor3()
+    weights = T.ftensor4()
+    out_relevances = T.ftensor3()
+    in_relevances = conv_w_sqr_relevances(out_relevances, inputs, weights)
+    back_relevance_conv_fn = theano.function([out_relevances, weights],
+                                         in_relevances)
+    return back_relevance_conv_fn
 
 def create_back_conv_z_plus_fn():
     inputs = T.ftensor3()
@@ -89,6 +120,50 @@ def create_back_conv_z_b_fn(min_in, max_in):
     back_relevance_conv_fn = theano.function([out_relevances, inputs, weights],
                                          in_relevances)
     return back_relevance_conv_fn
+
+def create_back_dense_fn(rule, min_in=None, max_in=None):
+    inputs = T.vector()
+    weights = T.fmatrix()
+    out_relevances = T.fvector()
+    in_relevances = relevance_dense(out_relevances, inputs, weights,
+        rule, min_in, max_in)
+    if rule == 'w_sqr':
+        back_relevance_dense_fn = theano.function([out_relevances, weights],
+                                         in_relevances)
+    else:
+        back_relevance_dense_fn = theano.function([out_relevances, inputs,
+            weights], in_relevances)
+    return back_relevance_dense_fn
+
+def back_pool_relevances(out_relevances, inputs, pool_size, pool_stride):
+    pool_ones_shape = [1, 1, pool_size[0], pool_size[1]]
+    pool_ones = T.ones(pool_ones_shape, dtype=np.float32)
+    norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), 
+                           pool_ones, subsample=pool_stride, 
+                           border_mode='valid')[0]
+    # prevent division by 0...
+    # the relevance which had norm zero will not be redistributed anyways..
+    # so it doesnt matter which normlaization factor you choose ehre,
+    # only thing is to prevent NaNs...
+    # however this means heatmapping is no longer completely preserving
+    # 
+    norms_for_relevances += T.eq(norms_for_relevances, 0) * 1
+    normed_relevances = out_relevances / norms_for_relevances
+    # stride has to be taken into account, see 
+    # http://stackoverflow.com/a/28752057/1469195
+    upsampled_relevances = T.zeros((normed_relevances.shape[0], 
+        normed_relevances.shape[1] * pool_stride[0] - pool_stride[0] + 1, 
+        normed_relevances.shape[2] * pool_stride[1] - pool_stride[1] + 1, 
+        ), dtype=np.float32)
+    upsampled_relevances = T.set_subtensor(
+        upsampled_relevances[:, ::pool_stride[0], ::pool_stride[1]], 
+        normed_relevances)
+    
+    in_relevances = conv2d(upsampled_relevances.dimshuffle('x',0,1,2), 
+                           pool_ones, subsample=(1,1),
+                           border_mode='full')[0]
+    in_relevances = in_relevances * inputs
+    return in_relevances
 
 def back_relevance_dense_layer(out_relevances, in_activations, weights, rule):
     assert rule in ['w_sqr', 'z_plus']
