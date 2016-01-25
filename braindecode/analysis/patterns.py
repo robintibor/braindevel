@@ -2,6 +2,182 @@ import numpy as np
 import lasagne
 import theano.tensor
 import theano.tensor as T
+from theano.tensor.nnet import conv2d
+from theano.tensor.signal import downsample
+
+def compute_patterns_for_model(model, inputs):
+    layers = lasagne.layers.get_all_layers(model)
+    layers_with_weights = [l for  l in layers if hasattr(l, 'W')]
+    return compute_patterns_for_layers(layers_with_weights, inputs)
+
+def compute_patterns_for_layers(needed_layers, input_data):
+    in_layers = [l.input_layer for l in needed_layers]
+    in_and_out = zip(in_layers, needed_layers)
+    in_and_out = np.array(in_and_out).flatten()
+    inputs = T.fmatrix()
+    output = lasagne.layers.get_output(in_and_out, deterministic=True, inputs=inputs)
+    out_fn = theano.function([inputs], output)
+    outs_by_layer = out_fn(input_data)
+    in_outs_by_layer = [outs_by_layer[2*i:2*i+2] for i in xrange(len(outs_by_layer) /2)]
+    patterns_per_layer = []
+    for i_layer in xrange(len(needed_layers)):
+        layer = needed_layers[i_layer]
+        inputs = in_outs_by_layer[i_layer][0]
+        outputs = in_outs_by_layer[i_layer][1]
+        if hasattr(layer, 'filter_size'):
+            conv_weights = layer.W.get_value()
+            pattern = transform_to_patterns(conv_weights, inputs, outputs)
+        elif isinstance(layer, lasagne.layers.DenseLayer):
+            if inputs.ndim > 2:
+                inputs = inputs.reshape(inputs.shape[0], -1)
+            in_cov = np.cov(inputs.T)
+            pattern = np.dot(in_cov, layer.W.get_value())
+        else:
+            raise ValueError("Trying to compute patterns for unknown layer "
+                "type {:s}", layer.__class__.__name__)
+        patterns_per_layer.append(pattern)
+    return patterns_per_layer
+
+def pattern_deconv(final_out, input_var, layers, pattern_weights,
+        return_all=False, enforce_positivity_after_relu=True, 
+        enforce_positivity_everywhere=False):
+    """pattern_weights should be numpy variables"""
+    layers_with_weights = [l for l in layers if hasattr(l, 'W')]
+    assert len(layers_with_weights) == len(pattern_weights)
+    layer_to_pattern = dict(zip(layers_with_weights, pattern_weights))
+    all_outs = lasagne.layers.get_output(layers, inputs=input_var,
+        deterministic=True)
+    cur_out = final_out
+    # determine input constraints by checking if there is some rectify
+    input_constraints = []
+    relu_before = False
+    for l in layers:
+        if relu_before and enforce_positivity_after_relu:
+            input_constraints.append('positive')
+        else:
+            input_constraints.append(None)
+        if hasattr(l, 'W') and not l.nonlinearity.__name__ == 'rectify':
+            relu_before = False
+        if hasattr(l, 'nonlinearity') and l.nonlinearity.__name__ == 'rectify':
+            relu_before=True
+        
+    all_cur_outs = []
+    # Stop before 0, no need to propagate through input layer...
+    for i_layer in xrange(len(layers)-1,0,-1):
+        layer = layers[i_layer]
+        inputs = all_outs[i_layer-1]
+        if hasattr(layer, 'pool_size'):
+            cur_out = upsample_pool(cur_out, inputs, 
+                layer.pool_size, layer.stride)
+        elif hasattr(layer, 'filter_size'):
+            pattern = T.constant(layer_to_pattern[layer], dtype=np.float32)
+            cur_out = conv2d(cur_out, pattern.dimshuffle(1,0,2,3),
+                              filter_flip=False, border_mode='full')
+            #if layer.nonlinearity.__name__ == 'rectify':
+            #    cur_out = cur_out * T.gt(cur_out,0)
+        elif isinstance(layer, lasagne.layers.DenseLayer):
+            pattern = T.constant(layer_to_pattern[layer], dtype=np.float32)
+            cur_out = T.dot(cur_out, pattern.T)
+        elif isinstance(layer, lasagne.layers.DimshuffleLayer):
+            shuffle_pattern = layer.pattern
+            reverse_pattern = np.array([shuffle_pattern.index(i) 
+                for i in xrange(len(shuffle_pattern))])
+            reverse_pattern = (reverse_pattern[1:]-1).tolist()
+            # starting at 1 since no trial axis there..
+            cur_out = cur_out.dimshuffle(reverse_pattern)
+        elif (isinstance(layer, lasagne.layers.DropoutLayer) or
+            isinstance(layer, lasagne.layers.FlattenLayer)):
+                pass
+        else:
+            raise ValueError("Trying to propagate through unknown layer "
+                "{:s}".format(layer.__class__.__name__))
+        if cur_out.shape != inputs.shape:
+            cur_out = cur_out.reshape(inputs.shape)
+        if input_constraints[i_layer] == 'positive' or enforce_positivity_everywhere:
+            cur_out = cur_out * T.gt(cur_out,0)
+        all_cur_outs.append(cur_out)
+    if return_all:
+        return all_cur_outs
+    else:
+        return cur_out
+    
+def upsample_pool(outputs, inputs, pool_size, pool_stride):
+    pool_ones_shape = [outputs.shape[1], outputs.shape[1],
+                       pool_size[0], pool_size[1]]
+
+    pool_ones = T.ones(pool_ones_shape, dtype=np.float32)
+    upsampled_out = T.zeros((outputs.shape[0], outputs.shape[1], 
+            outputs.shape[2] * pool_stride[0] - pool_stride[0] + 1, 
+            outputs.shape[3] * pool_stride[1] - pool_stride[1] + 1, 
+            ), dtype=np.float32)
+
+    upsampled_out = T.set_subtensor(
+        upsampled_out[:, :, ::pool_stride[0], ::pool_stride[1]], 
+        outputs)
+
+    upsampled_out = conv2d(upsampled_out, 
+                           pool_ones, subsample=(1,1),
+                           border_mode='full')
+
+    pooled = downsample.max_pool_2d(inputs,ds=pool_size, st=pool_stride,
+        ignore_border=False)
+
+    grad = T.grad(None, inputs, known_grads={pooled: pooled})
+
+    actual_in = upsampled_out * T.neq(0,grad)
+    return actual_in
+
+
+
+def compute_topo_covariances(all_inputs, weight_shape):
+    """ all inputs and weight shape should be bc01"""
+    n_chans = weight_shape[1]
+    n_x = weight_shape[2]
+    n_y = weight_shape[3]
+    all_covariances = np.ones((n_chans,n_x,n_y,n_chans,n_x,n_y)) * np.nan
+    for c1 in xrange(n_chans):
+        for c2 in xrange(c1,n_chans):
+            for x1 in xrange(n_x):
+                for x2 in xrange(x1,n_x):
+                    for y1 in xrange(n_y):
+                        for y2 in xrange(y1,n_y):
+                            end_x = x1 - x2
+                            if end_x == 0:
+                                end_x = None
+                            end_y = y1 - y2
+                            if end_y == 0:
+                                end_y = None
+                            in_1 = all_inputs[:,c1,x1:end_x,y1:end_y].flatten()
+                            in_2 = all_inputs[:,c2,x2:,y2:].flatten()
+
+                            in_1_demeaned = in_1 - np.mean(in_1)
+                            in_2_demeaned = in_2 - np.mean(in_2)
+                            cov = np.dot(in_1_demeaned, in_2_demeaned) / (len(in_1_demeaned) - 1)
+                            assert cov.shape == ()
+                            
+                            all_covariances[c1,x1,y1,c2,x2,y2] = cov
+                            all_covariances[c1,x1,y2,c2,x2,y1] = cov
+                            all_covariances[c1,x2,y1,c2,x1,y2] = cov
+                            all_covariances[c1,x2,y2,c2,x1,y1] = cov
+                            all_covariances[c2,x1,y1,c1,x2,y2] = cov
+                            all_covariances[c2,x1,y2,c1,x2,y1] = cov
+                            all_covariances[c2,x2,y1,c1,x1,y2] = cov
+                            all_covariances[c2,x2,y2,c1,x1,y1] = cov
+                                
+    assert not np.any(np.isnan(all_covariances))                        
+    return all_covariances
+
+def transform_to_patterns(conv_weights, all_ins, all_outs):
+    all_covariances = compute_topo_covariances(all_ins, conv_weights.shape)
+    all_covariances_flat = all_covariances.reshape(
+        np.prod(all_covariances.shape[:3]), np.prod(all_covariances.shape[:3]))
+    out_covs = np.cov(all_outs.swapaxes(0,1).reshape(all_outs.shape[1], -1))
+    flat_W = conv_weights[:,:,::-1,::-1].reshape(conv_weights.shape[0],-1)
+
+    patterns = np.dot(all_covariances_flat, flat_W.T)
+    patterns = np.dot(patterns, np.linalg.pinv(out_covs)).T
+    topo_patterns = patterns.reshape(conv_weights.shape)
+    return topo_patterns
 
 def transform_conv_weights_to_patterns(conv_weights, topo, activations):
     """Assume weights are bc0, not having fourth dimension..in case of fourth dimension,

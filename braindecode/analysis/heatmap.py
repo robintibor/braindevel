@@ -239,6 +239,36 @@ def relevance_dense(out_relevances, in_activations, weights, rule,
         in_relevances -= max_in * (T.dot(U, N))
         return in_relevances
 
+def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
+    pool_ones_shape = [1, out_relevances.shape[0], pool_size[0], pool_size[1]]
+    pool_ones = T.ones(pool_ones_shape, dtype=np.float32)
+    norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), 
+                           pool_ones, subsample=pool_stride, 
+                           border_mode='valid')[0]
+    # prevent division by 0...
+    # the relevance which had norm zero will not be redistributed anyways..
+    # so it doesnt matter which normalization factor you choose here,
+    # only thing is to prevent NaNs...
+    # however this means heatmapping is no longer completely preserving
+    # 
+    norms_for_relevances += T.eq(norms_for_relevances, 0) * 1
+    normed_relevances = out_relevances / norms_for_relevances
+    # stride has to be taken into account, see 
+    # http://stackoverflow.com/a/28752057/1469195
+    upsampled_relevances = T.zeros((normed_relevances.shape[0], 
+        normed_relevances.shape[1] * pool_stride[0] - pool_stride[0] + 1, 
+        normed_relevances.shape[2] * pool_stride[1] - pool_stride[1] + 1, 
+        ), dtype=np.float32)
+    upsampled_relevances = T.set_subtensor(
+        upsampled_relevances[:, ::pool_stride[0], ::pool_stride[1]], 
+        normed_relevances)
+    
+    in_relevances = conv2d(upsampled_relevances.dimshuffle('x',0,1,2), 
+                           pool_ones, subsample=(1,1),
+                           border_mode='full')[0]
+    in_relevances = in_relevances * inputs
+    return in_relevances
+
 def create_back_conv_w_sqr_fn():
     out_relevances = T.ftensor3()
     weights = T.ftensor4()
@@ -279,36 +309,6 @@ def create_back_dense_fn(rule, min_in=None, max_in=None):
         back_relevance_dense_fn = theano.function([out_relevances, inputs,
             weights], in_relevances)
     return back_relevance_dense_fn
-
-def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
-    pool_ones_shape = [1, out_relevances.shape[0], pool_size[0], pool_size[1]]
-    pool_ones = T.ones(pool_ones_shape, dtype=np.float32)
-    norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), 
-                           pool_ones, subsample=pool_stride, 
-                           border_mode='valid')[0]
-    # prevent division by 0...
-    # the relevance which had norm zero will not be redistributed anyways..
-    # so it doesnt matter which normlaization factor you choose ehre,
-    # only thing is to prevent NaNs...
-    # however this means heatmapping is no longer completely preserving
-    # 
-    norms_for_relevances += T.eq(norms_for_relevances, 0) * 1
-    normed_relevances = out_relevances / norms_for_relevances
-    # stride has to be taken into account, see 
-    # http://stackoverflow.com/a/28752057/1469195
-    upsampled_relevances = T.zeros((normed_relevances.shape[0], 
-        normed_relevances.shape[1] * pool_stride[0] - pool_stride[0] + 1, 
-        normed_relevances.shape[2] * pool_stride[1] - pool_stride[1] + 1, 
-        ), dtype=np.float32)
-    upsampled_relevances = T.set_subtensor(
-        upsampled_relevances[:, ::pool_stride[0], ::pool_stride[1]], 
-        normed_relevances)
-    
-    in_relevances = conv2d(upsampled_relevances.dimshuffle('x',0,1,2), 
-                           pool_ones, subsample=(1,1),
-                           border_mode='full')[0]
-    in_relevances = in_relevances * inputs
-    return in_relevances
 
 def back_relevance_dense_layer(out_relevances, in_activations, weights, rule):
     assert rule in ['w_sqr', 'z_plus']

@@ -1,6 +1,9 @@
 import numpy as np
+import theano
+import theano.tensor as T
 from braindecode.analysis.patterns import transform_weights_to_patterns,\
-    add_time_delayed_channels
+    add_time_delayed_channels, upsample_pool
+
 def test_patterns_square_case():
     # source and noise are chosen so that
     # noise is uncorrelated with source
@@ -63,3 +66,18 @@ def test_add_time_delayed_channels():
                [-1,-2,-3,-4,-5], [-2,-3,-4,-5,-6], [-3,-4,-5,-6,-7]]]
     expected = np.array(expected)[:,:,:,np.newaxis]
     assert np.array_equal(expected, transformed)
+
+def test_upsample_pool():
+    pool_size = (1,2)
+    pool_stride = (1,2)
+    out = T.ftensor4()
+    inputs = T.ftensor4()
+    
+    actual_in = upsample_pool(out, inputs, pool_size, pool_stride)
+    upsample_pool_fn = theano.function([out, inputs], actual_in)
+    # needs pool size, stride= 1,2
+    output = np.float32([[[[5,4,1]]]])
+    inputs = np.float32([[[[3,0,8,4,5,6]]]])
+    upsampled = upsample_pool_fn(output, inputs)
+    assert np.allclose([[[[ 5.,  0.,  4.,  0.,  0.,  1.]]]],
+                       upsampled)
