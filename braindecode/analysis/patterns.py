@@ -4,7 +4,31 @@ import theano.tensor
 import theano.tensor as T
 from theano.tensor.nnet import conv2d
 from theano.tensor.signal import downsample
+from braindecode.veganlasagne.layers import get_input_shape,\
+    create_suitable_theano_input_var, create_suitable_theano_output_var
+import logging
+log = logging.getLogger(__name__)
+from theano.compile import UnusedInputError
 
+def create_pattern_deconv_fn(layers, patterns,
+                             return_all=False, 
+                             enforce_positivity_after_relu=True,
+                             enforce_positivity_everywhere=False):
+    inputs = create_suitable_theano_input_var(layers[-1])
+    outputs = create_suitable_theano_output_var(layers[-1])
+    
+    n_patterns = len([l for l in layers if hasattr(l, 'W')])
+    deconved_var = pattern_deconv(outputs, inputs, layers, patterns[:n_patterns],
+                                  return_all=return_all,
+                                  enforce_positivity_after_relu=enforce_positivity_after_relu,
+                                 enforce_positivity_everywhere=enforce_positivity_everywhere)
+    try:
+        pattern_deconv_fn = theano.function([outputs, inputs], deconved_var)
+    except UnusedInputError:
+        pattern_deconv_fn = theano.function([outputs], deconved_var)
+    return pattern_deconv_fn
+        
+        
 def compute_patterns_for_model(model, inputs):
     layers = lasagne.layers.get_all_layers(model)
     layers_with_weights = [l for  l in layers if hasattr(l, 'W')]
@@ -14,19 +38,28 @@ def compute_patterns_for_layers(needed_layers, input_data):
     in_layers = [l.input_layer for l in needed_layers]
     in_and_out = zip(in_layers, needed_layers)
     in_and_out = np.array(in_and_out).flatten()
-    inputs = T.fmatrix()
-    output = lasagne.layers.get_output(in_and_out, deterministic=True, inputs=inputs)
+    if len(get_input_shape(needed_layers[0])) == 2:
+        inputs = T.fmatrix()
+    else:
+        inputs = T.ftensor4()
+    output = lasagne.layers.get_output(in_and_out, deterministic=True,
+        inputs=inputs)
+    log.info("Compiling forward pass...")
     out_fn = theano.function([inputs], output)
     outs_by_layer = out_fn(input_data)
-    in_outs_by_layer = [outs_by_layer[2*i:2*i+2] for i in xrange(len(outs_by_layer) /2)]
+    in_outs_by_layer = [outs_by_layer[2*i:2*i + 2]
+        for i in xrange(len(outs_by_layer) /2)]
     patterns_per_layer = []
     for i_layer in xrange(len(needed_layers)):
         layer = needed_layers[i_layer]
         inputs = in_outs_by_layer[i_layer][0]
         outputs = in_outs_by_layer[i_layer][1]
         if hasattr(layer, 'filter_size'):
+            log.info("Transforming to patterns for layer {:d}: {:s}...".format(
+                i_layer, layer.__class__.__name__))
             conv_weights = layer.W.get_value()
             pattern = transform_to_patterns(conv_weights, inputs, outputs)
+            log.info("Done.")
         elif isinstance(layer, lasagne.layers.DenseLayer):
             if inputs.ndim > 2:
                 inputs = inputs.reshape(inputs.shape[0], -1)
@@ -70,12 +103,12 @@ def pattern_deconv(final_out, input_var, layers, pattern_weights,
             cur_out = upsample_pool(cur_out, inputs, 
                 layer.pool_size, layer.stride)
         elif hasattr(layer, 'filter_size'):
+            #cur_out += layer.b.dimshuffle('x',0,'x','x')
             pattern = T.constant(layer_to_pattern[layer], dtype=np.float32)
             cur_out = conv2d(cur_out, pattern.dimshuffle(1,0,2,3),
                               filter_flip=False, border_mode='full')
-            #if layer.nonlinearity.__name__ == 'rectify':
-            #    cur_out = cur_out * T.gt(cur_out,0)
         elif isinstance(layer, lasagne.layers.DenseLayer):
+            #cur_out -= layer.b.dimshuffle('x', 0)
             pattern = T.constant(layer_to_pattern[layer], dtype=np.float32)
             cur_out = T.dot(cur_out, pattern.T)
         elif isinstance(layer, lasagne.layers.DimshuffleLayer):
@@ -86,7 +119,8 @@ def pattern_deconv(final_out, input_var, layers, pattern_weights,
             # starting at 1 since no trial axis there..
             cur_out = cur_out.dimshuffle(reverse_pattern)
         elif (isinstance(layer, lasagne.layers.DropoutLayer) or
-            isinstance(layer, lasagne.layers.FlattenLayer)):
+            isinstance(layer, lasagne.layers.FlattenLayer) or
+            isinstance(layer, lasagne.layers.NonlinearityLayer)):
                 pass
         else:
             raise ValueError("Trying to propagate through unknown layer "
@@ -106,6 +140,11 @@ def upsample_pool(outputs, inputs, pool_size, pool_stride):
                        pool_size[0], pool_size[1]]
 
     pool_ones = T.ones(pool_ones_shape, dtype=np.float32)
+    # only within a channel spread values of that channel...
+    # therefore set all values of indices like
+    # filt_i, channel_j with j!=i to zero! 
+    pool_ones = pool_ones * T.eye(outputs.shape[1],
+                              outputs.shape[1]).dimshuffle(0,1,'x','x')
     upsampled_out = T.zeros((outputs.shape[0], outputs.shape[1], 
             outputs.shape[2] * pool_stride[0] - pool_stride[0] + 1, 
             outputs.shape[3] * pool_stride[1] - pool_stride[1] + 1, 
@@ -175,7 +214,26 @@ def transform_to_patterns(conv_weights, all_ins, all_outs):
     flat_W = conv_weights[:,:,::-1,::-1].reshape(conv_weights.shape[0],-1)
 
     patterns = np.dot(all_covariances_flat, flat_W.T)
-    patterns = np.dot(patterns, np.linalg.pinv(out_covs)).T
+    
+    # Make hacky fix to out covs to prevent numerical instabilities
+    # due to dead units
+    diag_of_cov = np.diag(out_covs)
+    # 5 below the median is a guess basically...
+    bad_units = diag_of_cov < (np.max(diag_of_cov) / 20)
+    good_units = np.logical_not(bad_units)
+    good_covs = out_covs[good_units][:, good_units]
+    inv_good_covs = np.linalg.pinv(good_covs)
+    inv_all_covs = np.ones((out_covs.shape), dtype=np.float32) * np.nan
+    for i_filt in xrange(out_covs.shape[0]):
+        inv_all_covs[i_filt,bad_units] = 0
+        inv_all_covs[bad_units,i_filt] = 0
+    for i_good in np.flatnonzero(good_units):
+        i_good_with_offset = i_good - sum(bad_units)
+        inv_all_covs[i_good,good_units] = inv_good_covs[i_good_with_offset]
+        inv_all_covs[good_units, i_good] = inv_good_covs[i_good_with_offset]
+    assert not np.any(np.isnan(inv_all_covs))
+    
+    patterns = np.dot(patterns, inv_all_covs).T
     topo_patterns = patterns.reshape(conv_weights.shape)
     return topo_patterns
 

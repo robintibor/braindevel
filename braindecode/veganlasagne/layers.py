@@ -69,6 +69,20 @@ def transform_to_normal_net(final_layer):
     
     return new_final_layer
 
+def create_suitable_theano_input_var(layer):
+    if len(get_input_shape(layer)) == 2:
+        inputs = T.fmatrix()
+    else:
+        inputs = T.ftensor4()
+    return inputs
+
+def create_suitable_theano_output_var(layer):
+    if len(layer.output_shape) > 2:
+        outputs = T.ftensor4()
+    else:
+        outputs = T.fmatrix()
+    return outputs
+
 def get_input_var(final_layer):
     return lasagne.layers.get_all_layers(final_layer)[0].input_var
 

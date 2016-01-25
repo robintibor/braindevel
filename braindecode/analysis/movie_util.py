@@ -28,9 +28,9 @@ def show_animation(*args, **kwargs):
     anim = animation.FuncAnimation(*args, **kwargs)
     return display_animation(anim)
 
-def movie_head_signals_tight(fig, data, title):
+def movie_head_signals_tight(fig, data, title_or_titles):
     plt.ylim(-np.max(np.abs(data)), np.max(np.abs(data)))
-    fig_title = fig.suptitle(title, fontsize=16)
+    fig_title = fig.suptitle('test', fontsize=16)
     # initialization function: plot the background of each frame
     def init():
         changed_lines = []
@@ -57,7 +57,12 @@ def movie_head_signals_tight(fig, data, title):
                     changed_parts.append(ax.lines[i_line])
                     
         fig_title = fig.texts[0]
-        fig_title.set_text("{:s} {:d}".format(title, i_frame + 1))
+        if isinstance(title_or_titles, basestring):
+            fig_title.set_text("{:s} {:d}".format(title_or_titles, 
+                i_frame + 1))
+        else:
+            fig_title.set_text("{:s} {:d}".format(title_or_titles[i_frame], 
+                i_frame + 1))
         changed_parts.append(fig_title)
         return changed_parts
 

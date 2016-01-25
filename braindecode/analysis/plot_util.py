@@ -11,6 +11,21 @@ import os.path
 from matplotlib import gridspec
 import seaborn
 
+def plot_heatmap(trial, relevances, sensor_names, sensor_map, figsize):
+    fig = plot_head_signals_tight(trial,
+                                  sensor_names,
+                                  sensor_map=sensor_map,
+                                  figsize=figsize)
+    vmin = np.min(relevances)
+    vmax = np.max(relevances)
+    for i_chan, ax in enumerate(fig.axes):
+        chan_relevance = relevances[i_chan].squeeze()
+        plotlim = [ax.get_xlim()[0] - 0.5, ax.get_xlim()[1] + 0.5] + list(ax.get_ylim())
+        ax.imshow([chan_relevance], cmap=cm.Reds, interpolation='nearest',
+            extent=plotlim, aspect='auto',
+                 vmin=vmin, vmax=vmax)
+    return fig
+
 def plot_mean_and_std(data, axis=0, color=None):
     if color is None:
         color = seaborn.color_palette()[0]
@@ -27,7 +42,14 @@ def plot_with_tube(x,y,deviation, axis=0, color=None):
     ax = plt.gca()
     ax.fill_between(x, y - deviation, y + deviation, alpha=0.2, color=color)
 
-
+def plot_multiple_head_signals_tight(signals, sensor_names=None, 
+    figsize=(12, 7),
+        plot_args=None, hspace=0.35, sensor_map=tight_C_positions,
+        tsplot=False):
+    reshaped_signals=np.array(signals).transpose(1,2,0)
+    return plot_head_signals_tight(reshaped_signals, sensor_names, figsize, 
+        plot_args, hspace, sensor_map, tsplot)
+    
 
 def plot_head_signals(signals, sensor_names=None, figsize=(12, 7),
     plot_args=None):

@@ -81,3 +81,19 @@ def test_upsample_pool():
     upsampled = upsample_pool_fn(output, inputs)
     assert np.allclose([[[[ 5.,  0.,  4.,  0.,  0.,  1.]]]],
                        upsampled)
+    
+    # Test for pooling across several channels
+    pool_size = (1,2)
+    pool_stride = (1,2)
+    out = T.ftensor4()
+    inputs = T.ftensor4()
+    
+    actual_in = upsample_pool(out, inputs, pool_size, pool_stride)
+    upsample_pool_fn = theano.function([out, inputs], actual_in)
+    # needs pool size, stride= 1,2
+    output = np.float32([[[[-3,5,2]],[[5,4,1]]]])
+    inputs = np.float32([[[[2,1,3,4,1,-7]], [[3,0,8,4,5,6]]]])
+    upsampled = upsample_pool_fn(output, inputs)
+    assert np.allclose([[[[ -3.,  0.,  0.,  5.,  2.,  0.]],
+                         [[ 5.,  0.,  4.,  0.,  0.,  1.]]]],
+                       upsampled)
