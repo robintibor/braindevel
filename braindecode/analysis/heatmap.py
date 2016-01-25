@@ -240,8 +240,14 @@ def relevance_dense(out_relevances, in_activations, weights, rule,
         return in_relevances
 
 def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
-    pool_ones_shape = [1, out_relevances.shape[0], pool_size[0], pool_size[1]]
+    pool_ones_shape = [out_relevances.shape[0], out_relevances.shape[0],
+        pool_size[0], pool_size[1]]
     pool_ones = T.ones(pool_ones_shape, dtype=np.float32)
+    # only within a channel spread values of that channel...
+    # therefore set all values of indices like
+    # filt_i, channel_j with j!=i to zero!
+    pool_ones = pool_ones * T.eye(out_relevances.shape[0],
+                              out_relevances.shape[0]).dimshuffle(0,1,'x','x')
     norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), 
                            pool_ones, subsample=pool_stride, 
                            border_mode='valid')[0]

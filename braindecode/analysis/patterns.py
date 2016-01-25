@@ -220,6 +220,7 @@ def transform_to_patterns(conv_weights, all_ins, all_outs):
     diag_of_cov = np.diag(out_covs)
     # 5 below the median is a guess basically...
     bad_units = diag_of_cov < (np.max(diag_of_cov) / 20)
+    bad_units = np.array([False] * out_covs.shape[0])
     good_units = np.logical_not(bad_units)
     good_covs = out_covs[good_units][:, good_units]
     inv_good_covs = np.linalg.pinv(good_covs)

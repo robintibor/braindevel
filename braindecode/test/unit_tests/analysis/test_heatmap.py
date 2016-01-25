@@ -177,8 +177,10 @@ def test_pool_theano():
     pool_size =(1,2)
     pool_stride = (1,2)
     
-    in_relevances_var = relevance_pool(out_rel_var, inputs_var, pool_size, pool_stride)
-    pool_relevance_fn = theano.function([out_rel_var,inputs_var], in_relevances_var)
+    in_relevances_var = relevance_pool(out_rel_var, inputs_var,
+        pool_size, pool_stride)
+    pool_relevance_fn = theano.function([out_rel_var,inputs_var],
+        in_relevances_var)
     out_rel = [[[1,3,2]]]
     in_act = [[[1, 4, 3, 0.3, 4, 6]]]
     in_relevance = pool_relevance_fn(np.array(out_rel, dtype=np.float32), np.array(in_act, dtype=np.float32))
@@ -189,10 +191,29 @@ def test_pool_theano():
     pool_size =(1,3)
     pool_stride = (1,2)
     
-    in_relevances_var = relevance_pool(out_rel_var, inputs_var, pool_size, pool_stride)
-    pool_relevance_fn = theano.function([out_rel_var,inputs_var], in_relevances_var)
+    in_relevances_var = relevance_pool(out_rel_var, inputs_var,
+        pool_size, pool_stride)
+    pool_relevance_fn = theano.function([out_rel_var,inputs_var],
+        in_relevances_var)
     out_rel = [[[1,4]]]
     in_act = [[[1, 2, 6, 4, 5]]]
     in_relevance = pool_relevance_fn(out_rel, in_act)
-    assert np.allclose(in_relevance, [[[1/9.0,2/9.0, 204/90.0, 16/15.0, 20/15.0]]])
+    assert np.allclose(in_relevance,
+        [[[1/9.0,2/9.0, 204/90.0, 16/15.0, 20/15.0]]])
+    
+    # Regression test, several chans did not work correctly before
+    inputs_var = T.ftensor3()
+    out_rel_var = T.ftensor3()
+    pool_size =(1,2)
+    pool_stride = (1,2)
+    
+    in_relevances_var = relevance_pool(out_rel_var, inputs_var, pool_size, pool_stride)
+    pool_relevance_fn = theano.function([out_rel_var,inputs_var], in_relevances_var)
+    out_rel = [[[1,3,2]], [[1,3,2]]]
+    in_act = [[[1, 4, 3, 0.3, 4, 6]], [[1, 4, 3, 0.3, 4, 7]]]
+    in_relevance = pool_relevance_fn(np.array(out_rel, dtype=np.float32), np.array(in_act, dtype=np.float32))
+    assert np.allclose(in_relevance, [[[0.2,0.8, 3*3/3.3, 3*0.3/3.3, 0.8,1.2]],
+                                     [[0.2,0.8, 3*3/3.3, 3*0.3/3.3, 0.72727275,
+                                        1.27272725]]])
+    
         
