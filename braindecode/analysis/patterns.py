@@ -218,9 +218,9 @@ def transform_to_patterns(conv_weights, all_ins, all_outs):
     # Make hacky fix to out covs to prevent numerical instabilities
     # due to dead units
     diag_of_cov = np.diag(out_covs)
-    # 5 below the median is a guess basically...
+    # 10 below the max is a guess basically...
     bad_units = diag_of_cov < (np.max(diag_of_cov) / 20)
-    bad_units = np.array([False] * out_covs.shape[0])
+    #bad_units = np.array([False] * out_covs.shape[0])
     good_units = np.logical_not(bad_units)
     good_covs = out_covs[good_units][:, good_units]
     inv_good_covs = np.linalg.pinv(good_covs)
@@ -228,10 +228,10 @@ def transform_to_patterns(conv_weights, all_ins, all_outs):
     for i_filt in xrange(out_covs.shape[0]):
         inv_all_covs[i_filt,bad_units] = 0
         inv_all_covs[bad_units,i_filt] = 0
-    for i_good in np.flatnonzero(good_units):
-        i_good_with_offset = i_good - sum(bad_units)
-        inv_all_covs[i_good,good_units] = inv_good_covs[i_good_with_offset]
-        inv_all_covs[good_units, i_good] = inv_good_covs[i_good_with_offset]
+    good_inds = np.flatnonzero(good_units)
+    for i_in_good_invs, i_good in enumerate(good_inds):
+        inv_all_covs[i_good,good_units] = inv_good_covs[i_in_good_invs]
+        inv_all_covs[good_units, i_good] = inv_good_covs[i_in_good_invs]
     assert not np.any(np.isnan(inv_all_covs))
     
     patterns = np.dot(patterns, inv_all_covs).T
