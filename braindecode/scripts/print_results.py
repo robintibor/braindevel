@@ -10,7 +10,7 @@ import datetime
 from collections import OrderedDict
 # Result class needed for deserializing(!)
 from braindecode.results.results import (ResultPool, 
-    DatasetAveragedResults, Result)  # @UnusedImport
+    DatasetAveragedResults, Result)
 
 class ResultPrinter:
     def __init__(self, folder_name):
