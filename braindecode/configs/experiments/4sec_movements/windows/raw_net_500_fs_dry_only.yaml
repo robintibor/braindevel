@@ -1,0 +1,35 @@
+ {
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/raw_net_no_drop_time.yaml',
+        'configs/experiments/4sec_movements/filenames.yaml',
+        'configs/experiments/4sec_movements/windows/windows.yaml'],
+   templates: {
+      dry_sensors: ['POz', 'P1', 'Fp1', 'CPz', 'CP1', 'CP3', 'C1', 'C3',
+         'Pz', 'P2', 'Fp2', 'CP2', 'CP4', 'Cz', 'C2', 'C4', 'FCz', 'FC1',
+         'AF7', 'F1', 'F3', 'AFz', 'AF3', 'F5', 'FC2', 'AF8', 'Fz', 'F2',
+         'F4', 'AF4', 'Fpz', 'F6'],
+      dry_16_sensors: ['C1', 'C3', 'C5', 'Fc3', 'Fc5', 'CP3', 'CP5', 'F5', 
+        'C2', 'C4', 'C6', 'Fc4', 'Fc6', 'CP4', 'CP6', 'F6'],
+      cnt_standardize:  [[
+            !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+            {},
+        ],
+        ],
+   }, 
+    variants: [[
+    {
+        low_cut_off_hz: [0.5],
+        n_samples_per_window: [500],
+        n_sample_stride: [150],
+        save_path: ['data/models/4sec-movements/windows/raw-net-500-fs/'],
+        sensor_names: [$dry_sensors],
+        cnt_preprocessors: [$cnt_standardize],
+        filter_time_length: [40],
+        pool_time_length: [200],
+        pool_time_stride: [40],
+        max_increasing_epochs: [50],
+        max_epochs: [100],
+        preprocessor: ["null"],
+    }
+    ]]
+}

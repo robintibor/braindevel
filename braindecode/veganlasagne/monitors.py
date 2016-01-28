@@ -3,6 +3,7 @@ import time
 import numpy as np
 import theano
 from sklearn.metrics import roc_auc_score
+from copy import deepcopy
 
 class Monitor(object):
     __metaclass__ = ABCMeta
@@ -106,6 +107,10 @@ class MisclassMonitor(Monitor):
             all_target_labels.extend(targets[i_batch])
         all_pred_labels = np.array(all_pred_labels)
         all_target_labels = np.array(all_target_labels)
+        
+        # in case of one hot encoding convert back to scalar class numbers
+        if all_target_labels.ndim == 2:
+            all_target_labels = np.argmax(all_target_labels, axis=1)
         misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
             float(len(all_target_labels)))
         monitor_key = "{:s}_misclass".format(setname)
@@ -184,7 +189,7 @@ def auc_classes_mean(y, preds):
             np.int32(y[:,i] == 1), preds[:,i]) 
             for i in range(y.shape[1])])
 
-class AUCMeanMisclassMonitor():
+class AUCMeanMisclassMonitor(Monitor):
     def __init__(self, input_time_length=None, n_sample_preds=None):
         self.input_time_length = input_time_length
         self.n_sample_preds = n_sample_preds
@@ -203,38 +208,73 @@ class AUCMeanMisclassMonitor():
         # remove last preds that were duplicates due to overlap of final windows
         n_samples = len(dataset.y)
         if self.input_time_length is not None:
-            assert all_preds[0].shape[0] % self.n_sample_preds == 0
-            # first reshape them all into proper time-course form
-            # i.e. from batch 1 sample 1, batch 2 sample 1, ...
-            # to batch 1 sample 1 batch 1 sample 2, ..., batch 2 sample1,...
-            for i_batch in xrange(len(all_preds)):
-                # just some sanity check
-                batch_size = all_preds[i_batch].shape[0] / self.n_sample_preds
-                assert batch_size == all_batch_sizes[i_batch]
-                n_classes = dataset.y.shape[1]
-                preds = all_preds[i_batch]
-                preds = preds.reshape(self.n_sample_preds,-1, n_classes).swapaxes(0,1).reshape(-1, n_classes)
-                all_preds[i_batch] = preds
-                
-            # fix the last predictions, they are partly duplications since the last window
-            # is made to fit into the timesignal (input time length always shifted by sample preds
-            # might not exactly fit into number of samples)
-            legitimate_last_preds = (n_samples - self.input_time_length) % self.n_sample_preds
-            if legitimate_last_preds != 0: # in case = 0 there was no overlap, no need to do anything!
-                fixed_last_preds = all_preds[-1][-legitimate_last_preds:]
-                if all_batch_sizes[-1] > 1:
-                    # need to take valid sample preds from batches before
-                    samples_from_legit_batches = self.n_sample_preds * (all_batch_sizes[-1] - 1)
-                    fixed_last_preds = np.append(all_preds[-1][:samples_from_legit_batches], 
-                         fixed_last_preds, axis=0)
-                all_preds[-1] = fixed_last_preds
+            all_preds_arr = get_reshaped_cnt_preds(all_preds, n_samples, 
+                self.input_time_length, self.n_sample_preds)
+        else:
+            all_preds_arr = np.concatenate(all_preds)
         
-        all_preds_arr = np.concatenate(all_preds)
-        if self.input_time_length is not None:
-            n_lost_samples = self.input_time_length - self.n_sample_preds
-            all_preds_arr = np.append(np.zeros((n_lost_samples, 
-                dataset.y.shape[1]), dtype=np.int32), all_preds_arr, axis=0)
         auc_mean = auc_classes_mean(dataset.y, all_preds_arr)
         misclass = 1 - auc_mean
+        monitor_key = "{:s}_misclass".format(setname)
+        monitor_chans[monitor_key].append(float(misclass))
+        
+def get_reshaped_cnt_preds(all_preds, n_samples, input_time_length,
+        n_sample_preds):
+    """Taking predictions from a multiple prediction/parallel net
+    and removing the last predictions (from last batch) which are duplicated.
+    """
+    all_preds = deepcopy(all_preds)
+    # fix the last predictions, they are partly duplications since the last window
+    # is made to fit into the timesignal 
+    # sample preds
+    # might not exactly fit into number of samples)
+    legitimate_last_preds = n_samples % n_sample_preds
+    if legitimate_last_preds != 0: # in case = 0 there was no overlap, no need to do anything!
+        fixed_last_preds = all_preds[-1][-legitimate_last_preds:]
+        final_batch_size = all_preds[-1].shape[0] / n_sample_preds
+        if final_batch_size > 1:
+            # need to take valid sample preds from batches before
+            samples_from_legit_batches = n_sample_preds * (final_batch_size - 1)
+            fixed_last_preds = np.append(all_preds[-1][:samples_from_legit_batches], 
+                 fixed_last_preds, axis=0)
+        all_preds[-1] = fixed_last_preds
+    
+    all_preds_arr = np.concatenate(all_preds)
+    
+    return all_preds_arr
+
+
+class CntTrialMisclassMonitor(Monitor):
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_misclass".format(setname)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans):
+        return
+
+    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
+            all_batch_sizes, all_targets, dataset):
+        """Assuming one hot encoding for now"""
+        all_pred_labels = []
+        all_target_labels = []
+        for i_batch in range(len(all_batch_sizes)):
+            trial_preds = all_preds[i_batch]
+            trial_pred_label = np.argmax(np.sum(trial_preds, axis=0))
+            targets = all_targets[i_batch]
+            
+            assert np.sum(np.max(targets, axis=0)) == 1, ("Trial should only "
+                 "have one class")
+            assert np.sum(targets) == len(targets), ("Every sample should have "
+                                                    "one positive marker")
+            target_label = np.argmax(np.max(targets, axis=0))
+            all_pred_labels.append(trial_pred_label)
+            all_target_labels.append(target_label)
+        all_pred_labels = np.array(all_pred_labels)
+        all_target_labels = np.array(all_target_labels)
+        
+        misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
+            float(len(all_target_labels)))
         monitor_key = "{:s}_misclass".format(setname)
         monitor_chans[monitor_key].append(float(misclass))

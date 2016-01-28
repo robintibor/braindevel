@@ -1,0 +1,25 @@
+{
+    extends: ['configs/experiments/grasp_lift/defaults.yaml',
+    'configs/experiments/grasp_lift/cnt_raw_net_no_drop_time.yaml'],
+    variants: [[{
+        input_time_length: [2000],
+        filter_time_length: [30],
+        use_test_as_valid: [false],
+        oversample_targets: [true],
+        max_epochs: [2],
+        final_dense_length: [54],
+        n_sample_preds: [1392],
+        pool_time_length: [50],
+        pool_time_stride: [10],
+        dataset_filename: [1,2],
+        variants: [[{
+            save_path: ['data/models/grasp-lift/debug-4-sec-7/'],
+            imbalance_factor: [10,20],
+        },
+        {
+            save_path: ['data/models/grasp-lift/debug-4-sec-8/'],
+            imbalance_factor: [5],
+        }
+        ]]
+    }]],
+}

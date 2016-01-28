@@ -3,28 +3,56 @@
         raw_set: !obj:braindecode.datasets.raw.CleanSignalMatrix {
             signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
                 set_loader: !obj:braindecode.datasets.loaders.$loader_type {
-                    filename: $dataset_filename
+                    filename: $dataset_filename,
+                    load_sensor_names: $load_sensor_names,
                 },
                 segment_ival: [$trial_start, $trial_stop],
-                cnt_preprocessors: [
-                    [
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            cleaner: $cleaner,
+            sensor_names: $sensor_names,
+        },
+        default_cnt_preprocessors: [[
                         !!python/name:braindecode.mywyrm.processing.resample_cnt , 
                         {'newfs': $resample_fs},
                     ],
                     [
                         !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
                         {'low_cut_off_hz': $low_cut_off_hz}
-                    ],
-                ]
+        ]],
+        markers_4_class: {'1': [1], '2': [2], '3': [3], '4': [4]},
+        markers_3_class: {'1': [1], '2': [2], '3': [3]},
+        no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { segment_ival: [$trial_start, $trial_stop]},
+        # TODO: whole cleaner now fixed for 3class and eog 4 sensors.. make it work flexible again..
+        normal_cleaner: !obj:braindecode.mywyrm.clean.SingleSetCleaner {
+            eog_set: !obj:braindecode.datasets.loaders.$loader_type {
+                filename: $dataset_filename,
+                load_sensor_names: ['EOG_R', 'EOG_D','EOG_U','EOG_L'],
             },
-            cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
-            sensor_names: $sensor_names,
+            rejection_var_ival: $rejection_var_ival,
+            rejection_blink_ival: $rejection_blink_ival,
+            max_min: $max_min,
+            whisker_percent: $whisker_percent, 
+            whisker_length: $whisker_length,
+            marker_def: {'1': [1], '2': [2], '3': [3]},
         },
+        four_eog_sensors: ['EOG_R', 'EOG_D','EOG_U','EOG_L'], # todo:make it work again eventually...
     },
     variants: [[{
+        cnt_preprocessors: [$default_cnt_preprocessors],
         trial_start: [0],
         trial_stop: [4000],
+        load_sensor_names: ["null"],
         sensor_names: ["null"],
         dataset: [$raw_set],
+        marker_def: [$markers_4_class],
+        cleaner: [$no_cleaner],
+        rejection_var_ival: [[0,4000]],
+        rejection_blink_ival: [[-500,4000]],
+        max_min: [600],
+        whisker_percent: [10], 
+        whisker_length: [3],
+        eog_sensors: [$four_eog_sensors],
     }]]
 }

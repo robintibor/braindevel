@@ -1,5 +1,6 @@
 import lasagne
 from copy import deepcopy
+import numpy as np
 import logging
 log = logging.getLogger(__name__)
 
@@ -10,15 +11,19 @@ class MaxNormConstraint():
     def modify(self, updates, final_layer):
         layer_names_to_norms = deepcopy(self.layer_names_to_norms)
         all_layers = lasagne.layers.get_all_layers(final_layer)
+        normed_layer_names = set()
         for layer in all_layers:
             if layer.name in layer_names_to_norms:
-                norm = layer_names_to_norms.pop(layer.name)
+                norm = layer_names_to_norms[layer.name]
+                normed_layer_names.add(layer.name)
                 log.info("Constraining {:s} to norm {:.2f}".format(
                     layer.name, norm))
                 updates[layer.W] = lasagne.updates.norm_constraint(
                     updates[layer.W], max_norm=norm)
-        assert len(layer_names_to_norms) == 0, ("All layers specified in max "
-            "col norm should be specified, nonexisting layers", layer_names_to_norms)
+        assert np.array_equal(sorted(layer_names_to_norms.keys()),
+            sorted(normed_layer_names)), ("All layers specified in max "
+            "col norm should be specified, nonexisting layers", 
+            np.setdiff1d(layer_names_to_norms.keys(), normed_layer_names))
             
         return updates
         

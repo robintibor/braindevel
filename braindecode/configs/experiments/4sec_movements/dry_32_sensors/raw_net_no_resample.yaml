@@ -1,0 +1,29 @@
+ {
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/raw_net_no_drop_time.yaml',
+        'configs/experiments/4sec_movements/dry_32_sensors/filenames.yaml',
+        'configs/experiments/4sec_movements/windows/windows.yaml'],
+   templates: {
+      cnt_standardize:  [[
+            !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+            {},
+        ],
+        ],
+   }, 
+    variants: [[
+    {
+        low_cut_off_hz: [0.5],
+        n_samples_per_window: [512],
+        n_sample_stride: [50],
+        save_path: ['data/models/4sec-movements/windows/dry-32-sensors/'],
+        sensor_names: ["null"],
+        cnt_preprocessors: [$cnt_standardize],
+        filter_time_length: [40],
+        pool_time_length: [200],
+        pool_time_stride: [40],
+        max_increasing_epochs: [50],
+        max_epochs: [100],
+        preprocessor: ["null"],
+    }
+    ]]
+}

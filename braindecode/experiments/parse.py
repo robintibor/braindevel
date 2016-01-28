@@ -4,19 +4,24 @@ import yaml
 from string import Template
 from collections import deque
 import numpy as np
+import logging
+log = logging.getLogger(__name__)
 
 def transform_vals_to_string_constructor(loader, node):
     return dict([(v[0].value, yaml.serialize(v[1])) for v in node.value])
 
 def create_experiment_yaml_strings_from_files(config_filename, 
-        main_template_filename):
+        main_template_filename, debug=False, command_line_params=None,
+        only_first_n_sets=False):
     # First read out all files (check for extends attribute)
     # and transform to files to strings...
     # Then call creation of experiment yaml strings
     config_strings = create_config_strings(config_filename)
     with open(main_template_filename, 'r') as main_template_file:
         main_template_str = main_template_file.read()
-    return create_experiment_yaml_strings(config_strings, main_template_str)
+    return create_experiment_yaml_strings(config_strings, main_template_str,
+        debug=debug, command_line_params=command_line_params,
+        only_first_n_sets=only_first_n_sets)
 
 def create_config_strings(config_filename):
     yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
@@ -36,10 +41,13 @@ def create_config_strings(config_filename):
     config_strings = config_strings[::-1]
     return config_strings
 
-def create_experiment_yaml_strings(all_config_strings, main_template_str):
+def create_experiment_yaml_strings(all_config_strings, main_template_str,
+        debug=False, command_line_params=None, only_first_n_sets=False):
     """ Config strings should be from top file to bottom file."""
     config_objects = create_config_objects(all_config_strings)
-    final_params = create_params_from_config_objects(config_objects)
+    final_params = create_params_from_config_objects(config_objects, 
+        debug=debug, command_line_params=command_line_params,
+        only_first_n_sets=only_first_n_sets)
    
     train_strings = []
     for i_config in range(len(final_params)):
@@ -55,9 +63,14 @@ def create_config_objects(all_config_strings):
         conf_str in all_config_strings]
     return config_objects
 
-def create_params_from_config_objects(config_objects):
+def create_params_from_config_objects(config_objects, debug=False, 
+        command_line_params=None, only_first_n_sets=False):
     templates, variants = create_templates_variants_from_config_objects(
-        config_objects)
+        config_objects, debug=debug, only_first_n_sets=only_first_n_sets)
+    # update all params with command line params
+    if command_line_params is not None:
+        for param_dict in variants:
+            param_dict.update(command_line_params)
     final_params = merge_parameters_and_templates(variants, templates)
     # add original params for later printing
     for i_config in range(len(final_params)):
@@ -70,16 +83,44 @@ def create_params_from_config_objects(config_objects):
     unique_final_params = np.array(final_params)[np.sort(unique_inds)]
     return unique_final_params
 
-def create_templates_variants_from_config_objects(config_objects):
-    variants = []
+def create_templates_variants_from_config_objects(config_objects, debug=False,
+        only_first_n_sets=False):
+    all_variants = []
     templates = dict()
     for config_obj in config_objects:
         if 'variants' in config_obj:
             sub_variants = create_variants_recursively(config_obj['variants'])
-            variants = product_of_lists_of_dicts(variants, sub_variants)
+            all_variants = product_of_lists_of_dicts(all_variants, sub_variants)
         if 'templates' in config_obj:
             templates.update(config_obj['templates'])
-    return templates, variants
+    
+    # Constrain to only first 5 datasets...
+    if only_first_n_sets is not False:
+        all_filenames = []
+        for variant in all_variants:
+            if variant['dataset_filename'] not in all_filenames:
+                all_filenames.append(variant['dataset_filename'])
+        wanted_filenames = all_filenames[:only_first_n_sets]
+        all_variants = [var 
+            for var in all_variants 
+            if var['dataset_filename'] in wanted_filenames]
+         
+    # regression check since that is confusing maybe
+    for var in all_variants:
+        assert not 'only_last_fold' in var, ("Will be set by cross validation "
+         "argument of the runner")
+    
+    # Set debug parameters if wanted
+    if debug:
+        log.info("Setting debug parameters")
+        for variant in all_variants:
+            variant['max_epochs'] = 1
+            variant['sensor_names'] = ['C3', 'C4', 'Cz']
+            variant['load_sensor_names'] = ['C3', 'C4', 'Cz']
+            variant['last_subject'] = 1
+            
+    
+    return templates, all_variants
 
 
 def create_variants_recursively(variants):
@@ -126,9 +167,6 @@ def cartesian_dict_of_lists_product(params):
     # from stackoverflow somewhere (with different func name) :)
     value_product = [x for x in apply(itertools.product, params.values())]
     return [dict(zip(params.keys(), values)) for values in value_product]
-
-def merge_dicts(a, b):
-    return dict(a.items() + b.items())
 
 def merge_lists(list_of_lists):
     return list(itertools.chain(*list_of_lists))
@@ -186,11 +224,24 @@ def product_of_list_of_lists_of_dicts(list_of_lists):
 def merge_parameters_and_templates(all_parameters, templates):
     all_final_params = []
     for param_config in all_parameters:
-        processed_templates, params_without_template_params  = process_templates(
+        processed_templates = process_templates(
             templates, param_config)
-        final_params = process_parameters_by_templates(params_without_template_params, processed_templates)
+        final_params = process_parameters_by_templates(param_config,
+            processed_templates)
         all_final_params.append(final_params)
     return all_final_params
+
+def merge_dicts(*dict_args):
+    '''
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    http://stackoverflow.com/a/26853961
+    '''
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
+
 
 def process_templates(templates, parameters):
     """Substitute parameters within templates, return substituted templates, 
@@ -201,10 +252,23 @@ def process_templates(templates, parameters):
     needed_template_names = filter(
         lambda value: isinstance(value, basestring) and value[0] == '$', 
         parameters.values())
-    parameters_without_template_parameters = copy(parameters)
     # remove $ at start! :)
     # e.g. ["$rect_lin", "$dropout"] => ["rect_lin", "dropout"]
     needed_template_names = [name[1:] for name in needed_template_names]
+    
+    # now also go through template strings see if a template appears there
+    new_template_found = True
+    while new_template_found:
+        new_template_found = False
+        for a_needed_template_name in needed_template_names:
+            template = templates[a_needed_template_name]
+            for template_name in templates:
+                if (('$' + template_name) in template and 
+                        template_name not in needed_template_names):
+                    needed_template_names.append(template_name)
+                    new_template_found = True
+                    if '$resample_fs' in templates[template_name]:
+                        print template_name
     
     # now for any needed template, first substitute any $-placeholders
     # _within_ the template with a value from the parameter.
@@ -213,29 +277,38 @@ def process_templates(templates, parameters):
     # template: flat: [...$hidden_neurons...]
     # 1 => template: flat: [...8...]
     # 2 => processed_parameters .. {layers: "[...8...]", hidden_neurons:8, ...}
-    #   => parameters_without_template_parameters: .. {layers: "[...8...]",..}
+    
+    # we make another hack: actual template variables within templates
+    # should not be replaced as they will be properly replaced in next step
+    # therefore create a dict that maps template name back to itself (with
+    # $ infront as marker again)
+    template_names = templates.keys()
+    template_to_template = dict(zip(template_names, ['$' + k for k in template_names]))
+    templates_and_parameters = merge_dicts(template_to_template, parameters)
     for template_name in needed_template_names:
+        if '$resample_fs' in templates[template_name]:
+            print template_name
         template_string = templates[template_name]
-        for param in parameters_without_template_parameters.keys():
-            if (('$' + param + ' ') in template_string or
-                ('$' + param + ',') in template_string  or
-                ('$' + param + ']') in template_string  or
-                ('$' + param + '}') in template_string  or
-                ('$' + param + "'") in template_string  or
-                ('$' + param + '"b') in template_string  or
-                ('$' + param + '\n') in template_string):
-                parameters_without_template_parameters.pop(param)
-        template_string = Template(template_string).substitute(parameters)
+        template_string = Template(template_string).substitute(templates_and_parameters)
         processed_templates[template_name] = template_string
 
     # Now it can still happen that a template has been replaced by another template
-    # Try to fix this also
-    for template_name in processed_templates.keys():
-        template_string = processed_templates[template_name]
-        if '$' in template_string:
-            new_str = Template(template_string).substitute(processed_templates)
-            processed_templates[template_name] = new_str
-    return processed_templates, parameters_without_template_parameters
+    # This is fixed in this loop
+    # We do it until there are no more dollars in the parameters..
+    unprocessed_template_exists = True
+    i = 0
+    while unprocessed_template_exists and i < 100:
+        unprocessed_template_exists = False
+        for template_name in processed_templates.keys():
+            template_string = processed_templates[template_name]
+            if '$' in template_string:
+                new_str = Template(template_string).substitute(processed_templates)
+                processed_templates[template_name] = new_str
+                unprocessed_template_exists = True
+        i+=1
+    if i == 100:
+        raise ValueError("Could not replace all templates")
+    return processed_templates
 
 
 def process_parameters_by_templates(parameters, templates):

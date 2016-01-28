@@ -9,8 +9,10 @@ import logging
 from pylearn2.utils.timing import log_timing
 from copy import deepcopy
 from braindecode.datahandling.splitters import (SingleFoldSplitter,
-    PreprocessedSplitter)
-from braindecode.veganlasagne.monitors import MonitorManager
+    PreprocessedSplitter, FixedTrialSplitter)
+from braindecode.veganlasagne.monitors import MonitorManager, MisclassMonitor,\
+    LossMonitor, RuntimeMonitor
+from braindecode.datahandling.batch_iteration import BalancedBatchIterator
 log = logging.getLogger(__name__)
 
 class ExperimentCrossValidation():
@@ -44,10 +46,25 @@ class ExperimentCrossValidation():
             self.all_layers.append(deepcopy(exp.final_layer))
             self.all_monitor_chans.append(deepcopy(exp.monitor_chans))
 
+def create_default_experiment(final_layer, dataset, num_epochs=100):
+    n_trials = len(dataset.X)
+    splitter = FixedTrialSplitter(n_train_trials=n_trials // 2, 
+        valid_set_fraction=0.2)
+    monitors = [MisclassMonitor(), LossMonitor(),RuntimeMonitor()]
+    stop_criterion = MaxEpochs(num_epochs)
+    exp = Experiment(final_layer, dataset, splitter, preprocessor=None,
+        iterator=BalancedBatchIterator(batch_size=45),
+        loss_expression=lasagne.objectives.categorical_crossentropy,
+        updates_expression=lasagne.updates.adam,
+        updates_modifier=None,
+        monitors=monitors, 
+        stop_criterion=stop_criterion)
+    return exp
+    
 class Experiment(object):
     def __init__(self, final_layer, dataset, splitter, preprocessor,
-            iterator, loss_expression, updates_expression, 
-            updates_modifier, monitors, stop_criterion):
+            iterator, loss_expression, updates_expression, updates_modifier,
+            monitors, stop_criterion):
         self.final_layer = final_layer
         self.dataset = dataset
         self.dataset_provider = PreprocessedSplitter(splitter, preprocessor)
@@ -88,14 +105,21 @@ class Experiment(object):
         # test as in during testing not as in "test set"
         test_prediction = lasagne.layers.get_output(self.final_layer, 
             deterministic=True)
-        loss = self.loss_expression(prediction, target_var).mean()
-        test_loss = self.loss_expression(test_prediction, target_var).mean()
+        # Loss function might need layers or not...
+        try:
+            loss = self.loss_expression(prediction, target_var).mean()
+            test_loss = self.loss_expression(test_prediction, target_var).mean()
+        except TypeError:
+            loss = self.loss_expression(prediction, target_var, self.final_layer).mean()
+            test_loss = self.loss_expression(test_prediction, target_var, self.final_layer).mean()
+            
         # create parameter update expressions
         params = lasagne.layers.get_all_params(self.final_layer, trainable=True)
         updates = self.updates_expression(loss, params)
-        # put norm constraints on all layer, for now fixed to max kernel norm
-        # 2 and max col norm 0.5
-        updates = self.updates_modifier.modify(updates, self.final_layer)
+        if self.updates_modifier is not None:
+            # put norm constraints on all layer, for now fixed to max kernel norm
+            # 2 and max col norm 0.5
+            updates = self.updates_modifier.modify(updates, self.final_layer)
         input_var = lasagne.layers.get_all_layers(self.final_layer)[0].input_var
         # needed for resetting to best model after early stop
         self.all_params = updates.keys()
@@ -144,10 +168,11 @@ class Experiment(object):
     def setup_after_stop_training(self):
         self.remember_extension.reset_to_best_model(self.monitor_chans,
                 self.all_params)
+        loss_to_reach = self.monitor_chans['train_loss'][-1]
         self.stop_criterion = Or(stop_criteria=[
             MaxEpochs(num_epochs=self.remember_extension.best_epoch * 2),
-            ChanBelow(chan_name='valid_loss', 
-                target_value=self.monitor_chans['train_loss'][-1])])
+            ChanBelow(chan_name='valid_loss', target_value=loss_to_reach)])
+        log.info("Train loss to reach {:.5f}".format(loss_to_reach))
     
     def run_until_second_stop(self):
         datasets = self.dataset_provider.get_train_merged_valid_test(
@@ -163,9 +188,6 @@ class Experiment(object):
     def monitor_epoch(self, all_datasets):
         self.monitor_manager.monitor_epoch(self.monitor_chans, all_datasets, 
             self.iterator)
-        #for monitor in self.monitors:
-        #    monitor.monitor_epoch(self.monitor_chans, self.pred_func,
-        #        self.loss_func, all_datasets, self.iterator)
 
     def print_epoch(self):
         # -1 due to doing one monitor at start of training

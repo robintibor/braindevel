@@ -51,7 +51,9 @@ class SingleSetCleaner():
                     whisker_percent=self.whisker_percent, 
                     whisker_length=self.whisker_length,
                     low_cut_hz=0.5,
-                    high_cut_hz=150,
+                    # 150 is default, but do not go to close to
+                    # nyquist frequency
+                    high_cut_hz=min(150, int(bbci_set_cnt.fs * 0.4)),
                     filt_order=4,
                     marker_def=self.marker_def)
         self.rejected_chans = rejected_chans # remember in case other cleaner needs it

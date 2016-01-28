@@ -3,11 +3,37 @@ from wyrm.processing import lfilter, filtfilt
 import numpy as np
 from copy import deepcopy
 from braindecode.datahandling.preprocessing import (exponential_running_mean, 
-    exponential_running_var, OnlineAxiswiseStandardize)
+    exponential_running_var_from_demeaned, OnlineAxiswiseStandardize,
+    exponential_running_standardize)
 from sklearn.covariance import LedoitWolf as LW
 import scikits.samplerate
 import re
 import wyrm.types
+
+def create_y_signal(cnt, n_samples_per_trial):
+    fs = cnt.fs
+    event_samples_and_classes = [(int(np.round(m[0] * fs/1000.0)), m[1]) for m in cnt.markers]
+    return get_y_signal(cnt.data, event_samples_and_classes, n_samples_per_trial)
+
+def get_y_signal(cnt_data, event_samples_and_classes, n_samples_per_trial):
+        # Generate class "signals", rest always inbetween trials
+    y = np.zeros((cnt_data.shape[0], 4), dtype=np.int32)
+
+    y[:,2] = 1 # put rest class everywhere
+    for i_sample, marker in event_samples_and_classes:
+        i_class = marker - 1
+        # set rest to zero, correct class to 1
+        y[i_sample:i_sample+n_samples_per_trial,2] = 0 
+        y[i_sample:i_sample+n_samples_per_trial,i_class] = 1 
+    return y
+
+def exponential_standardize_cnt(cnt, init_block_size=1000, factor_new=1e-3,
+    eps=1e-4):
+    cnt_data = cnt.data
+    standardized_data = exponential_running_standardize(cnt_data, 
+        factor_new=factor_new, init_block_size=init_block_size, axis=None, 
+        eps=eps)
+    return cnt.copy(data=standardized_data)
 
 def online_standardize_epo(epo_train, epo_test):
     standard_dim_inds=(0,1)
@@ -534,20 +560,32 @@ def running_standardize_epo(epo, factor_new=0.9, init_block_size=50):
     assert factor_new <= 1.0 and factor_new >= 0.0
     running_means = exponential_running_mean(epo.data, factor_new=factor_new, 
         init_block_size=init_block_size, axis=1)
-    running_vars = exponential_running_var(epo.data, running_means, 
-        factor_new=factor_new, init_block_size=init_block_size, axis=1)
     running_means = np.expand_dims(running_means, 1)
+    demeaned_data = epo.data - running_means
+    running_vars = exponential_running_var_from_demeaned(demeaned_data,
+        running_means, factor_new=factor_new, init_block_size=init_block_size,
+        axis=1)
+    
     running_vars = np.expand_dims(running_vars, 1)
     running_std = np.sqrt(running_vars)
     
-    standardized_epo_data = (epo.data - running_means) / running_std
+    standardized_epo_data = demeaned_data / running_std
     return epo.copy(data=standardized_epo_data)
 
 def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     nyq_freq = 0.5 * cnt.fs
     low = low_cut_hz / nyq_freq
     high = high_cut_hz / nyq_freq
-    b, a = scipy.signal.butter(filt_order, [low, high], btype='band')
+    b, a = scipy.signal.butter(filt_order, [low, high], btype='bandpass')
+    
+    cnt_bandpassed = lfilter(cnt,b,a)
+    return cnt_bandpassed
+
+def bandstop_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
+    nyq_freq = 0.5 * cnt.fs
+    low = low_cut_hz / nyq_freq
+    high = high_cut_hz / nyq_freq
+    b, a = scipy.signal.butter(filt_order, [low, high], btype='bandstop')
     
     cnt_bandpassed = lfilter(cnt,b,a)
     return cnt_bandpassed

@@ -44,7 +44,6 @@ class ResultPrinter:
         formatted_result = {}
         self._add_misclasses(formatted_result, misclasses)
         self._add_best_and_best_epoch(formatted_result, misclasses)
-        self._possibly_add_valid_test(formatted_result, misclasses)
         return formatted_result
     
     def _add_misclasses(self, formatted_result, misclasses):
@@ -79,21 +78,6 @@ class ResultPrinter:
             formatted_result['best'] = "{:5.2f}%".format((1 - best_misclass) * 100)
             # +1 for 1-based indexing
             formatted_result['best_epoch'] = "{:3d}".format(best_epoch + 1)
-    
-    def _possibly_add_valid_test(self, formatted_result, misclasses):
-        # first check if crossval or train test (train test only has one fold)
-        # transform to list of one list in case of only one experiment
-        if 'test' in misclasses and 'valid' in misclasses:
-            test_misclasses = self._atleast_2d_or_1d_of_arr(misclasses['test'])
-            valid_misclasses = self._atleast_2d_or_1d_of_arr(misclasses['valid'])
-            train_test = test_misclasses.shape[0] == 1
-            if (train_test):
-                final_test_misclass = test_misclasses[0][-1]
-                final_valid_misclass = valid_misclasses[0][-1]
-                avg_valid_test = np.mean((final_test_misclass,
-                    final_valid_misclass))
-                formatted_result['valid_test'] = "{:5.2f}%".format(
-                    (1 - avg_valid_test) * 100)
            
     def _atleast_2d_or_1d_of_arr(self, arr):
         if not isinstance(arr[0], list) and arr.ndim == 1:
@@ -220,8 +204,6 @@ class ResultPrinter:
         result_headers.append('time')
         with_standard_deviation = self._formatted_results[0].has_key('train_std')
         
-        if (self._formatted_results[0].has_key('valid_test')): #implies no cross validation
-            result_headers.append('valid_test')
         # just put 'epoch' not 'best_epoch' so that header is not so wide
         for result_type in ['test', 'best', 'epoch', 'train', 'valid']:
             # check if result exists, if yes add it
@@ -238,9 +220,6 @@ class ResultPrinter:
             training_time = self._result_pool.training_times()[result_obj_id]
             result_row.append(str(datetime.timedelta(
                 seconds=round(training_time))))
-            # append average for valid_test
-            if ('valid_test' in results):
-                result_row.append(results['valid_test'])
             for result_type in ['test', 'best', 'best_epoch', 'train', 'valid']:
                 if result_type in results:
                     result_row.append(results[result_type])
@@ -266,18 +245,14 @@ class ResultPrinter:
         So in the end have a table for each unique parameter combination.'''
         # TODELAY: don't use this weird hack to find out if there is
         # a cross validation ;)
-        add_valid_test = not self._formatted_results[0].has_key('train_std') and \
-            self._formatted_results[0].has_key('valid')
         all_result_lists = self._dataset_averaged_results.results()
-        headers = self._create_dataset_averaged_headers(all_result_lists,
-            add_valid_test=add_valid_test)
+        headers = self._create_dataset_averaged_headers(all_result_lists)
         rows = []
         for i, result_list in enumerate(all_result_lists):
             row = [str(i), str(len(result_list))] # id in table, number of files
             parameter_row = self._create_parameter_row(result_list, headers)
             row += parameter_row
-            misclasses = self._compute_final_misclasses(result_list, 
-                add_valid_test=add_valid_test)
+            misclasses = self._compute_final_misclasses(result_list)
             training_times = [r['training_time'] for r in result_list]
             result_row = self._create_result_row(headers, misclasses,
                 training_times)
@@ -286,11 +261,9 @@ class ResultPrinter:
         return headers, rows
 
     @ staticmethod
-    def _create_dataset_averaged_headers(all_result_list, add_valid_test=False):
+    def _create_dataset_averaged_headers(all_result_list):
         params = deepcopy(all_result_list[0][0]['parameters'])
         misclass_keys = all_result_list[0][0]['misclasses'].keys()
-        if (add_valid_test):
-            misclass_keys.insert(0,'valid_test')
         result_keys = ["time", "std"]
         for key in misclass_keys:
             result_keys.append(key)
@@ -331,7 +304,7 @@ class ResultPrinter:
         return sorted_params
         
         
-    def _compute_final_misclasses(self, result_list, add_valid_test=False):
+    def _compute_final_misclasses(self, result_list):
         """ Compute final fold-averaged misclasses for all experiments.
         Also works if there are no folds(train-test case)"""
         final_misclasses = {}
@@ -340,16 +313,16 @@ class ResultPrinter:
         get_last_elem = np.vectorize(lambda a : a[-1])
         for key in misclass_keys:
             this_misclasses = [m[key] for m in misclasses]
-            this_final_misclasses = get_last_elem(this_misclasses)
+            if  np.array(this_misclasses[0][0]).shape != ():
+                this_final_misclasses = get_last_elem(this_misclasses)
+            else:
+                # can only happen in case all experiments have same number of
+                # epochs
+                this_final_misclasses = np.array(this_misclasses)[:,-1:]
+            
             # avg over folds if necessary
             this_final_avg_misclasses = np.mean(this_final_misclasses, axis=1)
             final_misclasses[key] = this_final_avg_misclasses
-        if (add_valid_test):
-            test_misclass = final_misclasses['test']
-            valid_misclass = final_misclasses['valid']
-            valid_test_misclass = np.mean(
-                np.array([ test_misclass, valid_misclass]), axis=0)
-            final_misclasses['valid_test'] = valid_test_misclass
             
         return final_misclasses
         
@@ -401,6 +374,23 @@ class ResultPrinter:
           ('updates_per_epoch', 'epoch_ups'),
           ('n_temporal_units', 't_units'),
           ('n_spat_units', 'spat_units'),
+          ('use_test_as_valid', 'test=valid'),
+          ('imbalance_factor', 'imba_factor'),
+          ('n_sample_preds', 'preds'),
+          ('pool_time_stride', 'pool_str'),
+          ('pool_time_length', 'p_len'),
+          ('oversample_targets', 'oversample'),
+          ('first', '1st'),
+          ('average_exc_pad', 'mean'),
+          ('SumPool2dLayer', 'Sum'),
+          ('Pool2DLayer', 'Pool'),
+          ('final_dense_length', 'final_len'),
+          ('batch_size', '#batch'),
+          ('preprocessor', 'preproc'),
+          ('standardize_series_wise', 'preproc_series'),
+          ('remove_baseline_mean', 'rm_baseline'),
+          ('input_time_length', 'input_len'),
+          ('online_chan_freq_wise', 'online_c_1'),
           ])
         for header in table_headers:
             pretty_header = header

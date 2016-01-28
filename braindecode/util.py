@@ -1,3 +1,6 @@
+from lasagne.init import Initializer
+import theano
+
 class FuncAndArgs(object):
     """Container for a function and its arguments. 
     Useful in case you want to pass a function and its arguments 
@@ -27,3 +30,10 @@ class FuncAndArgs(object):
         
     def __call__(self, *other_args, **other_kwargs):
         return self.apply(*other_args, **other_kwargs)
+    
+    
+class GetAttr(object):
+    """ Hacky class for yaml to return attr of something.
+    Uses new to actually return completely different object... """
+    def __new__(cls, obj, attr):
+        return getattr(obj, attr) 

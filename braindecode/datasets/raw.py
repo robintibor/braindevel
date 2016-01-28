@@ -1,10 +1,25 @@
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 import numpy as np
 from wyrm.processing import select_channels, select_epochs
+from braindecode.mywyrm.processing import segment_dat_fast
 import logging
 from braindecode.datasets.sensor_positions import sort_topologically
 from pylearn2.format.target_format import OneHotFormatter
 log = logging.getLogger(__name__)
+
+def load_cnt_processed(full_set):
+    full_set.load_full_set()
+    full_set.determine_clean_trials_and_chans()
+    full_set.select_sensors()
+    log.info("Preprocessing set...")
+    full_set.signal_processor.preprocess_continuous_signal()
+    return full_set.signal_processor.cnt
+
+def load_cnt_unprocessed(full_set):
+    full_set.load_full_set()
+    full_set.determine_clean_trials_and_chans()
+    full_set.select_sensors()
+    return full_set.signal_processor.cnt
 
 class SignalMatrix(DenseDesignMatrix):
     """ This loads EEG signal datasets and puts them in a Dense Design Matrix.
@@ -12,10 +27,11 @@ class SignalMatrix(DenseDesignMatrix):
     def __init__(self, signal_processor,
         sensor_names='all', limits=None, start=None, stop=None,
         axes=('b', 'c', 0, 1),
-        unsupervised_preprocessor=None):
+        unsupervised_preprocessor=None,
+        sort_topological=True):
 
         # sort sensors topologically to allow networks to exploit topology
-        if (sensor_names is not None) and (sensor_names  is not 'all'):
+        if (sensor_names is not None) and (sensor_names  is not 'all') and sort_topological:
             sensor_names = sort_topologically(sensor_names)
         self.__dict__.update(locals())
         del self.self       
@@ -43,9 +59,12 @@ class SignalMatrix(DenseDesignMatrix):
         if topo_view.ndim == 3:
             topo_view = np.expand_dims(topo_view, axis=3)
         topo_view = np.ascontiguousarray(np.copy(topo_view))
-        y = [event_class for time, event_class in self.signal_processor.epo.markers]
-        assert np.array_equal(self.signal_processor.epo.axes[0] + 1, y), ("trial axes should"
-            "have same event labels (offset by 1 due to 0 and 1-based indexing")
+        y = self.signal_processor.epo.axes[0] + 1
+        other_y = [event_class for time, event_class in self.signal_processor.epo.markers]
+        assert np.array_equal(y, other_y[:len(y)]), ("trial axes should"
+            "have same event labels as markers "
+            "(offset by 1 due to 0 and 1-based indexing), except for out of "
+            "bounds trials")
 
         topo_view, y = self.adjust_for_start_stop_limits(topo_view, y)
 
@@ -123,8 +142,15 @@ class CleanSignalMatrix(SignalMatrix):
         log.info("Cleaning set...")
         (rejected_chans, rejected_trials, clean_trials) = self.cleaner.clean(
             self.signal_processor.cnt)
+        # In case this is not true due to different segment ivals of
+        # cleaner and real data, try to standardize variable name for
+        # segment ival of cleaner, e.g. to segment_ival
+        all_trial_epo = segment_dat_fast(self.signal_processor.cnt,
+            self.signal_processor.marker_def,
+                 self.signal_processor.segment_ival)
+        
         assert np.array_equal(np.union1d(clean_trials, rejected_trials),
-            range(len(self.signal_processor.cnt.markers))), ("All trials should "
+            range(all_trial_epo.data.shape[0])), ("All trials should "
                 "either be clean or rejected.")
         assert np.intersect1d(clean_trials, rejected_trials).size == 0, ("All "
             "trials should either be clean or rejected.")

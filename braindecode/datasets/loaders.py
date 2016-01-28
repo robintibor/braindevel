@@ -1,8 +1,13 @@
-import h5py
-import numpy as np
+import os.path
 import re
-from braindecode.datasets.sensor_positions import sort_topologically
+import numpy as np
+import h5py
 import wyrm.types
+import logging
+log = logging.getLogger(__name__)
+from braindecode.datasets.sensor_positions import sort_topologically
+from wyrm.processing import append_cnt
+
 
 class BBCIDataset(object):
     def __init__(self, filename, load_sensor_names=None):
@@ -24,7 +29,7 @@ class BBCIDataset(object):
         with h5py.File(self.filename, 'r') as h5file:
             samples = int(h5file['nfo']['T'][0,0])
             cnt_signal_shape = (samples, len(wanted_chan_inds))
-            continuous_signal = np.empty(cnt_signal_shape, dtype=np.float64)
+            continuous_signal = np.empty(cnt_signal_shape, dtype=np.float32)
             for chan_ind_arr, chan_ind_set  in enumerate(wanted_chan_inds):
                 chan_set_name = 'ch' + str(chan_ind_set + 1)
                 # first 0 to unpack into vector, before it is 1xN matrix
@@ -46,6 +51,11 @@ class BBCIDataset(object):
         if self.load_sensor_names is None:
             # if no sensor names given, take all EEG-chans
             EEG_sensor_names = filter(lambda s: not s.startswith('E'), all_sensor_names)
+            EEG_sensor_names = filter(lambda s: not s.startswith('Microphone'), EEG_sensor_names)
+            assert (len(EEG_sensor_names) == 128 or 
+                len(EEG_sensor_names) == 32 or 
+                len(EEG_sensor_names) == 16), (
+                "Recheck this code if you have different sensors...")
             # sort sensors topologically to allow networks to exploit topology
             self.load_sensor_names = sort_topologically(EEG_sensor_names)
         chan_inds = self.determine_chan_inds(all_sensor_names, 
@@ -74,8 +84,6 @@ class BBCIDataset(object):
         with h5py.File(self.filename, 'r') as h5file:
             event_times_in_ms = h5file['mrk']['time'][:,0]
             event_classes = h5file['mrk']['event']['desc'][0]
-        # expect epoched set with always 2000 samples per epoch 
-        # compare to matlab samples from tonio lab
         cnt.markers =  zip(event_times_in_ms, event_classes)
 
     @staticmethod
@@ -93,6 +101,7 @@ class BCICompetition4Set2A(object):
     def __init__(self, filename, load_sensor_names=None):
         """ Constructor will not call superclass constructor yet"""
         self.__dict__.update(locals())
+        assert load_sensor_names is None, "Not implemented loading only specific sensors"
         del self.self
 
     def load(self):
@@ -142,4 +151,129 @@ class BCICompetition4Set2A(object):
                         ['ms', '#'])
             cnt.fs = fs
             cnt.markers = markers
+        return cnt
+    
+def convert_test_files_add_markers():
+    """ Just for documentation purposes put this here ..."""
+    for i_subject in xrange(1,10):
+        combined_filename = 'data/bci-competition-iv/2a-combined/A0{:d}TE.mat'.format(i_subject)
+        test_filename = 'data/bci-competition-iv/2a/A0{:d}E.mat'.format(i_subject)
+    
+        combined_set = BCICompetition4Set2A(combined_filename)
+        combined_cnt = combined_set.load()
+    
+        test_h5_file = h5py.File(test_filename, 'a')
+        class_labels = np.array(combined_cnt.markers)[288:, 1]
+        del test_h5_file['header']['Classlabel']
+        test_h5_file['header'].create_dataset('Classlabel', data=class_labels[np.newaxis,:].astype(np.float64))
+    
+        # load and change event type only for class labels
+        event_type = test_h5_file['header']['EVENT']['TYP'][:]
+        if np.any(event_type[0] == 783):
+            event_type[0, event_type[0] == 783] = class_labels.astype(np.float64) + 768
+    
+        del test_h5_file['header']['EVENT']['TYP']
+        test_h5_file['header']['EVENT'].create_dataset('TYP', data=event_type)
+    
+        test_h5_file.close()
+    
+    
+        test_h5_file = h5py.File(test_filename, 'r')
+        assert np.array_equal(class_labels, test_h5_file['header']['Classlabel'][0,:])
+    
+        event_type_in_file = test_h5_file['header']['EVENT']['TYP'][0,:]
+        trial_mask = np.array([ev in [769, 770, 771, 772, 783] for ev in event_type_in_file])
+    
+        assert np.array_equal(event_type_in_file[trial_mask]- 768, class_labels)
+    
+        test_h5_file.close()
+    
+        
+    # Final check over datasets
+    for i_subject in xrange(1,10):
+        combined_filename = 'data/bci-competition-iv/2a-combined/A0{:d}TE.mat'.format(i_subject)
+        test_filename = 'data/bci-competition-iv/2a/A0{:d}E.mat'.format(i_subject)
+    
+        combined_set = BCICompetition4Set2A(combined_filename)
+        combined_cnt = combined_set.load()
+        test_set = BCICompetition4Set2A(test_filename)
+        test_cnt = test_set.load()
+        assert np.array_equal(np.array(test_cnt.markers)[:,1],
+                   np.array(combined_cnt.markers)[288:,1])
+
+class BCICompetition4Set2aAllSubjects(object):
+    """For All Subjects.
+    train_or_test should be the string 'train' or the string 'test'"""
+    def __init__(self, folder, train_or_test, i_last_subject=9, load_sensor_names=None):
+        """ Constructor will not call superclass constructor yet"""
+        assert load_sensor_names is None, "Not implemented loading only specific sensors"
+        self.folder = folder
+        self.train_or_test = train_or_test
+        self.load_sensor_names = load_sensor_names
+        self.i_last_subject = i_last_subject
+        
+    def load(self):
+        if self.train_or_test == 'train':
+            suffix = 'T'
+        elif self.train_or_test == 'test':
+            suffix = 'E'
+        else:
+            raise ValueError("Please pass either 'train' or "
+                "'test', got {:s}".format(self.train_or_test))
+        
+        filenames = [os.path.join(self.folder, 'A0{:d}{:s}.mat'.format(
+            i_subject,suffix)) 
+            for i_subject in xrange(1,self.i_last_subject + 1)]
+        cnts = [BCICompetition4Set2A(name).load() for name in filenames]
+
+        combined_cnt = reduce(append_cnt, cnts)
+        return combined_cnt
+
+class HDF5StreamedSet(object):
+    """Our very own minimalistic format how data is stored when streamed during an online
+     experiment."""
+    
+    def __init__(self, filename, load_sensor_names=None):
+        self.__dict__.update(locals())
+        del self.self
+
+    def load(self):
+        """ This function actually loads the data. Will be called by the 
+        get dataset lazy loading function""" 
+        with h5py.File(self.filename, 'r') as h5file:
+            all_data = np.array(h5file['cnt_samples'])
+            sensor_names = h5file['chan_names'][:32]
+            
+            if self.load_sensor_names is None:
+                cnt_data = all_data[:,:32]
+                wanted_sensor_names = sensor_names
+            else:
+                log.warn("Load sensor names may lead to different results for "
+                    "this set class compared to others")
+                chan_inds = [sensor_names.tolist().index(s)
+                    for s in self.load_sensor_names]
+                cnt_data = all_data[:,chan_inds]
+                wanted_sensor_names = self.load_sensor_names
+            
+            marker = all_data[:,32]
+            fs = 512.0
+            time_steps = np.arange(len(cnt_data)) * 1000.0 / fs
+            cnt = wyrm.types.Data(cnt_data,axes=[time_steps, 
+                wanted_sensor_names], names=['time', 'channel'],
+                units=['ms', '#'])
+            cnt.fs = fs
+            
+            # Reconstruct markers
+            pause = marker == 0
+            boundaries = np.diff(pause)
+            inds_boundaries = np.flatnonzero(boundaries)
+            # first sample of next class is at inds_boundaries + 1 always..
+            event_samples_and_classes = [(i + 1, int(marker[i + 1])) 
+                for i in inds_boundaries]
+            event_samples_and_classes = [pair for 
+                pair in event_samples_and_classes if pair[1] != 0]
+            event_ms_and_classes = [((pair[0] * 1000.0 / cnt.fs), pair[1]) for 
+                pair in event_samples_and_classes]
+            cnt.markers = event_ms_and_classes
+            
         return cnt
