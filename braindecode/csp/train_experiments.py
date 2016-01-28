@@ -3,16 +3,17 @@ import time
 import logging
 from pylearn2.utils.logger import (
     CustomStreamHandler, CustomFormatter)
-from braindecode.experiments.experiment_runner import (
-    ExperimentsRunner)
-from braindecode.experiments.parse import (
-    create_experiment_yaml_strings_from_files)
 import argparse
 from pylearn2.config import yaml_parse
 import lasagne
 import os
 from numpy.random import RandomState
 import pickle
+import numpy as np
+from braindecode.experiments.experiment_runner import (
+    ExperimentsRunner)
+from braindecode.experiments.parse import (
+    create_experiment_yaml_strings_from_files)
 from braindecode.csp.results import CSPResult
 from braindecode.csp.print_results import CSPResultPrinter
 log = logging.getLogger(__name__)
@@ -39,16 +40,18 @@ class CSPExperimentsRunner(ExperimentsRunner):
                 csp_trainer=csp_train,
                 parameters=train_dict['original_params'],
                 training_time=endtime - starttime)   
-        if not os.path.exists(self._folder_path):
-            os.makedirs(self._folder_path)
+        folder_path = self._folder_paths[0]
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
         
         result_file_name = self._get_result_save_path(experiment_index)
         with open(result_file_name, 'w') as resultfile:
             pickle.dump(result, resultfile)
 
     def _print_results(self):
-        res_printer = CSPResultPrinter(self._folder_path)
-        res_printer.print_results()
+        for folder_path in np.unique(self._folder_paths):
+            res_printer = CSPResultPrinter(folder_path)
+            res_printer.print_results()
     
 def setup_logging():
     """ Set up a root logger so that other modules can use logging
