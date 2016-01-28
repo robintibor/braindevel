@@ -8,8 +8,8 @@
         ],
     variants: [[
     {
-        first_nonlin: [$relu],
-        later_nonlin: [$relu],
+        first_nonlin: [$elu],
+        later_nonlin: [$elu],
         filter_time_length: [20],
         save_path: ['data/models/4sec-movements/cnt/4-layer/simple/'],
         variants: [[

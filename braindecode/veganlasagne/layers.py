@@ -1,4 +1,4 @@
-from lasagne.layers import Conv2DLayer
+from lasagne.layers import Conv2DLayer, NonlinearityLayer, Layer
 from lasagne import init
 from lasagne import nonlinearities
 import theano.tensor as T
@@ -11,6 +11,7 @@ import sys
 from lasagne.utils import as_tuple
 from lasagne.theano_extensions import padding
 import theano
+from lasagne.nonlinearities import identity
 
 def print_layers(final_layer):
     """Print all layers, including all output shapes """
@@ -18,6 +19,77 @@ def print_layers(final_layer):
     for i, layer in enumerate(all_layers):
         print("{:2d} {:25s} {:s}".format(i, layer.__class__.__name__,
             layer.output_shape))
+class BiasLayer(Layer):
+    def __init__(self, incoming, bias_value, **kwargs):
+        super(BiasLayer, self).__init__(incoming, **kwargs)
+        self.b = self.add_param(bias_value, bias_value.shape, name="b",
+                                    regularizable=False)
+
+    def get_output_for(self, input, **kwargs):
+        if input.ndim == 4:
+            return input + self.b.dimshuffle('x',0,'x','x')
+        elif input.ndim == 2:
+            return input # TODO: somehow fix the error in this case
+        # was input + self.b.dimshuffle('x',0) before
+        else:
+            raise ValueError("Unknown input ndim {:d}".format(input.ndim))
+    
+def split_out_biases(model):
+    """Splits out nonlinearities of layers with weights into nonlinearity
+    layers """
+    copied_model = deepcopy(model)
+    all_layers = lasagne.layers.get_all_layers(copied_model)
+    new_final_layer = False
+    for i_layer in xrange(len(all_layers)):
+        layer = all_layers[i_layer]
+        if (hasattr(layer, 'b') and (not isinstance(layer, BiasLayer)) and
+                ((i_layer == len(all_layers) - 1) or
+                (not isinstance(all_layers[i_layer+1], BiasLayer)))):
+            if not (len(layer.output_shape) == 2):
+                # hack atm due to bug with softmax optimization
+                old_b_val = deepcopy(layer.b.get_value())
+                bias_layer = BiasLayer(layer, old_b_val)
+                layer.b = None
+                if i_layer < len(all_layers) - 1:
+                    next_layer = all_layers[i_layer+1]
+                    next_layer.input_layer = bias_layer
+                else:
+                    new_final_layer = True
+
+    if new_final_layer == True:
+        return bias_layer
+    else:
+        return all_layers[-1]
+    
+def split_out_nonlinearities(model):
+    """Splits out nonlinearities of layers with weights into nonlinearity
+    layers """
+    copied_model = deepcopy(model)
+
+    all_layers = lasagne.layers.get_all_layers(copied_model)
+
+    new_final_layer = False
+
+    for i_layer in xrange(len(all_layers)):
+        layer = all_layers[i_layer]
+        if (hasattr(layer, 'nonlinearity') and
+                layer.nonlinearity.__name__ != 'identity' and 
+                layer.nonlinearity.__name__ != 'linear' and 
+                hasattr(layer, 'W')):
+            old_nonlin = layer.nonlinearity
+            new_nonlin_layer = NonlinearityLayer(layer, old_nonlin)
+            if i_layer < len(all_layers) - 1:
+                next_layer = all_layers[i_layer+1]
+                next_layer.input_layer = new_nonlin_layer
+            else:
+                new_final_layer = True
+            layer.nonlinearity = identity
+
+    if new_final_layer ==True:
+        all_layers = lasagne.layers.get_all_layers(new_nonlin_layer)
+    else:
+        all_layers = lasagne.layers.get_all_layers(all_layers[-1])
+    return all_layers[-1]
 
 def calculate_predictions(data, start,stop,stride, window_len, pred_fn):
     preds = []

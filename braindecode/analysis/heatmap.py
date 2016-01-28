@@ -3,7 +3,7 @@ import numpy as np
 import theano
 import lasagne
 from theano.tensor.nnet import conv2d
-from braindecode.veganlasagne.layers import get_input_shape
+from braindecode.veganlasagne.layers import get_input_shape, BiasLayer
 
 def create_heatmap_fn(all_layers, rules, min_in=None, max_in=None,
         return_all=False):

@@ -11,7 +11,7 @@ import os.path
 from matplotlib import gridspec
 import seaborn
 
-def plot_heatmap(trial, relevances, sensor_names, sensor_map, figsize):
+def plot_heatmap(trial, relevances, sensor_names, sensor_map, figsize=(14, 10)):
     fig = plot_head_signals_tight(trial,
                                   sensor_names,
                                   sensor_map=sensor_map,

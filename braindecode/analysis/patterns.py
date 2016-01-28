@@ -5,7 +5,8 @@ import theano.tensor as T
 from theano.tensor.nnet import conv2d
 from theano.tensor.signal import downsample
 from braindecode.veganlasagne.layers import get_input_shape,\
-    create_suitable_theano_input_var, create_suitable_theano_output_var
+    create_suitable_theano_input_var, create_suitable_theano_output_var,\
+    BiasLayer
 import logging
 log = logging.getLogger(__name__)
 from theano.compile import UnusedInputError
@@ -61,6 +62,8 @@ def compute_patterns_for_layers(needed_layers, input_data):
             pattern = transform_to_patterns(conv_weights, inputs, outputs)
             log.info("Done.")
         elif isinstance(layer, lasagne.layers.DenseLayer):
+            log.info("Transforming to patterns for layer {:d}: {:s}...".format(
+                i_layer, layer.__class__.__name__))
             if inputs.ndim > 2:
                 inputs = inputs.reshape(inputs.shape[0], -1)
             in_cov = np.cov(inputs.T)
@@ -118,6 +121,11 @@ def pattern_deconv(final_out, input_var, layers, pattern_weights,
             reverse_pattern = (reverse_pattern[1:]-1).tolist()
             # starting at 1 since no trial axis there..
             cur_out = cur_out.dimshuffle(reverse_pattern)
+        #elif isinstance(layer, BiasLayer):
+        elif layer.__class__.__name__ == 'BiasLayer':
+            ndim = cur_out.ndim
+            cur_out = cur_out - layer.b.dimshuffle(('x', 0) 
+                + ('x',) * (ndim - 2))
         elif (isinstance(layer, lasagne.layers.DropoutLayer) or
             isinstance(layer, lasagne.layers.FlattenLayer) or
             isinstance(layer, lasagne.layers.NonlinearityLayer)):
@@ -125,6 +133,10 @@ def pattern_deconv(final_out, input_var, layers, pattern_weights,
         else:
             raise ValueError("Trying to propagate through unknown layer "
                 "{:s}".format(layer.__class__.__name__))
+        if hasattr(layer, 'nonlinearity') and layer.nonlinearity.__name__ == 'elu':
+            # first make sure within admissible range (-1, inf)
+            cur_out = T.maximum(cur_out, -0.9999)
+            cur_out = T.gt(cur_out, 0) * cur_out + T.le(cur_out, 0) * T.log(cur_out + 1)
         if cur_out.shape != inputs.shape:
             cur_out = cur_out.reshape(inputs.shape)
         if input_constraints[i_layer] == 'positive' or enforce_positivity_everywhere:
@@ -158,6 +170,8 @@ def upsample_pool(outputs, inputs, pool_size, pool_stride):
                            pool_ones, subsample=(1,1),
                            border_mode='full')
 
+    # quick check just distribute equally instead of respecting maxima?
+    #actual_in = upsampled_out / np.prod(pool_size).astype(np.float32)
     pooled = downsample.max_pool_2d(inputs,ds=pool_size, st=pool_stride,
         ignore_border=False)
 
@@ -218,8 +232,8 @@ def transform_to_patterns(conv_weights, all_ins, all_outs):
     # Make hacky fix to out covs to prevent numerical instabilities
     # due to dead units
     diag_of_cov = np.diag(out_covs)
-    # 10 below the max is a guess basically...
-    bad_units = diag_of_cov < (np.max(diag_of_cov) / 20)
+    # 100 below the max is a guess basically...
+    bad_units = diag_of_cov < (np.max(diag_of_cov) / 100)
     #bad_units = np.array([False] * out_covs.shape[0])
     good_units = np.logical_not(bad_units)
     good_covs = out_covs[good_units][:, good_units]

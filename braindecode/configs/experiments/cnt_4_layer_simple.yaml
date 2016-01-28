@@ -124,6 +124,7 @@
         },
         square: !!python/name:theano.tensor.sqr ,
         identity: !!python/name:lasagne.nonlinearities.identity ,
+        elu: !!python/name:lasagne.nonlinearities.elu ,
         relu: !!python/name:lasagne.nonlinearities.rectify ,
         leaky_relu: !!python/name:lasagne.nonlinearities.leaky_rectify ,
         safe_log: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
