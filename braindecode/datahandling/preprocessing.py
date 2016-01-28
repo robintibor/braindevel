@@ -679,9 +679,7 @@ class OnlineAxiswiseStandardize(Preprocessor):
             dims_to_squash = None
             if len(standard_dim_inds) > 1:
                 # first dim is 'b'-> batch, so needs to be ignored here :))
-                # have to subtract 1 since batch dim is gone inside online
-                # standardize function
-                dims_to_squash = tuple(np.array(standard_dim_inds[1:]) - 1)
+                dims_to_squash = tuple(np.array(standard_dim_inds[1:]))
             new_topo = online_standardize(topo_view,
                 old_mean=self._mean,
                 old_std=self._std,
@@ -719,16 +717,20 @@ class OnlineAxiswiseStandardize(Preprocessor):
 # adapted from https://subluminal.wordpress.com/2008/07/31/running-standard-deviations/
 # using degree of freedom 0 which is default for numpy std
 # and also simplifies calculations even more
-def online_standardize(topo, n_old_trials, old_mean, old_std, dims_to_squash=None, std_eps=1e-5):
+def online_standardize(topo, n_old_trials, old_mean, old_std, dims_to_squash=None,
+    std_eps=1e-5):
     n = n_old_trials
     mean = old_mean
     power_avg = (old_std * old_std + old_mean * old_mean)
+    if dims_to_squash is not None:
+        # have to subtract one since batch dimension is gone inside loop
+        dims_to_squash = tuple(np.array(dims_to_squash) - 1)
     new_topo = deepcopy(topo)
     for i_trial in xrange(len(topo)):
         n += 1
         this_topo = topo[i_trial]
         if dims_to_squash is not None:
-            this_topo = np.mean(this_topo, axis=tuple(dims_to_squash), keepdims=True)
+            this_topo = np.mean(this_topo, axis=dims_to_squash, keepdims=True)
         mean = mean + ((this_topo - mean) / n)
         power_avg = power_avg + ((this_topo * this_topo - power_avg) / n)
         std = np.sqrt((power_avg - mean * mean))

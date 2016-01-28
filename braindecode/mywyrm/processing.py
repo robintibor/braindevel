@@ -4,7 +4,7 @@ import numpy as np
 from copy import deepcopy
 from braindecode.datahandling.preprocessing import (exponential_running_mean, 
     exponential_running_var_from_demeaned, OnlineAxiswiseStandardize,
-    exponential_running_standardize)
+    exponential_running_standardize, online_standardize)
 from sklearn.covariance import LedoitWolf as LW
 import scikits.samplerate
 import re
@@ -44,13 +44,11 @@ def online_standardize_epo(epo_train, epo_test):
     n_old_trials = len(epo_train.axes[0])
     assert len(epo_train.axes[0]) == len(epo_train.data)
 
-    new_epo_test_data = OnlineAxiswiseStandardize.standardize(epo_test.data, 
-                                        standard_dim_inds, 
+    new_epo_test_data = online_standardize(epo_test.data, 
                                         old_mean=train_mean,
                                         old_std=train_std, 
                                         n_old_trials=n_old_trials, 
-                                        use_only_new=False,
-                                        new_factor=1.,
+                                        dims_to_squash=standard_dim_inds[1:], # 0th batch dim should be ignored for this call
                                         std_eps=std_eps)
     assert np.array_equal(epo_train.data.shape, new_epo_train_data.shape)
     assert np.array_equal(epo_test.data.shape, new_epo_test_data.shape)
