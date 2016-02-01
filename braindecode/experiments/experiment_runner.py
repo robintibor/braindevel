@@ -1,27 +1,28 @@
-import logging
-from braindecode.datasets.grasp_lift import (KaggleGraspLiftSet,
-    create_submission_csv_for_one_subject, AllSubjectsKaggleGraspLiftSet,
-    create_submission_csv_for_all_subject_model)
-from braindecode.veganlasagne.layers import (get_n_sample_preds,
-    get_model_input_window)
 import sys
-from braindecode.veganlasagne.stopping import MaxEpochs
-from braindecode.datahandling.splitters import FixedTrialSplitter,\
-    SeveralSetsSplitter
-log = logging.getLogger(__name__)
 from glob import glob
 import yaml
 from numpy.random import RandomState 
 import time
 import os
-from braindecode.experiments.experiment import Experiment, ExperimentCrossValidation
-from braindecode.results.results import Result
 import pickle
-from braindecode.scripts.print_results import ResultPrinter
 import lasagne
 from pylearn2.config import yaml_parse
 from pprint import pprint
 import numpy as np
+import re
+from braindecode.scripts.print_results import ResultPrinter
+from braindecode.experiments.experiment import Experiment, ExperimentCrossValidation
+from braindecode.results.results import Result
+from braindecode.datasets.grasp_lift import (KaggleGraspLiftSet,
+    create_submission_csv_for_one_subject, AllSubjectsKaggleGraspLiftSet,
+    create_submission_csv_for_all_subject_model)
+from braindecode.veganlasagne.layers import (get_n_sample_preds,
+    get_model_input_window)
+from braindecode.veganlasagne.stopping import MaxEpochs
+from braindecode.datahandling.splitters import FixedTrialSplitter,\
+    SeveralSetsSplitter
+import logging
+log = logging.getLogger(__name__)
 
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
@@ -101,7 +102,9 @@ class ExperimentsRunner:
         def do_not_load_constructor(loader, node):
             return None
         yaml.add_constructor(u'!DoNotLoad', do_not_load_constructor)
-        train_str = train_str.replace('layers: ', 'layers: !DoNotLoad ')
+        # replace layers by layers with a tag not to load it after...
+        # have to replace any different tag there might be ...
+        train_str = re.sub("layers:[\s]+!obj:[^{]*", "layers: !DoNotLoad ", train_str)
         return yaml_parse.load(train_str)
 
     def _run_all_experiments(self):
@@ -154,7 +157,7 @@ class ExperimentsRunner:
             train_str = train_str.replace('in_cols', '1')
             train_str = train_str.replace('in_sensors', '32')
             train_dict =  yaml_parse.load(train_str)
-            layers = train_dict['layers']
+            layers = self._load_layers(train_dict)
             final_layer = layers[-1]
             n_chans = layers[0].shape[1]
             n_classes = final_layer.output_shape[1]
@@ -221,7 +224,7 @@ class ExperimentsRunner:
         lasagne.random.set_rng(RandomState(9859295))
         train_dict =  yaml_parse.load(train_str)
             
-        layers = train_dict['layers']
+        layers = self._load_layers(train_dict)
         final_layer = layers[-1]
         assert len(np.setdiff1d(layers, 
             lasagne.layers.get_all_layers(final_layer))) == 0, ("All layers "
@@ -318,6 +321,15 @@ class ExperimentsRunner:
                 "" + str(dataset.__class__.__name__))
             
     
+    def _load_layers(self, train_dict):
+        """Layers can  be a list or an object that returns a list."""
+        layers_obj = train_dict['layers']
+        if hasattr(layers_obj, '__len__'):
+            return layers_obj
+        else:
+            return layers_obj.get_layers()
+        
+         
     def _save_train_string(self, train_string, experiment_index):
         file_name = self._base_save_paths[experiment_index] + ".yaml"
         # create folder if necessary

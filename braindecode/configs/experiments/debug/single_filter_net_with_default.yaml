@@ -1,7 +1,7 @@
 {
     extends: ['configs/experiments/defaults.yaml'],
     templates: {
-        simple_layers: [ 
+        simple_layers: !obj:braindecode.veganlasagne.layer_modifiers.JustReturn { [ 
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, in_rows, in_cols]
             },
@@ -24,7 +24,7 @@
                     num_units: 2,
                     nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
             },
-        ],
+        ]},
         raw_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {
             signal_marker_set: !obj:braindecode.datasets.signal_processor.SignalProcessor {
                 set_loader: !obj:braindecode.datasets.set_loaders.BBCIDataset {

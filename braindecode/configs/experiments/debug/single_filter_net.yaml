@@ -1,6 +1,6 @@
 {
     templates: {
-        simple_layers: [ 
+        simple_layers: !obj:braindecode.veganlasagne.layer_modifiers.JustReturn { [ 
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, in_rows, in_cols]
             },
@@ -23,7 +23,7 @@
                     num_units: 2,
                     nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
             },
-        ],
+        ]},
         raw_set: !obj:braindecode.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {
             filenames: 'data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat',
             cnt_preprocessors: [

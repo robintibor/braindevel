@@ -1,7 +1,8 @@
 {
     extends: ['configs/experiments/raw_set.yaml'],
     templates: {
-        raw_net_no_drop_time_layers: [ 
+        raw_net_no_drop_time_layers: !obj:braindecode.veganlasagne.layer_modifiers.JustReturn { 
+        [ 
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, in_rows, in_cols]
             },
@@ -44,6 +45,7 @@
                     name: 'final_dense',
             },
         ],
+        },
         raw_layer_names_to_norms: {
             time_conv: 2.0,
             spat_conv: 2.0,

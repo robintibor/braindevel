@@ -1,6 +1,7 @@
 {
-    templates: {
-        cnt_raw_net_deep_batch_norm: [ 
+    templates: { 
+    cnt_raw_net_deep_batch_norm: !obj:braindecode.veganlasagne.layer_modifiers.JustReturn {
+        layers: [
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, $input_time_length, in_cols]
             },
@@ -155,6 +156,7 @@
                     nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
             },
         ],
+        },
         raw_layer_names_to_norms: {
             time_conv: $conv_norm,
             spat_conv: $conv_norm,
