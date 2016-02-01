@@ -74,7 +74,6 @@ def parse_command_line_arguments():
 if __name__ == "__main__":
     setup_logging()
     args = parse_command_line_arguments()
-
     all_train_strs = create_experiment_yaml_strings_from_files(
         args.experiments_file_name, args.template_file_name, args.debug,
         command_line_params=args.params,

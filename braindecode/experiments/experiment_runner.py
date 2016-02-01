@@ -105,6 +105,8 @@ class ExperimentsRunner:
         # replace layers by layers with a tag not to load it after...
         # have to replace any different tag there might be ...
         train_str = re.sub("layers:[\s]+!obj:[^{]*", "layers: !DoNotLoad ", train_str)
+        train_str = train_str.replace("layers: [", "layers: !DoNotLoad [")
+
         return yaml_parse.load(train_str)
 
     def _run_all_experiments(self):

@@ -1,0 +1,22 @@
+{
+    extends: ['configs/experiments/defaults.yaml'],
+    templates: {
+        resample_highpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $low_cut_off_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ]],
+    },
+    variants: [[{
+        cnt_preprocessors: [$resample_highpass_standardize],
+        low_cut_off_hz: ["null", 4],
+    }]]
+}

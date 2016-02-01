@@ -32,8 +32,11 @@ echo SGE_TASK_ID=$SGE_TASK_ID
 echo CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
 echo GPU_ID=$GPU_ID
 echo $CMD
-
-export THEANO_FLAGS="floatX=float32,device=gpu${GPU_ID},nvcc.fastmath=True,force_device=True,compiledir=/tmp/${JOB_ID}.${SGE_TASK_ID}.meta_gpu-rz.q/"
+# used to have this for separate compiledir
+# but never helped with crashes or anything
+# so removing it from theano flags...:
+# ,compiledir=/tmp/schirrmr.${JOB_ID}.${SGE_TASK_ID}/
+export THEANO_FLAGS="floatX=float32,device=gpu${GPU_ID},nvcc.fastmath=True,force_device=True"
 echo THEANO_FLAGS=$THEANO_FLAGS
 """
 def generate_cluster_job(sys_args):

@@ -1,0 +1,19 @@
+ {
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/shallow_square.yaml',
+        'configs/experiments/paper/ours/our_data.yaml',
+        ],
+    variants: [[
+    {
+        num_filters: [40],
+        resample_fs: [500],
+        save_path: ['data/models/paper/ours/shallow/full/'],
+        input_time_length: [2000], # will be overwritten by actual net size...
+        trial_stop: [3998],
+        filter_time_length: [50],
+        final_dense_length: [61],
+        layer_modifier: [TransformToNormalNet],
+    }
+    ]]
+}

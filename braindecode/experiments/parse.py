@@ -267,8 +267,6 @@ def process_templates(templates, parameters):
                         template_name not in needed_template_names):
                     needed_template_names.append(template_name)
                     new_template_found = True
-                    if '$resample_fs' in templates[template_name]:
-                        print template_name
     
     # now for any needed template, first substitute any $-placeholders
     # _within_ the template with a value from the parameter.
@@ -286,8 +284,6 @@ def process_templates(templates, parameters):
     template_to_template = dict(zip(template_names, ['$' + k for k in template_names]))
     templates_and_parameters = merge_dicts(template_to_template, parameters)
     for template_name in needed_template_names:
-        if '$resample_fs' in templates[template_name]:
-            print template_name
         template_string = templates[template_name]
         template_string = Template(template_string).substitute(templates_and_parameters)
         processed_templates[template_name] = template_string

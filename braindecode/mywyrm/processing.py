@@ -298,6 +298,8 @@ def common_average_reference_cnt(cnt):
     return cnt.copy(data=newdata)
 
 def resample_cnt(cnt, newfs, timeaxis=-2):
+    if newfs == cnt.fs:
+        return cnt.copy()
     resampled_data = scikits.samplerate.resample(cnt.data, newfs/float(cnt.fs), 
         type='sinc_fastest')
     # add sensor dim if only having one sensor...
@@ -537,6 +539,8 @@ def resample_epo(epo, newfs, timeaxis=-2):
     return epo.copy(data=new_data, fs=newfs)
 
 def highpass_cnt(cnt, low_cut_off_hz, filt_order=3):
+    if low_cut_off_hz is None:
+        return cnt.copy()
     b,a = scipy.signal.butter(filt_order, low_cut_off_hz/(cnt.fs/2.0),btype='highpass')
     cnt_highpassed = lfilter(cnt,b,a)
     return cnt_highpassed
