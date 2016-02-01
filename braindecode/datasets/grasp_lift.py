@@ -22,7 +22,8 @@ def load_train(train_folder, i_subject, i_series):
     data_file_path = os.path.join(train_folder, data_filename)
     data = pd.read_csv(data_file_path)
     # events file
-    events_file_path = data_file_path.replace('_data','_events')
+    events_file_path = os.path.join(train_folder,
+        data_filename.replace('_data','_events'))
     # read event file
     labels= pd.read_csv(events_file_path)
     clean = data.drop(['id' ], axis=1)#remove id
