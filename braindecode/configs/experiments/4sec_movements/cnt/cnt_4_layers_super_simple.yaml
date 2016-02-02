@@ -1,9 +1,9 @@
 {
     extends: ['configs/experiments/defaults.yaml',
         'configs/experiments/two_file_cnt_set.yaml',
+        'configs/experiments/4sec_movements/train_test_filenames.yaml',
         'configs/experiments/cnt_iterator_monitor.yaml',
         'configs/experiments/cnt_4_layer_super_simple.yaml',
-        'configs/experiments/4sec_movements/cnt/filenames.yaml',
         'configs/experiments/4sec_movements/cnt/defaults.yaml',
         ],
     variants: [[

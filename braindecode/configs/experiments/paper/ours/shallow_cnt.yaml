@@ -1,0 +1,17 @@
+{
+    extends: [
+        'configs/experiments/paper/ours/shallow.yaml',
+        'configs/experiments/paper/cnt_templates.yaml',
+        ],
+    variants: [[{
+        save_path: ['data/models/paper/ours/cnt/trial/shallow/'],
+        final_dense_length: [30],
+        input_time_length: [2000],
+        n_sample_preds : [1000], # will be overwritten anyways
+        dataset: [$combined_set],
+        dataset_splitter: [$several_sets_splitter],
+        misclass_monitor: [$cnt_trial_misclass_monitor],
+        iterator: [$cnt_iterator],
+        layer_modifier: [JustReturn],
+    }]],
+}

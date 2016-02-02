@@ -1,0 +1,50 @@
+{
+    templates: {
+        cnt_iterator: !obj:braindecode.datahandling.batch_iteration.CntWindowTrialIterator {
+            batch_size: $batch_size,
+            input_time_length: $input_time_length,
+            n_sample_preds: $n_sample_preds,
+        },
+        cnt_trial_misclass_monitor: !obj:braindecode.veganlasagne.monitors.CntTrialMisclassMonitor { 
+        },
+    
+        raw_set_train: !obj:braindecode.datasets.cnt_signal_matrix.CntSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.$loader_type {
+                    filename: $dataset_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            sensor_names: $sensor_names,
+        },
+        raw_set_test: !obj:braindecode.datasets.cnt_signal_matrix.CntSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.$loader_type {
+                    filename: $test_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            sensor_names: $sensor_names,
+        },
+        markers_4_class: {'1': [1], '2': [2], '3': [3], '4': [4]},
+        combined_set:  !obj:braindecode.datasets.combined.CombinedSet {
+            sets: [$raw_set_train, $raw_set_test]
+        },
+        several_sets_splitter: !obj:braindecode.datahandling.splitters.SeveralSetsSplitter {
+            use_test_as_valid: $use_test_as_valid,
+            valid_set_fraction: $valid_set_fraction,
+        }
+    },
+    variants: [[{
+        trial_start: [0],
+        trial_stop: [4000],
+        marker_def: [$markers_4_class],
+        valid_set_fraction: [0.2],
+    }]]
+}

@@ -21,7 +21,7 @@ if __name__ == "__main__":
         hostname = None
     job_filepath = generate_cluster_job(job_args)
     if hostname is not None:
-        command = "qsub -l hostname={:s} -q {:s}.q {:s}".format(
+        command = "qsub -l hostname={:s} -q {:s} {:s}".format(
             hostname, queue_name, job_filepath)
     else:
         command = "qsub -q {:s} {:s}".format(queue_name, job_filepath)

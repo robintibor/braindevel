@@ -37,3 +37,14 @@ class GetAttr(object):
     Uses new to actually return completely different object... """
     def __new__(cls, obj, attr):
         return getattr(obj, attr) 
+
+def add_message_to_exception(exc, additional_message):
+    #  give some more info...
+    # see http://www.ianbicking.org/blog/2007/09/re-raising-exceptions.html
+    args = exc.args
+    if not args:
+        arg0 = ''
+    else:
+        arg0 = args[0]
+    arg0 += additional_message
+    exc.args = (arg0, ) + args[1:]

@@ -7,14 +7,8 @@
     variants: [[
     {
         num_filters: [40],
-        low_cut_off_hz: [0.5],
-        resample_fs: [500],
-        save_path: ['data/models/paper/ours/deep4/full/'],
-        input_time_length: [2000], # will be overwritten by actual net size...
         trial_stop: [3950],
         filter_time_length: [20],
-        final_dense_length: [15],
-        layer_modifier: [TransformToNormalNet],
     }
     ]]
 }

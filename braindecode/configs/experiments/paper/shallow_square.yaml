@@ -43,7 +43,7 @@
             },
             &final_dense !obj:lasagne.layers.Conv2DLayer {
                 incoming: *drop_feature,
-                num_filters: 6,
+                num_filters: $n_classes,
                 filter_size: [$final_dense_length, 1],
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
                 name: 'final_dense',
@@ -70,5 +70,6 @@
         pool_time_length: [150],
         pool_time_stride: [30],
         final_nonlin: [$safe_softmax],
+        n_classes: [4],
     }]]
 }

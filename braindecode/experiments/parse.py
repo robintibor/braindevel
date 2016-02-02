@@ -5,6 +5,7 @@ from string import Template
 from collections import deque
 import numpy as np
 import logging
+from braindecode.util import add_message_to_exception
 log = logging.getLogger(__name__)
 
 def transform_vals_to_string_constructor(loader, node):
@@ -242,7 +243,6 @@ def merge_dicts(*dict_args):
         result.update(dictionary)
     return result
 
-
 def process_templates(templates, parameters):
     """Substitute parameters within templates, return substituted templates, 
     only returns those templates actually needed by the parameters. """
@@ -261,6 +261,8 @@ def process_templates(templates, parameters):
     while new_template_found:
         new_template_found = False
         for a_needed_template_name in needed_template_names:
+            assert a_needed_template_name in templates, ("Template should "
+                "exist: {:s}".format(a_needed_template_name))
             template = templates[a_needed_template_name]
             for template_name in templates:
                 if (('$' + template_name) in template and 
@@ -285,8 +287,17 @@ def process_templates(templates, parameters):
     templates_and_parameters = merge_dicts(template_to_template, parameters)
     for template_name in needed_template_names:
         template_string = templates[template_name]
-        template_string = Template(template_string).substitute(templates_and_parameters)
-        processed_templates[template_name] = template_string
+        try:
+            template_string = Template(template_string).substitute(
+                templates_and_parameters)
+        
+            processed_templates[template_name] = template_string
+        except KeyError, exc:
+            additional_message = ' (when substituting variables in template {:s})'.format(
+                template_name)
+            add_message_to_exception(exc, additional_message)
+            raise
+            
 
     # Now it can still happen that a template has been replaced by another template
     # This is fixed in this loop
@@ -302,7 +313,7 @@ def process_templates(templates, parameters):
                 processed_templates[template_name] = new_str
                 unprocessed_template_exists = True
         i+=1
-    if i == 100:
+    if i == 100: # just to prevent infinite loops, don't know if its necessary
         raise ValueError("Could not replace all templates")
     return processed_templates
 

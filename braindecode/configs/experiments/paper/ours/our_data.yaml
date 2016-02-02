@@ -1,6 +1,10 @@
 {
     extends: [
-        'configs/experiments/raw_set.yaml',
-        'configs/experiments/4sec_movements/full_filenames.yaml',
+        'configs/experiments/two_file_epo_set.yaml',
+        'configs/experiments/4sec_movements/train_test_filenames.yaml',
         'configs/experiments/4sec_movements/C_sensors.yaml'],
+    variants: [[{
+        use_test_as_valid: [False],
+        resample_fs: [500],
+    }]]
 }
