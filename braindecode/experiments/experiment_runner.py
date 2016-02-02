@@ -159,7 +159,7 @@ class ExperimentsRunner:
             train_str = train_str.replace('in_cols', '1')
             train_str = train_str.replace('in_sensors', '32')
             train_dict =  yaml_parse.load(train_str)
-            layers = self._load_layers(train_dict)
+            layers = load_layers_from_dict(train_dict)
             final_layer = layers[-1]
             n_chans = layers[0].shape[1]
             n_classes = final_layer.output_shape[1]
@@ -226,7 +226,7 @@ class ExperimentsRunner:
         lasagne.random.set_rng(RandomState(9859295))
         train_dict =  yaml_parse.load(train_str)
             
-        layers = self._load_layers(train_dict)
+        layers = load_layers_from_dict(train_dict)
         final_layer = layers[-1]
         assert len(np.setdiff1d(layers, 
             lasagne.layers.get_all_layers(final_layer))) == 0, ("All layers "
@@ -323,13 +323,6 @@ class ExperimentsRunner:
                 "" + str(dataset.__class__.__name__))
             
     
-    def _load_layers(self, train_dict):
-        """Layers can  be a list or an object that returns a list."""
-        layers_obj = train_dict['layers']
-        if hasattr(layers_obj, '__len__'):
-            return layers_obj
-        else:
-            return layers_obj.get_layers()
         
          
     def _save_train_string(self, train_string, experiment_index):
@@ -347,10 +340,19 @@ class ExperimentsRunner:
             res_printer.print_results()
             print("\n")
 
+
+def load_layers_from_dict(train_dict):
+    """Layers can  be a list or an object that returns a list."""
+    layers_obj = train_dict['layers']
+    if hasattr(layers_obj, '__len__'):
+        return layers_obj
+    else:
+        return layers_obj.get_layers()
+
 def create_experiment(yaml_filename):
     """Utility function to create experiment from yaml file"""
     train_dict = yaml_parse.load(open(yaml_filename, 'r'))
-    layers = train_dict['layers']
+    layers = load_layers_from_dict(train_dict)
     final_layer = layers[-1]
     dataset = train_dict['dataset'] 
     splitter = train_dict['dataset_splitter']

@@ -1,0 +1,12 @@
+{ 
+    extends: ['configs/experiments/paper/ours/deep_4_cnt_trial.yaml'],
+    variants: [[
+        {
+            misclass_monitor: [$default_misclass],
+            save_path: ['data/models/paper/ours/cnt/sample/deep4/'],
+            max_epochs: [800],
+            max_increasing_epochs: [80],
+        }
+    ]]
+        
+}

@@ -64,7 +64,6 @@
         safe_softmax: !!python/name:braindecode.veganlasagne.nonlinearities.safe_softmax ,
     },
     variants: [[{
-        #num_filters: [40], set this for old experiments!
         layer_names_to_norms: [$layer_names_to_norms],
         layers: [$cnt_shallow_square],
         pool_time_length: [150],
