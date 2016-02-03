@@ -36,7 +36,8 @@ def create_sine_signal(samples, freq, sampling_freq, shift=0):
 
 class RandomDataset(DenseDesignMatrix):
     def __init__(self, cleaner=None, filenames=None): # cleaner filenames always given to dataset, but ignoreable
-        self._data_not_loaded_yet = True # needed for lazy loading
+        pass
+    
     def load(self):
         rng = RandomState(np.uint64(hash("RandomDataset")))
         input_shape = [500,3,600,1]
@@ -46,7 +47,6 @@ class RandomDataset(DenseDesignMatrix):
         topo_view = rng.rand(*input_shape)
         super(RandomDataset, self).__init__(topo_view=topo_view, y=y, 
                                               axes=('b', 'c', 0, 1))
-        self._data_not_loaded_yet = False # needed for lazy loading
         
         
 
@@ -55,7 +55,6 @@ class SpreadedSinesDataset(DenseDesignMatrix):
         cleaner=None, filenames=None): # cleaner filenames always given to dataset, but ignoreable
         self.__dict__.update(locals())
         del self.self
-        self._data_not_loaded_yet = True # needed for lazy loading
         
         
     def load(self):
@@ -73,7 +72,6 @@ class SpreadedSinesDataset(DenseDesignMatrix):
 
         super(SpreadedSinesDataset, self).__init__(topo_view=topo_view, y=y, 
                                               axes=('b', 'c', 0, 1))
-        self._data_not_loaded_yet = False # needed for lazy loading"""
 
 def create_shifted_sines(input_shape, rng, sampling_freq=None, freq=11):
     """ Creates sines for class 1 and just flat zeroline for class 0 """

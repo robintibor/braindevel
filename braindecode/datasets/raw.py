@@ -35,7 +35,6 @@ class SignalMatrix(DenseDesignMatrix):
             sensor_names = sort_topologically(sensor_names)
         self.__dict__.update(locals())
         del self.self       
-        self._data_not_loaded_yet = True # needed for lazy loading
         
     def load(self):
         self.load_signal()
@@ -46,7 +45,6 @@ class SignalMatrix(DenseDesignMatrix):
 
         # for now format y back to classes
         self.y = np.argmax(self.y, axis=1).astype(np.int32)
-        self._data_not_loaded_yet = False # needed for lazy loading
       
     def load_signal(self):  
         raise NotImplementedError("Should not be called anymore, only call"
@@ -128,15 +126,18 @@ class CleanSignalMatrix(SignalMatrix):
             self.signal_processor.epo.data.shape))           
     
     def clean_and_load_set(self):
-        self.load_full_set()
-        self.determine_clean_trials_and_chans()
-        self.select_sensors()
-        self.preproc_and_load_clean_trials()
+        self.load_cnt()
+        self.load_from_cnt()
     
-    def load_full_set(self):
+    def load_cnt(self):
         log.info("Loading set...")
         # First load whole set
         self.signal_processor.load_signal_and_markers()
+    
+    def load_from_cnt(self):
+        self.determine_clean_trials_and_chans()
+        self.select_sensors()
+        self.preproc_and_load_clean_trials()
     
     def determine_clean_trials_and_chans(self):
         log.info("Cleaning set...")

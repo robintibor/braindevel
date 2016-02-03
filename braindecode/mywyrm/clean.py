@@ -4,6 +4,10 @@ from braindecode.mywyrm.processing import (bandpass_cnt, segment_dat_fast,
     highpass_cnt, lowpass_cnt)
 from wyrm.processing import select_channels, append_cnt, append_epo
 from braindecode.datasets.signal_processor import SignalProcessor
+from collections import namedtuple
+
+CleanResult = namedtuple('CleanResult', ['rejected_chan_names',
+    'rejected_trials', 'clean_trials'])
 
 class NoCleaner():
     def __init__(self, segment_ival=None, marker_def=None):
@@ -22,10 +26,14 @@ class NoCleaner():
         epo = segment_dat_fast(bbci_set_cnt, marker_def=self.marker_def, 
            ival=self.segment_ival)
         clean_trials = range(epo.data.shape[0])
-        (rejected_chans, rejected_trials, clean_trials) = ([],[], clean_trials)
-        return (rejected_chans, rejected_trials, clean_trials) 
         
-class SingleSetCleaner():
+        clean_result = CleanResult(rejected_chan_names=[],
+            rejected_trials=[],
+            clean_trials=clean_trials)
+        return clean_result
+        
+
+class SetCleaner():
     """ Determines rejected trials and channels """
     def __init__(self, eog_set, rejection_var_ival=[0,4000], 
             rejection_blink_ival=[-500,4000],
@@ -41,7 +49,11 @@ class SingleSetCleaner():
         self.eog_set = SignalProcessor(set_loader=self.eog_set, 
             segment_ival=rejection_blink_ival, marker_def=self.marker_def)
         
-    def clean(self, bbci_set_cnt):
+    def clean(self, bbci_set_cnt, preremoved_chans=None):
+        """preremoved_chans will remove the given channels (as strings) and 
+        not reject any further channels. Useful if you cleaned a train set
+        and intend to clean a test set trials while rejecting the same 
+        channels."""
         if self.low_cut_hz is not None:
             assert self.low_cut_hz > 0
         if self.high_cut_hz is not None:
@@ -62,15 +74,18 @@ class SingleSetCleaner():
                     high_cut_hz=self.high_cut_hz,
                     filt_order=4,
                     marker_def=self.marker_def,
-                    preremoved_chans=None)
+                    preremoved_chans=preremoved_chans)
         cleaner.clean()
+        
+        clean_result = CleanResult(rejected_chan_names=cleaner.rejected_chan_names,
+            rejected_trials=cleaner.rejected_trials,
+            clean_trials=cleaner.clean_trials)
         
         self.rejected_chan_names = cleaner.rejected_chan_names # remember in case other cleaner needs it
         # for tests
         self.rejected_trials_var = cleaner.rejected_var_original
         self.rejected_trials_max_min = cleaner.rejected_trials_max_min
-        return (cleaner.rejected_chan_names, cleaner.rejected_trials,
-            cleaner.clean_trials) 
+        return clean_result
 
 
 

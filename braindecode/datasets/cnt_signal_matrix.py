@@ -16,7 +16,6 @@ class CntSignalMatrix(DenseDesignMatrix):
             sensor_names = sort_topologically(sensor_names)
         self.__dict__.update(locals())
         del self.self       
-        self._data_not_loaded_yet = True # needed for lazy loading
 
     def ensure_is_loaded(self):
         if not hasattr(self, 'X'):
@@ -24,16 +23,20 @@ class CntSignalMatrix(DenseDesignMatrix):
 
     def load(self):
         self.load_cnt()
+        self.load_from_cnt()
+    
+    def load_from_cnt(self):
+        """ This function is split off to allow cleaner to go 
+        between loading of cnt, clean markers, and then resume loading"""
+        log.info("Preprocess continuous signal...")
+        self.signal_processor.preprocess_continuous_signal()
         self.select_sensors()
         self.create_cnt_y()
         self.create_dense_design_matrix()
-        self._data_not_loaded_yet = False # needed for lazy loading
 
     def load_cnt(self):
         log.info("Load continuous signal...")
         self.signal_processor.load_signal_and_markers()
-        log.info("Preprocess continuous signal...")
-        self.signal_processor.preprocess_continuous_signal()
 
     def select_sensors(self):
         if (self.sensor_names is not None) and (self.sensor_names != 'all'):
@@ -70,7 +73,15 @@ class CntSignalMatrix(DenseDesignMatrix):
         trial_stop_offset = int(self.signal_processor.segment_ival[1] * 
                                  self.signal_processor.cnt.fs / 1000.0)
 
-
+        assert sorted(np.unique(labels))[0] == 1, ("Expecting first label to "
+            "have value 1, otherwise adapt code")
+        assert sorted(np.unique(labels))[-1] == len(labels), ("Expecting last "
+            "label to have value equal to number of labels, otherwise "
+            "adapt code")
+        unique_labels = sorted(np.unique(labels))
+        assert np.array_equal(unique_labels, range(1, len(unique_labels))), (
+            "Expect labels to be from 1 to n_classes...")
+        
         for i_trial in xrange(len(labels)):
             i_start_sample = i_samples[i_trial]
             i_class = labels[i_trial]-1 # -1 due to 1-based matlab indexing

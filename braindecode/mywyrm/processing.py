@@ -9,7 +9,28 @@ from sklearn.covariance import LedoitWolf as LW
 import scikits.samplerate
 import re
 import wyrm.types
+from copy import copy
 
+def select_marker_classes(cnt, classes, copy_data=False):
+    needed_markers = [m for m in cnt.markers if m[1] in classes]
+    if copy_data:
+        return cnt.copy(markers=needed_markers)
+    else:
+        # shallow copy only
+        copied_cnt = copy(cnt)
+        copied_cnt.markers = needed_markers
+        return copied_cnt
+    
+def select_marker_epochs(cnt, epoch_inds, copy_data=False):
+    needed_markers = np.array(cnt.markers)[epoch_inds].tolist()
+    if copy_data:
+        return cnt.copy(markers=needed_markers)
+    else:
+        # shallow copy only
+        copied_cnt = copy(cnt)
+        copied_cnt.markers = needed_markers
+        return copied_cnt
+    
 def create_y_signal(cnt, n_samples_per_trial):
     fs = cnt.fs
     event_samples_and_classes = [(int(np.round(m[0] * fs/1000.0)), m[1]) for m in cnt.markers]
