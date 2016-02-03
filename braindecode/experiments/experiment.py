@@ -81,6 +81,7 @@ class Experiment(object):
         lasagne.random.set_rng(RandomState(9859295))
         self.dataset.ensure_is_loaded()
         self.print_layer_sizes()
+        self.remember_extension = RememberBest('valid_misclass')
         log.info("Create theano functions...")
         self.create_theano_functions(target_var)
         log.info("Done.")
@@ -100,7 +101,8 @@ class Experiment(object):
                 target_var = T.imatrix('targets')
             else:
                 raise ValueError("expect y to either be a tensor or a matrix")
-        prediction = lasagne.layers.get_output(self.final_layer)
+        prediction = lasagne.layers.get_output(self.final_layer,
+            deterministic=False)
         
         # test as in during testing not as in "test set"
         test_prediction = lasagne.layers.get_output(self.final_layer, 
@@ -125,7 +127,6 @@ class Experiment(object):
         self.all_params = updates.keys()
 
         self.train_func = theano.function([input_var, target_var], updates=updates)
-        self.remember_extension = RememberBest('valid_misclass')
         self.monitor_manager.create_theano_functions(input_var, target_var,
             test_prediction, test_loss)
         
@@ -144,6 +145,8 @@ class Experiment(object):
         self.create_monitors(datasets)
         self.run_until_stop(datasets, remember_best=True)
         
+
+
     def run_until_stop(self, datasets, remember_best):
         self.monitor_epoch(datasets)
         self.print_epoch()
@@ -153,18 +156,19 @@ class Experiment(object):
             
         self.iterator.reset_rng()
         while not self.stop_criterion.should_stop(self.monitor_chans):
-            batch_generator = self.iterator.get_batches(datasets['train'],
-                shuffle=True)
-            
-            with log_timing(log, None, final_msg='Time updates following epoch:'):
-                for inputs, targets in batch_generator:
-                    self.train_func(inputs, targets)
-            self.monitor_epoch(datasets)
-            self.print_epoch()
-            if remember_best:
-                self.remember_extension.remember_epoch(self.monitor_chans,
-                self.all_params)
-    
+            self.run_one_epoch(datasets, remember_best)
+
+    def run_one_epoch(self, datasets, remember_best):
+        batch_generator = self.iterator.get_batches(datasets['train'], shuffle=True)
+        with log_timing(log, None, final_msg='Time updates following epoch:'):
+            for inputs, targets in batch_generator:
+                self.train_func(inputs, targets)
+        
+        self.monitor_epoch(datasets)
+        self.print_epoch()
+        if remember_best:
+            self.remember_extension.remember_epoch(self.monitor_chans, self.all_params)
+
     def setup_after_stop_training(self):
         self.remember_extension.reset_to_best_model(self.monitor_chans,
                 self.all_params)

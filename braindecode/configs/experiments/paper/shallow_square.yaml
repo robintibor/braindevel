@@ -23,7 +23,7 @@
                 nonlinearity: !!python/name:theano.tensor.sqr ,
                 name: 'spat_conv',
             },
-            &pool !obj:braindecode.veganlasagne.pool.SumPool2dLayer {
+            &pool !obj:braindecode.veganlasagne.pool.$pool_type {
                     incoming: *spat_conv,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
@@ -70,5 +70,6 @@
         pool_time_stride: [30],
         final_nonlin: [$safe_softmax],
         n_classes: [4],
+        pool_type: [Pool2DLayer],
     }]]
 }
