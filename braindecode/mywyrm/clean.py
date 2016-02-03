@@ -61,10 +61,14 @@ class SingleSetCleaner():
                     low_cut_hz=self.low_cut_hz,
                     high_cut_hz=self.high_cut_hz,
                     filt_order=4,
-                    marker_def=self.marker_def)
+                    marker_def=self.marker_def,
+                    preremoved_chans=None)
         cleaner.clean()
         
-        self.rejected_chans = cleaner.rejected_chans # remember in case other cleaner needs it
+        self.rejected_chan_names = cleaner.rejected_chan_names # remember in case other cleaner needs it
+        # for tests
+        self.rejected_trials_var = cleaner.rejected_var_original
+        self.rejected_trials_max_min = cleaner.rejected_trials_max_min
         return (cleaner.rejected_chan_names, cleaner.rejected_trials,
             cleaner.clean_trials) 
 
@@ -86,6 +90,8 @@ class Cleaner(object):
         else:
             self.ignore_channels = False
         self.compute_rejected_chans_trials()
+        del self.epo # No longer needed
+        del self.eog_set # no longer needed
         
         
     def load_and_preprocess_data(self):
@@ -95,7 +101,8 @@ class Cleaner(object):
         self.eog_set.remove_continuous_signal()
         
         if self.preremoved_chans is not None:
-            self.cnt = select_channels(self.cnt, self.preremoved_chans, invert=True)
+            self.cnt = select_channels(self.cnt, self.preremoved_chans,
+                invert=True)
         else:
             self.ignore_channels = False
         
@@ -110,23 +117,30 @@ class Cleaner(object):
             self.cnt = lowpass_cnt(self.cnt, self.high_cut_hz, self.filt_order)
         else:
             assert self.low_cut_hz is None and self.high_cut_hz is None
-            
-        
-        
+
+        # Finally create trials        
         self.epo = segment_dat_fast(self.cnt, marker_def=self.marker_def,
             ival=self.rejection_var_ival)
+        del self.cnt # No longer needed
             
     def compute_rejected_chans_trials(self):
+        # Remember number of original trials,
+        # successively remove trials,
+        # first by max min then by variance criterion
         orig_trials = range(self.epo.data.shape[0])
         good_trials = range(self.epo.data.shape[0])
         rejected_trials_max_min = compute_rejected_trials_max_min(
-            self.eog_epo, max_min=self.max_min)
+            self.eog_set.epo, threshold=self.max_min)
         good_trials = np.delete(good_trials, rejected_trials_max_min) # delete deletes indices
         variances = np.var(self.epo.data[good_trials], axis=1)
         rejected_chan_inds, rejected_trials_var = compute_rejected_channels_trials_by_variance(
             variances, self.whisker_percent, self.whisker_length, 
             self.ignore_channels)
         rejected_var_original = [good_trials[i] for i in rejected_trials_var]
+        # delete deletes indices, so e.g if after max min cleaning
+        # the remaining good trials were 3,5,6,9 and now rejected trials
+        # were 0,2 then 3 and 6 will be removed
+        # and 3,9 are the actually remaining good/clean trials
         good_trials = np.delete(good_trials, rejected_trials_var) # delete deletes indices
         rejected_trials = np.setdiff1d(orig_trials, good_trials)
         rejected_chan_names = self.epo.axes[2][rejected_chan_inds]
@@ -139,73 +153,7 @@ class Cleaner(object):
         self.rejected_var_original = rejected_var_original
         self.clean_trials = good_trials
 
-def compute_rejected_channels_trials_cnt(cnt, eog_set, rejection_blink_ival,
-        max_min, rejection_var_ival, whisker_percent, whisker_length,
-        low_cut_hz, high_cut_hz,filt_order, marker_def, preremoved_chans=None):
-    """ preremoved_chans : Only reject trials, before remove the `preremoved chans`.
-    Useful for example if you want to remove same chans as in another set."""
-    
-    # First create eog set for blink rejection
-    eog_set.load_signal_and_markers()
-    eog_set.segment_into_trials()
-    eog_set.remove_continuous_signal()
-    
-    if preremoved_chans is not None:
-        cnt = select_channels(cnt, preremoved_chans, invert=True)
-        ignore_channels = True
-    else:
-        ignore_channels = False
-    
-    # Then create bandpassed set for variance rejection
-    # in case low or high cut hz is given
-    if low_cut_hz is not None and high_cut_hz is not None:
-        bandpassed_cnt = bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order)
-    elif low_cut_hz is not None:
-        bandpassed_cnt = highpass_cnt(cnt, low_cut_hz, filt_order)
-    elif high_cut_hz is not None:
-        bandpassed_cnt = lowpass_cnt(cnt, high_cut_hz, filt_order)
-    else:
-        assert low_cut_hz is None and high_cut_hz is None
-        bandpassed_cnt = cnt
-        
-    
-    
-    epo = segment_dat_fast(bandpassed_cnt, marker_def=marker_def,
-        ival=rejection_var_ival)
-    (rejected_chan_names, rejected_trials, rejected_trials_max_min,
-        rejected_var_original, 
-        good_trials) = compute_rejected_channels_trials(epo, 
-            eog_set.epo, max_min=max_min, 
-            whisker_percent=whisker_percent, 
-            whisker_length=whisker_length,
-            ignore_channels=ignore_channels)
-    
-    if preremoved_chans is not None:
-        assert len(rejected_chan_names) == 0
-        rejected_chan_names = preremoved_chans
-        
-    return (rejected_chan_names, rejected_trials, rejected_trials_max_min,
-        rejected_var_original, good_trials)
-        
-
-def compute_rejected_channels_trials(epo, eog_epo, max_min,
-        whisker_percent, whisker_length, ignore_channels):
-    orig_trials = range(epo.data.shape[0])
-    good_trials = range(epo.data.shape[0])
-    rejected_trials_max_min = compute_rejected_trials_max_min(
-        eog_epo, max_min=max_min)
-    good_trials = np.delete(good_trials, rejected_trials_max_min) # delete deletes indices
-    variances = np.var(epo.data[good_trials], axis=1)
-    rejected_chan_inds, rejected_trials_var = compute_rejected_channels_trials_by_variance(
-        variances, whisker_percent, whisker_length, ignore_channels)
-    rejected_var_original = [good_trials[i] for i in rejected_trials_var]
-    good_trials = np.delete(good_trials, rejected_trials_var) # delete deletes indices
-    rejected_trials = np.setdiff1d(orig_trials, good_trials)
-    rejected_chan_names = epo.axes[2][rejected_chan_inds]
-    return (rejected_chan_names, rejected_trials, rejected_trials_max_min,
-        rejected_var_original, good_trials)
-
-def compute_rejected_trials_max_min(epo, max_min):
+def compute_rejected_trials_max_min(epo, threshold):
     max_vals = np.max(epo.data, axis=1)
     min_vals = np.min(epo.data, axis=1)
     maxmin_diffs = max_vals -min_vals
@@ -214,7 +162,7 @@ def compute_rejected_trials_max_min(epo, max_min):
     # is exceeding the limit
     maxmin_diffs = np.max(maxmin_diffs, axis=1)
     assert maxmin_diffs.ndim == 1 # just trials
-    rejected_trials_max_min = np.flatnonzero(maxmin_diffs > max_min)
+    rejected_trials_max_min = np.flatnonzero(maxmin_diffs > threshold)
     return rejected_trials_max_min
 
 def get_variance_threshold(variances, whisker_percent, whisker_length):
