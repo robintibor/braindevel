@@ -364,8 +364,12 @@ def create_experiment(yaml_filename):
         train_dict['exp_args']['iterator'].n_sample_preds = n_sample_preds
         log.info("Input window length is {:d}".format(
             get_model_input_window(final_layer)))
+    # add early stop chan, encessary for backwards compatibility
+    exp_args = train_dict['exp_args']
+    exp_args['early_stop_chan'] = train_dict['exp_args'].pop('early_stop_chan',
+        'valid_misclass')
     exp = Experiment(final_layer, dataset, splitter,
-                    **train_dict['exp_args'])
+                    **exp_args)
     assert len(np.setdiff1d(layers, 
         lasagne.layers.get_all_layers(final_layer))) == 0, ("All layers "
         "should be used, unused {:s}".format(str(np.setdiff1d(layers, 

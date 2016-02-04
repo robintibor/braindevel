@@ -32,34 +32,39 @@ def restrict_cnt(cnt, classes, clean_trials, rejected_chan_names, copy_data=Fals
     return cleaned_cnt
 
 class CombinedCleanedSet(object):
-    def __init__(self, train_set, test_set):
+    def __init__(self, train_set, test_set, train_cleaner, test_cleaner):
         self.train_set = train_set
         self.test_set = test_set
+        self.train_cleaner = train_cleaner
+        self.test_cleaner = test_cleaner
 
     def load(self):
         # Loading both sets, cleaning cnts and finished
         self.train_set.signal_processor.load_signal_and_markers()
         self.test_set.signal_processor.load_signal_and_markers()
-        train_filename = self.train_set.signal_processor.set_loader.filename
-        test_filename = self.test_set.signal_processor.set_loader.filename
         train_cnt = self.train_set.signal_processor.cnt
         test_cnt = self.test_set.signal_processor.cnt
-        train_cleaner = SetCleaner(eog_set=BBCIDataset(train_filename,
-                                     load_sensor_names=['EOGh', 'EOGv']))
-        test_cleaner = SetCleaner(eog_set=BBCIDataset(test_filename,
-                                             load_sensor_names=['EOGh', 'EOGv']))
 
-        train_clean_result = train_cleaner.clean(train_cnt)
-        test_clean_result = test_cleaner.clean(test_cnt, 
-            preremoved_chans=train_clean_result.rejected_chan_names)
+        train_clean_result = self.train_cleaner.clean(train_cnt)
+        
+        # remove chans rejected by train cleaner from test set
+        test_cnt = select_channels(test_cnt,
+            train_clean_result.rejected_chan_names, invert=True)
+        
+        test_clean_result = self.test_cleaner.clean(test_cnt, 
+            ignore_chans=True)
         assert np.array_equal(test_clean_result.rejected_chan_names,
                       train_clean_result.rejected_chan_names)
-        clean_train_cnt = restrict_cnt(train_cnt, train_cleaner.marker_def.values(),
-                                      train_clean_result.clean_trials, train_clean_result.rejected_chan_names,
-                                      copy_data=False)
-        clean_test_cnt = restrict_cnt(test_cnt, train_cleaner.marker_def.values(),
-                                      test_clean_result.clean_trials, test_clean_result.rejected_chan_names,
-                                      copy_data=False)
+        clean_train_cnt = restrict_cnt(train_cnt,
+            self.train_cleaner.marker_def.values(),
+            train_clean_result.clean_trials,
+            train_clean_result.rejected_chan_names,
+            copy_data=False)
+        clean_test_cnt = restrict_cnt(test_cnt, 
+            self.test_cleaner.marker_def.values(),
+            test_clean_result.clean_trials,
+            test_clean_result.rejected_chan_names,
+            copy_data=False)
         self.train_set.signal_processor.cnt = clean_train_cnt
         self.test_set.signal_processor.cnt = clean_test_cnt
         
@@ -70,6 +75,8 @@ class CombinedCleanedSet(object):
         # in case of raw set:
         elif isinstance(self.train_set, CleanSignalMatrix):
             for one_set in [self.train_set, self.test_set]:
+                # this is very fragile... as changes to
+                # the original class logic will affect this :(
                 one_set.load_from_cnt()
                 one_set.create_dense_design_matrix()
                 one_set.remove_signal_epo()
