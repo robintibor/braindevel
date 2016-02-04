@@ -1,0 +1,51 @@
+{
+    templates: {
+    no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
+        train_normal_cleaner: !obj:braindecode.mywyrm.clean.SetCleaner { 
+            eog_set: !obj:braindecode.datasets.loaders.$loader_type {
+                filename: $dataset_filename,
+                load_sensor_names: $eog_sensors,
+            },
+            rejection_var_ival: $rejection_var_ival,
+            rejection_blink_ival: $rejection_blink_ival,
+            max_min: $max_min,
+            whisker_percent: $whisker_percent, 
+            whisker_length: $whisker_length,
+            marker_def: $marker_def,
+        },
+        test_normal_cleaner: !obj:braindecode.mywyrm.clean.SetCleaner { 
+            eog_set: !obj:braindecode.datasets.loaders.$loader_type {
+                filename: $test_filename,
+                load_sensor_names: $eog_sensors,
+            },
+            rejection_var_ival: $rejection_var_ival,
+            rejection_blink_ival: $rejection_blink_ival,
+            max_min: $max_min,
+            whisker_percent: $whisker_percent, 
+            whisker_length: $whisker_length,
+            marker_def: $marker_def,
+        },
+        markers_4_classes: {'1': [1], '2': [2], '3': [3], '4': [4]},
+        bci_competition_eog_sensors: ['EOG-left', 'EOG-central', 'EOG-right'],
+    },
+    
+    variants: [[{
+        csp_train_obj: ['*csp_train_two_files'],
+        load_sensor_names: ["null"],
+        resample_fs: ["null"],
+        filt_order: [4],
+        trial_start: [500],
+        trial_stop: [4000],
+        standardize: [false],
+        n_folds: ["null"],
+        n_top_bottom_csp_filters: [5],
+        n_selected_filterbands: ["null"],
+        forward_steps: [2],
+        backward_steps: [1],
+        stop_when_no_improvement: [false],
+        restricted_n_trials: ["null"],
+        common_average_reference: [false],
+        ival_optimizer: ["null"],
+        marker_def: [$markers_4_classes],
+    }]]
+}

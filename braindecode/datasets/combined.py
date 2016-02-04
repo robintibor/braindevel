@@ -4,7 +4,7 @@ from braindecode.mywyrm.processing import select_marker_classes,\
     select_marker_epochs
 from braindecode.datasets.raw import CleanSignalMatrix
 from braindecode.datasets.cnt_signal_matrix import CntSignalMatrix
-from braindecode.mywyrm.clean import log_clean_result
+from braindecode.mywyrm.clean import log_clean_result, clean_train_test_cnt
 import logging
 log = logging.getLogger(__name__)
 
@@ -22,14 +22,7 @@ class CombinedSet(object):
         # hack to have correct y dimensions
         self.y = self.sets[-1].y[0:1]
 
-def restrict_cnt(cnt, classes, clean_trials, rejected_chan_names, copy_data=False):
-    cleaned_cnt = select_marker_classes(cnt, classes,
-                                       copy_data)
-    cleaned_cnt = select_marker_epochs(cleaned_cnt, clean_trials,
-                                      copy_data)
-    cleaned_cnt = select_channels(cleaned_cnt, rejected_chan_names, invert=True)
-    return cleaned_cnt
-
+        
 class CombinedCleanedSet(object):
     reloadable=False
     def __init__(self, train_set, test_set, train_cleaner, test_cleaner):
@@ -51,34 +44,8 @@ class CombinedCleanedSet(object):
         train_cnt = self.train_set.signal_processor.cnt
         test_cnt = self.test_set.signal_processor.cnt
         
-        log.info("Clean Training Set...")
-        train_clean_result = self.train_cleaner.clean(train_cnt)
-        
-        log_clean_result(train_clean_result)
-        # remove chans rejected by train cleaner from test set
-        test_cnt = select_channels(test_cnt,
-            train_clean_result.rejected_chan_names, invert=True)
-        
-        log.info("Clean Test Set...")
-        test_clean_result = self.test_cleaner.clean(test_cnt, 
-            ignore_chans=True)
-        log_clean_result(test_clean_result)
-        assert len(test_clean_result.rejected_chan_names) == 0, (
-            "There should be no rejected channels on test set, instead got "
-            "{:s}".format(test_clean_result.rejected_chan_names))
-        
-        
-        log.info("Create Cleaned Cnt Sets...")
-        clean_train_cnt = restrict_cnt(train_cnt,
-            self.train_cleaner.marker_def.values(),
-            train_clean_result.clean_trials,
-            train_clean_result.rejected_chan_names,
-            copy_data=False)
-        clean_test_cnt = restrict_cnt(test_cnt, 
-            self.test_cleaner.marker_def.values(),
-            test_clean_result.clean_trials,
-            test_clean_result.rejected_chan_names,
-            copy_data=False)
+        clean_train_cnt, clean_test_cnt = clean_train_test_cnt(train_cnt,
+            test_cnt,self.train_cleaner, self.test_cleaner)
         self.train_set.signal_processor.cnt = clean_train_cnt
         self.test_set.signal_processor.cnt = clean_test_cnt
         

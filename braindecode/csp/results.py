@@ -11,7 +11,7 @@ class CSPResult(object):
         self.training_time = training_time
         self.parameters = deepcopy(parameters)
         # Copy cleaning results
-        self.rejected_chans = csp_trainer.rejected_chans
+        self.rejected_chan_names = csp_trainer.rejected_chan_names
         self.rejected_trials = csp_trainer.rejected_trials
         self.clean_trials = csp_trainer.clean_trials
     

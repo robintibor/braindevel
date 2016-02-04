@@ -1,7 +1,7 @@
-from wyrm.processing import select_channels
+from wyrm.processing import select_channels, append_cnt
 from braindecode.mywyrm.processing import (
     resample_cnt, common_average_reference_cnt)
-from braindecode.mywyrm.clean import (NoCleaner)
+from braindecode.mywyrm.clean import (NoCleaner, clean_train_test_cnt)
 import itertools
 from sklearn.cross_validation import KFold
 from braindecode.csp.pipeline import (BinaryCSP, FilterbankCSP,
@@ -11,6 +11,7 @@ from copy import deepcopy
 from pylearn2.utils import serial
 from braindecode.datasets.sensor_positions import sort_topologically
 from numpy.random import RandomState
+from braindecode.datasets.generate_filterbank import generate_filterbank
 import logging
 log = logging.getLogger(__name__)
 
@@ -28,18 +29,25 @@ class CSPExperiment(object):
             Should have a clean method which accepts the continuuous signal as 
             a wyrm object and returns the rejected chans, rejected trials and
             the clean trials.
+        sensor_names : string array
+             Names of sensors to use. 
+             None implies all sensors.
         resample_fs : float
             The resampling frequency. None means no resampling.
         min_freq : int
             The minimum frequency of the filterbank.
         max_freq : int
             The maximum frequency of the filterbank.
-        low_width : int
-            The width of the filterbands in the lower frequencies.
-        high_width : int
-            The width of the filterbands in the higher frequencies.
         last_low_freq : int
             The last frequency with the low width frequency of the filterbank.
+        low_width : int
+            The width of the filterbands in the lower frequencies.
+        low_overlap : int
+            The overlap of the filterbands in the lower frequencies.
+        high_width : int
+            The width of the filterbands in the higher frequencies.
+        high_overlap : int
+            The overlap of the filterbands in the higher frequencies.
         filt_order : int
             The filter order of the butterworth filter which computes the filterbands.
         segment_ival : sequence of 2 floats
@@ -98,14 +106,17 @@ class CSPExperiment(object):
             Dictionary mapping class names to marker numbers, e.g.
             {'1 - Correct': [31], '2 - Error': [32]}
     """
-    def __init__(self,set_loader, sensor_names=None,
+    def __init__(self,set_loader, 
             cleaner=None,
+            sensor_names=None,
             resample_fs=None,
             min_freq=0,
             max_freq=48,
             last_low_freq=48,
             low_width=4,
+            low_overlap=0,
             high_width=4,
+            high_overlap=0,
             filt_order=3,
             segment_ival=[0,4000], 
             standardize=True,
@@ -162,18 +173,18 @@ class CSPExperiment(object):
         self.cnt = self.set_loader.load()
 
     def clean_set(self):
-        (rejected_chans, rejected_trials, clean_trials) = self.cleaner.clean(
-            self.cnt)
-        self.rejected_chans = np.array(rejected_chans)
-        self.rejected_trials = np.array(rejected_trials)
-        self.clean_trials = np.array(clean_trials)
+        clean_result = self.cleaner.clean(self.cnt)
+        self.rejected_chan_names = np.array(clean_result.rejected_chan_names)
+        self.rejected_trials = np.array(clean_result.rejected_trials)
+        self.clean_trials = np.array(clean_result.clean_trials)
         # do not remove rejected channels yet to allow calling
         # this function several times with same result
 
     def preprocess_set(self):
         # only remove rejected channels now so that clean function can
         # be called multiple times without changing cleaning results
-        self.cnt = select_channels(self.cnt, self.rejected_chans, invert=True)
+        self.cnt = select_channels(self.cnt, self.rejected_chan_names,
+            invert=True)
         if self.sensor_names is not None:
             self.sensor_names = sort_topologically(self.sensor_names)
             self.cnt = select_channels(self.cnt, self.sensor_names)
@@ -191,7 +202,8 @@ class CSPExperiment(object):
     def init_training_vars(self):
         self.filterbands = generate_filterbank(min_freq=self.min_freq,
             max_freq=self.max_freq, last_low_freq=self.last_low_freq, 
-            low_width=self.low_width, high_width=self.high_width)
+            low_width=self.low_width, low_overlap=self.low_overlap,
+            high_width=self.high_width, high_overlap=self.high_overlap)
         n_classes = len(self.marker_def)
         self.class_pairs = list(itertools.combinations(range(n_classes),2))
         # use only number of clean trials to split folds
@@ -238,35 +250,6 @@ class CSPExperiment(object):
                                     self.filterbank_csp.test_pred_full_fold,
                                     self.class_pairs)
         self.multi_class.run()
-        
-def generate_filterbank(min_freq, max_freq, last_low_freq,
-        low_width, high_width):
-    assert isinstance(min_freq, int) or min_freq.is_integer()
-    assert isinstance(max_freq, int) or max_freq.is_integer()
-    assert isinstance(last_low_freq, int) or last_low_freq.is_integer()
-    assert isinstance(low_width, int) or low_width.is_integer()
-    assert isinstance(high_width, int) or high_width.is_integer()
-    
-    assert high_width % 2  == 0
-    assert low_width % 2  == 0
-    assert (last_low_freq - min_freq) % low_width  == 0, ("last low freq "
-        "needs to be exactly the center of a low_width filter band")
-    assert max_freq >= last_low_freq
-    assert (max_freq == last_low_freq or  
-            (max_freq - (last_low_freq + low_width/2 + high_width/2)) % 
-        high_width == 0), ("max freq needs to be exactly the center "
-            "of a filter band")
-    low_centers = range(min_freq,last_low_freq+1, low_width)
-    high_start = last_low_freq + low_width/2 + high_width/2
-    high_centers = range(high_start, max_freq+1, high_width)
-    
-    low_band = np.array([np.array(low_centers) - low_width/2, 
-                         np.array(low_centers) + low_width/2]).T
-    low_band = np.maximum(0.5, low_band)
-    high_band = np.array([np.array(high_centers) - high_width/2, 
-                         np.array(high_centers) + high_width/2]).T
-    filterbank = np.concatenate((low_band, high_band))
-    return filterbank
 
 class CSPRetrain():
     """ CSP Retraining on existing filters computed previously."""
@@ -306,6 +289,110 @@ class CSPRetrain():
         recreate_multi_class(self.trainer)
         log.info("Rerunning multiclass...")
         self.trainer.multi_class.run()
+
+class TwoFileCSPExperiment(CSPExperiment):
+    def __init__(self,train_set_loader, test_set_loader, train_cleaner,
+            test_cleaner, 
+            sensor_names=None,
+            resample_fs=None,
+            min_freq=0,
+            max_freq=48,
+            last_low_freq=48,
+            low_width=4,
+            low_overlap=0,
+            high_width=4,
+            high_overlap=0,
+            filt_order=3,
+            segment_ival=[0,4000], 
+            standardize=True,
+            n_folds=5,
+            n_top_bottom_csp_filters=None,
+            n_selected_filterbands=None,
+            n_selected_features=None,
+            forward_steps=4,
+            backward_steps=2,
+            stop_when_no_improvement=False,
+            only_last_fold=False,
+            restricted_n_trials=None,
+            common_average_reference=False,
+            ival_optimizer=None,
+            shuffle=False,
+            marker_def=None):
+        self.test_set_loader = test_set_loader
+        self.test_cleaner = test_cleaner
+        super(TwoFileCSPExperiment, self).__init__(train_set_loader, 
+            cleaner=train_cleaner,sensor_names=sensor_names,
+            resample_fs=resample_fs,min_freq=min_freq,max_freq=max_freq,
+            last_low_freq=last_low_freq,low_width=low_width,
+            low_overlap=low_overlap,high_width=high_width,
+            high_overlap=high_overlap,filt_order=filt_order,
+            segment_ival=segment_ival,standardize=standardize,
+            n_folds=n_folds,n_top_bottom_csp_filters=n_top_bottom_csp_filters,
+            n_selected_filterbands=n_selected_filterbands,
+            n_selected_features=n_selected_features,
+            forward_steps=forward_steps,backward_steps=backward_steps,
+            stop_when_no_improvement=stop_when_no_improvement,
+            only_last_fold=only_last_fold,restricted_n_trials=restricted_n_trials,
+            common_average_reference=common_average_reference,
+            ival_optimizer=ival_optimizer,shuffle=shuffle,
+            marker_def=marker_def)
+
+    def run(self):
+        log.info("Loading train set...")
+        self.load_bbci_set()
+        log.info("Loading test set...")
+        self.load_bbci_test_set()
+        log.info("Cleaning both sets...")
+        self.clean_both_sets()
+        log.info("Preprocessing train set...")
+        self.preprocess_set()
+        log.info("Preprocessing test set...")
+        self.preprocess_test_set()
+        self.remember_sensor_names()
+        self.init_training_vars()
+        log.info("Running Training...")
+        self.run_training()
+
+    def load_bbci_test_set(self):
+        self.test_cnt = self.test_set_loader.load()
+
+    def clean_both_sets(self):
+        # Clean by directy changing the cnt variables...
+        clean_train_cnt, clean_test_cnt = clean_train_test_cnt(
+            self.cnt, self.test_cnt, self.cleaner,
+            self.test_cleaner)
+        self.cnt = clean_train_cnt
+        self.test_cnt = clean_test_cnt
+        self.rejected_chan_names = [] # necessary since will be used
+        # in preprocess set...
+        self.rejected_trials = 'unknown'
+        self.clean_trials = 'unknown'
+
+    def preprocess_test_set(self):
+        if self.sensor_names is not None:
+            self.sensor_names = sort_topologically(self.sensor_names)
+            self.test_cnt = select_channels(self.test_cnt, self.sensor_names)
+        if self.resample_fs is not None:
+            self.test_cnt = resample_cnt(self.test_cnt, newfs=self.resample_fs)
+        if self.common_average_reference is True:
+            self.test_cnt = common_average_reference_cnt(self.test_cnt)
+
+    def init_training_vars(self):
+        assert self.n_folds is None, "Cannot use folds on train test split"
+        assert self.restricted_n_trials is None, "Not implemented yet"
+        self.filterbands = generate_filterbank(min_freq=self.min_freq,
+            max_freq=self.max_freq, last_low_freq=self.last_low_freq, 
+            low_width=self.low_width, low_overlap=self.low_overlap,
+            high_width=self.high_width, high_overlap=self.high_overlap)
+        self.class_pairs = list(itertools.combinations([0,1,2,3],2))
+        train_fold = range(len(self.cnt.markers))
+        test_fold = np.arange(len(self.test_cnt.markers)) + len(train_fold)
+        self.folds = [{'train': train_fold, 'test': test_fold}]
+        assert np.intersect1d(self.folds[0]['test'], 
+            self.folds[0]['train']).size == 0
+
+        # merge cnts!!
+        self.cnt = append_cnt(self.cnt, self.test_cnt)
 
 def recreate_filterbank(train_csp_obj, n_features, n_filterbands,
         forward_steps, backward_steps, stop_when_no_improvement):

@@ -1,6 +1,6 @@
 import numpy as np
 from braindecode.mywyrm.processing import (bandpass_cnt, segment_dat_fast,
-    highpass_cnt, lowpass_cnt)
+    highpass_cnt, lowpass_cnt, select_marker_classes, select_marker_epochs)
 from wyrm.processing import select_channels
 from braindecode.datasets.signal_processor import SignalProcessor
 from collections import namedtuple
@@ -10,6 +10,44 @@ log = logging.getLogger(__name__)
 CleanResult = namedtuple('CleanResult', ['rejected_chan_names',
     'rejected_trials', 'clean_trials', 'rejected_max_min',
     'rejected_var'])
+
+def restrict_cnt(cnt, classes, clean_trials, rejected_chan_names, copy_data=False):
+    cleaned_cnt = select_marker_classes(cnt, classes,
+                                       copy_data)
+    cleaned_cnt = select_marker_epochs(cleaned_cnt, clean_trials,
+                                      copy_data)
+    cleaned_cnt = select_channels(cleaned_cnt, rejected_chan_names, invert=True)
+    return cleaned_cnt
+
+def clean_train_test_cnt(train_cnt, test_cnt, train_cleaner, test_cleaner,
+        copy_data=False):
+    log.info("Clean Training Set...")
+    train_clean_result = train_cleaner.clean(train_cnt)
+    log_clean_result(train_clean_result)
+    # remove chans rejected by train cleaner from test set
+    test_cnt = select_channels(test_cnt,
+        train_clean_result.rejected_chan_names, invert=True)
+    
+    log.info("Clean Test Set...")
+    test_clean_result = test_cleaner.clean(test_cnt, ignore_chans=True)
+    log_clean_result(test_clean_result)
+    assert len(test_clean_result.rejected_chan_names) == 0, (
+        "There should be no rejected channels on test set, instead got "
+        "{:s}".format(test_clean_result.rejected_chan_names))
+    
+    
+    log.info("Create Cleaned Cnt Sets...")
+    clean_train_cnt = restrict_cnt(train_cnt,
+        train_cleaner.marker_def.values(),
+        train_clean_result.clean_trials,
+        train_clean_result.rejected_chan_names,
+        copy_data=copy_data)
+    clean_test_cnt = restrict_cnt(test_cnt, 
+        test_cleaner.marker_def.values(),
+        test_clean_result.clean_trials,
+        test_clean_result.rejected_chan_names,
+        copy_data=copy_data)
+    return clean_train_cnt, clean_test_cnt
 
 def log_clean_result(clean_result):
     log.info("Rejected channels: {:s}".format(clean_result.rejected_chan_names))
