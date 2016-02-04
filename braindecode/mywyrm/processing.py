@@ -22,9 +22,13 @@ def select_marker_classes(cnt, classes, copy_data=False):
         return copied_cnt
     
 def select_marker_epochs(cnt, epoch_inds, copy_data=False):
-    needed_markers = np.array(cnt.markers)[epoch_inds].tolist()
-    # make markers to ints again
-    needed_markers = [(m[0], int(m[1])) for m in needed_markers]
+    # Restrict markers to only the correct epoch inds..
+    # use list comprehension and not conversion to numpy array
+    # + indexing to preserve types (type of first part of each marker,
+    # the time can be different from type of second part, the label)
+    # transforming to numpy array
+    # can lead to upcasting of labels from int to float for example....
+    needed_markers = [m for i,m in enumerate(cnt.markers) if i in epoch_inds]
     if copy_data:
         return cnt.copy(markers=needed_markers)
     else:

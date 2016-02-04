@@ -98,8 +98,8 @@ class SetCleaner():
         clean_result = CleanResult(rejected_chan_names=cleaner.rejected_chan_names,
             rejected_trials=cleaner.rejected_trials,
             clean_trials=cleaner.clean_trials,
-            rejected_max_min=cleaner.rejected_trials_max_min,
-            rejected_var=cleaner.rejected_var_original)
+            rejected_max_min=cleaner.rejected_max_min,
+            rejected_var=cleaner.rejected_var)
         
         
         return clean_result
@@ -170,8 +170,8 @@ class Cleaner(object):
             assert len(rejected_chan_names) == 0
         self.rejected_chan_names = rejected_chan_names
         self.rejected_trials = rejected_trials
-        self.rejected_trials_max_min = rejected_trials_max_min
-        self.rejected_var_original = rejected_var_original
+        self.rejected_max_min = rejected_trials_max_min
+        self.rejected_var = rejected_var_original
         self.clean_trials = good_trials
 
 def compute_rejected_trials_max_min(epo, threshold):
