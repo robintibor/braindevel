@@ -1,7 +1,7 @@
  {
     extends: [
         'configs/experiments/paper/ours/deep_4.yaml',
-        'configs/experiments/paper/cnt_templates.yaml',
+        'configs/experiments/paper/cnt.yaml',
         ], 
     templates: {
         sample_trial_monitors: [
@@ -18,14 +18,9 @@
         final_dense_length: [4],
         input_time_length: [2000],
         n_sample_preds : [1000], # will be overwritten anyways
-        dataset: [$combined_set],
-        dataset_splitter: [$several_sets_splitter],
-        monitors: [$sample_trial_monitors],
-        iterator: [$cnt_iterator],
-        layer_modifier: [JustReturn],
-        max_epochs: [800],
-        max_increasing_epochs: [80],
-        trial_start: [1000],
+        train_cleaner: [$no_cleaner],
+        test_cleaner: [$no_cleaner],
+        
     }
     ]]
 }

@@ -33,6 +33,7 @@ class CntSignalMatrix(DenseDesignMatrix):
         self.select_sensors()
         self.create_cnt_y()
         self.create_dense_design_matrix()
+        self.remove_cnt()
 
     def load_cnt(self):
         log.info("Load continuous signal...")
@@ -89,11 +90,14 @@ class CntSignalMatrix(DenseDesignMatrix):
         topo_view = self.signal_processor.cnt.data[:,:,
             np.newaxis,np.newaxis].astype(np.float32)
         topo_view = np.ascontiguousarray(np.copy(topo_view))
-
         super(CntSignalMatrix, self).__init__(topo_view=topo_view, y=self.y, 
                                               axes=self.axes)
 
         log.info("Loaded dataset with shape: {:s}".format(
             str(self.get_topological_view().shape)))
+
+    def remove_cnt(self):
+        del self.signal_processor.cnt
+
     def free_memory(self):
         del self.X

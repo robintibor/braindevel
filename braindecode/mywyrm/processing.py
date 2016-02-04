@@ -23,6 +23,8 @@ def select_marker_classes(cnt, classes, copy_data=False):
     
 def select_marker_epochs(cnt, epoch_inds, copy_data=False):
     needed_markers = np.array(cnt.markers)[epoch_inds].tolist()
+    # make markers to ints again
+    needed_markers = [(m[0], int(m[1])) for m in needed_markers]
     if copy_data:
         return cnt.copy(markers=needed_markers)
     else:

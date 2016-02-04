@@ -141,8 +141,7 @@ class CleanSignalMatrix(SignalMatrix):
     
     def determine_clean_trials_and_chans(self):
         log.info("Cleaning set...")
-        (rejected_chans, rejected_trials, clean_trials) = self.cleaner.clean(
-            self.signal_processor.cnt)
+        clean_result = self.cleaner.clean(self.signal_processor.cnt)
         # In case this is not true due to different segment ivals of
         # cleaner and real data, try to standardize variable name for
         # segment ival of cleaner, e.g. to segment_ival
@@ -150,15 +149,17 @@ class CleanSignalMatrix(SignalMatrix):
             self.signal_processor.marker_def,
                  self.signal_processor.segment_ival)
         
-        assert np.array_equal(np.union1d(clean_trials, rejected_trials),
+        assert np.array_equal(np.union1d(clean_result.clean_trials, 
+            clean_result.rejected_trials),
             range(all_trial_epo.data.shape[0])), ("All trials should "
                 "either be clean or rejected.")
-        assert np.intersect1d(clean_trials, rejected_trials).size == 0, ("All "
+        assert np.intersect1d(clean_result.clean_trials,
+            clean_result.rejected_trials).size == 0, ("All "
             "trials should either be clean or rejected.")
 
-        self.rejected_chans = rejected_chans
-        self.rejected_trials = rejected_trials
-        self.clean_trials = clean_trials # just for later info
+        self.rejected_chans = clean_result.rejected_chan_names
+        self.rejected_trials = clean_result.rejected_trials
+        self.clean_trials = clean_result.clean_trials # just for later info
 
     def select_sensors(self):
         if len(self.rejected_chans) > 0:

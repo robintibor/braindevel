@@ -44,7 +44,7 @@ def test_experiment_fixed_split():
     exp = Experiment(network, dataset, dataset_splitter, preprocessor,
               dataset_iterator, loss_var_func, updates_var_func, 
               updates_modifier, monitors,
-              stop_criterion)
+              stop_criterion, early_stop_chan='valid_misclass')
     exp.setup()
     exp.run()
     assert np.allclose(
@@ -152,7 +152,8 @@ def test_experiment_sample_windows():
     
     exp = Experiment(network, dataset, dataset_splitter, preprocessor,
               dataset_iterator, loss_var_func, updates_var_func, 
-              updates_modifier, monitors, stop_criterion)
+              updates_modifier, monitors, stop_criterion,
+              early_stop_chan='valid_misclass')
     exp.setup()
     exp.run()
     

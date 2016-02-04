@@ -4,9 +4,24 @@ from braindecode.mywyrm.processing import (bandpass_cnt, segment_dat_fast,
 from wyrm.processing import select_channels
 from braindecode.datasets.signal_processor import SignalProcessor
 from collections import namedtuple
+import logging 
+log = logging.getLogger(__name__)
 
 CleanResult = namedtuple('CleanResult', ['rejected_chan_names',
-    'rejected_trials', 'clean_trials'])
+    'rejected_trials', 'clean_trials', 'rejected_max_min',
+    'rejected_var'])
+
+def log_clean_result(clean_result):
+    log.info("Rejected channels: {:s}".format(clean_result.rejected_chan_names))
+    log.info("#Clean trials:     {:d}".format(len(clean_result.clean_trials)))
+    log.info("#Rejected trials:  {:d}".format(len(clean_result.rejected_trials)))
+    log.info("Fraction Clean:    {:.1f}%".format(
+        100 * len(clean_result.clean_trials) / 
+        (len(clean_result.clean_trials) + len(clean_result.rejected_trials))))
+    log.info("(from maxmin):     {:d}".format(
+        len(clean_result.rejected_max_min)))
+    log.info("(from var):        {:d}".format(
+        len(clean_result.rejected_var)))
 
 class NoCleaner():
     def __init__(self, segment_ival=None, marker_def=None):
@@ -18,17 +33,21 @@ class NoCleaner():
         if self.segment_ival is None:
             self.segment_ival = [0, 4000]
 
-    def clean(self, bbci_set_cnt):
+    def clean(self, bbci_set_cnt, ignore_chans=False):
         # Segment into trials and take all! :)
         # Segment just to select markers and kick out out of bounds
         # trials
+        # chans ignored always anyways... so parameter does not
+        # matter
         epo = segment_dat_fast(bbci_set_cnt, marker_def=self.marker_def, 
            ival=self.segment_ival)
         clean_trials = range(epo.data.shape[0])
         
         clean_result = CleanResult(rejected_chan_names=[],
             rejected_trials=[],
-            clean_trials=clean_trials)
+            clean_trials=clean_trials,
+            rejected_max_min=[],
+            rejected_var=[])
         return clean_result
         
 
@@ -78,12 +97,11 @@ class SetCleaner():
         
         clean_result = CleanResult(rejected_chan_names=cleaner.rejected_chan_names,
             rejected_trials=cleaner.rejected_trials,
-            clean_trials=cleaner.clean_trials)
+            clean_trials=cleaner.clean_trials,
+            rejected_max_min=cleaner.rejected_trials_max_min,
+            rejected_var=cleaner.rejected_var_original)
         
-        self.rejected_chan_names = cleaner.rejected_chan_names # remember in case other cleaner needs it
-        # for tests
-        self.rejected_trials_var = cleaner.rejected_var_original
-        self.rejected_trials_max_min = cleaner.rejected_trials_max_min
+        
         return clean_result
 
 

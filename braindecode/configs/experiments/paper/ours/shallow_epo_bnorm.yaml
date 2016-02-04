@@ -1,11 +1,11 @@
 {
     extends: [
         'configs/experiments/paper/ours/shallow.yaml',
+        'configs/experiments/paper/epo.yaml',
         'configs/experiments/paper/shallow_square_bnorm.yaml',
         ],
     variants: [[{
         final_dense_length: [61],
-        layer_modifier: [TransformToNormalNet],
         input_time_length: [2000], # will be overwritten by actual net size...
         save_path: ['data/models/paper/ours/epo/shallow-bnorm/'],
         post_pool_nonlin: [$identity, $safe_log],
