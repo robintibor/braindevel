@@ -16,13 +16,13 @@ class ResultPrinter:
     def __init__(self, folder_name):
         self._folder_name = folder_name
     
-    def print_results(self, print_templates_and_constants=False,
-            print_individual_datasets=True,
+    def print_results(self, templates_constants=False,
+            individual_datasets=True,
             start=None, stop=None):
         print ("Printing results in {:s}:".format(self._folder_name))
         self._collect_parameters_and_results(start, stop)
         self._format_results()
-        self._print(print_templates_and_constants, print_individual_datasets)
+        self._print(templates_constants, individual_datasets)
         
     def _collect_parameters_and_results(self, start, stop):
         self._result_pool = ResultPool()
@@ -85,11 +85,11 @@ class ResultPrinter:
         else:
             return arr 
             
-    def _print(self, print_templates_and_constants, print_individual_datasets):
-        if (print_templates_and_constants):
+    def _print(self, templates_constants, individual_datasets):
+        if (templates_constants):
             self._print_templates()
             self._print_constant_parameters()
-        if (print_individual_datasets):
+        if (individual_datasets):
             self._print_experiments_result_table()
         if (self._result_pool.have_varying_datasets() or
                 self._result_pool.have_varying_leave_out()):
