@@ -15,7 +15,7 @@
             stop_criterion: !obj:braindecode.veganlasagne.stopping.Or {
                 stop_criteria: [
                     !obj:braindecode.veganlasagne.stopping.NoDecrease {
-                        chan_name: valid_misclass,
+                        chan_name: $early_stop_chan,
                         num_epochs: $max_increasing_epochs,
                         min_decrease: 0.,
                     },
@@ -24,5 +24,6 @@
                     },
                 ]
             },
+            early_stop_chan: $early_stop_chan,
         },
 }

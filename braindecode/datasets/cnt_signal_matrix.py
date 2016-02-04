@@ -73,13 +73,8 @@ class CntSignalMatrix(DenseDesignMatrix):
         trial_stop_offset = int(self.signal_processor.segment_ival[1] * 
                                  self.signal_processor.cnt.fs / 1000.0)
 
-        assert sorted(np.unique(labels))[0] == 1, ("Expecting first label to "
-            "have value 1, otherwise adapt code")
-        assert sorted(np.unique(labels))[-1] == len(labels), ("Expecting last "
-            "label to have value equal to number of labels, otherwise "
-            "adapt code")
         unique_labels = sorted(np.unique(labels))
-        assert np.array_equal(unique_labels, range(1, len(unique_labels))), (
+        assert np.array_equal(unique_labels, range(1, len(unique_labels)+1)), (
             "Expect labels to be from 1 to n_classes...")
         
         for i_trial in xrange(len(labels)):

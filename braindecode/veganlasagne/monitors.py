@@ -87,10 +87,13 @@ class LossMonitor(Monitor):
         monitor_chans[monitor_key].append(float(mean_loss))
         
 class MisclassMonitor(Monitor):
+    def __init__(self, chan_name='misclass'):
+        self.chan_name = chan_name
+
     def setup(self, monitor_chans, datasets):
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
-            monitor_key = "{:s}_misclass".format(setname)
+            monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
             monitor_chans[monitor_key] = []
 
     def monitor_epoch(self, monitor_chans):
@@ -113,7 +116,7 @@ class MisclassMonitor(Monitor):
             all_target_labels = np.argmax(all_target_labels, axis=1)
         misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
             float(len(all_target_labels)))
-        monitor_key = "{:s}_misclass".format(setname)
+        monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
         monitor_chans[monitor_key].append(float(misclass))
 
 class WindowMisclassMonitor(Monitor):

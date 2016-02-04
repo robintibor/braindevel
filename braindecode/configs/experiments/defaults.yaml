@@ -44,5 +44,6 @@
         i_test_fold: [-1], # test fold => last fold
         max_increasing_epochs: [150],
         max_epochs: [1500],
+        early_stop_chan: ['valid_misclass'],
     }]]
 }

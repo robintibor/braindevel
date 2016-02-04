@@ -207,7 +207,8 @@ class ResultPrinter:
         # just put 'epoch' not 'best_epoch' so that header is not so wide
         for result_type in ['test', 'best', 'epoch', 'train', 'valid']:
             # check if result exists, if yes add it
-            if result_type in self._formatted_results[0] or 'best_' + result_type in self._formatted_results[0]:
+            if (result_type in self._formatted_results[0] or 
+                'best_' + result_type in self._formatted_results[0]):
                 result_headers.append(result_type)
                 if (with_standard_deviation and
                        result_type in ['test', 'train', 'valid']):
@@ -264,6 +265,10 @@ class ResultPrinter:
     def _create_dataset_averaged_headers(all_result_list):
         params = deepcopy(all_result_list[0][0]['parameters'])
         misclass_keys = all_result_list[0][0]['misclasses'].keys()
+        # srot to show test before train before valid
+        misclass_keys = sorted(misclass_keys, 
+            key=lambda x: ('test' in x) * 1 + ('train' in x ) * 2 + 
+            ('valid' in x ) * 3)
         result_keys = ["time", "std"]
         for key in misclass_keys:
             result_keys.append(key)
