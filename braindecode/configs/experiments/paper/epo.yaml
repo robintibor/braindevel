@@ -31,5 +31,6 @@
         trial_start: [0],
         cleaner: [$no_cleaner],
         layer_modifier: [TransformToNormalNet],
+        load_sensor_names: ['null'],
     }]]
 }

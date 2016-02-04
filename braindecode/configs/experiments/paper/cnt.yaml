@@ -40,5 +40,6 @@
         layer_modifier: [JustReturn],
         max_epochs: [800],
         max_increasing_epochs: [80],
+        load_sensor_names: ['null'],
     }]]
 }

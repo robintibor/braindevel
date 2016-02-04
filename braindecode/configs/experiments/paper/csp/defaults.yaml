@@ -47,5 +47,10 @@
         common_average_reference: [false],
         ival_optimizer: ["null"],
         marker_def: [$markers_4_classes],
+        rejection_var_ival: [[500, 4000]],
+        rejection_blink_ival: [[0, 4000]],
+        max_min: [100],
+        whisker_percent: [10],
+        whisker_length: [3],
     }]]
 }

@@ -196,7 +196,9 @@ class FilterbankCSP(object):
     def run(self):
         self.select_filterbands()
         if self.n_features is not None:
+            log.info("Run feature selection...")
             self.collect_best_features()
+            log.info("Done.")
             #self.select_features()
         else: 
             self.collect_features()
