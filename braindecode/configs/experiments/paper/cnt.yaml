@@ -5,9 +5,13 @@
             input_time_length: $input_time_length,
             n_sample_preds: $n_sample_preds,
         },
-        cnt_trial_misclass_monitor: !obj:braindecode.veganlasagne.monitors.CntTrialMisclassMonitor { 
-        },
-    
+        sample_trial_monitors: [
+                !obj:braindecode.veganlasagne.monitors.LossMonitor {},
+                !obj:braindecode.veganlasagne.monitors.MisclassMonitor {
+                    chan_name: 'sample_misclass'},
+                !obj:braindecode.veganlasagne.monitors.CntTrialMisclassMonitor { },
+                !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
+        ],
         raw_set_train: !obj:braindecode.datasets.cnt_signal_matrix.CntSignalMatrix {
             signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
                 set_loader: !obj:braindecode.datasets.loaders.$loader_type {

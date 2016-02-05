@@ -14,7 +14,9 @@
                 !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
                 { }
         ]],
-        no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
+        no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner {
+        segment_ival: [$trial_start, $trial_stop],
+        marker_def: $marker_def},
         train_normal_cleaner: !obj:braindecode.mywyrm.clean.SetCleaner { 
             eog_set: !obj:braindecode.datasets.loaders.$loader_type {
                 filename: $dataset_filename,

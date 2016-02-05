@@ -2,6 +2,7 @@
 variants: [[{
     loader_type: [BCICompetition4Set2A],
     sensor_names: ["null"],
+    resample_fs: [250],
     variants: [[
         {
             dataset_filename: ['data/bci-competition-iv/2a/A01T.mat'],

@@ -33,12 +33,14 @@
                     incoming: *pool,
                     n_stride: $pool_time_stride,
             },
-            &log !obj:lasagne.layers.NonlinearityLayer {
-                    incoming: *reshape_pool,
-                    nonlinearity: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
+            &batch_norm !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *reshape_pool,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
             },
             &drop_feature !obj:lasagne.layers.DropoutLayer {
-                incoming: *log,
+                incoming: *batch_norm,
                 p: 0.5,
             },
             &final_dense !obj:lasagne.layers.Conv2DLayer {
@@ -66,10 +68,9 @@
     variants: [[{
         layer_names_to_norms: [$layer_names_to_norms],
         layers: [$cnt_shallow_square],
-        pool_time_length: [150],
-        pool_time_stride: [30],
         final_nonlin: [$safe_softmax],
         n_classes: [4],
         pool_type: [Pool2DLayer],
+        batch_norm_alpha: [0.1],
     }]]
 }

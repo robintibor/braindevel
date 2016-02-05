@@ -142,6 +142,7 @@ class CleanSignalMatrix(SignalMatrix):
     def determine_clean_trials_and_chans(self):
         log.info("Cleaning set...")
         clean_result = self.cleaner.clean(self.signal_processor.cnt)
+        
         # In case this is not true due to different segment ivals of
         # cleaner and real data, try to standardize variable name for
         # segment ival of cleaner, e.g. to segment_ival
@@ -186,6 +187,7 @@ class CleanSignalMatrix(SignalMatrix):
         self.signal_processor.epo.markers = clean_markers
         self.signal_processor.remove_continuous_signal()
         self.signal_processor.preprocess_trials()
+        log.info("Done.")
 
 def format_targets(y):
     # matlab has one-based indexing and one-based labels

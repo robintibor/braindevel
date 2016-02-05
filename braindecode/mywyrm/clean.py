@@ -71,13 +71,13 @@ class NoCleaner():
         if self.segment_ival is None:
             self.segment_ival = [0, 4000]
 
-    def clean(self, bbci_set_cnt, ignore_chans=False):
+    def clean(self, cnt, ignore_chans=False):
         # Segment into trials and take all! :)
         # Segment just to select markers and kick out out of bounds
         # trials
-        # chans ignored always anyways... so parameter does not
+        # chans ignored always anyways... so ignore_chans parameter does not
         # matter
-        epo = segment_dat_fast(bbci_set_cnt, marker_def=self.marker_def, 
+        epo = segment_dat_fast(cnt, marker_def=self.marker_def, 
            ival=self.segment_ival)
         clean_trials = range(epo.data.shape[0])
         

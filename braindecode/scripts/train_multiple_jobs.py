@@ -16,6 +16,7 @@ if __name__ == "__main__":
     start = 1
     stop = 144
     step = 1
+    wait_time = 60
     if len(sys.argv) > 3:
         start = int(sys.argv[3])
     if len(sys.argv) > 4:

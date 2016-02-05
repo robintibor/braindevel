@@ -5,5 +5,6 @@
     variants: [[{
         resample_fs: [500],
         eog_sensors: [['EOGv', 'EOGh']],
+        sensor_names: [$C_sensors],
     }]]
 }

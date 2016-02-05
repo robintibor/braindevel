@@ -448,7 +448,16 @@ def segment_dat_fast(dat, marker_def, ival, newsamples=None, timeaxis=-2):
         # the times of the `newsamples`
         new_sample_times = dat.axes[timeaxis][-newsamples:] if newsamples > 0 else []
     # the expected length of each cnt in the resulted epo
-    expected_samples = dat.fs * (ival[1] - ival[0]) / 1000
+    # round up, as it will as searchsorted later will
+    # give you the index left of the next bigger or equal
+    # timepoint(!)
+    # e.g. for ival 0-4000 and sampling rate 500
+    # the next bigger or equal timepoint will be at 2000, left of it is 1999
+    # so you get samples from 0-1999 (2000 samples)
+    # for ival 4001, next bigger or equal timepoint will be at 2001, left
+    # of it is 2000
+    # so you get samples from 0-2000 (2001 samples)
+    expected_samples = int(np.ceil(dat.fs * (ival[1] - ival[0]) / 1000.0))
     data = []
     classes = []
     class_names = sorted(marker_def.keys())
@@ -463,6 +472,8 @@ def segment_dat_fast(dat, marker_def, ival, newsamples=None, timeaxis=-2):
                 mask = range(first_index, last_index)
                 if len(mask) != expected_samples:
                     # result is too short or too long, ignore it
+                    print len(mask)
+                    print("expected", expected_samples)
                     continue
                 # check if the new cnt shares at least one timepoint
                 # with the new samples. attention: we don't only have to

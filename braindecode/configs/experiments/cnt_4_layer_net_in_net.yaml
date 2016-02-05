@@ -176,7 +176,7 @@
         layers: [$cnt_raw_net_deep_batch_norm],
         final_norm: [0.5],
         conv_norm: [2.0],
-        batch_norm_alpha: [0.1], 
+        batch_norm_alpha: [0.1],
         first_nonlin: [$leaky_relu],
         first_pool_layer: [Pool2DLayer],
         first_pool_mode: ['max'],

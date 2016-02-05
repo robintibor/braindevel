@@ -9,6 +9,8 @@
         num_filters: [40],
         trial_stop: [3998],
         filter_time_length: [50],
+        pool_time_length: [150],
+        pool_time_stride: [30],
     }
     ]]
 }
