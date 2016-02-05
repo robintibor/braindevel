@@ -1,0 +1,16 @@
+ {
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/bci_competition/files_train_test.yaml',
+        'configs/experiments/paper/epo.yaml',
+        'configs/experiments/paper/bci_competition/deep_4.yaml',
+        ],
+    variants: [[
+    {
+        trial_start: [-32],
+        save_path: ['data/models/paper/bci_competition/epo/deep4/'],
+        input_time_length: [2000], # will be overwritten by actual net size...
+        final_dense_length: [8],
+    }
+    ]]
+}
