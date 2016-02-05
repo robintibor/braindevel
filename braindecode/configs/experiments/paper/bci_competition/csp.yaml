@@ -8,17 +8,29 @@
         cleaner: [$no_cleaner],#$, train_normal_cleaner
         test_cleaner: [$no_cleaner],
         n_selected_features: [20],#10,
-        save_path: ['data/models/paper/csp/bci-competition/'],
+        save_path: ['data/models/paper/bci-competition/csp/'],
         variants: [[
+#        {
+#            min_freq: [7],
+#            max_freq: [43],
+#            low_width: [6],
+#            low_overlap: [3],
+#            high_width: [12],
+#            high_overlap: [4],
+#            last_low_freq: [43],
+#            trial_stop: [2500],#,4000],
+#        },
         {
-            min_freq: [4],
-            max_freq: [40],
+            n_selected_features: [20],#10,
+            min_freq: [7],
+            max_freq: [38],
             low_width: [6],
-            low_overlap: [3],
-            high_width: [12],
+            high_width: [8],
             high_overlap: [4],
-            last_low_freq: [40],
-            trial_stop: [2500,4000],
+            last_low_freq: [19],
+            low_overlap: [3],
+            trial_stop: [2500],#,4000
+            variants: [[{high_overlap: [3], max_freq: [36,41,46]}]]
         },
         
         ]],

@@ -21,20 +21,20 @@ echo HOSTNAME=$HOSTNAME
 echo $CMD
 
 # Set theano to cpu.. rest of flags probably not important
-# disable gpus
+# disable gpus for safety
 export CUDA_VISIBLE_DEVICES=
 export THEANO_FLAGS="floatX=float32,device=cpu,nvcc.fastmath=True"
 echo THEANO_FLAGS=$THEANO_FLAGS
 """
 
-def generate_cluster_job(sys_args):
-    config_file = sys_args[0]
-    arguments_for_train = sys_args[1:]
+def generate_cluster_job(job_args):
+    config_file = job_args[0]
+    arguments_for_train = job_args[1:]
     # Expect that experiment runs sequential by default
     # so that theano flags are preserved and correct (and only one) gpu taken
     arguments_for_train.append('--quiet') # better not to create huge job output files
     train_args_string = " ".join(arguments_for_train)
-    train_script = "./csp/train_experiment.py" 
+    train_script = "./csp/train_experiments.py" 
     train_command = "{:s} {:s} {:s}".format(train_script, config_file, 
         train_args_string)
     job_string = "{:s}\n{:s}\n".format(file_prefix, train_command)
