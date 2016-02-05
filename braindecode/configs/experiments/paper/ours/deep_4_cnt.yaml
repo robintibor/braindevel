@@ -3,15 +3,6 @@
         'configs/experiments/paper/ours/deep_4.yaml',
         'configs/experiments/paper/cnt.yaml',
         ], 
-    templates: {
-        sample_trial_monitors: [
-                !obj:braindecode.veganlasagne.monitors.LossMonitor {},
-                !obj:braindecode.veganlasagne.monitors.MisclassMonitor {
-                    chan_name: 'sample_misclass'},
-                $cnt_trial_misclass_monitor,
-                !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
-        ],
-    },
     variants: [[
     {
         save_path: ['data/models/paper/ours/cnt/deep4/'],
