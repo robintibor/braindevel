@@ -5,7 +5,7 @@
     
     variants: [[{
         eog_sensors: [$bci_competition_eog_sensors],
-        cleaner: [$train_normal_cleaner],#$no_cleaner, 
+        cleaner: [$no_cleaner],#$, train_normal_cleaner
         test_cleaner: [$no_cleaner],
         n_selected_features: [20],#10,
         save_path: ['data/models/paper/csp/bci-competition/'],
@@ -27,6 +27,12 @@
             high_width: [12],
             high_overlap: [4],
             last_low_freq: [40],
+            trial_stop: [2500],
+            variants: [[
+            {low_width: [6]},
+            {trial_stop: [2500,4000],
+            low_width: [5],
+            low_overlap: [2,3]}]]
         },
 #        {
 #            min_freq: [2],

@@ -8,11 +8,12 @@
         final_dense_length: [61],
         input_time_length: [2000], # will be overwritten by actual net size...
         save_path: ['data/models/paper/ours/epo/shallow-bnorm/'],
-        post_pool_nonlin: [$identity, $safe_log],
-        layers: [$cnt_shallow_square_bnorm_conv, 
-        $cnt_shallow_square_bnorm_square,
-        $cnt_shallow_square_bnorm_pool,
-        $cnt_shallow_square],
+        post_pool_nonlin: [$identity],#$safe_log
+        layers: [$cnt_shallow_square_bnorm_conv_pool],
+        #layers: [$cnt_shallow_square_bnorm_conv, 
+        #$cnt_shallow_square_bnorm_square,
+        #$cnt_shallow_square_bnorm_pool,
+        #$cnt_shallow_square],
         low_cut_off_hz: ["null"],
     }]],
 }

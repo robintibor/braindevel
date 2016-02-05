@@ -396,6 +396,7 @@ class ResultPrinter:
           ('remove_baseline_mean', 'rm_baseline'),
           ('input_time_length', 'input_len'),
           ('online_chan_freq_wise', 'online_c_1'),
+          ('n_selected_features', 'n_features'),
           ])
         for header in table_headers:
             pretty_header = header
