@@ -17,7 +17,7 @@
             low_overlap: [3],
             high_width: [12],
             high_overlap: [4],
-            last_low_freq: [37],
+            last_low_freq: [40],
             trial_stop: [2500,4000],
         },
         
