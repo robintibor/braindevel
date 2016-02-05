@@ -67,5 +67,6 @@
         whisker_length: [3],
         train_cleaner: [$no_cleaner],
         test_cleaner: [$no_cleaner],
+        use_test_as_valid: [False],
     }]]
 }
