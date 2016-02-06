@@ -26,7 +26,6 @@
             marker_def: $marker_def,
         },
         markers_4_classes: {'1': [1], '2': [2], '3': [3], '4': [4]},
-        bci_competition_eog_sensors: ['EOG-left', 'EOG-central', 'EOG-right'],
     },
     
     variants: [[{

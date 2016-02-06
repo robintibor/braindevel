@@ -7,7 +7,7 @@
         ], 
     variants: [[
     {
-        save_path: ['data/models/paper/bci_competition/cnt/deep4/'],
+        save_path: ['data/models/paper/bci-competition/cnt/deep4/'],
         final_dense_length: [2],
         input_time_length: [1000],
         n_sample_preds : [500], # will be overwritten anyways

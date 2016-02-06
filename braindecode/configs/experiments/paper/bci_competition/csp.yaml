@@ -4,7 +4,6 @@
     ],
     
     variants: [[{
-        eog_sensors: [$bci_competition_eog_sensors],
         cleaner: [$no_cleaner],#$, train_normal_cleaner
         test_cleaner: [$no_cleaner],
         n_selected_features: [20],#10,

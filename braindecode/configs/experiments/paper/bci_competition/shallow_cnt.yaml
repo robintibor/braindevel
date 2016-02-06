@@ -4,7 +4,7 @@
         'configs/experiments/paper/cnt.yaml',
         ],
     variants: [[{
-        save_path: ['data/models/paper/bci_competition/cnt/shallow/'],
+        save_path: ['data/models/paper/bci-competition/cnt/shallow/'],
         final_dense_length: [30],
         input_time_length: [1000],
         n_sample_preds : [500], # will be overwritten anyways

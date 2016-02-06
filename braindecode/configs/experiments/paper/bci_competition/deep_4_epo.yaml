@@ -8,7 +8,7 @@
     variants: [[
     {
         trial_start: [-32],
-        save_path: ['data/models/paper/bci_competition/epo/deep4/'],
+        save_path: ['data/models/paper/bci-competition/epo/deep4/'],
         input_time_length: [2000], # will be overwritten by actual net size...
         final_dense_length: [8],
     }

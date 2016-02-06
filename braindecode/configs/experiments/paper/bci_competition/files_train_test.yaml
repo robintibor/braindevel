@@ -1,5 +1,10 @@
 {
+templates: {
+    bci_competition_eog_sensors: ['EOG-left', 'EOG-central', 'EOG-right'],
+},
 variants: [[{
+        
+    eog_sensors: [$bci_competition_eog_sensors],
     loader_type: [BCICompetition4Set2A],
     sensor_names: ["null"],
     resample_fs: [250],
