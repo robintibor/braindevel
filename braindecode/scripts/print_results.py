@@ -18,15 +18,16 @@ class ResultPrinter:
     
     def print_results(self, templates_constants=False,
             individual_datasets=True,
-            start=None, stop=None):
+            start=None, stop=None,
+            params=None):
         print ("Printing results in {:s}:".format(self._folder_name))
-        self._collect_parameters_and_results(start, stop)
+        self._collect_parameters_and_results(start, stop, params)
         self._format_results()
         self._print(templates_constants, individual_datasets)
         
-    def _collect_parameters_and_results(self, start, stop):
+    def _collect_parameters_and_results(self, start, stop, params):
         self._result_pool = ResultPool()
-        self._result_pool.load_results(self._folder_name, start, stop)
+        self._result_pool.load_results(self._folder_name, start, stop, params)
         if (self._result_pool.have_varying_datasets() or
                 self._result_pool.have_varying_leave_out()):
             self._dataset_averaged_results = DatasetAveragedResults()

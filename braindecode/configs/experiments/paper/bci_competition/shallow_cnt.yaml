@@ -8,5 +8,6 @@
         final_dense_length: [30],
         input_time_length: [1000],
         n_sample_preds : [500], # will be overwritten anyways
+        #trial_start: [2500],
     }]],
 }

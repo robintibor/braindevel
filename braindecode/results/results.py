@@ -7,7 +7,6 @@ from sklearn.metrics import confusion_matrix
 import itertools
 import logging
 from collections import Counter, OrderedDict
-import copy
 log = logging.getLogger(__name__)
 
 class Result:
@@ -49,9 +48,11 @@ def _create_result_for_model(model, parameters, templates, training_time):
     return result
 
 class ResultPool():
-    def load_results(self, folder_name, start=None, stop=None):
+    def load_results(self, folder_name, start=None, stop=None, params=None):
         self._determine_file_names(folder_name, start, stop)
         self._load_result_objects()
+        if params is not None:
+            self._filter_by_params(params)
         self._collect_results()
         self._collect_parameters()
         self._split_parameters_into_constant_and_varying_parameters()
@@ -60,6 +61,8 @@ class ResultPool():
         # get all result_obj file names, should always have digit and then .pkl at end
         # (results have result.pkl instead)
         self._result_file_names = glob(os.path.join(folder_name, '*.result.pkl'))
+        if len(self._result_file_names) == 0:
+            log.warn("No result files found..")
         # sort numerically by last part of filename (before .pkl extension)
         # i.e. sort bla/12.pkl and bla/1.pkl
         # -> bla/bla/1.pkl, bla/12.pkl
@@ -70,6 +73,8 @@ class ResultPool():
             self._result_file_names = self._result_file_names[start:]
         if stop is not None:
             self._result_file_names = self._result_file_names[:stop]
+        if len(self._result_file_names) == 0:
+            log.warn("No result files left after start stop..")
             
 
     def _load_result_objects(self):
@@ -82,6 +87,28 @@ class ResultPool():
             self._cross_validation = True
         else:
             self._cross_validation = False
+
+    def _filter_by_params(self, params): 
+        # check given params if result should be included or not
+        include_mask = []
+        for results_or_result in self._result_objects:
+            include_result=True
+            res_params = dict()
+            if (isinstance(results_or_result, list)):
+                # all result objects should have same parameters/templates
+                # so just  take first result object for parameters/templates
+                res_params = results_or_result[0].parameters
+            else:
+                res_params = results_or_result.parameters
+            for key in params:
+                if res_params.get(key, None) != params[key]:
+                    include_result=False
+            include_mask.append(include_result)
+        include_mask = np.array(include_mask)
+        if np.sum(include_mask) == 0 and len(self._result_objects) > 0:
+            log.warn("Removed all results by param filter...")
+        self._result_objects = np.array(self._result_objects)[include_mask]
+        self._result_file_names = np.array(self._result_file_names)[include_mask]
 
     def _collect_results(self):
         self._misclasses  = {}
