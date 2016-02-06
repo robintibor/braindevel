@@ -1,6 +1,6 @@
 {
     templates: {
-        cnt_shallow_square:  !obj:braindecode.veganlasagne.layer_modifiers.$layer_modifier { 
+       cnt_shallow_square:  !obj:braindecode.veganlasagne.layer_modifiers.$layer_modifier { 
         layers: [ 
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, $input_time_length, in_cols]
@@ -20,11 +20,17 @@
                 incoming: *time_conv,
                 num_filters: $num_filters,
                 filter_size: [1, -1],
-                nonlinearity: !!python/name:theano.tensor.sqr ,
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
                 name: 'spat_conv',
             },
+            &batch_norm !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *spat_conv,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+                nonlinearity: !!python/name:theano.tensor.sqr ,
+            },
             &pool !obj:braindecode.veganlasagne.pool.$pool_type {
-                    incoming: *spat_conv,
+                    incoming: *batch_norm,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
                     mode: 'average_exc_pad',
@@ -33,14 +39,12 @@
                     incoming: *pool,
                     n_stride: $pool_time_stride,
             },
-            &batch_norm !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
-                incoming: *reshape_pool,
-                epsilon: 1e-4,
-                alpha: $batch_norm_alpha,
-                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+            &log !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *reshape_pool,
+                    nonlinearity: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
             },
             &drop_feature !obj:lasagne.layers.DropoutLayer {
-                incoming: *batch_norm,
+                incoming: *log,
                 p: 0.5,
             },
             &final_dense !obj:lasagne.layers.Conv2DLayer {

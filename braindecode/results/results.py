@@ -6,7 +6,8 @@ from copy import deepcopy
 from sklearn.metrics import confusion_matrix
 import itertools
 import logging
-from collections import Counter
+from collections import Counter, OrderedDict
+import copy
 log = logging.getLogger(__name__)
 
 class Result:
@@ -254,12 +255,22 @@ class DatasetAveragedResults:
         """ Extract experiment ids of experiments that have the same parameters
         except for the dataset filename or the leave out from transfer."""
         params_without_dataset = deepcopy(self._result_pool.varying_params())
+        sorted_params_without_dataset = []
         for params in params_without_dataset:
             params.pop('filename', None)
             params.pop('dataset_filename', None)
             params.pop('transfer_leave_out', None)
             params.pop('test_filename', None)
             params.pop('trainer_filename', None)
+            # sort param dicts in same way to be able to compare
+            # all param dicts with the __str__ method...
+            sorted_keys = sorted(params.keys())
+            sorted_params = OrderedDict()
+            for key in sorted_keys:
+                sorted_params[key] = params[key]
+            sorted_params_without_dataset.append(sorted_params)
+        params_without_dataset = sorted_params_without_dataset
+            
         params_to_experiment = {}
         for experiment_i in range(len(params_without_dataset)):
             params = params_without_dataset[experiment_i]
