@@ -99,8 +99,9 @@ def calculate_predictions(data, start,stop,stride, window_len, pred_fn):
     return np.array(preds).squeeze()
     
 def create_pred_fn(model):
-    output = lasagne.layers.get_output(model, deterministic=True)
-    inputs = lasagne.layers.get_all_layers(model)[0].input_var
+    inputs = create_suitable_theano_input_var(model)
+    output = lasagne.layers.get_output(model, deterministic=True,
+        inputs=inputs, input_var=inputs)
     pred_fn = theano.function([inputs], output)
     return pred_fn
 
@@ -262,6 +263,10 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         super(FinalReshapeLayer,self).__init__(incoming, **kwargs)
 
     def get_output_for(self, input, input_var=None, **kwargs):
+        # need input_var to determine number of trials
+        # cannot use input var of entire net since maybe you want to
+        # get output given an activation for a later layer...
+        #
         # before we have sth like this (example where there was only a stride 2
         # in the computations before, and input lengh just 5)
         # showing with 1-based indexing here, sorry ;)

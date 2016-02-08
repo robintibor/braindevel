@@ -64,7 +64,7 @@ def create_default_experiment(final_layer, dataset, num_epochs=100):
 class Experiment(object):
     def __init__(self, final_layer, dataset, splitter, preprocessor,
             iterator, loss_expression, updates_expression, updates_modifier,
-            monitors, stop_criterion, early_stop_chan):
+            monitors, stop_criterion, remember_best_chan):
         self.final_layer = final_layer
         self.dataset = dataset
         self.dataset_provider = PreprocessedSplitter(splitter, preprocessor)
@@ -76,7 +76,7 @@ class Experiment(object):
         self.monitors = monitors
         self.stop_criterion = stop_criterion
         self.monitor_manager = MonitorManager(monitors)
-        self.remember_extension = RememberBest(early_stop_chan)
+        self.remember_extension = RememberBest(remember_best_chan)
     
     def setup(self, target_var=None):
         lasagne.random.set_rng(RandomState(9859295))

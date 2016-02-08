@@ -84,9 +84,11 @@ class FixedTrialSplitter(TrainValidTestSplitter):
         valid_fold = range(i_last_train_trial+1,i_last_valid_trial+1)
         test_fold = range(i_last_valid_trial+1, n_trials)
         
-
         datasets = split_set_by_indices(dataset, train_fold, valid_fold,
             test_fold)
+        
+        # remerge sets here
+
         return datasets
 
 class SingleFoldSplitter(TrainValidTestSplitter):
@@ -153,6 +155,21 @@ def split_set_by_indices(dataset, train_fold, valid_fold, test_fold):
         datasets = OrderedDict([('train', train_set), ('valid', valid_set), 
                 ('test', test_set)])
         return datasets
+    
+def concatenate_sets(first_set, second_set):
+        """ Concatenates topo views and y(targets)"""
+        assert first_set.view_converter.axes == second_set.view_converter.axes,\
+            "first set and second set should have same axes ordering"
+        assert first_set.view_converter.axes[0] == 'b', ("Expect batch axis "
+            "as first axis")
+        merged_topo_view = np.concatenate((first_set.get_topological_view(),
+            second_set.get_topological_view()))
+        merged_y = np.concatenate((first_set.y, second_set.y)) 
+        merged_set = DenseDesignMatrixWrapper(
+            topo_view=merged_topo_view,
+            y=merged_y,
+            axes=first_set.view_converter.axes)
+        return merged_set
 
 class PreprocessedSplitter(object):
     def __init__(self, dataset_splitter, preprocessor):
@@ -174,7 +191,7 @@ class PreprocessedSplitter(object):
         this_datasets = self.dataset_splitter.split_into_train_valid_test(dataset)
         if dataset.reloadable:
             dataset.free_memory()
-        train_valid_set = self.concatenate_sets(this_datasets['train'],
+        train_valid_set = concatenate_sets(this_datasets['train'],
             this_datasets['valid'])
         test_set = this_datasets['test']
         n_train_set_trials = len(this_datasets['train'].y)
@@ -188,20 +205,6 @@ class PreprocessedSplitter(object):
         return {'train': train_valid_set, 'valid': valid_set, 
             'test': test_set}
 
-    def concatenate_sets(self, first_set, second_set):
-        """ Concatenates topo views and y(targets)"""
-        assert first_set.view_converter.axes == second_set.view_converter.axes,\
-            "first set and second set should have same axes ordering"
-        assert first_set.view_converter.axes[0] == 'b', ("Expect batch axis "
-            "as first axis")
-        merged_topo_view = np.concatenate((first_set.get_topological_view(),
-            second_set.get_topological_view()))
-        merged_y = np.concatenate((first_set.y, second_set.y)) 
-        merged_set = DenseDesignMatrixWrapper(
-            topo_view=merged_topo_view,
-            y=merged_y,
-            axes=first_set.view_converter.axes)
-        return merged_set
     
     def split_sets(self, full_set, split_index, split_to_end_num):
         """ Assumes that full set may be doubled or tripled in size

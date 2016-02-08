@@ -60,7 +60,6 @@ def optimize_to_move_to_cluster(out_layer, n_cluster_samples, learning_rate=0.1,
     Supply cluster activations to the update function"""
     rng = RandomState(seed)
     in_shape = get_input_shape(out_layer)
-    # push only one trial through
     in_shape = [n_trials] + list(in_shape[1:])
     rand_input = rng.randn(*in_shape).astype(np.float32)
     rand_in_var = theano.shared(rand_input)

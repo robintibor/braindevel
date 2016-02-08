@@ -24,6 +24,6 @@
                     },
                 ]
             },
-            early_stop_chan: $early_stop_chan,
+            remember_best_chan: $early_stop_chan,
         },
 }
