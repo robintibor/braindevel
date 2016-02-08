@@ -1,0 +1,18 @@
+{
+    extends: [
+        'configs/experiments/defaults.yaml'],
+    templates: {
+        weighted_binary_cross_entropy: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.weighted_binary_cross_entropy ,
+            imbalance_factor: $imbalance_factor,
+        },
+    },
+    variants: [[{
+        loss_expression: [$weighted_binary_cross_entropy],
+        max_increasing_epochs: [20],
+        max_epochs: [300],
+        imbalance_factor: [20],
+        layer_modifier: [JustReturn],
+        n_classes: [6],
+    }]]
+}

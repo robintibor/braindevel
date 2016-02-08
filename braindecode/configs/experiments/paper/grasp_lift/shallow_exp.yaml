@@ -1,0 +1,23 @@
+{
+   extends: [
+        'configs/experiments/paper/grasp_lift/defaults.yaml',
+        'configs/experiments/paper/shallow_square.yaml',
+        'configs/experiments/paper/grasp_lift/all_sub_grasp_lift_set.yaml',
+        'configs/experiments/paper/grasp_lift/cnt_monitor_iterator.yaml',],
+    variants: [[{
+        save_path: ['data/models/paper/grasp-lift/shallow/'],
+        filter_time_length: [50],
+        pool_time_length: [150],
+        pool_time_stride: [30],
+        num_filters: [40,80],
+        preprocessor: ["null"],
+        input_time_length: [5500],
+        variants: [[
+            {final_dense_length: [120], input_time_length: [5500]},
+            {final_dense_length: [30],  input_time_length: [2000]}
+        ]],
+        
+        use_test_as_valid: [false],
+        n_classes: [6], # have to do since 4 is default in shallow square
+    }]],
+}
