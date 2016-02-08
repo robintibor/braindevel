@@ -6,13 +6,13 @@
         'configs/experiments/paper/grasp_lift/cnt_monitor_iterator.yaml',],
     variants: [[{
         save_path: ['data/models/paper/grasp-lift/deep-5/'],
-        num_filters: [40,80],
+        num_filters: [80],#[40,
         preprocessor: ["null"],
         input_time_length: [5500],
         filter_time_length: [30],
         pool_time_length: [3],
         pool_time_stride: [3],
         final_dense_length: [1],#[5,25],
-        use_test_as_valid: [false],
+        use_test_as_valid: [true],#[false],
     }]],
 }

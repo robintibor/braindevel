@@ -366,7 +366,7 @@ def create_experiment(yaml_filename):
             get_model_input_window(final_layer)))
     # add early stop chan, encessary for backwards compatibility
     exp_args = train_dict['exp_args']
-    exp_args['early_stop_chan'] = train_dict['exp_args'].pop('early_stop_chan',
+    exp_args['remember_best_chan'] = train_dict['exp_args'].pop('remember_best_chan',
         'valid_misclass')
     exp = Experiment(final_layer, dataset, splitter,
                     **exp_args)
