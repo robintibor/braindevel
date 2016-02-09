@@ -30,7 +30,8 @@ def show_mean_preds_around_events(y, all_preds):
 
 def transform_to_time_activations(activations, all_batch_sizes):
     """ Expects format: batch x (activation=> trialrow x channels x 0 x 1 (bc01)).
-    Transforms so that in 0 axis now there is time again, not strided time."""
+    Transforms so that in 0 axis now there is time again, not strided time.
+    Also removes final 1 axis if it is empty..."""
     transformed_activations = []
     for batch_act, batch_size in zip(activations, all_batch_sizes):
         n_rows = batch_act.shape[0]

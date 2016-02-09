@@ -10,8 +10,6 @@ def test_transform_time_cnt_act():
        [[[ 54.], [ 60.], [ 66.], [ 72.], [ 78.], [ 84.], [ np.nan]]]]
 
 
-    print range(6,43,3) + range(51,88,3)
-    
     time_act = transform_to_time_activations(np.array([acts]), [2])
     
     assert len(time_act) == 1

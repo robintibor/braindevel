@@ -1,4 +1,4 @@
-import lasagne
+ import lasagne
 from numpy.random import RandomState
 import theano
 import theano.tensor as T
@@ -123,8 +123,15 @@ class Experiment(object):
             # 2 and max col norm 0.5
             updates = self.updates_modifier.modify(updates, self.final_layer)
         input_var = lasagne.layers.get_all_layers(self.final_layer)[0].input_var
+        # Store all parameters, including update params like adam params,
         # needed for resetting to best model after early stop
-        self.all_params = updates.keys()
+        all_layer_params = lasagne.layers.get_all_params(self.final_layer)
+        self.all_params = all_layer_params
+        # now params from adam would still be missing... add them ...
+        all_update_params = updates.keys()
+        for param in all_update_params:
+            if param not in self.all_params:
+                self.all_params.append(param)
 
         self.train_func = theano.function([input_var, target_var], updates=updates)
         self.monitor_manager.create_theano_functions(input_var, target_var,
