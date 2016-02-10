@@ -11,3 +11,6 @@ def safe_softmax(x, eps=1e-6):
     x = T.maximum(x, eps)
     x = T.minimum(x, 1 - eps)
     return x
+
+def square(x):
+    return T.sqr(x)

@@ -11,15 +11,18 @@ import logging
 log = logging.getLogger(__name__)
 from theano.compile import UnusedInputError
 
-def create_pattern_deconv_fn(layers, patterns,
+def create_pattern_deconv_fn(layers, patterns, patterns_flipped,
                              return_all=False, 
                              enforce_positivity_after_relu=True,
                              enforce_positivity_everywhere=False):
+    assert patterns_flipped == False, "Otherwise implement it"
+
     inputs = create_suitable_theano_input_var(layers[-1])
     outputs = create_suitable_theano_output_var(layers[-1])
     
     n_patterns = len([l for l in layers if hasattr(l, 'W')])
     deconved_var = pattern_deconv(outputs, inputs, layers, patterns[:n_patterns],
+                                  patterns_flipped=patterns_flipped,
                                   return_all=return_all,
                                   enforce_positivity_after_relu=enforce_positivity_after_relu,
                                  enforce_positivity_everywhere=enforce_positivity_everywhere)
@@ -27,6 +30,27 @@ def create_pattern_deconv_fn(layers, patterns,
         pattern_deconv_fn = theano.function([outputs, inputs], deconved_var)
     except UnusedInputError:
         pattern_deconv_fn = theano.function([outputs], deconved_var)
+    return pattern_deconv_fn
+
+def create_pattern_reconstruct_fn(layers, patterns, patterns_flipped,
+                             return_all=False, 
+                             enforce_positivity_after_relu=True,
+                             enforce_positivity_everywhere=False):
+    """ Attempts to reconstruct given input from specific layer
+    by first computing feature representation..."""
+    assert patterns_flipped == False, "Otherwise implement it"
+
+    inputs = create_suitable_theano_input_var(layers[-1])
+    outputs = lasagne.layers.get_output(layers[-1], 
+        deterministic=True, input_var=inputs, inputs=inputs)
+    
+    n_patterns = len([l for l in layers if hasattr(l, 'W')])
+    deconved_var = pattern_deconv(outputs, inputs, layers, patterns[:n_patterns],
+                                  patterns_flipped=patterns_flipped,
+                                  return_all=return_all,
+                                  enforce_positivity_after_relu=enforce_positivity_after_relu,
+                                 enforce_positivity_everywhere=enforce_positivity_everywhere)
+    pattern_deconv_fn = theano.function([inputs], deconved_var)
     return pattern_deconv_fn
         
         
@@ -59,7 +83,11 @@ def compute_patterns_for_layers(needed_layers, input_data):
             log.info("Transforming to patterns for layer {:d}: {:s}...".format(
                 i_layer, layer.__class__.__name__))
             conv_weights = layer.W.get_value()
-            pattern = transform_to_patterns(conv_weights, inputs, outputs)
+            # TODO: take different implementation
+            # if inputs bytes times conv_weights.shape[2:]
+            # are below 2GB...
+            pattern = transform_to_patterns(conv_weights, inputs, outputs,
+                flip_filters=True) # conv weighs were flipped...
             log.info("Done.")
         elif isinstance(layer, lasagne.layers.DenseLayer):
             log.info("Transforming to patterns for layer {:d}: {:s}...".format(
@@ -75,9 +103,11 @@ def compute_patterns_for_layers(needed_layers, input_data):
     return patterns_per_layer
 
 def pattern_deconv(final_out, input_var, layers, pattern_weights,
-        return_all=False, enforce_positivity_after_relu=True, 
+        patterns_flipped, return_all=False, enforce_positivity_after_relu=True, 
         enforce_positivity_everywhere=False):
-    """pattern_weights should be numpy variables"""
+    """pattern_weights should be numpy variables and be unflipped,
+    i.e. correlation patterns not convolution patterns"""
+    assert patterns_flipped == False, "Otherwise implement it"
     layers_with_weights = [l for l in layers if hasattr(l, 'W')]
     assert len(layers_with_weights) == len(pattern_weights)
     layer_to_pattern = dict(zip(layers_with_weights, pattern_weights))
@@ -90,10 +120,9 @@ def pattern_deconv(final_out, input_var, layers, pattern_weights,
     for l in layers:
         if relu_before and enforce_positivity_after_relu:
             input_constraints.append('positive')
+            relu_before = False
         else:
             input_constraints.append(None)
-        if hasattr(l, 'W') and not l.nonlinearity.__name__ == 'rectify':
-            relu_before = False
         if hasattr(l, 'nonlinearity') and l.nonlinearity.__name__ == 'rectify':
             relu_before=True
         
@@ -108,8 +137,11 @@ def pattern_deconv(final_out, input_var, layers, pattern_weights,
         elif hasattr(layer, 'filter_size'):
             #cur_out += layer.b.dimshuffle('x',0,'x','x')
             pattern = T.constant(layer_to_pattern[layer], dtype=np.float32)
+            # filter flip true since we a) assume that patterns
+            # are unflipped, so we have to flip them back(!)
+            # this is all very confusing but should be correct now :)
             cur_out = conv2d(cur_out, pattern.dimshuffle(1,0,2,3),
-                              filter_flip=False, border_mode='full')
+                              filter_flip=True, border_mode='full')
         elif isinstance(layer, lasagne.layers.DenseLayer):
             #cur_out -= layer.b.dimshuffle('x', 0)
             pattern = T.constant(layer_to_pattern[layer], dtype=np.float32)
@@ -121,7 +153,6 @@ def pattern_deconv(final_out, input_var, layers, pattern_weights,
             reverse_pattern = (reverse_pattern[1:]-1).tolist()
             # starting at 1 since no trial axis there..
             cur_out = cur_out.dimshuffle(reverse_pattern)
-        #elif isinstance(layer, BiasLayer):
         elif layer.__class__.__name__ == 'BiasLayer':
             ndim = cur_out.ndim
             cur_out = cur_out - layer.b.dimshuffle(('x', 0) 
@@ -180,8 +211,6 @@ def upsample_pool(outputs, inputs, pool_size, pool_stride):
     actual_in = upsampled_out * T.neq(0,grad)
     return actual_in
 
-
-
 def compute_topo_covariances(all_inputs, weight_shape):
     """ all inputs and weight shape should be bc01"""
     n_chans = weight_shape[1]
@@ -189,46 +218,62 @@ def compute_topo_covariances(all_inputs, weight_shape):
     n_y = weight_shape[3]
     all_covariances = np.ones((n_chans,n_x,n_y,n_chans,n_x,n_y)) * np.nan
     for c1 in xrange(n_chans):
-        for c2 in xrange(c1,n_chans):
-            for x1 in xrange(n_x):
-                for x2 in xrange(x1,n_x):
-                    for y1 in xrange(n_y):
+        for x1 in xrange(n_x):
+            for y1 in xrange(n_y):
+                for c2 in xrange(n_chans):
+                    for x2 in xrange(n_x):
                         for y2 in xrange(y1,n_y):
-                            end_x = x1 - x2
-                            if end_x == 0:
-                                end_x = None
-                            end_y = y1 - y2
+                            if not np.isnan(all_covariances[c1,x1,y1,c2,x2,y2]):
+                                continue # already computed
+                                
+                            # hmhm lets make it equal for comparison
+                            end_x1 = -weight_shape[2] + x1 +1
+                            if end_x1 == 0:
+                                end_x1 = None
+                            end_y = -weight_shape[3] + y1 + 1
+                            end_x2 = -weight_shape[2] + x2 +1
+                            if end_x2 == 0:
+                                end_x2 = None
+                            end_y = -weight_shape[3] + y1 + 1
                             if end_y == 0:
                                 end_y = None
-                            in_1 = all_inputs[:,c1,x1:end_x,y1:end_y].flatten()
-                            in_2 = all_inputs[:,c2,x2:,y2:].flatten()
+                            end_y2 = -weight_shape[3] + y2 + 1
+                            if end_y2 == 0:
+                                end_y2 = None
+                            
+                            in_1 = all_inputs[:,c1,x1:end_x1,y1:end_y].flatten()
+                            in_2 = all_inputs[:,c2,x2:end_x2,y2:end_y2].flatten()
 
                             in_1_demeaned = in_1 - np.mean(in_1)
                             in_2_demeaned = in_2 - np.mean(in_2)
-                            cov = np.dot(in_1_demeaned, in_2_demeaned) / (len(in_1_demeaned) - 1)
-                            assert cov.shape == ()
+                            cov = np.dot(in_1_demeaned, in_2_demeaned) / float(len(in_1_demeaned) - 1)
                             
+                            assert cov.shape == ()
+                            assert not np.isnan(cov)
                             all_covariances[c1,x1,y1,c2,x2,y2] = cov
-                            all_covariances[c1,x1,y2,c2,x2,y1] = cov
-                            all_covariances[c1,x2,y1,c2,x1,y2] = cov
-                            all_covariances[c1,x2,y2,c2,x1,y1] = cov
-                            all_covariances[c2,x1,y1,c1,x2,y2] = cov
-                            all_covariances[c2,x1,y2,c1,x2,y1] = cov
-                            all_covariances[c2,x2,y1,c1,x1,y2] = cov
                             all_covariances[c2,x2,y2,c1,x1,y1] = cov
                                 
     assert not np.any(np.isnan(all_covariances))                        
     return all_covariances
 
-def transform_to_patterns(conv_weights, all_ins, all_outs):
+def transform_to_patterns(conv_weights, all_ins, all_outs,
+        flip_filters):
+    """
+    Set flip filters to true if you are giving conv weights,
+    to false if you are giving corr weights.
+    """
     all_covariances = compute_topo_covariances(all_ins, conv_weights.shape)
     all_covariances_flat = all_covariances.reshape(
         np.prod(all_covariances.shape[:3]), np.prod(all_covariances.shape[:3]))
     out_covs = np.cov(all_outs.swapaxes(0,1).reshape(all_outs.shape[1], -1))
-    flat_W = conv_weights[:,:,::-1,::-1].reshape(conv_weights.shape[0],-1)
+    if flip_filters:
+        corr_weights = conv_weights[:,:,::-1,::-1]
+    else:
+        corr_weights = conv_weights
+    flat_W = corr_weights.reshape(conv_weights.shape[0],-1)
 
     patterns = np.dot(all_covariances_flat, flat_W.T)
-    
+    """
     # Make hacky fix to out covs to prevent numerical instabilities
     # due to dead units
     diag_of_cov = np.diag(out_covs)
@@ -247,12 +292,14 @@ def transform_to_patterns(conv_weights, all_ins, all_outs):
         inv_all_covs[i_good,good_units] = inv_good_covs[i_in_good_invs]
         inv_all_covs[good_units, i_good] = inv_good_covs[i_in_good_invs]
     assert not np.any(np.isnan(inv_all_covs))
-    
+    """
+    inv_all_covs = np.linalg.pinv(out_covs)
     patterns = np.dot(patterns, inv_all_covs).T
     topo_patterns = patterns.reshape(conv_weights.shape)
     return topo_patterns
 
-def transform_conv_weights_to_patterns(conv_weights, topo, activations):
+def transform_conv_weights_to_patterns(conv_weights, topo, activations,
+    flip_filters):
     """Assume weights are bc0, not having fourth dimension..in case of fourth dimension,
     please recheck code
     Assuming topo is bc01, assuming activations is bc01"""
@@ -264,9 +311,15 @@ def transform_conv_weights_to_patterns(conv_weights, topo, activations):
     ## flatten and put channel/unit dimension first
     acts_out_for_cov = activations.transpose(1,0,2,3)
     acts_out_for_cov = acts_out_for_cov.reshape(acts_out_for_cov.shape[0], -1)
-    conv_vectors = conv_weights.reshape(conv_weights.shape[0],-1)
-    flat_patterns = transform_weights_to_patterns(conv_vectors, topo_transformed, acts_out_for_cov)
-    unflat_patterns = flat_patterns.reshape(*conv_weights.shape)
+    
+    if flip_filters:
+        corr_weights = conv_weights[:,:,::-1]
+    else:
+        corr_weights = conv_weights
+    conv_vectors = corr_weights.reshape(corr_weights.shape[0],-1)
+    flat_patterns = transform_weights_to_patterns(conv_vectors,
+        topo_transformed, acts_out_for_cov)
+    unflat_patterns = flat_patterns.reshape(*corr_weights.shape)
     return unflat_patterns
 
 def transform_raw_net_to_spat_temp_patterns(final_layer, train_topo):

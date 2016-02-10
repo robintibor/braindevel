@@ -244,7 +244,7 @@ class CntWindowTrialIterator(object):
     def get_batches(self, dataset, shuffle):
         i_trial_starts, i_trial_ends = compute_trial_start_end_samples(dataset.y)
         assert i_trial_ends[0] - i_trial_starts[0] + 1 >= self.n_sample_preds, (
-            "Trial should be longer than number of sample preds, "
+            "Trial should be longer or equal than number of sample preds, "
             "Trial length: {:d}, sample preds {:d}...".format(
                 i_trial_ends[0] - i_trial_starts[0] + 1,
                 self.n_sample_preds))

@@ -5,7 +5,7 @@
         'configs/experiments/paper/grasp_lift/all_sub_grasp_lift_set.yaml',
         'configs/experiments/paper/grasp_lift/cnt_monitor_iterator.yaml',],
     variants: [[{
-        save_path: ['data/models/paper/grasp-lift/deep-5/'],
+        save_path: ['data/models/paper/grasp-lift/deep-5/sub40/'],
         num_filters: [40],#[80,
         preprocessor: ["null"],
         input_time_length: [5500],
