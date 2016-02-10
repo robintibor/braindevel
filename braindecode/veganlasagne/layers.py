@@ -268,7 +268,7 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         # get output given an activation for a later layer...
         #
         # before we have sth like this (example where there was only a stride 2
-        # in the computations before, and input lengh just 5)
+        # in the computations before, and input length just 5)
         # showing with 1-based indexing here, sorry ;)
         # trial 1 sample 1, trial 1 sample 3, trial 1 sample 5
         # trial 2 sample 1, trial 2 sample 3, trial 2 sample 5
