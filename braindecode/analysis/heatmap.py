@@ -4,22 +4,34 @@ import theano
 import lasagne
 from theano.tensor.nnet import conv2d
 from braindecode.veganlasagne.layers import get_input_shape, BiasLayer
+from braindecode.veganlasagne.batch_norm import BatchNormLayer
 
 def create_heatmap_fn(all_layers, rules, min_in=None, max_in=None,
-        return_all=False):
+        return_all=False, use_output_as_relevance=False):
     # only using single trial, so one less dim than input shape
     if len(get_input_shape(all_layers[-1])) == 2:
         input_trial = T.fvector()
     elif len(get_input_shape(all_layers[-1])) == 4:
         input_trial = T.ftensor3()
-    # again, just single trial:
-    if len(all_layers[-1].output_shape) == 2:
-        out_relevances = T.fvector()
-    elif len(all_layers[-1].output_shape) == 4:
-        out_relevances = T.ftensor3()
+    if use_output_as_relevance:
+        if input_trial.ndim == 1:
+            input_var = input_trial.dimshuffle('x',0)
+        elif input_trial.ndim == 3:
+            input_var = input_trial.dimshuffle('x', 0,1,2)
+        out_relevances = lasagne.layers.get_output(all_layers[-1], 
+            inputs=input_var, deterministic=True, input_var=input_var)[0]
+    else:
+        # again, just single trial:
+        if len(all_layers[-1].output_shape) == 2:
+            out_relevances = T.fvector()
+        elif len(all_layers[-1].output_shape) == 4:
+            out_relevances = T.ftensor3()
     heatmap = create_heatmap(out_relevances, input_trial, all_layers, rules,
                             min_in, max_in, return_all)
-    heatmap_fn = theano.function([out_relevances, input_trial], heatmap)         
+    if use_output_as_relevance:
+        heatmap_fn = theano.function([input_trial], heatmap)
+    else:
+        heatmap_fn = theano.function([out_relevances, input_trial], heatmap)         
     return heatmap_fn
 
 def create_heatmap(out_relevances, input_trial, all_layers, 
@@ -46,7 +58,7 @@ def create_heatmap(out_relevances, input_trial, all_layers,
         all_rules = real_all_rules
         
     for rule in all_rules:
-        assert rule in ['w_sqr', 'z_plus', 'z_b', None]
+        assert rule in ['w_sqr', 'z_plus', 'z_b', 'adapt_z_b', None]
     assert len(all_rules) == len(all_layers), ("number of rules "
         "{:d} number layers {:d}".format(len(all_rules), len(all_layers)))
     
@@ -80,7 +92,8 @@ def create_heatmap(out_relevances, input_trial, all_layers,
                 layer.W, rule, min_in, max_in)
         elif (isinstance(layer, lasagne.layers.DropoutLayer) or
             isinstance(layer, lasagne.layers.NonlinearityLayer) or
-            isinstance(layer, lasagne.layers.FlattenLayer)):
+            isinstance(layer, lasagne.layers.FlattenLayer)or
+            isinstance(layer, BatchNormLayer)):
             pass
         elif isinstance(layer, lasagne.layers.DimshuffleLayer):
             pattern = layer.pattern
@@ -136,7 +149,7 @@ def compute_heatmap(out_relevances, all_activations_per_layer, all_layers,
 
 def relevance_conv(out_relevances, inputs, weights, rule, min_in=None,
         max_in=None):
-    assert rule in ['w_sqr', 'z_plus', 'z_b']
+    assert rule in ['w_sqr', 'z_plus', 'z_b', 'adapt_z_b']
     if rule == 'w_sqr':
         return relevance_conv_w_sqr(out_relevances, weights)
     elif rule == 'z_plus':
@@ -146,6 +159,14 @@ def relevance_conv(out_relevances, inputs, weights, rule, min_in=None,
         assert max_in is not None
         assert min_in <= 0
         assert max_in >= 0
+        return relevance_conv_z_b(out_relevances, inputs, weights,
+            min_in, max_in)
+    elif rule == 'adapt_z_b':
+        # clip to zero both min and max to prevent mistakes...
+        min_in = T.min(inputs)
+        min_in = T.minimum(0, min_in)
+        max_in = T.max(inputs)
+        max_in = T.maximum(0, max_in)
         return relevance_conv_z_b(out_relevances, inputs, weights,
             min_in, max_in)
 
@@ -177,8 +198,8 @@ def relevance_conv_z_plus(out_relevances, inputs, weights):
 
 
 def relevance_conv_z_b(out_relevances, inputs, weights, min_in, max_in):
-    assert min_in <= 0
-    assert max_in >= 0
+    #assert min_in <= 0
+    #assert max_in >= 0
     weights_b = T.lt(weights, 0) * weights * -max_in
     weights_b += T.gt(weights, 0) * weights * -min_in
 
