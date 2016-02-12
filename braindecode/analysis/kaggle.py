@@ -56,7 +56,11 @@ def transform_to_cnt_activations(time_activations, n_sample_preds, n_samples):
 
     relevant_acts = time_activations[:,:,valid_mask]
 
+    # earlier layers might contain some predictions that are before 
+    # the sample preditions, remove those...
     relevant_acts = relevant_acts[:,:,-n_sample_preds:]
+    # now remove the possible overlap between last batch and batch
+    # before last batch
     legitimate_last_preds = n_samples % n_sample_preds
     if legitimate_last_preds != 0:
         before_final_overlap = np.concatenate(relevant_acts[:-1], axis=1)
@@ -68,3 +72,12 @@ def transform_to_cnt_activations(time_activations, n_sample_preds, n_samples):
     assert act_time_series.shape[1] == n_samples
     
     return act_time_series
+
+def transform_to_trial_acts(activations, all_batch_sizes, n_sample_preds,
+    n_trial_len):
+    time_acts = transform_to_time_activations(activations, all_batch_sizes)
+    trial_acts = [transform_to_cnt_activations(t[np.newaxis], n_sample_preds, 
+                                               n_samples = n_trial_len)
+                  for t in time_acts]
+    trial_acts = np.array(trial_acts)
+    return trial_acts

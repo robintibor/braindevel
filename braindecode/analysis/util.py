@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.signal import blackmanharris
+import scipy.signal
 
 def amplitudes_and_freqs(inputs, sampling_rate, axis=1, n=None):
     amplitudes = np.abs(np.fft.rfft(inputs, axis=axis, n=n))
@@ -25,3 +26,33 @@ def multiply_blackmann_harris_window(inputs, axis=1):
         if i_axis != axis:
             w = np.expand_dims(w, i_axis)
     return w * inputs
+
+def median_absolute_deviation(arr, axis=None):
+    """ Median Absolute Deviation: a "Robust" version of standard deviation.
+        Indices variability of the sample.
+        https://en.wikipedia.org/wiki/Median_absolute_deviation 
+        http://stackoverflow.com/a/23535934/1469195
+    """
+    med = np.median(arr, axis=axis, keepdims=True)
+    return np.median(np.abs(arr - med), axis=axis)
+
+
+def lowpass_topo(topo, high_cut_hz, sampling_rate, axis=0, filt_order=4):
+    nyq_freq = 0.5 * sampling_rate
+    b, a = scipy.signal.butter(filt_order, high_cut_hz / nyq_freq, btype='lowpass')
+    filtered = scipy.signal.filtfilt(b,a, topo, axis=0)
+    return filtered
+
+def highpass_topo(topo, low_cut_hz, sampling_rate, axis=0, filt_order=4):
+    nyq_freq = 0.5 * sampling_rate
+    b, a = scipy.signal.butter(filt_order, low_cut_hz / nyq_freq, btype='highpass')
+    filtered = scipy.signal.filtfilt(b,a, topo, axis=0)
+    return filtered
+
+def bandpass_topo(topo, low_cut_hz, high_cut_hz, sampling_rate, axis=0, filt_order=4):
+    nyq_freq = 0.5 * sampling_rate
+    low = low_cut_hz / nyq_freq
+    high = high_cut_hz / nyq_freq
+    b, a = scipy.signal.butter(filt_order, [low, high], btype='bandpass')
+    filtered = scipy.signal.filtfilt(b,a, topo, axis=0)
+    return filtered

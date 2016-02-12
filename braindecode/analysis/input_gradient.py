@@ -6,7 +6,8 @@ import theano.tensor as T
 from braindecode.veganlasagne.layers import get_input_shape
 
 def create_descent_function(layer, wanted_activation,  learning_rate=0.1,
-                            input_cost=None, n_trials=1, seed=983748374):
+                            input_cost=None, n_trials=1, seed=983748374,
+                            loss='sqr'):
     rng = RandomState(seed)
     wanted_activation = np.array(wanted_activation)
     in_shape = get_input_shape(layer)
@@ -19,7 +20,10 @@ def create_descent_function(layer, wanted_activation,  learning_rate=0.1,
     output = lasagne.layers.get_output(layer, deterministic=True, 
         inputs=rand_in_var, input_var=rand_in_var)
     
-    output_cost = T.sqr(output - wanted_activation[np.newaxis])
+    if loss == 'sqr':
+        output_cost = T.sqr(output - wanted_activation[np.newaxis])
+    else:
+        output_cost = loss(output, wanted_activation[np.newaxis])
     output_cost = T.mean(output_cost)
     
     if input_cost is None:

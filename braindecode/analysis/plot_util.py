@@ -98,6 +98,23 @@ def plot_head_signals(signals, sensor_names=None, figsize=(12, 7),
         ax.axhline(y=0, ls=':', color="grey")
     return figure
 
+def plot_head_signals_tight_with_tube(signals, deviation,
+    sensor_names=None, figsize=(12, 7),
+        plot_args=None, hspace=0.35, sensor_map=tight_C_positions,
+        tsplot=False, color=None):
+    if color is None:
+        color = seaborn.color_palette()[0]
+    fig = plot_head_signals_tight(signals, sensor_names, 
+        figsize=figsize,plot_args=plot_args, hspace=hspace,
+        sensor_map=sensor_map, tsplot=tsplot)
+    for i, ax in enumerate(fig.axes):
+        ax.fill_between(range(signals.shape[1]),
+            signals[i].squeeze() - deviation[i].squeeze(),  
+            signals[i].squeeze() + deviation[i].squeeze(),  
+            alpha=0.2, color=color)
+    return fig
+    
+
 def plot_head_signals_tight(signals, sensor_names=None, figsize=(12, 7),
         plot_args=None, hspace=0.35, sensor_map=tight_C_positions,
         tsplot=False):

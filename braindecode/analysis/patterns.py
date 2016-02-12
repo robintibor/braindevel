@@ -96,6 +96,7 @@ def compute_patterns_for_layers(needed_layers, input_data):
                 inputs = inputs.reshape(inputs.shape[0], -1)
             in_cov = np.cov(inputs.T)
             pattern = np.dot(in_cov, layer.W.get_value())
+            log.info("Done.")
         else:
             raise ValueError("Trying to compute patterns for unknown layer "
                 "type {:s}", layer.__class__.__name__)
@@ -131,53 +132,68 @@ def pattern_deconv(final_out, input_var, layers, pattern_weights,
     for i_layer in xrange(len(layers)-1,0,-1):
         layer = layers[i_layer]
         inputs = all_outs[i_layer-1]
-        if hasattr(layer, 'pool_size'):
-            cur_out = upsample_pool(cur_out, inputs, 
-                layer.pool_size, layer.stride)
-        elif hasattr(layer, 'filter_size'):
-            #cur_out += layer.b.dimshuffle('x',0,'x','x')
-            pattern = T.constant(layer_to_pattern[layer], dtype=np.float32)
-            # filter flip true since we a) assume that patterns
-            # are unflipped, so we have to flip them back(!)
-            # this is all very confusing but should be correct now :)
-            cur_out = conv2d(cur_out, pattern.dimshuffle(1,0,2,3),
-                              filter_flip=True, border_mode='full')
-        elif isinstance(layer, lasagne.layers.DenseLayer):
-            #cur_out -= layer.b.dimshuffle('x', 0)
-            pattern = T.constant(layer_to_pattern[layer], dtype=np.float32)
-            cur_out = T.dot(cur_out, pattern.T)
-        elif isinstance(layer, lasagne.layers.DimshuffleLayer):
-            shuffle_pattern = layer.pattern
-            reverse_pattern = np.array([shuffle_pattern.index(i) 
-                for i in xrange(len(shuffle_pattern))])
-            reverse_pattern = (reverse_pattern[1:]-1).tolist()
-            # starting at 1 since no trial axis there..
-            cur_out = cur_out.dimshuffle(reverse_pattern)
-        elif layer.__class__.__name__ == 'BiasLayer':
-            ndim = cur_out.ndim
-            cur_out = cur_out - layer.b.dimshuffle(('x', 0) 
-                + ('x',) * (ndim - 2))
-        elif (isinstance(layer, lasagne.layers.DropoutLayer) or
-            isinstance(layer, lasagne.layers.FlattenLayer) or
-            isinstance(layer, lasagne.layers.NonlinearityLayer)):
-                pass
+        input_positive = (enforce_positivity_everywhere or 
+            input_constraints[i_layer] == 'positive')
+        if layer in layer_to_pattern:
+            pattern_arr = layer_to_pattern[layer]
         else:
-            raise ValueError("Trying to propagate through unknown layer "
-                "{:s}".format(layer.__class__.__name__))
-        if hasattr(layer, 'nonlinearity') and layer.nonlinearity.__name__ == 'elu':
-            # first make sure within admissible range (-1, inf)
-            cur_out = T.maximum(cur_out, -0.9999)
-            cur_out = T.gt(cur_out, 0) * cur_out + T.le(cur_out, 0) * T.log(cur_out + 1)
-        if cur_out.shape != inputs.shape:
-            cur_out = cur_out.reshape(inputs.shape)
-        if input_constraints[i_layer] == 'positive' or enforce_positivity_everywhere:
-            cur_out = cur_out * T.gt(cur_out,0)
+            pattern_arr = None
+        cur_out = pattern_deconv_one_layer(cur_out, inputs, layer,
+            pattern_arr, input_positive)
         all_cur_outs.append(cur_out)
     if return_all:
         return all_cur_outs
     else:
         return cur_out
-    
+
+def pattern_deconv_one_layer(cur_out,
+        inputs, layer, pattern_arr, input_positive):
+    if hasattr(layer, 'pool_size'):
+        cur_out = upsample_pool(cur_out, inputs, 
+            layer.pool_size, layer.stride)
+    elif hasattr(layer, 'filter_size'):
+        #cur_out += layer.b.dimshuffle('x',0,'x','x')
+        assert pattern_arr is not None
+        pattern = T.constant(pattern_arr, dtype=np.float32) 
+        # filter flip true since we a) assume that patterns
+        # are unflipped, so we have to flip them back(!)
+        # this is all very confusing but should be correct now :)
+        cur_out = conv2d(cur_out, pattern.dimshuffle(1,0,2,3),
+                          filter_flip=True, border_mode='full')
+    elif isinstance(layer, lasagne.layers.DenseLayer):
+        #cur_out -= layer.b.dimshuffle('x', 0)
+        assert pattern_arr is not None
+        pattern = T.constant(pattern_arr, dtype=np.float32) 
+        cur_out = T.dot(cur_out, pattern.T)
+    elif isinstance(layer, lasagne.layers.DimshuffleLayer):
+        shuffle_pattern = layer.pattern
+        reverse_pattern = np.array([shuffle_pattern.index(i) 
+            for i in xrange(len(shuffle_pattern))])
+        reverse_pattern = (reverse_pattern[1:]-1).tolist()
+        # starting at 1 since no trial axis there..
+        cur_out = cur_out.dimshuffle(reverse_pattern)
+    elif layer.__class__.__name__ == 'BiasLayer':
+        ndim = cur_out.ndim
+        cur_out = cur_out - layer.b.dimshuffle(('x', 0) 
+            + ('x',) * (ndim - 2))
+    elif (isinstance(layer, lasagne.layers.DropoutLayer) or
+        isinstance(layer, lasagne.layers.FlattenLayer) or
+        isinstance(layer, lasagne.layers.NonlinearityLayer)):
+            pass
+    else:
+        raise ValueError("Trying to propagate through unknown layer "
+            "{:s}".format(layer.__class__.__name__))
+    if hasattr(layer, 'nonlinearity') and layer.nonlinearity.__name__ == 'elu':
+        # first make sure within admissible range (-1, inf)
+        cur_out = T.maximum(cur_out, -0.9999)
+        cur_out = T.gt(cur_out, 0) * cur_out + T.le(cur_out, 0) * T.log(cur_out + 1)
+    if cur_out.shape != inputs.shape:
+        cur_out = cur_out.reshape(inputs.shape)
+    if input_positive:
+        cur_out = cur_out * T.gt(cur_out,0)
+    return cur_out
+
+
 def upsample_pool(outputs, inputs, pool_size, pool_stride):
     pool_ones_shape = [outputs.shape[1], outputs.shape[1],
                        pool_size[0], pool_size[1]]
