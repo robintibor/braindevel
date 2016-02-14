@@ -8,7 +8,7 @@ from pylearn2.format.target_format import OneHotFormatter
 log = logging.getLogger(__name__)
 
 def load_cnt_processed(full_set):
-    full_set.load_full_set()
+    full_set.load_cnt()
     full_set.determine_clean_trials_and_chans()
     full_set.select_sensors()
     log.info("Preprocessing set...")
@@ -16,7 +16,7 @@ def load_cnt_processed(full_set):
     return full_set.signal_processor.cnt
 
 def load_cnt_unprocessed(full_set):
-    full_set.load_full_set()
+    full_set.load_cnt()
     full_set.determine_clean_trials_and_chans()
     full_set.select_sensors()
     return full_set.signal_processor.cnt
