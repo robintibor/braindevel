@@ -1,0 +1,42 @@
+ {
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/bci_competition/files_train_test.yaml',
+        'configs/experiments/paper/cnt.yaml',
+        'configs/experiments/paper/4_layer_no_nin_custom.yaml',
+        ], 
+    variants: [[
+    {
+        save_path: ['data/models/paper/bci-competition/cnt/deep4-improved/'],
+        final_dense_length: [2],
+        input_time_length: [1000],
+        n_sample_preds : [500], # will be overwritten anyways
+        train_cleaner: [$no_cleaner],
+        test_cleaner: [$no_cleaner],
+        
+        
+        filter_time_length: [15],
+        filter_length_2: [7],
+        filter_length_3: [3],
+        filter_length_4: [3],
+        final_dense_length: [5],
+        trial_stop: [4000],
+        
+        variants: [[{
+            num_filters_time: [20],
+            num_filters_spat: [20],
+            num_filters_2: [40],
+            num_filters_3: [60],
+            num_filters_4: [80],
+        },
+        {
+            num_filters_time: [10],
+            num_filters_spat: [20],
+            num_filters_2: [20],
+            num_filters_3: [40],
+            num_filters_4: [80],
+        },]]
+        
+    }
+    ]]
+}
