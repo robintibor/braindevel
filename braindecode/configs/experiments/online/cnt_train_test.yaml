@@ -1,0 +1,54 @@
+{
+    extends: [
+        'configs/experiments/paper/ours/shallow.yaml',
+        'configs/experiments/paper/cnt.yaml',
+        ],
+    
+    templates: {
+        test_raw_set: !obj:braindecode.datasets.cnt_signal_matrix.CntSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.$loader_type {
+                    filename: $test_dataset_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            sensor_names: $sensor_names,
+        },
+        test_online_set: !obj:braindecode.datasets.cnt_signal_matrix.CntSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.HDF5StreamedSet {
+                    filename: $online_dataset_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            sensor_names: $sensor_names,
+        },
+        combined_set: !obj:braindecode.datasets.combined.CombinedSet {
+        # raw set train defined in cnt.yaml file in paper folder
+            sets: [$raw_set_train, $test_raw_set, $test_online_set],
+        },
+    },
+    variants: [[{
+        cleaner: [$no_cleaner],
+        test_filename: ["null"], # not needed
+        dataset_filename: [
+            'data/four-sec-dry-32-sensors/MaVoMuSc_dryEEG32S001_2.BBCI.mat',
+            'data/four-sec-dry-32-sensors/MaVoMuSc_dryEEG32S003.BBCI.mat',
+        ],
+        dataset: [$combined_set],
+        test_dataset_filename: ['data/four-sec-dry-32-sensors/MaVoMuSc_dryEEG32S003.BBCI.mat',
+            'data/online/2016-01-07_17-15-35.hdf5'],
+        online_dataset_filename: ['data/online/2016-01-07_17-25-32.hdf5'],
+        save_path: ['data/models/online/cnt/shallow/'],
+        low_cut_off_hz: [0.5],
+        final_dense_length: [30],
+        input_time_length: [2000],
+        n_sample_preds : [1000], # will be overwritten anyways
+    }]],
+}

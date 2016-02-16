@@ -1095,14 +1095,11 @@ class Conv2DLayer(BaseConvLayer):
 
     def convolve(self, input, **kwargs):
         border_mode = 'half' if self.pad == 'same' else self.pad
-        print border_mode
         border_mode = 'valid'
         conved = self.convolution(input, self.W,
                                   image_shape=self.input_shape, filter_shape=self.get_W_shape(),
                                   subsample=self.stride,
                                   border_mode=border_mode)#filter_flip=self.flip_filters)
-        print border_mode
-        print conved.ndim
                                  
         return conved
 
@@ -1765,7 +1762,6 @@ class SumPool2dLayer(Pool2DLayer):
                                         st=self.stride,
                                         ignore_border=self.ignore_border,
                                         padding=self.pad,
-                                        mode=self.mode,
                                         )
         # cast size to float32 to prevent upcast to float64 of entire data
         return pooled * np.float32(np.prod(self.pool_size))

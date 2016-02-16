@@ -168,8 +168,8 @@ def sgd_iterator():
     exp.run_until_second_stop()
     
 def sgd_exp():
-    # successfully crashed
-    # 4) adam druch sgd ersetzen
+    # successfully crashed Monday, 15th february 19:18
+    # 4) adam durch sgd ersetzen
     network = InputLayer([None,32,2000,1])
     network = DimshuffleLayer(network, [0,3,2,1])
     network = Conv2DLayer(network, num_filters=40, filter_size=[30,1],
@@ -186,9 +186,6 @@ def sgd_exp():
     network = FinalReshapeLayer(network)
     network = NonlinearityLayer(network, nonlinearity=sigmoid)
 
-    #dataset = KaggleGraspLiftSet(data_folder='data/kaggle-grasp-lift/',
-    #    i_subject=8, resample_half=True, standardize=False)
-    #splitter = KaggleTrainValidTestSplitter(use_test_as_valid=False)
     preprocessor = None
 
     iterator = CntWindowsFromCntIterator(batch_size=20,
@@ -347,6 +344,9 @@ def with_lasagne():
     # 2) nurnoch nach early stop weiterlaufen
     # 3) kaggle grasp lift set durch random set ersetzen, entsprechender splitter auch
     # 4) adam durch sgd mit fester lernrate ersetzen
+    # 5) creat escript with just the sgd_exp, copy oer all classes necessary, do not import anything
+    
+    #... here it no longer crashed :/
     # 5) iterator durch neu geschriebenen der einfach batches randommaessig holt und achsen switched...
     # 6) komplette experimentklasse ersetzen, funktionen hierhin kopieren
     network = InputLayer([None,32,2000,1])
@@ -453,4 +453,4 @@ def without_lasagne():
     print overall_cost
 
 if __name__ == "__main__":
-    sgd_exp()
+    sgd_iterator_fake_auc()

@@ -398,6 +398,11 @@ class ResultPrinter:
           ('input_time_length', 'input_len'),
           ('online_chan_freq_wise', 'online_c_1'),
           ('n_selected_features', 'n_features'),
+          ('filter_length_', 'f_len'),
+          ('filter_length', 'f_len'),
+          ('filter_time_length', 'f_time_len'),
+          ('num_filters_', 'n_f'),
+          ('num_filters', 'n_f'),
           ])
         for header in table_headers:
             pretty_header = header
