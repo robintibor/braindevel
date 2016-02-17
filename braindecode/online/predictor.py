@@ -34,6 +34,9 @@ class OnlinePredictor(object):
         # Compute how many samples we already have past the
         # sample we wanted to predict
         # keep in mind: n_samples = n_samples (number of samples)
+        # so how many samples are we past
+        # last prediction + prediction frequency
+        # -1 at the end below since python  indexing is zerobased
         n_samples_after_pred = min(self.n_samples - 
             self.n_samples_pred_window,
             self.n_samples - self.i_last_pred - self.pred_freq - 1)
@@ -56,8 +59,8 @@ class OnlinePredictor(object):
     def has_new_prediction(self):
         return self.last_pred is not None
              
-def make_predictions_with_online_predictor(predictor, cnt_data, block_len,
-        input_start, input_end):
+def make_predictions_with_online_predictor(predictor, cnt_data, 
+    y_labels, block_len, input_start, input_end):
     predictor.initialize(n_chans=cnt_data.shape[1])
     window_len = predictor.model.get_n_samples_pred_window()
     all_preds = []
@@ -70,6 +73,16 @@ def make_predictions_with_online_predictor(predictor, cnt_data, block_len,
             assert ((i_sample + 1) - window_len) % predictor.pred_freq == 0
             all_preds.append(pred)
             i_pred_samples.append(i_sample)
+            if y_labels[i_sample] == 0:
+                target = 2
+            else:
+                # -1 due to class 0 being marker for nothing...
+                target = y_labels[i_sample] - 1
+                # -2* window len +1 because already we start with -windowlen+1
+                # in this loop
+                predictor.model.train(cnt_data[input_start+i_sample-2*window_len+1:
+                    input_start-window_len+1+i_sample], 
+                    [np.int32(target)])
 
 
     preds = np.array(all_preds).squeeze()

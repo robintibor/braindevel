@@ -145,6 +145,7 @@ class PredictionServer(gevent.server.StreamServer):
             sensor_samples = array[:-1,:]
             if self.save_data:
                 data_saver.append_samples(array.T)
+            # here now also supply y to data processor...
             self.predictor.receive_samples(sensor_samples.T)
             if self.predictor.has_new_prediction():
                 pred, i_sample = self.predictor.pop_last_prediction_and_sample_ind()
