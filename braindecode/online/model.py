@@ -4,7 +4,7 @@ from braindecode.veganlasagne.layers import get_input_time_length
 import numpy as np
 import theano.tensor as T
 from lasagne.objectives import categorical_crossentropy
-from lasagne.updates import sgd
+from lasagne.updates import sgd, adam
 class OnlineModel(object):
     def __init__(self, model):
         self.model = model
@@ -18,7 +18,7 @@ class OnlineModel(object):
         targets = T.ivector()
         loss = categorical_crossentropy(output, targets)
         params = lasagne.layers.get_all_params(self.model)
-        updates= sgd(loss.mean(), params, learning_rate=0.00001)
+        updates= adam(loss.mean(), params, learning_rate=0.0001)
         
         # TODO:maxnormconstraint
         self.train_fn = theano.function([inputs, targets], 
