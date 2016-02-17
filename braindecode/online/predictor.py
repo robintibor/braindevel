@@ -57,9 +57,9 @@ class OnlinePredictor(object):
         return self.last_pred is not None
              
 def make_predictions_with_online_predictor(predictor, cnt_data, block_len,
-        window_len, input_start, input_end, sample_stride):
+        input_start, input_end):
     predictor.initialize(n_chans=cnt_data.shape[1])
-
+    window_len = predictor.model.get_n_samples_pred_window()
     all_preds = []
     i_pred_samples = []
     for i_start_sample in xrange(input_start - window_len + 1, input_end+1,block_len):

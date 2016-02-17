@@ -81,8 +81,11 @@ class CntSignalMatrix(DenseDesignMatrix):
         for i_trial in xrange(len(labels)):
             i_start_sample = i_samples[i_trial]
             i_class = labels[i_trial]-1 # -1 due to 1-based matlab indexing
-            y[i_start_sample+trial_start_offset:i_start_sample+trial_stop_offset, 
-                i_class] = 1
+            # make sure trial is within bounds
+            if ((i_start_sample + trial_start_offset >= 0) and
+                (i_start_sample + trial_stop_offset <= len(y))):
+                y[i_start_sample+trial_start_offset:i_start_sample+trial_stop_offset, 
+                    i_class] = 1
         self.y = y
 
     def create_dense_design_matrix(self):

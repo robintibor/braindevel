@@ -5,7 +5,6 @@ import subprocess
 import time
 
 if __name__ == "__main__":
-    print sys.argv[1]
     if len(sys.argv) < 2 or (sys.argv[1] in ['-h', '--help']):
         print("Usage: ./scripts/train_multiple_jobs.py queuename configfilename  [start] [stop] [step] [waiting_sec] [train_flags]")
         sys.exit(0)

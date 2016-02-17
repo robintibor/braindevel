@@ -55,7 +55,7 @@ def get_y_signal(cnt_data, event_samples_and_classes, n_samples_per_trial):
     return y
 
 def exponential_standardize_cnt(cnt, init_block_size=1000, factor_new=1e-3,
-    eps=1e-4):
+        eps=1e-4):
     cnt_data = cnt.data
     standardized_data = exponential_running_standardize(cnt_data, 
         factor_new=factor_new, init_block_size=init_block_size, axis=None, 
