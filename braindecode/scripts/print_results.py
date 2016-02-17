@@ -16,14 +16,15 @@ class ResultPrinter:
     def __init__(self, folder_name):
         self._folder_name = folder_name
     
-    def print_results(self, templates_constants=False,
+    def print_results(self, templates=False,
+            constants=False,
             individual_datasets=True,
             start=None, stop=None,
             params=None):
         print ("Printing results in {:s}:".format(self._folder_name))
         self._collect_parameters_and_results(start, stop, params)
         self._format_results()
-        self._print(templates_constants, individual_datasets)
+        self._print(templates, constants, individual_datasets)
         
     def _collect_parameters_and_results(self, start, stop, params):
         self._result_pool = ResultPool()
@@ -86,9 +87,10 @@ class ResultPrinter:
         else:
             return arr 
             
-    def _print(self, templates_constants, individual_datasets):
-        if (templates_constants):
+    def _print(self, templates, constants, individual_datasets):
+        if (templates):
             self._print_templates()
+        if (constants):
             self._print_constant_parameters()
         if (individual_datasets):
             self._print_experiments_result_table()
@@ -98,7 +100,7 @@ class ResultPrinter:
         
     def _print_templates(self):
         # templates should all be same so just print first one
-        print("With ...")
+        print("Templates ...")
         for name, template in self._result_pool.template().iteritems():
             print(name + ":")
             # substitute object tags that cannot be loaded properly
@@ -116,7 +118,7 @@ class ResultPrinter:
             print value
     
     def _print_constant_parameters(self):
-        print("And...")
+        print("Parameters...")
         yaml.dump(self._result_pool.constant_params(), sys.stdout, 
             default_flow_style=False)
         print('')

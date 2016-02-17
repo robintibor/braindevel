@@ -19,26 +19,42 @@ class SeveralSetsSplitter(TrainValidTestSplitter):
         self.valid_set_fraction = 0.1
 
     def split_into_train_valid_test(self, sets_container):
+        # Otherwise rewrite code should not be too hard..
+        assert len(sets_container.sets) > 1, "Expect atlest 2 sets here..."
         # merge all sets before last into one...
         # left out, final set, is test set
-        if self.use_test_as_valid: # remember python indexing is 0-based..
-            i_final_set = len(sets_container.sets) - 1
+        # if we have more than 2 sets use secondlastset as valid set
+
+        # remember python indexing is 0-based..
+        i_test_set = len(sets_container.sets) - 1 
+        # in case of just 2 sets valid will get splitted in train and valid
+        # in else clause later
+        if self.use_test_as_valid:
+            i_valid_set = i_test_set
         else:
-            i_final_set = len(sets_container.sets) - 2
-        topos = [s.get_topological_view() for s in sets_container.sets[:i_final_set+1]]
-        ys = [s.y for s in sets_container.sets[:i_final_set+1]]
-        
-            
-        
-        full_topo = np.concatenate(topos, axis=0)
-        full_y = np.concatenate(ys, axis=0)
-        train_valid_set = DenseDesignMatrixWrapper(
-            topo_view=full_topo, y=full_y,
-            axes=sets_container.sets[0].view_converter.axes)
-        
-        train, valid = split_into_two_sets(train_valid_set, 
-            last_set_fraction=self.valid_set_fraction)
-        test = sets_container.sets[-1]
+            i_valid_set = i_test_set - 1
+        if len(sets_container.sets) > 2 or self.use_test_as_valid:
+            # can split off train and valid as individual sets
+            topos = [s.get_topological_view() for s in sets_container.sets[:i_valid_set]]
+            ys = [s.y for s in sets_container.sets[:i_valid_set]]
+            train_topo = np.concatenate(topos, axis=0)
+            train_y = np.concatenate(ys, axis=0)
+            train = DenseDesignMatrixWrapper(
+                topo_view=train_topo, y=train_y,
+                axes=sets_container.sets[0].view_converter.axes)
+            valid = sets_container.sets[i_valid_set]
+            test = sets_container.sets[i_test_set]
+        else:
+            topos = [s.get_topological_view() for s in sets_container.sets[:i_valid_set+1]]
+            ys = [s.y for s in sets_container.sets[:i_valid_set+1]]
+            full_topo = np.concatenate(topos, axis=0)
+            full_y = np.concatenate(ys, axis=0)
+            train_valid_set = DenseDesignMatrixWrapper(
+                topo_view=full_topo, y=full_y,
+                axes=sets_container.sets[0].view_converter.axes)
+            train, valid = split_into_two_sets(train_valid_set, 
+                last_set_fraction=self.valid_set_fraction)
+            test = sets_container.sets[i_test_set]
         return OrderedDict([('train', train), ('valid',valid),('test', test)])
 
 def split_into_two_sets(full_set, last_set_fraction):

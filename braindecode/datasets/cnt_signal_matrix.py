@@ -40,7 +40,7 @@ class CntSignalMatrix(DenseDesignMatrix):
         self.signal_processor.load_signal_and_markers()
 
     def select_sensors(self):
-        if (self.sensor_names is not None) and (self.sensor_names != 'all'):
+        if (self.sensor_names is not None) and (self.sensor_names is not 'all'):
             self.signal_processor.cnt = select_channels(
                 self.signal_processor.cnt, 
                 self.sensor_names)
