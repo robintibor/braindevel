@@ -91,9 +91,9 @@ def make_predictions_with_online_predictor(predictor, cnt_data,
                 target = y_labels[i_sample] - 1
                 # -2* window len +1 because already we start with -windowlen+1
                 # in this loop
-                predictor.model.train(cnt_data[input_start+i_sample-2*window_len+1:
-                    input_start-window_len+1+i_sample], 
-                    [np.int32(target)])
+                #predictor.model.train(cnt_data[input_start+i_sample-2*window_len+1:
+                #    input_start-window_len+1+i_sample], 
+                #    [np.int32(target)])
 
 
     preds = np.array(all_preds).squeeze()

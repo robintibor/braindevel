@@ -16,6 +16,7 @@ import datetime
 import os.path
 import sys
 import gevent.select
+from braindecode.experiments.experiment_runner import create_experiment
 log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
@@ -206,8 +207,8 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data):
     hostname = ''
     port = 1234
     params = np.load(base_name + '.npy')
-    train_dict = yaml_parse.load(open(base_name + '.yaml', 'r'))
-    model = train_dict['layers'][-1]
+    exp = create_experiment(base_name + '.yaml')
+    model = exp.final_layer
     lasagne.layers.set_all_param_values(model, params)
     data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(model)
