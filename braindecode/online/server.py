@@ -17,6 +17,7 @@ import os.path
 import sys
 import gevent.select
 from braindecode.experiments.experiment_runner import create_experiment
+from braindecode.veganlasagne.layers import transform_to_normal_net
 log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
@@ -137,6 +138,7 @@ class PredictionServer(gevent.server.StreamServer):
             if array is None:
                 # enter was pressed! quit! :)
                 break;
+            
             array = np.fromstring(array, dtype=np.float32)
             array = array.reshape(n_rows, n_cols, order='F')
             if self.save_data:
@@ -145,6 +147,8 @@ class PredictionServer(gevent.server.StreamServer):
             self.coordinator.receive_samples(array.T)
 
             if self.coordinator.has_new_prediction():
+                #    input_start-window_len+1+i_sample], 
+                #    [np.int32(target)])
                 pred, i_sample = self.coordinator.pop_last_prediction_and_sample_ind()
                 log.info("Prediction for sample {:d}:\n{:s}".format(
                     i_sample, pred))
@@ -204,10 +208,11 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data):
     params = np.load(base_name + '.npy')
     exp = create_experiment(base_name + '.yaml')
     model = exp.final_layer
+    model = transform_to_normal_net(model)
     lasagne.layers.set_all_param_values(model, params)
     data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(model)
-    coordinator = OnlineCoordinator(data_processor, online_model, pred_freq=100)
+    coordinator = OnlineCoordinator(data_processor, online_model, pred_freq=125)
     server = PredictionServer((hostname, port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
         save_data=save_data)

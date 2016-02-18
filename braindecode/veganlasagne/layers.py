@@ -106,12 +106,21 @@ def create_pred_fn(model):
     return pred_fn
 
 def transform_to_normal_net(final_layer):
-    """ Transforms cnt/parallel prediction net to a normal net."""
+    """ Transforms cnt/parallel prediction net to a normal net.
+    Leaves normal net intact"""
     # copy old model, need to set sys recursion limit up to make sure it can be copied
     old_limit = sys.getrecursionlimit()
     sys.setrecursionlimit(50000)
     new_final_layer = deepcopy(final_layer)
     sys.setrecursionlimit(old_limit)
+
+    has_reshape_layer = False
+    for l in lasagne.layers.get_all_layers(final_layer):
+        if l.__class__.__name__ == 'FinalReshapeLayer':
+            has_reshape_layer = True
+    if not has_reshape_layer:
+        # Nothing to transform...
+        return new_final_layer
 
     # remove stride reshape layers and instead set strides to conv/pool layers again
     # also replace final reshape with flattening layer

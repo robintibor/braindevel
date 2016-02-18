@@ -59,6 +59,17 @@ class OnlineCoordinator(object):
         # -1 since we have 0-based indexing in python
         self.i_last_pred = self.n_samples - n_samples_after_pred - 1
     
+#         if end is None:
+#             end_y = -1
+#         else:
+#             end_y = end
+#         target = self.marker_buffer[end_y]
+#         if target != 0:
+#             print ("training")
+#             target = target-1
+#             self.model.train(topo, [np.int32(target)])
+
+    
     def pop_last_prediction_and_sample_ind(self):
         last_pred = self.last_pred
         self.last_pred = None
