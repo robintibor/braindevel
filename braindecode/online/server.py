@@ -94,10 +94,6 @@ class PredictionServer(gevent.server.StreamServer):
              'CPz', 'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz', 'marker']
             )
         n_rows = self.read_until_bytes_received(in_socket, 4)
-        print "0", n_rows[0]
-        print "1", n_rows[1]
-        print "2", n_rows[2]
-        print "3", n_rows[3]
         n_rows = np.fromstring(n_rows, dtype=np.int32)[0]
         log.info("Number of rows:    {:d}".format(n_rows))
         n_cols = self.read_until_bytes_received(in_socket, 4)
@@ -143,7 +139,6 @@ class PredictionServer(gevent.server.StreamServer):
                 break;
             array = np.fromstring(array, dtype=np.float32)
             array = array.reshape(n_rows, n_cols, order='F')
-            sensor_samples = array[:-1,:]
             if self.save_data:
                 data_saver.append_samples(array.T)
             # here now also supply y to data processor...
