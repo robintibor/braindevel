@@ -25,6 +25,7 @@
         filter_length_4: [10],
         final_dense_length: [2],
         trial_stop: [4000],
+        trial_start: [1500, 2500],
         
         variants: [[{
             num_filters_time: [20],

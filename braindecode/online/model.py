@@ -18,7 +18,7 @@ class OnlineModel(object):
         targets = T.ivector()
         loss = categorical_crossentropy(output, targets)
         params = lasagne.layers.get_all_params(self.model)
-        updates= adam(loss.mean(), params, learning_rate=0.0001)
+        updates= adam(loss.mean(), params, learning_rate=0.000001)
         
         # TODO:maxnormconstraint
         self.train_fn = theano.function([inputs, targets], 

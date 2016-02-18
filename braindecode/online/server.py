@@ -6,7 +6,7 @@ import numpy as np
 import logging
 import lasagne
 from pylearn2.config import yaml_parse
-from braindecode.online.predictor import OnlinePredictor
+from braindecode.online.coordinator import OnlineCoordinator
 from gevent import socket
 from braindecode.online.model import OnlineModel
 from braindecode.online.data_processor import StandardizeProcessor
@@ -19,10 +19,10 @@ import gevent.select
 log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
-    def __init__(self, listener, predictor, ui_hostname, ui_port, 
+    def __init__(self, listener, coordinator, ui_hostname, ui_port, 
         plot_sensors, save_data,
             handle=None, backlog=None, spawn='default', **ssl_args):
-        self.predictor = predictor
+        self.coordinator = coordinator
         self.ui_hostname = ui_hostname
         self.ui_port = ui_port
         self.plot_sensors = plot_sensors
@@ -133,7 +133,7 @@ class PredictionServer(gevent.server.StreamServer):
         in_socket, ui_socket):
         if self.save_data:
             data_saver = DataSaver(chan_names)
-        self.predictor.initialize(n_chans=n_rows - 1) # one is a marker chan(!)
+        self.coordinator.initialize(n_chans=n_rows - 1) # one is a marker chan(!)
         while True:
             array = self.read_until_bytes_received_or_enter_pressed(in_socket,
                 n_bytes)
@@ -146,9 +146,10 @@ class PredictionServer(gevent.server.StreamServer):
             if self.save_data:
                 data_saver.append_samples(array.T)
             # here now also supply y to data processor...
-            self.predictor.receive_samples(sensor_samples.T)
-            if self.predictor.has_new_prediction():
-                pred, i_sample = self.predictor.pop_last_prediction_and_sample_ind()
+            self.coordinator.receive_samples(array.T)
+
+            if self.coordinator.has_new_prediction():
+                pred, i_sample = self.coordinator.pop_last_prediction_and_sample_ind()
                 log.info("Prediction for sample {:d}:\n{:s}".format(
                     i_sample, pred))
                 # +1 to convert 0-based to 1-based indexing
@@ -210,8 +211,8 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data):
     lasagne.layers.set_all_param_values(model, params)
     data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(model)
-    predictor = OnlinePredictor(data_processor, online_model, pred_freq=100)
-    server = PredictionServer((hostname, port), predictor=predictor,
+    coordinator = OnlineCoordinator(data_processor, online_model, pred_freq=100)
+    server = PredictionServer((hostname, port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
         save_data=save_data)
     log.setLevel("DEBUG")

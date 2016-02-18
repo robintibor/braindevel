@@ -1,15 +1,19 @@
 import numpy as np
+from braindecode.online.ring_buffer import RingBuffer
 
-class OnlinePredictor(object):
-    """ Online predictor accepts samples and supplies predictions.
-    
-    It uses the data processor to preprocess the data and the model
-    to make the actual predictions. Online predictor is mainly responsible
+class OnlineCoordinator(object):
+    """ Online coordinator accepts samples, preprocesses them with 
+    data processor,  calls model to supply predictions
+    when necessary.
+    Online coordinator is mainly responsible
     for cutting out correct time windows for the model to predict on. """
     def __init__(self, data_processor, model, pred_freq):
         self.data_processor = data_processor
         self.model = model
         self.pred_freq = pred_freq
+        # assuming 4 classes
+        self.marker_buffer = RingBuffer(np.ones(data_processor.n_samples_in_buffer), 
+            dtype=np.int32)
 
     def initialize(self, n_chans):
         self.data_processor.initialize(n_chans)
@@ -21,7 +25,10 @@ class OnlinePredictor(object):
 
     def receive_samples(self, samples):
         """Expect samples in timexchan format"""
-        self.data_processor.process_samples(samples)
+        sensor_samples = samples[:,:-1]
+        markers = samples[:,-1]
+        self.marker_buffer.extend(markers)
+        self.data_processor.process_samples(sensor_samples)
         self.n_samples += len(samples)
         if self.should_do_next_prediction():
             self.predict()
