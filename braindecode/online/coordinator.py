@@ -12,8 +12,9 @@ class OnlineCoordinator(object):
         self.model = model
         self.pred_freq = pred_freq
         # assuming 4 classes
-        self.marker_buffer = RingBuffer(np.ones(data_processor.n_samples_in_buffer), 
-            dtype=np.int32)
+        self.marker_buffer = RingBuffer(np.ones(
+            data_processor.n_samples_in_buffer, 
+            dtype=np.int32))
 
     def initialize(self, n_chans):
         self.data_processor.initialize(n_chans)
@@ -72,8 +73,11 @@ def make_predictions_with_online_predictor(predictor, cnt_data,
     window_len = predictor.model.get_n_samples_pred_window()
     all_preds = []
     i_pred_samples = []
+    block = np.ones((block_len, cnt_data.shape[1] + 1),dtype=np.float32)
     for i_start_sample in xrange(input_start - window_len + 1, input_end+1,block_len):
         block = cnt_data[i_start_sample:i_start_sample+block_len]
+        y_block = y_labels[i_start_sample:i_start_sample+block_len]
+        block = np.concatenate((block, y_block[:,np.newaxis]), axis=1)
         predictor.receive_samples(block)
         if predictor.has_new_prediction():
             pred, i_sample = predictor.pop_last_prediction_and_sample_ind()
