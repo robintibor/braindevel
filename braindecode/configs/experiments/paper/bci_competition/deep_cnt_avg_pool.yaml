@@ -12,50 +12,18 @@
         n_sample_preds : [500], # will be overwritten anyways
         train_cleaner: [$no_cleaner],
         test_cleaner: [$no_cleaner],
-        
-        
         filter_time_length: [10],
         filter_length_2: [10],
         filter_length_3: [10],
         filter_length_4: [10],
         final_dense_length: [2],
         trial_stop: [4000],
-        
-        variants: [
-        [
-            {
-                trial_start: [1500],
-            },
-            {
-                trial_start: [2500],
-                input_time_length: [800],
-            },
-        ],
-        
-        [        
-        {
-            num_filters_time: [32],
-            num_filters_spat: [32],
-            num_filters_2: [48],
-            num_filters_3: [72],
-            num_filters_4: [108],
-        },
-#        {
-#            num_filters_time: [10],
-#            num_filters_spat: [20],
-#            num_filters_2: [20],
-#            num_filters_3: [40],
-#            num_filters_4: [80],
-#        },
-#        {
-#            num_filters_time: [32],
-#            num_filters_spat: [32],
-#            num_filters_2: [64],
-#            num_filters_3: [128],
-#            num_filters_4: [128,256],
-#        },
-        ]]
-        
+        num_filters_time: [25],
+        num_filters_spat: [25],
+        num_filters_2: [50],
+        num_filters_3: [100],
+        num_filters_4: [200],
+        trial_start: [1500],
     }
     ]]
 }

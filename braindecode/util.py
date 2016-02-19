@@ -48,3 +48,6 @@ def add_message_to_exception(exc, additional_message):
         arg0 = args[0]
     arg0 += additional_message
     exc.args = (arg0, ) + args[1:]
+    
+def unzip(list):
+    return zip(*list)

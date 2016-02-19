@@ -1,11 +1,13 @@
 import numpy as np
-from wyrm.processing import select_channels
-from braindecode.mywyrm.processing import select_marker_classes,\
-    select_marker_epochs
 from braindecode.datasets.raw import CleanSignalMatrix
 from braindecode.datasets.cnt_signal_matrix import CntSignalMatrix
-from braindecode.mywyrm.clean import log_clean_result, clean_train_test_cnt
+from braindecode.mywyrm.clean import clean_train_test_cnt
 import logging
+from braindecode.datasets.loaders import BBCIDataset
+from braindecode.datasets.signal_processor import SignalProcessor
+from braindecode.util import FuncAndArgs
+from braindecode.mywyrm.processing import select_marker_classes,\
+    select_marker_epoch_range
 log = logging.getLogger(__name__)
 
 class CombinedSet(object):
@@ -21,6 +23,60 @@ class CombinedSet(object):
             dataset.load()
         # hack to have correct y dimensions
         self.y = self.sets[-1].y[0:1]
+
+class CombinedCntSets(object):
+    reloadable=False
+    def __init__(self, set_args, load_sensor_names,
+        sensor_names, segment_ival, 
+        cnt_preprocessors, marker_def):
+        self.__dict__.update(locals())
+        del self.self
+    
+    def ensure_is_loaded(self):
+        if not hasattr(self, 'sets'):
+            self.load()
+    
+    def load(self):
+        self.construct_sets()
+        for dataset in self.sets:
+            dataset.load()
+        # hack to have correct y dimensions
+        self.y = self.sets[-1].y[0:1]
+    
+    def construct_sets(self):
+        self.sets = []
+        for set_arg in self.set_args:
+            filename, constructor, start_stop = set_arg
+            if constructor == 'bbci':
+                constructor = BBCIDataset
+            loader= constructor(filename, 
+                load_sensor_names=self.load_sensor_names)
+            additional_cnt_preprocs = []
+            if start_stop is not None:
+                start, stop = start_stop
+                assert np.all([len(labels) == 1 for labels in 
+                    self.marker_def.values()]), (
+                    "Expect only one label per class, otherwise rewrite...")
+        
+                classes = sorted([labels[0] for labels in self.marker_def.values()])
+                select_class = [select_marker_classes,
+                    dict(classes=classes, copy_data=False)]
+                additional_cnt_preprocs.append(select_class)
+                
+                select_epochs = [select_marker_epoch_range,
+                    dict(start=start, stop=stop)]
+                additional_cnt_preprocs.append(select_epochs)
+                
+            this_cnt_preprocs = self.cnt_preprocessors + additional_cnt_preprocs
+            signal_proc= SignalProcessor(
+                set_loader=loader,
+                segment_ival=self.segment_ival,
+                cnt_preprocessors=this_cnt_preprocs,
+                marker_def=self.marker_def)
+            this_set = CntSignalMatrix(signal_processor=signal_proc,
+                sensor_names=self.sensor_names)
+            self.sets.append(this_set)
+            
 
         
 class CombinedCleanedSet(object):

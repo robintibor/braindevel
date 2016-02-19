@@ -11,6 +11,19 @@ import re
 import wyrm.types
 from copy import copy
 
+def select_marker_classes_epoch_range(cnt, classes, start,stop,copy_data=False):
+    cnt = select_marker_classes(cnt, classes, copy_data)
+    cnt = select_marker_epoch_range(cnt, start, stop, copy_data)
+    return cnt
+
+def select_marker_epoch_range(cnt, start, stop, copy_data=False):
+    if start is None:
+        start = 0
+    if stop is None:
+        stop = len(cnt.markers)
+    epoch_inds = range(start,stop)
+    return select_marker_epochs(cnt, epoch_inds, copy_data)
+
 def select_marker_classes(cnt, classes, copy_data=False):
     needed_markers = [m for m in cnt.markers if m[1] in classes]
     if copy_data:
@@ -20,7 +33,7 @@ def select_marker_classes(cnt, classes, copy_data=False):
         copied_cnt = copy(cnt)
         copied_cnt.markers = needed_markers
         return copied_cnt
-    
+
 def select_marker_epochs(cnt, epoch_inds, copy_data=False):
     # Restrict markers to only the correct epoch inds..
     # use list comprehension and not conversion to numpy array
@@ -36,7 +49,7 @@ def select_marker_epochs(cnt, epoch_inds, copy_data=False):
         copied_cnt = copy(cnt)
         copied_cnt.markers = needed_markers
         return copied_cnt
-    
+
 def create_y_signal(cnt, n_samples_per_trial):
     fs = cnt.fs
     event_samples_and_classes = [(int(np.round(m[0] * fs/1000.0)), m[1]) for m in cnt.markers]
@@ -322,6 +335,12 @@ def common_average_reference_cnt(cnt):
     assert cnt.data.ndim == 2
     car = np.mean(cnt.data, axis=1, keepdims=True)
     newdata = cnt.data - car
+    return cnt.copy(data=newdata)
+
+def rereference_to(cnt, sensor_name):
+    assert cnt.data.ndim == 2
+    sensor_ind = np.flatnonzero(np.array(cnt.axes[1]) == sensor_name)[0]
+    newdata = cnt.data - cnt.data[:,sensor_ind:sensor_ind+1]
     return cnt.copy(data=newdata)
 
 def resample_cnt(cnt, newfs, timeaxis=-2):

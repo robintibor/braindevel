@@ -76,7 +76,6 @@ def parse_command_line_arguments():
                     yaml.load(param_and_value.split('=')[1]))
                         for param_and_value in args.filters])
     args.filters = filter_dict
-    print filter_dict
     if (args.startid is  not None):
         args.startid = args.startid - 1 # model ids printed are 1-based, python is zerobased
     if (args.stopid is  not None):

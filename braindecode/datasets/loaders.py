@@ -84,6 +84,30 @@ class BBCIDataset(object):
         with h5py.File(self.filename, 'r') as h5file:
             event_times_in_ms = h5file['mrk']['time'][:,0]
             event_classes = h5file['mrk']['event']['desc'][0]
+            
+            # Check wheter class names known and correct order
+            class_name_set = h5file['nfo']['className'][:,0]
+            all_class_names = [''.join(chr(c) for c in h5file[obj_ref]) 
+                for obj_ref in class_name_set]
+            if all_class_names == ['Right Hand', 'Left Hand', 'Rest', 'Feet']:
+                pass
+            elif  all_class_names == ['Rest', 'Feet', 'Left Hand', 'Right Hand']:
+                # Have to swap from
+                # ['Rest', 'Feet', 'Left Hand', 'Right Hand']
+                # to
+                # ['Right Hand', 'Left Hand', 'Rest', 'Feet']
+                right_mask = event_classes == 4
+                left_mask = event_classes == 3
+                rest_mask = event_classes == 1
+                feet_mask = event_classes == 2
+                event_classes[right_mask] = 1
+                event_classes[left_mask] = 2
+                event_classes[rest_mask] = 3
+                event_classes[feet_mask] = 4
+            else:
+                # add another clause here for other class names...
+                raise ValueError("Unknown class names {:s}", all_class_names)
+            
         cnt.markers =  zip(event_times_in_ms, event_classes)
 
     @staticmethod
@@ -123,11 +147,18 @@ class BCICompetition4Set2A(object):
                 wanted_signal = eeg_signal
                 wanted_sensor_names = chan_names[:last_eeg_chan]
             else:
-                assert np.array_equal(['EOG-left', 'EOG-central', 'EOG-right'],
-                    self.load_sensor_names), ("Only implemented loading eeg "
-                        " or EOG sensors for now")
-                wanted_signal = cnt_signal[last_eeg_chan:,:].T
-                wanted_sensor_names = chan_names[last_eeg_chan:] 
+                assert (np.array_equal(['EOG-left', 'EOG-central', 'EOG-right'],
+                    self.load_sensor_names) or
+                    np.array_equal(['C3', 'C4', 'Cz'],
+                    self.load_sensor_names)), ("Only implemented loading eeg "
+                        " or debug eeg or EOG sensors for now")
+                if np.array_equal(self.load_sensor_names, ['C3', 'C4', 'Cz']):
+                    self.load_sensor_names = ['EEG-C3', 'EEG-C4', 'EEG-Cz']
+                chan_inds = [chan_names.index(name)
+                    for name in self.load_sensor_names]
+                
+                wanted_signal = cnt_signal[chan_inds,:].T
+                wanted_sensor_names = np.array(chan_names)[chan_inds].tolist() 
             
             # replace nans  by means of corresponding chans
             for i_chan in xrange(wanted_signal.shape[1]):
@@ -283,5 +314,4 @@ class HDF5StreamedSet(object):
             event_ms_and_classes = [((pair[0] * 1000.0 / cnt.fs), pair[1]) for 
                 pair in event_samples_and_classes]
             cnt.markers = event_ms_and_classes
-            
         return cnt

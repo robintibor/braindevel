@@ -5,7 +5,7 @@ from braindecode.datahandling.preprocessing import exponential_running_mean,\
 
 
 class StandardizeProcessor(object):
-    def __init__(self, factor_new, eps=1e-4, 
+    def __init__(self, factor_new=1e-3, eps=1e-4, 
             n_samples_in_buffer=10000):
         self.factor_new = factor_new
         self.eps = eps
