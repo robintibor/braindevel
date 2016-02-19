@@ -5,6 +5,7 @@ from braindecode.experiments.parse import (
 from pylearn2.utils.logger import (CustomStreamHandler, CustomFormatter)
 from braindecode.experiments.experiment_runner import ExperimentsRunner
 import argparse
+import yaml
 
 def setup_logging():
     """ Set up a root logger so that other modules can use logging
@@ -55,6 +56,10 @@ def parse_command_line_arguments():
                         help='''Start with experiment at specified id....''')
     parser.add_argument('--stopid', type=int,
                         help='''Stop with experiment at specified id....''')
+    parser.add_argument('--filters', nargs='*', default=[],
+                        help='''Filter experiments by parameter values.
+                        Only run those experiments where the parameter matches the given value.
+                        Supply it in the form parameter1=value1 parameters2=value2, ...''')
     args = parser.parse_args()
 
     if args.firstsets is None:
@@ -65,6 +70,13 @@ def parse_command_line_arguments():
     param_dict =  dict([param_and_value.split('=') 
                         for param_and_value in args.params])
     args.params = param_dict
+    
+    # already load as yaml here to compare to later loaded params...
+    filter_dict =  dict([(param_and_value.split('=')[0], 
+                    yaml.load(param_and_value.split('=')[1]))
+                        for param_and_value in args.filters])
+    args.filters = filter_dict
+    print filter_dict
     if (args.startid is  not None):
         args.startid = args.startid - 1 # model ids printed are 1-based, python is zerobased
     if (args.stopid is  not None):
@@ -77,7 +89,8 @@ if __name__ == "__main__":
     all_train_strs = create_experiment_yaml_strings_from_files(
         args.experiments_file_name, args.template_file_name, args.debug,
         command_line_params=args.params,
-        only_first_n_sets=args.firstsets)
+        only_first_n_sets=args.firstsets,
+        filter_params=args.filters)
     exp_runner = ExperimentsRunner(quiet=args.quiet, start_id=args.startid,
         stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle,
         debug=args.debug, dry_run=args.dryrun, 

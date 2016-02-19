@@ -59,9 +59,10 @@ def generate_cluster_job(sys_args):
     st = os.stat(job_filepath)
     os.chmod(job_filepath, st.st_mode | stat.S_IEXEC)
     print("Will run:\n{:s}".format(train_command))
-    print("Run as one of:")
-    print("qsub -q meta_gpu-tf.q " + job_filepath)
-    print("qsub -q meta_gpu-rz.q " + job_filepath)
+    #print("Run as one of:")
+    #print("qsub -q meta_gpu-tf.q " + job_filepath)
+    #print("qsub -q meta_gpu-rz.q " + job_filepath)
+    #print("qsub -q meta_gpux-rz.q " + job_filepath)
     return job_filepath
 
 if __name__ == "__main__":

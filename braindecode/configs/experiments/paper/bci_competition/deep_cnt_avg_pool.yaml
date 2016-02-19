@@ -3,25 +3,23 @@
         'configs/experiments/paper/defaults.yaml',
         'configs/experiments/paper/bci_competition/files_train_test.yaml',
         'configs/experiments/paper/cnt.yaml',
-        'configs/experiments/paper/4_layer_no_nin_individual_filters.yaml',
+        'configs/experiments/paper/4_layer_no_nin_avg.yaml',
         ], 
     variants: [[
     {
-        save_path: ['data/models/paper/bci-competition/cnt/deep4-improved-2/'],
+        save_path: ['data/models/paper/bci-competition/cnt/deep4-improved-avg/'],
         input_time_length: [1000],
-        n_sample_preds : [350], # will be overwritten anyways
+        n_sample_preds : [500], # will be overwritten anyways
         train_cleaner: [$no_cleaner],
         test_cleaner: [$no_cleaner],
-       
+        
+        
         filter_time_length: [10],
         filter_length_2: [10],
         filter_length_3: [10],
         filter_length_4: [10],
         final_dense_length: [2],
         trial_stop: [4000],
-        #trial_start: [1500, 2500],
-        
-        
         
         variants: [
         [

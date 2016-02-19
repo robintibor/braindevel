@@ -13,7 +13,7 @@ def transform_vals_to_string_constructor(loader, node):
 
 def create_experiment_yaml_strings_from_files(config_filename, 
         main_template_filename, debug=False, command_line_params=None,
-        only_first_n_sets=False):
+        only_first_n_sets=False, filter_params=()):
     # First read out all files (check for extends attribute)
     # and transform to files to strings...
     # Then call creation of experiment yaml strings
@@ -22,7 +22,8 @@ def create_experiment_yaml_strings_from_files(config_filename,
         main_template_str = main_template_file.read()
     return create_experiment_yaml_strings(config_strings, main_template_str,
         debug=debug, command_line_params=command_line_params,
-        only_first_n_sets=only_first_n_sets)
+        only_first_n_sets=only_first_n_sets,
+        filter_params=filter_params)
 
 def create_config_strings(config_filename):
     yaml.add_constructor(u'!TransformValsToString', transform_vals_to_string_constructor)
@@ -43,12 +44,13 @@ def create_config_strings(config_filename):
     return config_strings
 
 def create_experiment_yaml_strings(all_config_strings, main_template_str,
-        debug=False, command_line_params=None, only_first_n_sets=False):
+        debug=False, command_line_params=None, only_first_n_sets=False,
+        filter_params=()):
     """ Config strings should be from top file to bottom file."""
     config_objects = create_config_objects(all_config_strings)
     final_params = create_params_from_config_objects(config_objects, 
         debug=debug, command_line_params=command_line_params,
-        only_first_n_sets=only_first_n_sets)
+        only_first_n_sets=only_first_n_sets, filter_params=filter_params)
    
     train_strings = []
     for i_config in range(len(final_params)):
@@ -65,9 +67,11 @@ def create_config_objects(all_config_strings):
     return config_objects
 
 def create_params_from_config_objects(config_objects, debug=False, 
-        command_line_params=None, only_first_n_sets=False):
+        command_line_params=None, only_first_n_sets=False,
+        filter_params=()):
     templates, variants = create_templates_variants_from_config_objects(
-        config_objects, debug=debug, only_first_n_sets=only_first_n_sets)
+        config_objects, debug=debug, only_first_n_sets=only_first_n_sets,
+        filter_params=filter_params)
     # update all params with command line params
     if command_line_params is not None:
         for param_dict in variants:
@@ -85,7 +89,7 @@ def create_params_from_config_objects(config_objects, debug=False,
     return unique_final_params
 
 def create_templates_variants_from_config_objects(config_objects, debug=False,
-        only_first_n_sets=False):
+        only_first_n_sets=False, filter_params=()):
     all_variants = []
     templates = dict()
     for config_obj in config_objects:
@@ -94,6 +98,16 @@ def create_templates_variants_from_config_objects(config_objects, debug=False,
             all_variants = product_of_lists_of_dicts(all_variants, sub_variants)
         if 'templates' in config_obj:
             templates.update(config_obj['templates'])
+    
+    filtered_variants = []
+    for variant in all_variants:
+        include_variant = True
+        for key in filter_params:
+            if variant.get(key, 'undefined') != filter_params[key]:
+                include_variant = False
+        if include_variant:
+            filtered_variants.append(variant)
+    all_variants = filtered_variants
     
     # Constrain to only first 5 datasets...
     if only_first_n_sets is not False:
