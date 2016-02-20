@@ -1,5 +1,5 @@
 import scipy
-from wyrm.processing import lfilter, filtfilt
+from wyrm.processing import lfilter, filtfilt, select_ival
 import numpy as np
 from copy import deepcopy
 from braindecode.datahandling.preprocessing import (exponential_running_mean, 
@@ -50,14 +50,46 @@ def select_marker_epochs(cnt, epoch_inds, copy_data=False):
         copied_cnt.markers = needed_markers
         return copied_cnt
 
-def create_y_signal(cnt, n_samples_per_trial):
-    fs = cnt.fs
-    event_samples_and_classes = [(int(np.round(m[0] * fs/1000.0)), m[1]) for m in cnt.markers]
+def select_relevant_ival(cnt, segment_ival):
+    """Select the ival of the data that has markers inside.
+    Respect segment ival.
+    Keeps data from 2 sec before first marker + segment_ival[0] to
+    2 sec after last marker + segment_ival[1]"""
+    ms_first_marker = cnt.markers[0][0]
+    
+    # allow 2 sec before first marker and after last marker
+    start = max(0, ms_first_marker + segment_ival[0] -2000)
+    ms_last_marker = cnt.markers[-1][0]
+    stop = ms_last_marker + segment_ival[1] + 2000
+    
+    cnt = select_ival(cnt, [start,stop])
+    # possibly subtract first element of timeaxis so timeaxis starts at 0 again?
+    return cnt
+
+def get_event_samples_and_classes(cnt, timeaxis=-2):
+    event_samples_and_classes = np.ones(
+        (len(cnt.markers), 2),dtype=np.int32)
+    
+    for i_marker in xrange(len(cnt.markers)):
+        marker_ms = cnt.markers[i_marker][0]
+        marker_class = cnt.markers[i_marker][1]
+        i_sample = np.searchsorted(cnt.axes[timeaxis], marker_ms)
+        event_samples_and_classes[i_marker] = [i_sample, marker_class]
+
+    return event_samples_and_classes
+
+def create_y_signal(cnt, n_samples_per_trial, timeaxis=-2):
+    """ Create a one-hot-encoded signal for all the markers in cnt.
+    Dimensions will be #samples x #classes(i.e. marker types)"""
+    
+    event_samples_and_classes = get_event_samples_and_classes(cnt,
+        timeaxis=timeaxis)
     return get_y_signal(cnt.data, event_samples_and_classes, n_samples_per_trial)
 
-def get_y_signal(cnt_data, event_samples_and_classes, n_samples_per_trial):
+def get_y_signal(cnt_data, event_samples_and_classes, n_samples_per_trial,
+        n_classes):
         # Generate class "signals", rest always inbetween trials
-    y = np.zeros((cnt_data.shape[0], 4), dtype=np.int32)
+    y = np.zeros((cnt_data.shape[0], n_classes), dtype=np.int32)
 
     y[:,2] = 1 # put rest class everywhere
     for i_sample, marker in event_samples_and_classes:

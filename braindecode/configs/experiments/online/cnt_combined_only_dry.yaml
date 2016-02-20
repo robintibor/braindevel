@@ -4,6 +4,18 @@
         'configs/experiments/paper/cnt.yaml',
         ],
     templates: {
+        resample_highpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],[
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $low_cut_off_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ]],
         resample_car_highpass_standardize: 
         [[
                 !!python/name:braindecode.mywyrm.processing.resample_cnt , 
@@ -139,13 +151,13 @@
         test_filename: ["null"], # remove this from params basically.. its coming from base filenames :)
         dataset_splitter: [$several_sets_splitter],
         valid_set_fraction: [0.2],
-        cnt_preprocessors: [$resample_cz_highpass_standardize],
+        cnt_preprocessors: [$resample_car_highpass_standardize],#$resample_cz_highpass_standardize],
         resample_fs: [500],
         load_sensor_names: [$dry_sensors],
         sensor_names: ["null"],
         cleaner: [$no_cleaner],
         dataset: [$combined_cnt_set],
-        save_path: ['data/models/online/cnt/shallow-combined/'],
+        save_path: ['data/models/online/cnt/shallow-only-dry/'],
         low_cut_off_hz: ["null"],
         final_dense_length: [9],
         trial_start: [1500],
@@ -153,37 +165,15 @@
         dataset_filename: ['null'],
         
         filenames: [[
-            'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
-            #'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
+            'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat']],
-        set_types: [['bbci',  'bbci']],
-        #set_preprocs: [[1,2,3]],
+        set_types: [['bbci', 'bbci']],
         
         set_preprocs: [[
-           [0, 760],
-           #[460,560],
-           [0,320],
+           [0, 240],
+           [240,320],
         ]],
         
-#        set_preprocs: [[
-#        [
-#        !!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
-#        { }
-#        ], 
-#        
-#        [!!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
-#        { }
-#        ], 
-#        [!!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
-#        { }
-#        ], 
-#        ]],
-
-#        set_args: [[['data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat', 'bbci', [0, 288],],
-#            ['data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat', 'bbci', [0, 240]],
-#            ['data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat', 
-#            'bbci', [240, 320]]]],
- 
         # DEBUG PARAMS
         batch_size: [60], # make it faster(?)
         trial_start: [1500],

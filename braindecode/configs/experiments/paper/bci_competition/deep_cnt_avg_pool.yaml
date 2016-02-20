@@ -23,6 +23,13 @@
         num_filters_2: [50],
         num_filters_3: [100],
         num_filters_4: [200],
+
+#        num_filters_time: [40],
+#        num_filters_spat: [40],
+#        num_filters_2: [40],
+#        num_filters_3: [40],
+#        num_filters_4: [40],
+        drop_in_prob: [0.1, 0.3],
         trial_start: [1500],
     }
     ]]

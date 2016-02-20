@@ -323,9 +323,8 @@ def compute_trial_start_end_samples(y):
     assert(np.all(i_trial_starts < i_trial_ends))
 
     # just checking that all trial lengths are equal
-    trial_len = i_trial_ends[0] - i_trial_starts[0]
-    assert all([stop - start == trial_len 
-                for start,stop in zip(i_trial_starts, i_trial_ends)]), (
+    all_trial_lens = np.array(i_trial_ends) - np.array(i_trial_starts)
+    assert all(all_trial_lens == all_trial_lens[0]), (
         "All trial lengths should be equal, otherwise recheck code below...")
     return i_trial_starts, i_trial_ends
 

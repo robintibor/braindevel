@@ -208,7 +208,8 @@ class ResultPrinter:
         with_standard_deviation = self._formatted_results[0].has_key('train_std')
         
         # just put 'epoch' not 'best_epoch' so that header is not so wide
-        for result_type in ['test', 'best', 'epoch', 'train', 'valid']:
+        result_type_headers = ['test', 'test_sample', 'best', 'epoch', 'train', 'valid']
+        for result_type in result_type_headers:
             # check if result exists, if yes add it
             if (result_type in self._formatted_results[0] or 
                 'best_' + result_type in self._formatted_results[0]):
@@ -224,7 +225,7 @@ class ResultPrinter:
             training_time = self._result_pool.training_times()[result_obj_id]
             result_row.append(str(datetime.timedelta(
                 seconds=round(training_time))))
-            for result_type in ['test', 'best', 'best_epoch', 'train', 'valid']:
+            for result_type in ['test', 'test_sample', 'best', 'best_epoch', 'train', 'valid']:
                 if result_type in results:
                     result_row.append(results[result_type])
                     if (with_standard_deviation and
@@ -268,7 +269,7 @@ class ResultPrinter:
     def _create_dataset_averaged_headers(all_result_list):
         params = deepcopy(all_result_list[0][0]['parameters'])
         misclass_keys = all_result_list[0][0]['misclasses'].keys()
-        # srot to show test before train before valid
+        # sort to show test before train before valid
         misclass_keys = sorted(misclass_keys, 
             key=lambda x: ('test' in x) * 1 + ('train' in x ) * 2 + 
             ('valid' in x ) * 3)

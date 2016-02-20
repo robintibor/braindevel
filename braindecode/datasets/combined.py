@@ -7,7 +7,7 @@ from braindecode.datasets.loaders import BBCIDataset
 from braindecode.datasets.signal_processor import SignalProcessor
 from braindecode.util import FuncAndArgs
 from braindecode.mywyrm.processing import select_marker_classes,\
-    select_marker_epoch_range
+    select_marker_epoch_range, select_relevant_ival
 log = logging.getLogger(__name__)
 
 class CombinedSet(object):
@@ -66,6 +66,10 @@ class CombinedCntSets(object):
                 select_epochs = [select_marker_epoch_range,
                     dict(start=start, stop=stop)]
                 additional_cnt_preprocs.append(select_epochs)
+                
+                select_ival = [select_relevant_ival,
+                     dict(segment_ival=self.segment_ival)]
+                additional_cnt_preprocs.append(select_ival)
                 
             this_cnt_preprocs = self.cnt_preprocessors + additional_cnt_preprocs
             signal_proc= SignalProcessor(

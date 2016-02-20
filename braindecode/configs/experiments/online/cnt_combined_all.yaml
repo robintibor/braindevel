@@ -154,36 +154,20 @@
         
         filenames: [[
             'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
-            #'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
+            'data/four-sec-dry-32-sensors/MaVoMuSc_dryEEG32S001_2.BBCI.mat',
+            'data/four-sec-dry-32-sensors/MaVoMuSc_dryEEG32S003.BBCI.mat',
+            'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat']],
-        set_types: [['bbci',  'bbci']],
-        #set_preprocs: [[1,2,3]],
+        set_types: [['bbci',  'bbci', 'bbci', 'bbci', 'bbci']],
         
         set_preprocs: [[
-           [0, 760],
-           #[460,560],
-           [0,320],
+           [100, 350],
+           [100,350],
+           [0,150],
+           [0,240],
+           [240,320],
         ]],
         
-#        set_preprocs: [[
-#        [
-#        !!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
-#        { }
-#        ], 
-#        
-#        [!!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
-#        { }
-#        ], 
-#        [!!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
-#        { }
-#        ], 
-#        ]],
-
-#        set_args: [[['data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat', 'bbci', [0, 288],],
-#            ['data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat', 'bbci', [0, 240]],
-#            ['data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat', 
-#            'bbci', [240, 320]]]],
- 
         # DEBUG PARAMS
         batch_size: [60], # make it faster(?)
         trial_start: [1500],

@@ -3,6 +3,9 @@ from wyrm.processing import select_channels
 from braindecode.datasets.sensor_positions import sort_topologically
 import numpy as np
 import logging
+from braindecode.mywyrm.processing import select_marker_classes,\
+    get_event_samples_and_classes
+from braindecode.datasets import signal_processor
 log = logging.getLogger(__name__)
 
 class CntSignalMatrix(DenseDesignMatrix):
@@ -57,12 +60,12 @@ class CntSignalMatrix(DenseDesignMatrix):
         assert classes == range(1,n_classes+1), ("Expect class labels to be "
             "from 1 to n_classes (due to matlab 0-based indexing)")
         # Select relevant markers
-        wanted_markers = [m for m in self.signal_processor.cnt.markers 
-            if m[1] in classes]
-        milliseconds, labels = zip(*wanted_markers)
-        # Transform milliseconds to samples where markers happened
-        i_samples = np.array(milliseconds) * self.signal_processor.cnt.fs / 1000.0
-        i_samples = np.round(i_samples).astype(np.int32)
+        reduced_cnt = select_marker_classes(self.signal_processor.cnt,
+            classes)
+        
+        event_samples_and_classes = get_event_samples_and_classes(reduced_cnt)
+        i_samples, labels = zip(*event_samples_and_classes)
+        
         
         # Create y "signal", first zero everywhere, in loop assign 
         #  1 to where a trial for the respective class happened
