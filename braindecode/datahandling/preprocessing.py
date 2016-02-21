@@ -13,14 +13,23 @@ def exponential_running_standardize(data, factor_new, init_block_size=None,
         ((init_block_size is not None) and 
             start_mean is None and start_var is None)), ("Supply either "
                 "init block size or start values...")
-    means = exponential_running_mean(data, factor_new=factor_new,
+    demeaned = exponential_running_demean(data, factor_new=factor_new,
         init_block_size=init_block_size, start_mean=start_mean, axis=axis)
-    demeaned = data - means
     stds = np.sqrt(exponential_running_var_from_demeaned(
         demeaned, factor_new=factor_new, init_block_size=init_block_size,
         start_var=start_var, axis=axis))
     standardized_data = demeaned / np.maximum(stds, eps)
     return standardized_data
+
+def exponential_running_demean(data, factor_new, init_block_size=None,
+        start_mean=None, axis=None):
+    assert ((init_block_size is None and (start_mean is not None)) or 
+        ((init_block_size is not None) and start_mean is None)), ("Supply either "
+                "init block size or start values...")
+    means = exponential_running_mean(data, factor_new=factor_new,
+        init_block_size=init_block_size, start_mean=start_mean, axis=axis)
+    demeaned = data - means
+    return demeaned
 
 def exponential_running_mean(data, factor_new, start_mean=None,
     init_block_size=None, axis=None):

@@ -1,15 +1,16 @@
-import scipy
 from wyrm.processing import lfilter, filtfilt, select_ival
 import numpy as np
 from copy import deepcopy
 from braindecode.datahandling.preprocessing import (exponential_running_mean, 
-    exponential_running_var_from_demeaned, OnlineAxiswiseStandardize,
-    exponential_running_standardize, online_standardize)
+    exponential_running_var_from_demeaned,
+    exponential_running_standardize, online_standardize,
+    exponential_running_demean)
 from sklearn.covariance import LedoitWolf as LW
 import scikits.samplerate
 import re
 import wyrm.types
 from copy import copy
+import scipy.signal
 
 def select_marker_classes_epoch_range(cnt, classes, start,stop,copy_data=False):
     cnt = select_marker_classes(cnt, classes, copy_data)
@@ -66,6 +67,28 @@ def select_relevant_ival(cnt, segment_ival):
     # possibly subtract first element of timeaxis so timeaxis starts at 0 again?
     return cnt
 
+def create_cnt_y(cnt, segment_ival, marker_def=None, timeaxis=-2):
+    """ Create a one-hot-encoded signal for all the markers in cnt.
+    Dimensions will be #samples x #classes(i.e. marker types)"""
+    if marker_def is None:
+        marker_def = {'1': [1], '2': [2], '3': [3], '4': [4]}
+    n_classes = len(marker_def)
+    assert np.all([len(labels) == 1 for labels in 
+        marker_def.values()]), (
+        "Expect only one label per class, otherwise rewrite...")
+
+    classes = sorted([labels[0] for labels in marker_def.values()])
+    assert classes == range(1,n_classes+1), ("Expect class labels to be "
+        "from 1 to n_classes (due to matlab 0-based indexing)")
+    
+    cnt = select_marker_classes(cnt,
+        classes)
+    event_samples_and_classes = get_event_samples_and_classes(cnt,
+        timeaxis=timeaxis)
+    return get_y_signal(event_samples_and_classes,n_samples=len(cnt.data),
+                       n_classes=n_classes, segment_ival=segment_ival,
+                       fs=cnt.fs)
+
 def get_event_samples_and_classes(cnt, timeaxis=-2):
     event_samples_and_classes = np.ones(
         (len(cnt.markers), 2),dtype=np.int32)
@@ -78,25 +101,29 @@ def get_event_samples_and_classes(cnt, timeaxis=-2):
 
     return event_samples_and_classes
 
-def create_y_signal(cnt, n_samples_per_trial, timeaxis=-2):
-    """ Create a one-hot-encoded signal for all the markers in cnt.
-    Dimensions will be #samples x #classes(i.e. marker types)"""
-    
-    event_samples_and_classes = get_event_samples_and_classes(cnt,
-        timeaxis=timeaxis)
-    return get_y_signal(cnt.data, event_samples_and_classes, n_samples_per_trial)
+def get_y_signal(event_samples_and_classes, n_samples, n_classes, segment_ival, fs):
+    i_samples, labels = zip(*event_samples_and_classes)
+        
+    # Create y "signal", first zero everywhere, in loop assign 
+    #  1 to where a trial for the respective class happened
+    # (respect segmentation interval for this)
+    y = np.zeros((n_samples, n_classes),
+        dtype=np.int32)
+    trial_start_offset = int(segment_ival[0] * fs / 1000.0)
+    trial_stop_offset = int(segment_ival[1] * fs / 1000.0)
 
-def get_y_signal(cnt_data, event_samples_and_classes, n_samples_per_trial,
-        n_classes):
-        # Generate class "signals", rest always inbetween trials
-    y = np.zeros((cnt_data.shape[0], n_classes), dtype=np.int32)
+    unique_labels = sorted(np.unique(labels))
+    assert np.array_equal(unique_labels, range(1, n_classes+1)), (
+        "Expect labels to be from 1 to n_classes...")
 
-    y[:,2] = 1 # put rest class everywhere
-    for i_sample, marker in event_samples_and_classes:
-        i_class = marker - 1
-        # set rest to zero, correct class to 1
-        y[i_sample:i_sample+n_samples_per_trial,2] = 0 
-        y[i_sample:i_sample+n_samples_per_trial,i_class] = 1 
+    for i_trial in xrange(len(labels)):
+        i_start_sample = i_samples[i_trial]
+        i_class = labels[i_trial]-1 # -1 due to 1-based matlab indexing
+        # make sure trial is within bounds
+        if ((i_start_sample + trial_start_offset >= 0) and
+            (i_start_sample + trial_stop_offset <= len(y))):
+            y[i_start_sample+trial_start_offset:i_start_sample+trial_stop_offset, 
+                i_class] = 1
     return y
 
 def exponential_standardize_cnt(cnt, init_block_size=1000, factor_new=1e-3,
@@ -106,6 +133,12 @@ def exponential_standardize_cnt(cnt, init_block_size=1000, factor_new=1e-3,
         factor_new=factor_new, init_block_size=init_block_size, axis=None, 
         eps=eps)
     return cnt.copy(data=standardized_data)
+
+def exponential_demean_cnt(cnt, init_block_size=1000, factor_new=1e-3):
+    cnt_data = cnt.data
+    demeaned_data = exponential_running_demean(cnt_data, 
+        factor_new=factor_new, init_block_size=init_block_size, axis=None)
+    return cnt.copy(data=demeaned_data)
 
 def online_standardize_epo(epo_train, epo_test):
     standard_dim_inds=(0,1)
@@ -178,7 +211,7 @@ def select_channels_epo(epo, regexp_list, invert=False, chanaxis=-1):
         regular expressions.
 
     """
-    chan_mask = np.array([False for i in range(len(epo.axes[chanaxis]))])
+    chan_mask = np.array([False for _ in range(len(epo.axes[chanaxis]))])
     for c_idx, c in enumerate(epo.axes[chanaxis]):
         for regexp in regexp_list:
             m = re.match(regexp, c, re.IGNORECASE | re.LOCALE)

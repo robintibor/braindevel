@@ -39,8 +39,6 @@
                 !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
                 { }
         ]],
-        
-        
         resample_cz_highpass_standardize: 
         [[
                 !!python/name:braindecode.mywyrm.processing.resample_cnt , 
@@ -55,6 +53,63 @@
         ],
             [
                 !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ],
+            ],
+        resample_bandpass_cz_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            
+            [
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
+                {'low_cut_hz': $low_cut_off_hz,
+                'high_cut_hz': $high_cut_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ],
+            ],
+        resample_cz_bandpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+        ],
+            
+            [
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
+                {'low_cut_hz': $low_cut_off_hz,
+                'high_cut_hz': $high_cut_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ],
+            ],
+        resample_cz_highpass_demean: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],[
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $low_cut_off_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_demean_cnt , 
                 { }
         ],
             ],
@@ -139,36 +194,35 @@
         test_filename: ["null"], # remove this from params basically.. its coming from base filenames :)
         dataset_splitter: [$several_sets_splitter],
         valid_set_fraction: [0.2],
-        cnt_preprocessors: [$resample_cz_highpass_standardize],
+        cnt_preprocessors: [$resample_bandpass_cz_standardize],
         resample_fs: [500],
         load_sensor_names: [$dry_sensors],
         sensor_names: ["null"],
         cleaner: [$no_cleaner],
         dataset: [$combined_cnt_set],
         save_path: ['data/models/online/cnt/shallow-combined/'],
-        low_cut_off_hz: ["null"],
+        low_cut_off_hz: [0.5],
+        high_cut_hz: [40],
         final_dense_length: [9],
         trial_start: [1500],
         train_loader_type: [BBCIDataset],
+        num_filters: [40],
         dataset_filename: ['null'],
         
         filenames: [[
             'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
-            'data/four-sec-dry-32-sensors/MaVoMuSc_dryEEG32S001_2.BBCI.mat',
-            'data/four-sec-dry-32-sensors/MaVoMuSc_dryEEG32S003.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat']],
         set_types: [['bbci',  'bbci', 'bbci', 'bbci', 'bbci']],
         
+        run_after_early_stop: [false],
+        
         set_preprocs: [[
-           [100, 350],
-           [100,350],
-           [0,150],
+           [0, 760],
            [0,240],
            [240,320],
         ]],
         
-        # DEBUG PARAMS
         batch_size: [60], # make it faster(?)
         trial_start: [1500],
         trial_stop: [4000],
@@ -182,6 +236,5 @@
         use_test_as_valid: [False], # False
         max_increasing_epochs: [40],
         max_epochs: [250],
-        # DEBUG PARAMS END
     }]],
 }

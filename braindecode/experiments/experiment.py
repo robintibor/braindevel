@@ -64,7 +64,7 @@ def create_default_experiment(final_layer, dataset, num_epochs=100):
 class Experiment(object):
     def __init__(self, final_layer, dataset, splitter, preprocessor,
             iterator, loss_expression, updates_expression, updates_modifier,
-            monitors, stop_criterion, remember_best_chan):
+            monitors, stop_criterion, remember_best_chan, run_after_early_stop):
         self.final_layer = final_layer
         self.dataset = dataset
         self.dataset_provider = PreprocessedSplitter(splitter, preprocessor)
@@ -77,6 +77,7 @@ class Experiment(object):
         self.stop_criterion = stop_criterion
         self.monitor_manager = MonitorManager(monitors)
         self.remember_extension = RememberBest(remember_best_chan)
+        self.run_after_early_stop = run_after_early_stop
     
     def setup(self, target_var=None):
         lasagne.random.set_rng(RandomState(9859295))
@@ -140,10 +141,13 @@ class Experiment(object):
     def run(self):
         log.info("Run until first stop...")
         self.run_until_early_stop()
+        # always setup for second stop, in order to get best model
+        # even if not running after early stop...
         log.info("Setup for second stop...")
         self.setup_after_stop_training()
-        log.info("Run until second stop...")
-        self.run_until_second_stop()
+        if self.run_after_early_stop:
+            log.info("Run until second stop...")
+            self.run_until_second_stop()
 
     def run_until_early_stop(self):
         log.info("Split/Preprocess datasets...")
@@ -151,8 +155,6 @@ class Experiment(object):
         log.info("...Done")
         self.create_monitors(datasets)
         self.run_until_stop(datasets, remember_best=True)
-        
-
 
     def run_until_stop(self, datasets, remember_best):
         self.monitor_epoch(datasets)

@@ -14,6 +14,7 @@ class OnlineModel(object):
         inputs = lasagne.layers.get_all_layers(self.model)[0].input_var
         pred_fn = theano.function([inputs], output)
         self.pred_fn = pred_fn
+        """
         # for now all hardcoded
         targets = T.ivector()
         loss = categorical_crossentropy(output, targets)
@@ -23,6 +24,7 @@ class OnlineModel(object):
         # TODO:maxnormconstraint
         self.train_fn = theano.function([inputs, targets], 
             updates=updates)
+        """
 
     def get_n_samples_pred_window(self):
         return get_input_time_length(self.model)

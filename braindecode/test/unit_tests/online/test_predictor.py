@@ -4,7 +4,7 @@ from lasagne.layers import InputLayer, GlobalPoolLayer
 import theano.tensor as T
 from braindecode.datahandling.preprocessing import exponential_running_standardize
 from braindecode.online.data_processor import StandardizeProcessor
-from braindecode.online.predictor import OnlinePredictor
+from braindecode.online.coordinator import OnlineCoordinator
 from braindecode.online.model import OnlineModel
 
 def test_online_predictor():
@@ -14,6 +14,8 @@ def test_online_predictor():
     rng = RandomState(3904890384)
     n_samples_in_buffer = 1000
     dataset = rng.rand(n_samples_in_buffer*2,5).astype(np.float32)
+    markers = np.ones((n_samples_in_buffer*2,1)).astype(np.float32)
+    set_and_markers = np.concatenate((dataset, markers), axis=1)
     
     factor_new=0.001
     n_stride = 10
@@ -26,12 +28,12 @@ def test_online_predictor():
         n_samples_in_buffer=n_samples_in_buffer)
     
     online_model = OnlineModel(model)
-    online_pred = OnlinePredictor(processor, online_model, pred_freq=pred_freq)
+    online_pred = OnlineCoordinator(processor, online_model, pred_freq=pred_freq)
     
     online_pred.initialize(n_chans=dataset.shape[1])
     all_preds = []
     for i_start_sample in xrange(0,dataset.shape[0]-n_stride+1,n_stride):
-        online_pred.receive_samples(dataset[i_start_sample:i_start_sample+n_stride])
+        online_pred.receive_samples(set_and_markers[i_start_sample:i_start_sample+n_stride])
         if online_pred.has_new_prediction():
             pred, _ = online_pred.pop_last_prediction_and_sample_ind()
             all_preds.append(pred)
@@ -43,6 +45,8 @@ def test_sum_prediction():
     rng = RandomState(3904890384)
     n_samples_in_buffer = 1000
     dataset = rng.rand(n_samples_in_buffer*2,5).astype(np.float32)
+    markers = np.ones((n_samples_in_buffer*2,1)).astype(np.float32)
+    set_and_markers = np.concatenate((dataset, markers), axis=1)
     
     factor_new=0.001
     n_stride = 10
@@ -59,12 +63,12 @@ def test_sum_prediction():
         n_samples_in_buffer=n_samples_in_buffer)
     
     online_model = OnlineModel(model)
-    online_pred = OnlinePredictor(processor, online_model, pred_freq=pred_freq)
+    online_pred = OnlineCoordinator(processor, online_model, pred_freq=pred_freq)
     
     online_pred.initialize(n_chans=dataset.shape[1])
     all_preds = []
     for i_start_sample in xrange(0,dataset.shape[0]-n_stride+1,n_stride):
-        online_pred.receive_samples(dataset[i_start_sample:i_start_sample+n_stride])
+        online_pred.receive_samples(set_and_markers[i_start_sample:i_start_sample+n_stride])
         if online_pred.has_new_prediction():
             pred, _ = online_pred.pop_last_prediction_and_sample_ind()
             all_preds.append(pred)

@@ -368,6 +368,8 @@ def create_experiment(yaml_filename):
     exp_args = train_dict['exp_args']
     exp_args['remember_best_chan'] = train_dict['exp_args'].pop('remember_best_chan',
         'valid_misclass')
+    exp_args['run_after_early_stop'] = train_dict['exp_args'].pop('run_after_early_stop',
+        True)
     exp = Experiment(final_layer, dataset, splitter,
                     **exp_args)
     assert len(np.setdiff1d(layers, 

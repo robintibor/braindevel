@@ -4,7 +4,7 @@ from braindecode.datasets.sensor_positions import sort_topologically
 import numpy as np
 import logging
 from braindecode.mywyrm.processing import select_marker_classes,\
-    get_event_samples_and_classes
+    get_event_samples_and_classes, create_cnt_y
 from braindecode.datasets import signal_processor
 log = logging.getLogger(__name__)
 
@@ -51,45 +51,9 @@ class CntSignalMatrix(DenseDesignMatrix):
 
     def create_cnt_y(self):
         """Create continuous target signal"""
-        n_classes = len(self.signal_processor.marker_def)
-        assert np.all([len(labels) == 1 for labels in 
-            self.signal_processor.marker_def.values()]), (
-            "Expect only one label per class, otherwise rewrite...")
-        
-        classes = sorted([labels[0] for labels in self.signal_processor.marker_def.values()])
-        assert classes == range(1,n_classes+1), ("Expect class labels to be "
-            "from 1 to n_classes (due to matlab 0-based indexing)")
-        # Select relevant markers
-        reduced_cnt = select_marker_classes(self.signal_processor.cnt,
-            classes)
-        
-        event_samples_and_classes = get_event_samples_and_classes(reduced_cnt)
-        i_samples, labels = zip(*event_samples_and_classes)
-        
-        
-        # Create y "signal", first zero everywhere, in loop assign 
-        #  1 to where a trial for the respective class happened
-        # (respect segmentation interval for this)
-        y = np.zeros((len(self.signal_processor.cnt.data), n_classes),
-            dtype=np.int32)
-        trial_start_offset = int(self.signal_processor.segment_ival[0] * 
-                         self.signal_processor.cnt.fs / 1000.0)
-        trial_stop_offset = int(self.signal_processor.segment_ival[1] * 
-                                 self.signal_processor.cnt.fs / 1000.0)
-
-        unique_labels = sorted(np.unique(labels))
-        assert np.array_equal(unique_labels, range(1, len(unique_labels)+1)), (
-            "Expect labels to be from 1 to n_classes...")
-        
-        for i_trial in xrange(len(labels)):
-            i_start_sample = i_samples[i_trial]
-            i_class = labels[i_trial]-1 # -1 due to 1-based matlab indexing
-            # make sure trial is within bounds
-            if ((i_start_sample + trial_start_offset >= 0) and
-                (i_start_sample + trial_stop_offset <= len(y))):
-                y[i_start_sample+trial_start_offset:i_start_sample+trial_stop_offset, 
-                    i_class] = 1
-        self.y = y
+        self.y = create_cnt_y(self.signal_processor.cnt,
+            self.signal_processor.segment_ival,
+            self.signal_processor.marker_def, timeaxis=-2)
 
     def create_dense_design_matrix(self):
         # add empty 01 (from bc01) axes ...
