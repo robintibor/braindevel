@@ -36,7 +36,7 @@
         {
             first_nonlin: [$square],
             first_pool_nonlin: [$safe_log],
-            later_nonlin: [$identity],
+            later_nonlin: [$elu],
             later_pool_nonlin: [$identity],
         },
         {
