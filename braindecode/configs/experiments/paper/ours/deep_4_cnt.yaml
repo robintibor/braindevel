@@ -11,7 +11,6 @@
         n_sample_preds : [1000], # will be overwritten anyways
         train_cleaner: [$no_cleaner],
         test_cleaner: [$no_cleaner],
-        
     }
     ]]
 }

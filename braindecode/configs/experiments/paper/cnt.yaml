@@ -36,14 +36,21 @@
             },
             sensor_names: $sensor_names,
         },
+        tied_neighbours: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [$categorical_crossentropy,
+                !!python/name:braindecode.veganlasagne.objectives.tied_neighbours_cnt_model ,
+            ]
+        },
     },
     variants: [[{
-        trial_start: [1000],
+        trial_start: [1500],
         monitors: [$sample_trial_monitors],
         iterator: [$cnt_iterator],
         layer_modifier: [JustReturn],
         max_epochs: [800],
         max_increasing_epochs: [80],
         load_sensor_names: ['null'],
+        loss_expression: [$tied_neighbours],
     }]]
 }

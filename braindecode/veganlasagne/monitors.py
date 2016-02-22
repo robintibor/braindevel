@@ -262,6 +262,9 @@ class CntTrialMisclassMonitor(Monitor):
         """Assuming one hot encoding for now"""
         all_pred_labels = []
         all_target_labels = []
+        # TODELAY: compute nr of trials ..somehow
+        # then you could reshape preds even if several trials in one 
+        # batch
         for i_batch in range(len(all_batch_sizes)):
             trial_preds = all_preds[i_batch]
             trial_pred_label = np.argmax(np.sum(trial_preds, axis=0))

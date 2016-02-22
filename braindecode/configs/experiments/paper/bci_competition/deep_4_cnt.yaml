@@ -4,10 +4,10 @@
         'configs/experiments/paper/bci_competition/files_train_test.yaml',
         'configs/experiments/paper/cnt.yaml',
         'configs/experiments/paper/bci_competition/deep_4.yaml',
-        ], 
+        ],
     variants: [[
     {
-        save_path: ['data/models/paper/bci-competition/cnt/deep4/'],
+        save_path: ['data/models/paper/bci-competition/cnt/deep4/dropout/'],
         final_dense_length: [2],
         input_time_length: [1000],
         n_sample_preds : [500], # will be overwritten anyways

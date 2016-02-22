@@ -9,8 +9,12 @@
                 incoming: *in_layer,
                 pattern: [0,3,2,1],
             },
-            &time_conv !obj:lasagne.layers.Conv2DLayer {
+            &drop_in !obj:lasagne.layers.DropoutLayer {
                 incoming: *shuffle,
+                p: $drop_in_prob,
+            },
+            &time_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *drop_in,
                 num_filters: $num_filters_time,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
