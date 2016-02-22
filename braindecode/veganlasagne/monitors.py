@@ -4,6 +4,7 @@ import numpy as np
 import theano
 from sklearn.metrics import roc_auc_score
 from copy import deepcopy
+from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
 
 class Monitor(object):
     __metaclass__ = ABCMeta
@@ -246,7 +247,6 @@ def get_reshaped_cnt_preds(all_preds, n_samples, input_time_length,
     
     return all_preds_arr
 
-
 class CntTrialMisclassMonitor(Monitor):
     def setup(self, monitor_chans, datasets):
         for setname in datasets:
@@ -262,13 +262,23 @@ class CntTrialMisclassMonitor(Monitor):
         """Assuming one hot encoding for now"""
         all_pred_labels = []
         all_target_labels = []
-        # TODELAY: compute nr of trials ..somehow
-        # then you could reshape preds even if several trials in one 
-        # batch
-        for i_batch in range(len(all_batch_sizes)):
-            trial_preds = all_preds[i_batch]
+        # Compute number of trials and reshape preds and targets
+        # to #trials x #predicted_samples_per_trial x #classes
+        i_trial_starts, i_trial_ends = compute_trial_start_end_samples(dataset.y)
+        assert len(i_trial_starts) == len(i_trial_ends)
+        n_trials = len(i_trial_starts)
+        all_preds_arr = np.concatenate(all_preds, axis=0)
+        all_preds_by_trial = np.reshape(all_preds_arr, (n_trials,-1,all_preds_arr.shape[1]))
+        
+        all_targets_arr = np.concatenate(all_targets, axis=0)
+        all_targets_by_trial = np.reshape(all_targets_arr, (n_trials,-1,
+            all_targets_arr.shape[1]))
+        
+        for i_trial in xrange(n_trials):
+            
+            trial_preds = all_preds_by_trial[i_trial]
             trial_pred_label = np.argmax(np.sum(trial_preds, axis=0))
-            targets = all_targets[i_batch]
+            targets = all_targets_by_trial[i_trial]
             
             assert np.sum(np.max(targets, axis=0)) == 1, ("Trial should only "
                  "have one class")

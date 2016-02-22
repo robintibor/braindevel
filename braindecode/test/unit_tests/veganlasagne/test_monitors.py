@@ -1,7 +1,7 @@
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 from braindecode.datahandling.batch_iteration import WindowsIterator
 from braindecode.veganlasagne.monitors import WindowMisclassMonitor,\
-    MonitorManager
+    MonitorManager, CntTrialMisclassMonitor
 import numpy as np
 import theano.tensor as T
 
@@ -31,3 +31,30 @@ def test_window_misclass_monitor():
     monitor_chans = {'train_misclass': []}
     monitor_manager.monitor_epoch(monitor_chans, {'train': dataset}, iterator)
     assert np.allclose([1/3.0], monitor_chans['train_misclass'])
+
+
+def test_cnt_trial_misclass_monitor():
+    monitor_chans = dict(test_misclass=[])
+    fake_set = lambda: None
+    # actually exact targets dont matter..
+    # just creating 3 trials here in the y signal...
+    fake_set.y = np.array([[0,0,0,0],[0,0,0,1],[0,0,0,1],[0,0,0,0], 
+                            [0,0,1,0],[0,0,1,0],[0,0,0,0],
+                          [0,0,0,0],[1,0,0,0],[1,0,0,0],[0,0,0,0]])
+    
+    # first batch has two rows
+    # second ha sone
+    all_preds = np.array([[[0,0.1,0.1,0.8], [0,0.1,0.1,0.8], [0,0.8,0.1,0.1],[0,0.8,0.1,0.1]],
+                 [[0.8,0.1,0.1,0.1],[0.8,0.1,0.1,0.1]]])
+    
+    all_targets = np.array([[[0,0,0,1], [0,0,0,1], [0,0,1,0],[0,0,1,0]],
+                 [[1,0,0,0],[1,0,0,0]]])
+    
+    all_losses=None # ignoring
+    batch_sizes=None # ignoring
+    
+    monitor = CntTrialMisclassMonitor()
+    monitor.monitor_set(monitor_chans, 'test', all_preds, all_losses,
+            batch_sizes, all_targets, fake_set)
+    
+    assert np.allclose(1/3.0, monitor_chans['test_misclass'][-1])

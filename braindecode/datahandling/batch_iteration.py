@@ -230,7 +230,6 @@ class CntWindowsFromCntIterator(object):
     def reset_rng(self):
         self.rng = RandomState(328774)
         
-        
 class CntWindowTrialIterator(object):
     def __init__(self, batch_size, input_time_length, n_sample_preds):
         self.batch_size = batch_size
@@ -254,10 +253,7 @@ class CntWindowTrialIterator(object):
         topo = dataset.get_topological_view()
         y = dataset.y
 
-        if shuffle:
-            return self.yield_shuffled_block_batches(topo, y, start_end_blocks_per_trial)
-        else:
-            return self.yield_trial_ordered_block_batches(topo, y, start_end_blocks_per_trial)
+        return self.yield_block_batches(topo, y, start_end_blocks_per_trial, shuffle=shuffle)
         
     def compute_start_end_block_inds(self, i_trial_starts, i_trial_ends):
         # possibly remove first trial if it is too early
@@ -286,22 +282,16 @@ class CntWindowTrialIterator(object):
             start_end_blocks_per_trial.append(start_end_blocks)
         return start_end_blocks_per_trial
     
-    def yield_shuffled_block_batches(self, topo, y, start_end_blocks_per_trial):
+    def yield_block_batches(self, topo, y, start_end_blocks_per_trial, shuffle):
         start_end_blocks_flat = np.concatenate(start_end_blocks_per_trial)
-        self.rng.shuffle(start_end_blocks_flat)
+        if shuffle:
+            self.rng.shuffle(start_end_blocks_flat)
 
         for i_block in xrange(0, len(start_end_blocks_flat), self.batch_size):
             i_block_stop = min(i_block + self.batch_size, len(start_end_blocks_flat))
             start_end_blocks = start_end_blocks_flat[i_block:i_block_stop]
             batch = create_batch(topo,y, start_end_blocks, self.n_sample_preds)
             yield batch
-            
-    def yield_trial_ordered_block_batches(self, topo, y, start_end_blocks_per_trial):
-        for i_trial in xrange(len(start_end_blocks_per_trial)):
-            batch = create_batch(topo, y, start_end_blocks_per_trial[i_trial],
-                self.n_sample_preds)
-            yield batch
-        
         
 def compute_trial_start_end_samples(y):
     trial_part = np.sum(y, 1) == 1
@@ -350,5 +340,3 @@ def transform_batches_of_trials(batches, n_sample_preds,
     legitimate_last_preds = n_samples_per_trial - n_sample_preds * (n_batches_per_trial - 1)
     trial_batches = np.append(trial_batches, batches[:,-1,:,-legitimate_last_preds:],axis=2)
     return trial_batches
-    
-    
