@@ -7,7 +7,6 @@
     variants: [[
     {
         trial_stop: [3950],
-        filter_time_length: [20],
         
         num_filters_time: [25],
         num_filters_spat: [25],
