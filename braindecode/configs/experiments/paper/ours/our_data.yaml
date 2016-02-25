@@ -3,7 +3,7 @@
         'configs/experiments/4sec_movements/train_test_filenames.yaml',
         'configs/experiments/4sec_movements/C_sensors.yaml'],
     variants: [[{
-        resample_fs: [500],
+        resample_fs: [250],
         eog_sensors: [['EOGv', 'EOGh']],
         sensor_names: [$C_sensors],
     }]]

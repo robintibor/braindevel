@@ -6,17 +6,17 @@
         ],
     variants: [[
     {
-        trial_stop: [3950],
+        trial_stop: [4000],
         
         num_filters_time: [25],
         num_filters_spat: [25],
         num_filters_2: [50],
         num_filters_3: [100],
         num_filters_4: [200],
-        filter_time_length: [20],
-        filter_length_2: [20],
-        filter_length_3: [20],
-        filter_length_4: [20],
+        filter_time_length: [10],
+        filter_length_2: [10],
+        filter_length_3: [10],
+        filter_length_4: [10],
         pool_time_length: [3],
         pool_time_stride: [3],
         drop_in_prob: [0.],
