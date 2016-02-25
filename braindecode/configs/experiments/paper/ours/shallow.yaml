@@ -1,7 +1,7 @@
  {
     extends: [
         'configs/experiments/paper/defaults.yaml',
-        'configs/experiments/paper/shallow_square.yaml',
+        'configs/experiments/paper/shallow_square_avg.yaml',
         'configs/experiments/paper/ours/our_data.yaml',
         ],
     variants: [[

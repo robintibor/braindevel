@@ -20,11 +20,11 @@ class ResultPrinter:
             constants=False,
             individual_datasets=True,
             start=None, stop=None,
-            params=None):
+            params=None, shorten=True):
         print ("Printing results in {:s}:".format(self._folder_name))
         self._collect_parameters_and_results(start, stop, params)
         self._format_results()
-        self._print(templates, constants, individual_datasets)
+        self._print(templates, constants, individual_datasets, shorten)
         
     def _collect_parameters_and_results(self, start, stop, params):
         self._result_pool = ResultPool()
@@ -87,16 +87,16 @@ class ResultPrinter:
         else:
             return arr 
             
-    def _print(self, templates, constants, individual_datasets):
+    def _print(self, templates, constants, individual_datasets, shorten):
         if (templates):
             self._print_templates()
         if (constants):
             self._print_constant_parameters()
         if (individual_datasets):
-            self._print_experiments_result_table()
+            self._print_experiments_result_table(shorten)
         if (self._result_pool.have_varying_datasets() or
                 self._result_pool.have_varying_leave_out()):
-            self._print_experiments_averaged_datasets_result_table()
+            self._print_experiments_averaged_datasets_result_table(shorten)
         
     def _print_templates(self):
         # templates should all be same so just print first one
@@ -123,10 +123,11 @@ class ResultPrinter:
             default_flow_style=False)
         print('')
     
-    def _print_experiments_result_table(self):
+    def _print_experiments_result_table(self, shorten):
         table_headers, table_rows = self._create_experiments_headers_and_rows()
-        table_headers, table_rows = self._prettify_headers_rows(table_headers,
-            table_rows)
+        if shorten:
+            table_headers, table_rows = self._prettify_headers_rows(table_headers,
+                table_rows)
         self._print_markdown_table(table_headers, table_rows)
         #self._print_csv_table(table_headers, table_rows)
         self._print_table(table_headers, table_rows)
@@ -235,12 +236,13 @@ class ResultPrinter:
         return result_headers, result_rows
     
         
-    def _print_experiments_averaged_datasets_result_table(self):
+    def _print_experiments_averaged_datasets_result_table(self, shorten):
         print ("\n\nDataset-Averaged Results:")
         table_headers, table_rows = \
             self._create_averaged_dataset_headers_and_rows()
-        table_headers, table_rows = self._prettify_headers_rows(table_headers,
-            table_rows)
+        if shorten:
+            table_headers, table_rows = self._prettify_headers_rows(table_headers,
+                table_rows)
         self._print_table(table_headers, table_rows)
         self._print_markdown_table(table_headers, table_rows)
             
