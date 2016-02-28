@@ -43,8 +43,12 @@
                     incoming: *pool,
                     n_stride: $pool_time_stride,
             },
+            &pool_nonlin_1 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *reshape_pool,
+                    nonlinearity: $first_pool_nonlin ,
+            },
             &drop_feature_1 !obj:lasagne.layers.DropoutLayer {
-                incoming: *reshape_pool,
+                incoming: *pool_nonlin_1,
                 p: 0.5,
             },
             &combined_conv_2 !obj:lasagne.layers.Conv2DLayer {
@@ -64,14 +68,18 @@
                     incoming: *batch_norm_2,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
-                    mode: $pool_mode,
+                    mode: $later_pool_mode,
             },
             &reshape_pool_2 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_2,
                     n_stride: $pool_time_stride,
             },
+            &pool_nonlin_2 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *reshape_pool_2,
+                    nonlinearity: $later_pool_nonlin ,
+            },
             &drop_feature_2 !obj:lasagne.layers.DropoutLayer {
-                incoming: *reshape_pool_2,
+                incoming: *pool_nonlin_2,
                 p: 0.5,
             },
             &combined_conv_3 !obj:lasagne.layers.Conv2DLayer {
@@ -91,14 +99,18 @@
                     incoming: *batch_norm_3,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
-                    mode: $pool_mode,
+                    mode: $later_pool_mode,
             },
             &reshape_pool_3 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_3,
                     n_stride: $pool_time_stride,
             },
+            &pool_nonlin_3 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *reshape_pool_3,
+                    nonlinearity: $later_pool_nonlin ,
+            },
             &drop_feature_3 !obj:lasagne.layers.DropoutLayer {
-                incoming: *reshape_pool_3,
+                incoming: *pool_nonlin_3,
                 p: 0.5,
             },
             &combined_conv_4 !obj:lasagne.layers.Conv2DLayer {
@@ -118,14 +130,18 @@
                     incoming: *batch_norm_4,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
-                    mode: $pool_mode,
+                    mode: $later_pool_mode,
             },
             &reshape_pool_4 !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool_4,
                     n_stride: $pool_time_stride,
             },
+            &pool_nonlin_4 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *reshape_pool_4,
+                    nonlinearity: $later_pool_nonlin ,
+            },
             &drop_feature_4 !obj:lasagne.layers.DropoutLayer {
-                incoming: *reshape_pool_4,
+                incoming: *pool_nonlin_4,
                 p: 0.5,
             },
             &final_dense !obj:lasagne.layers.Conv2DLayer {
@@ -170,11 +186,13 @@
         later_nonlin: [$elu],
         final_nonlin: [$safe_softmax],
         first_pool_layer: [Pool2DLayer],
-        first_pool_mode: ['max'],
+        first_pool_mode: ['max'], # just to prevent errors on square run, reenable
+        first_pool_nonlin: [$identity],
         pool_layers: [Pool2DLayer],
-        pool_mode: ['max'],
+        later_pool_mode: ['max'], # just to prevent errors on square run, reenable
         pool_time_length: [3],
         pool_time_stride: [3],
+        later_pool_nonlin: [$identity],
         batch_norm_alpha: [0.1], 
     }]]
 }
