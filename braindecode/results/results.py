@@ -349,9 +349,9 @@ class DatasetAveragedResults:
         return self._results
 
     @staticmethod 
-    def load_result_objects_for(result_folder, result_nr):
+    def load_result_objects_for(result_folder, result_nr, params):
         resultpool = ResultPool()
-        resultpool.load_results(result_folder)
+        resultpool.load_results(result_folder, params=params)
         dataset_averaged_pool = DatasetAveragedResults()
         dataset_averaged_pool.extract_results(resultpool)
         results = dataset_averaged_pool.results()
