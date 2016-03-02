@@ -61,18 +61,21 @@ def create_envelops_per_filterband(iterator, train_set, train_topo,
         elif high_cut_hz == 125:
             filtered = highpass_topo(train_topo, low_cut_hz, 
                                 sampling_rate=250.0, axis=0, filt_order=4)
+        filtered = filtered.astype(np.float32)
         filt_set = DenseDesignMatrixWrapper(topo_view=filtered,y=train_set.y,
                                             axes=train_set.view_converter.axes)
         batches_topo = [b[0] for b in iterator.get_batches(filt_set, shuffle=False)]
         batches_topo = np.concatenate(batches_topo)
         log.info("Compute envelope...")
         env = np.abs(scipy.signal.hilbert(batches_topo, axis=2))
+        env = env.astype(np.float32)
         env_per_filterband.append(env)
         
     log.info("Merge into one array...")
-    env_per_filterband = np.array(env_per_filterband)
+    env_per_filterband = np.array(env_per_filterband, dtype=np.float32)
     log.info("Done.")
     return env_per_filterband
+
 def parse_command_line_arguments():
     parser = argparse.ArgumentParser(
         description="""Launch an experiment from a YAML experiment file.
