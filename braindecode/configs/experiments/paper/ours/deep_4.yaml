@@ -10,13 +10,6 @@
         
         variants:  [[ 
         {
-            num_filters_time: [32],
-            num_filters_spat: [32],
-            num_filters_2: [64],
-            num_filters_3: [128],
-            num_filters_4: [256],
-        },
-        {
             num_filters_time: [25],
             num_filters_spat: [25],
             num_filters_2: [50],
@@ -24,7 +17,7 @@
             num_filters_4: [200],
         },
         ]],
-        filter_time_length: [10,25],
+        filter_time_length: [10],
         filter_length_2: [10],
         filter_length_3: [10],
         filter_length_4: [10],

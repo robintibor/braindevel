@@ -1,17 +1,57 @@
 #!/usr/bin/env python
 import numpy as np
 import scipy.signal
+from theano.tensor.signal import downsample
+import theano.tensor as T
+import argparse
+import yaml
+import theano
 from braindecode.experiments.experiment_runner import create_experiment
 from braindecode.datasets.generate_filterbank import generate_filterbank
 from braindecode.analysis.util import (lowpass_topo,
                                        highpass_topo,
                                        bandpass_topo)
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
-import logging
 from braindecode.results.results import ResultPool
-import argparse
-import yaml
+from braindecode.analysis.kaggle import  transform_to_trial_acts
+import logging
 log = logging.getLogger(__name__)
+
+def compute_topo_corrs(trial_env, trial_acts):
+    # sensors before filterbands
+    flat_trial_env = trial_env.transpose(2,0,1,3).reshape(
+        trial_env.shape[0] * trial_env.shape[2],
+        trial_env.shape[1] * trial_env.shape[3])
+    flat_trial_acts = trial_acts.transpose(1,0,2).reshape(
+        trial_acts.shape[1],-1)
+    flat_corrs = np.corrcoef(flat_trial_env, flat_trial_acts)
+    relevant_corrs = flat_corrs[:flat_trial_env.shape[0],
+              flat_trial_env.shape[0]:]
+    topo_corrs = relevant_corrs.reshape(trial_env.shape[2], trial_env.shape[0],
+        trial_acts.shape[1])
+    return topo_corrs
+
+def get_meaned_trial_env(env, field_size, n_trials, n_inputs_per_trial,
+                        n_trial_len, n_sample_preds):
+    inputs = T.ftensor4()
+    pooled = downsample.max_pool_2d(inputs, ds=(field_size ,1), st=(1,1), 
+                                    ignore_border=True, mode='average_exc_pad')
+    pool_fn = theano.function([inputs], pooled)
+    meaned_env = np.float32(np.ones(env.shape[0:3] + (env.shape[3] - field_size + 1,1)) * np.nan)
+    for i_fb in xrange(env.shape[0]):
+        meaned_env[i_fb] = pool_fn(env[i_fb])
+    
+    all_trial_envs = []
+    for fb_env in meaned_env:
+        
+        fb_envs_per_trial = fb_env.reshape(n_trials,n_inputs_per_trial,fb_env.shape[1],
+            fb_env.shape[2], fb_env.shape[3])
+        trial_env = transform_to_trial_acts(fb_envs_per_trial, [n_inputs_per_trial] * n_trials,
+                                            n_sample_preds=n_sample_preds,
+                                            n_trial_len=n_trial_len)
+        all_trial_envs.append(trial_env)
+    all_trial_envs = np.array(all_trial_envs, dtype=np.float32)
+    return all_trial_envs
 
 def create_envelopes(folder_name, params):
     res_pool = ResultPool()
@@ -104,14 +144,15 @@ if __name__ == "__main__":
     logging.basicConfig(level='DEBUG')
     args = parse_command_line_arguments()
     if args.folder is None:
-        
+        create_envelopes('data/models/paper/ours/cnt/deep4/car/',
+            params=dict(low_cut_off_hz="null"))
+        """
         create_envelopes('data/models/paper/ours/cnt/deep4/',
             params=dict(layers='$cnt_4l',
                        pool_mode='max',
                        num_filters_4=200,
                        filter_time_length=10,
                        low_cut_off_hz="null"))
-        """
         create_envelopes('data/models/paper/bci-competition/cnt/deep4/',
             params=dict(layers='$cnt_4l',
                        pool_mode='max',

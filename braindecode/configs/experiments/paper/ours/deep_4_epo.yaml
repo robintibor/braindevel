@@ -5,9 +5,14 @@
         ],
     variants: [[
     {
+        trial_start: [-32],
         save_path: ['data/models/paper/ours/epo/deep4/'],
         input_time_length: [2000], # will be overwritten by actual net size...
-        final_dense_length: [15],
+        final_dense_length: [8],
+        variants: [[{
+            cnt_preprocessors: [$resample_car_highpass_standardize],
+            save_path: ['data/models/paper/ours/epo/deep4/car/'],
+        }]],
     }
     ]]
 }

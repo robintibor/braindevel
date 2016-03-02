@@ -13,6 +13,11 @@
         n_sample_preds : [500], # will be overwritten anyways
         train_cleaner: [$no_cleaner],
         test_cleaner: [$no_cleaner],
+        
+        variants: [[{
+            cnt_preprocessors: [$resample_car_highpass_standardize],
+            save_path: ['data/models/paper/bci-competition/cnt/deep4/car/'],
+        }]],
     }
     ]]
 }
