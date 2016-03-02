@@ -7,10 +7,10 @@
         cleaner: [$no_cleaner],#$, train_normal_cleaner
         test_cleaner: [$no_cleaner],
         n_selected_features: [20],#10,
-        save_path: ['data/models/paper/ours/csp/'],
+        save_path: ['data/models/paper/ours/csp/for-plot/'],
         n_selected_features: [20],#10,
         min_freq: [7],#4
-        max_freq: [90],
+        max_freq: [99],#91,103
         low_width: [6],
         high_width: [8],
         high_overlap: [4],

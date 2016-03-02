@@ -17,7 +17,7 @@ def generate_filterbank(min_freq, max_freq, last_low_freq,
             last_low_freq - ((last_low_freq - min_freq) % low_step)))
     assert max_freq >= last_low_freq
     high_step = high_width - high_overlap
-    high_start = last_low_freq + low_width/2 + high_width/2
+    high_start = last_low_freq + high_step
     assert (max_freq == last_low_freq or  
         (max_freq - high_start) % high_step == 0), ("max freq needs to be "
             "exactly the center of a filter band "

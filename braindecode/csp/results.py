@@ -2,6 +2,9 @@ import numpy as np
 from pylearn2.utils import serial
 from copy import deepcopy
 
+class BinaryResult(object):
+    """ dummy class for binary results """
+    pass
 
 class CSPResult(object):
     """ For storing a result"""
@@ -14,6 +17,11 @@ class CSPResult(object):
         self.rejected_chan_names = csp_trainer.rejected_chan_names
         self.rejected_trials = csp_trainer.rejected_trials
         self.clean_trials = csp_trainer.clean_trials
+        # Copy some binary results
+        self.binary = BinaryResult()
+        self.binary.train_accuracy = csp_trainer.binary_csp.train_accuracy
+        self.binary.test_accuracy = csp_trainer.binary_csp.test_accuracy
+        self.binary.filterbands = csp_trainer.binary_csp.filterbands
     
     def get_misclasses(self):
         return {

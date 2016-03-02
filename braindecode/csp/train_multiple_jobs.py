@@ -6,11 +6,12 @@ import time
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or len(sys.argv) > 4:
-        print("Usage: ./csp/train_multiple_jobs.py configfilename [start] [stop] [step] [train_flags]")
+        print("Usage: ./csp/train_multiple_jobs.py configfilename [start] [stop] [step] [waittime] [train_flags]")
     config_filename = sys.argv[1]
     start = 1
     stop = 144
     step = 1
+    waittime = 60
     if len(sys.argv) > 2:
         start = int(sys.argv[2])
     if len(sys.argv) > 3:
@@ -18,7 +19,9 @@ if __name__ == "__main__":
     if len(sys.argv) > 4:
         step = int(sys.argv[4])
     if len(sys.argv) > 5:
-        train_arg_string = " ".join(sys.argv[5:])
+        waittime = int(sys.argv[5])
+    if len(sys.argv) > 6:
+        train_arg_string = " ".join(sys.argv[6:])
     else:
         train_arg_string = ""
 
@@ -26,8 +29,9 @@ if __name__ == "__main__":
 
     for i_start in range(start,stop+1, step):
         if i_start > start:
-            print("Sleeping 1 minute until starting next experiment...")
-            time.sleep(60)
+            print("Sleeping {:d} sec until starting next experiment...".format(
+                waittime))
+            time.sleep(waittime)
         i_stop = min(i_start + step - 1, stop)
         command = "{:s} {:s} --start {:d} --stop {:d} {:s}".format(
             train_script_file, config_filename, i_start, i_stop, 

@@ -48,12 +48,6 @@ def _create_masks(n_exps):
     return all_masks
     
 def _compute_diffs(a, b, all_masks):
-    '''
-    
-    :param a:
-    :param b:
-    :param all_masks:
-    '''
     # first add "first set" part
     # positive labels from a
     # and negative labels from b
