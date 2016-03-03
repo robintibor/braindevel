@@ -1,4 +1,41 @@
 import numpy as np
+import random
+
+def perm_mean_diffs_sampled(a,b, n_diffs=None):
+    """Compute differences between all permutations of  labels.
+    Version that samples.
+    Parameters
+    --------------
+    a: list or numpy array
+    b: list or numpy array
+    n_diffs: int
+        How many diffs/samples to compute.
+    Returns
+    -------
+    all_diffs: 1d-array of float
+        Sampled mean differences.
+    """
+    
+    n_exps = len(a)
+    all_bit_masks = [2 ** n for n in xrange(n_exps-1,-1,-1)]
+    if n_diffs is None:
+        n_diffs = 2**n_exps
+        i_all_masks = xrange(n_diffs)
+    else:
+        random.seed(39483948)
+        i_all_masks = random.sample(xrange(2**n_exps), n_diffs)
+    all_diffs = np.float32(np.ones(n_diffs) * np.nan)
+    for i_diff, i_mask in enumerate(i_all_masks):
+        # masks has -1s and 1s,
+        # 1 interpretable as
+        # correct value selected
+        # -1 as randomly flipped value/"incorrect" value selected
+        # *2 makes values between 2 and 0, then -1 to make 
+        # values between 1 and -1
+        mask = (np.bitwise_and(i_mask, all_bit_masks) > 0) * 2 - 1
+        diff = np.mean((mask * a)  -mask * b)
+        all_diffs[i_diff] = diff
+    return all_diffs
 
 def perm_mean_diffs(a,b):
     """Compute differences between all permutations of  labels.

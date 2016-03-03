@@ -13,6 +13,5 @@
         max_epochs: [300],
         imbalance_factor: [20],
         layer_modifier: [JustReturn],
-        n_classes: [6],
     }]]
 }
