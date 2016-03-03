@@ -14,8 +14,35 @@ from braindecode.analysis.util import (lowpass_topo,
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 from braindecode.results.results import ResultPool
 from braindecode.analysis.kaggle import  transform_to_trial_acts
+import lasagne
+from braindecode.veganlasagne.layer_util import get_receptive_field_size
+from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
+from braindecode.veganlasagne.layers import get_n_sample_preds
 import logging
 log = logging.getLogger(__name__)
+
+
+
+def load_trial_env(basename, model, i_layer, train_set, n_inputs_per_trial):
+    log.info("Loading envelope...")
+    env = np.load(basename + '.env.npy')
+    env = [e for e in env] # transform that outer part is list so you can freely delete parts inside next function
+    log.info("Transforming to trial envelope...")
+    all_layers = lasagne.layers.get_all_layers(model)
+    layer = all_layers[i_layer]
+    field_size = get_receptive_field_size(layer)
+    
+    trial_starts, trial_ends = compute_trial_start_end_samples(train_set.y)
+    assert len(np.unique(trial_ends - trial_starts)) == 1
+    n_trials = len(trial_starts)
+    n_trial_len = np.unique(trial_ends - trial_starts)[0]
+    # Afterwards env is list empty lists(!!)
+    n_sample_preds = get_n_sample_preds(model)
+    trial_env = get_meaned_trial_env(env, field_size=field_size, n_trials=n_trials,
+                                     n_inputs_per_trial=n_inputs_per_trial,
+                                n_trial_len=n_trial_len, 
+                                n_sample_preds=n_sample_preds)
+    return trial_env
 
 def compute_topo_corrs(trial_env, trial_acts):
     # sensors before filterbands
@@ -37,20 +64,31 @@ def get_meaned_trial_env(env, field_size, n_trials, n_inputs_per_trial,
     pooled = downsample.max_pool_2d(inputs, ds=(field_size ,1), st=(1,1), 
                                     ignore_border=True, mode='average_exc_pad')
     pool_fn = theano.function([inputs], pooled)
-    meaned_env = np.float32(np.ones(env.shape[0:3] + (env.shape[3] - field_size + 1,1)) * np.nan)
-    for i_fb in xrange(env.shape[0]):
-        meaned_env[i_fb] = pool_fn(env[i_fb])
-    
+    log.info("Computing meaned envelope...")
+    meaned_env = []
+    assert env[0].shape[0] == n_trials * n_inputs_per_trial
+    expected_mean_env_shape =  ((len(env),) + env[0].shape[0:2] + 
+        (env[0].shape[2] - field_size + 1,1))
+    #meaned_env = np.float32(np.ones(env.shape[0:3] + (env.shape[3] - field_size + 1,1)) * np.nan)
+    for i_fb in xrange(len(env)):
+        #meaned_env[i_fb] = pool_fn(env[i_fb])
+        meaned_env.append(pool_fn(env[i_fb]))
+        # In order to save memory, delete env contents...
+        env[i_fb] = []
+    meaned_env = np.array(meaned_env)
+    assert meaned_env.shape == expected_mean_env_shape
+    log.info("Transforming to per trial...")
     all_trial_envs = []
     for fb_env in meaned_env:
-        
         fb_envs_per_trial = fb_env.reshape(n_trials,n_inputs_per_trial,fb_env.shape[1],
             fb_env.shape[2], fb_env.shape[3])
         trial_env = transform_to_trial_acts(fb_envs_per_trial, [n_inputs_per_trial] * n_trials,
                                             n_sample_preds=n_sample_preds,
                                             n_trial_len=n_trial_len)
         all_trial_envs.append(trial_env)
+    log.info("Merging to one array...")
     all_trial_envs = np.array(all_trial_envs, dtype=np.float32)
+    log.info("Done...")
     return all_trial_envs
 
 def create_envelopes(folder_name, params):
@@ -58,7 +96,7 @@ def create_envelopes(folder_name, params):
     res_pool.load_results(folder_name, params=params)
     res_file_names = res_pool.result_file_names()
     yaml_file_names = [name.replace('.result.pkl', '.yaml')
-        for name in res_file_names]
+        for name in res_file_names][9:10]
     for i_file, file_name in enumerate(yaml_file_names):
         log.info("Running {:s} ({:d} of {:d})".format(
             file_name, i_file+1, len(yaml_file_names)))
