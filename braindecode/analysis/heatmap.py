@@ -5,6 +5,7 @@ import lasagne
 from theano.tensor.nnet import conv2d
 from braindecode.veganlasagne.layers import get_input_shape, BiasLayer
 from braindecode.veganlasagne.batch_norm import BatchNormLayer
+import sklearn.preprocessing
 
 def create_heatmap_fn(all_layers, rules, min_in=None, max_in=None,
         return_all=False, use_output_as_relevance=False):
@@ -263,6 +264,8 @@ def relevance_dense(out_relevances, in_activations, weights, rule,
 def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
     pool_ones_shape = [out_relevances.shape[0], out_relevances.shape[0],
         pool_size[0], pool_size[1]]
+    # modification: make inputs positive
+    inputs = T.abs_(inputs)
     pool_ones = T.ones(pool_ones_shape, dtype=np.float32)
     # only within a channel spread values of that channel...
     # therefore set all values of indices like
@@ -446,3 +449,21 @@ def back_relevance_pool(out_relevances, in_activations, pool_size,
                 in_relevances[out_filt, in_x:in_x_stop, 
                     in_y:in_y_stop] += scaled_relevance
     return in_relevances
+
+def compute_all_epo_relevances(dataset, pred_fn, heatmap_fn,n_classes):
+    topo = dataset.get_topological_view()
+    ys = sklearn.preprocessing.OneHotEncoder(n_classes, 
+     sparse=False).fit_transform(dataset.y[:,np.newaxis])
+
+    all_relevances = []
+    for i_trial in xrange(len(topo)):
+        trial_topo = topo[i_trial:i_trial+1]
+
+        pred = pred_fn(trial_topo)[0]
+        # only take correct part of prediction
+        pred = pred * ys[i_trial]
+        trial_relevances = heatmap_fn(pred.astype(np.float32),
+            trial_topo[0])
+        all_relevances.append(trial_relevances)
+    all_relevances = np.array(all_relevances)
+    return all_relevances

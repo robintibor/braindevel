@@ -7,5 +7,6 @@
         final_dense_length: [61],
         input_time_length: [2000], # will be overwritten by actual net size...
         save_path: ['data/models/paper/ours/epo/shallow/'],
+        tag: [repl]
     }]],
 }

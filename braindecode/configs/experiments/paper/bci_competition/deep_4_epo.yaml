@@ -11,6 +11,7 @@
         save_path: ['data/models/paper/bci-competition/epo/deep4/'],
         input_time_length: [2000], # will be overwritten by actual net size...
         final_dense_length: [8],
+        tag: ['repl'],
     }
     ]]
 }

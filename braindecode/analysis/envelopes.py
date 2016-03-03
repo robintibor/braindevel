@@ -51,12 +51,25 @@ def compute_topo_corrs(trial_env, trial_acts):
         trial_env.shape[1] * trial_env.shape[3])
     flat_trial_acts = trial_acts.transpose(1,0,2).reshape(
         trial_acts.shape[1],-1)
-    flat_corrs = np.corrcoef(flat_trial_env, flat_trial_acts)
-    relevant_corrs = flat_corrs[:flat_trial_env.shape[0],
-              flat_trial_env.shape[0]:]
+    #flat_corrs = np.corrcoef(flat_trial_env, flat_trial_acts)
+    #relevant_corrs = flat_corrs[:flat_trial_env.shape[0],
+    #          flat_trial_env.shape[0]:]
+    
+    relevant_corrs = corr(flat_trial_env, flat_trial_acts)
     topo_corrs = relevant_corrs.reshape(trial_env.shape[2], trial_env.shape[0],
         trial_acts.shape[1])
     return topo_corrs
+
+def corr(x,y):
+    # computing "unbiased" corr
+    demeaned_x = x - np.mean(x, axis=1, keepdims=True)
+    demeaned_y = y - np.mean(y, axis=1, keepdims=True)
+    #ddof=1 for unbiased..
+    divisor = np.outer(np.sqrt(np.var(x, axis=1, ddof=1)), 
+        np.sqrt(np.var(y, axis=1, ddof=1)))
+    
+    cov = np.dot(demeaned_x,demeaned_y.T) / (y.shape[1] -1)
+    return cov / divisor
 
 def get_meaned_trial_env(env, field_size, n_trials, n_inputs_per_trial,
                         n_trial_len, n_sample_preds):
@@ -96,7 +109,7 @@ def create_envelopes(folder_name, params):
     res_pool.load_results(folder_name, params=params)
     res_file_names = res_pool.result_file_names()
     yaml_file_names = [name.replace('.result.pkl', '.yaml')
-        for name in res_file_names][9:10]
+        for name in res_file_names]
     for i_file, file_name in enumerate(yaml_file_names):
         log.info("Running {:s} ({:d} of {:d})".format(
             file_name, i_file+1, len(yaml_file_names)))

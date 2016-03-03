@@ -10,6 +10,7 @@ def load_model(filename):
     all_layers = lasagne.layers.get_all_layers(model)
     for l in all_layers:
         if hasattr(l, 'convolve'):
+            # I guess this is for backward compatibility?
             l.flip_filters = True
             l.convolution = T.nnet.conv2d
             l.n = 2
@@ -19,10 +20,9 @@ def load_model(filename):
             
     return model
 
-def load_model_epo_model_experiment_result(basename, ):
+def load_exp_and_model(basename):
+    """ Loads experiment and model for analysis, sets invalid fillv alues to NaN."""
     model = load_model(basename + '.pkl')
-    result = np.load(basename + '.result.pkl')
-    epo_model = transform_to_normal_net(model)
     exp = create_experiment(basename + '.yaml')
     all_layers = lasagne.layers.get_all_layers(model)
     # mark nans to be sure you are doing correct transformations
@@ -30,7 +30,5 @@ def load_model_epo_model_experiment_result(basename, ):
     for l in all_layers:
         if hasattr(l, 'invalid_fill_value'):
             l.invalid_fill_value = np.nan
-    assert (get_used_input_length(epo_model) == get_input_shape(epo_model)[2] == 
-            get_model_input_window(model))
-    return model, epo_model, exp, result
+    return exp, model
 
