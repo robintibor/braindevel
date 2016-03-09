@@ -4,10 +4,10 @@
     ],
     
     variants: [[{
-        cleaner: [$no_cleaner],#$, train_normal_cleaner
+        cleaner: [$train_normal_cleaner],#$no_cleaner, , train_normal_cleaner
         test_cleaner: [$no_cleaner],
         n_selected_features: [20],#10,
-        save_path: ['data/models/paper/bci-competition/csp/for-plot/'],
+        save_path: ['data/models/paper/bci-competition/csp/'],
         n_selected_features: [20],#10,
         min_freq: [7],
         max_freq: [35],

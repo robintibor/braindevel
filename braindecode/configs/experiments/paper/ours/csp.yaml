@@ -4,18 +4,20 @@
     ],
     
     variants: [[{
-        cleaner: [$no_cleaner],#$, train_normal_cleaner
+        cleaner: [$no_cleaner, $train_normal_cleaner],#$, train_normal_cleaner
         test_cleaner: [$no_cleaner],
         n_selected_features: [20],#10,
-        save_path: ['data/models/paper/ours/csp/for-plot/'],
+        save_path: ['data/models/paper/ours/csp//'],
         n_selected_features: [20],#10,
         min_freq: [7],#4
-        max_freq: [99],#91,103
+        max_freq: [87],#91,103
         low_width: [6],
         high_width: [8],
         high_overlap: [4],
         last_low_freq: [31],
         low_overlap: [3],
-        trial_stop: [2500,4000],#
+        trial_stop: [4000],#
+        sensor_names: ["null", $C_sensors],
+        max_min: [600], #!important otherwise cleaning cleans everything...
     }]]
 }

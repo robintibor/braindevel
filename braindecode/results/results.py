@@ -359,6 +359,16 @@ class DatasetAveragedResults:
         result_objects = [res['result_objects'] for res in wanted_results]
         return result_objects
 
+
+def delete_results(result_folder, params):
+    res_pool = ResultPool()
+    res_pool.load_results(result_folder, params=params)
+    log.warn("Deleting {:d} results from {:s}".format(
+        len(res_pool._result_file_names)), result_folder)
+    for file_name in res_pool._result_file_names:
+        log.info("Deleting {:s}".format(file_name))
+        os.unlink(file_name)
+
 def compute_confusion_matrix(result_objects):
     try:
         targets = [fold_res.targets for dataset_result_obj in result_objects for fold_res in dataset_result_obj]

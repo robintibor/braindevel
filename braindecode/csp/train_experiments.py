@@ -16,6 +16,7 @@ from braindecode.experiments.parse import (
     create_experiment_yaml_strings_from_files)
 from braindecode.csp.results import CSPResult
 from braindecode.csp.print_results import CSPResultPrinter
+from pprint import pprint
 log = logging.getLogger(__name__)
 
 class CSPExperimentsRunner(ExperimentsRunner):
@@ -25,28 +26,31 @@ class CSPExperimentsRunner(ExperimentsRunner):
         
         train_dict = yaml_parse.load(train_str)
         self._save_train_string(train_str, experiment_index)
-        csp_train = train_dict['csp_train']
-        
-        if not self._cross_validation:
-            csp_train.only_last_fold=True
-        else: # cross validation
-            csp_train.only_last_fold=False
-        if self._shuffle:
-            csp_train.shuffle = True
-        
-        csp_train.run()
-        endtime = time.time() 
-        result = CSPResult(
-                csp_trainer=csp_train,
-                parameters=train_dict['original_params'],
-                training_time=endtime - starttime)   
-        folder_path = self._folder_paths[0]
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-        
-        result_file_name = self._get_result_save_path(experiment_index)
-        with open(result_file_name, 'w') as resultfile:
-            pickle.dump(result, resultfile)
+        if not self._quiet:
+            pprint(train_dict['original_params'])
+        if not self._dry_run:
+            csp_train = train_dict['csp_train']
+            
+            if not self._cross_validation:
+                csp_train.only_last_fold=True
+            else: # cross validation
+                csp_train.only_last_fold=False
+            if self._shuffle:
+                csp_train.shuffle = True
+            
+            csp_train.run()
+            endtime = time.time() 
+            result = CSPResult(
+                    csp_trainer=csp_train,
+                    parameters=train_dict['original_params'],
+                    training_time=endtime - starttime)   
+            folder_path = self._folder_paths[0]
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
+            
+            result_file_name = self._get_result_save_path(experiment_index)
+            with open(result_file_name, 'w') as resultfile:
+                pickle.dump(result, resultfile)
 
     def _print_results(self):
         for folder_path in np.unique(self._folder_paths):
@@ -80,6 +84,8 @@ def parse_command_line_arguments():
                              'template for all experiments')
     parser.add_argument('--quiet', action="store_true",
         help="Run algorithm quietly without progress output")
+    parser.add_argument('--debug', action="store_true",
+        help="Run with debug options.")
     parser.add_argument('--test', action="store_true",
         help="Run experiment on less features and less data to test it")
     parser.add_argument('--dryrun', action="store_true",
@@ -113,7 +119,8 @@ if __name__ == "__main__":
     args = parse_command_line_arguments()
 
     all_train_strs = create_experiment_yaml_strings_from_files(
-        args.experiments_file_name, args.template_file_name)
+        args.experiments_file_name, args.template_file_name,
+        debug=args.debug, command_line_params=args.params)
     exp_runner = CSPExperimentsRunner(quiet=args.quiet, start_id=args.startid,
         stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle)
     exp_runner.run(all_train_strs)

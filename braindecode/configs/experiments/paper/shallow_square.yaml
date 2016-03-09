@@ -27,13 +27,13 @@
                 incoming: *spat_conv,
                 epsilon: 1e-4,
                 alpha: $batch_norm_alpha,
-                nonlinearity: !!python/name:theano.tensor.sqr ,
+                nonlinearity: $first_nonlin ,
             },
             &pool !obj:braindecode.veganlasagne.pool.$pool_type {
                     incoming: *batch_norm,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
-                    mode: 'average_exc_pad',
+                    mode: $pool_mode,
             },
             &reshape_pool !obj:braindecode.veganlasagne.layers.StrideReshapeLayer {
                     incoming: *pool,
@@ -41,7 +41,7 @@
             },
             &log !obj:lasagne.layers.NonlinearityLayer {
                     incoming: *reshape_pool,
-                    nonlinearity: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
+                    nonlinearity:  $post_pool_nonlin,
             },
             &drop_feature !obj:lasagne.layers.DropoutLayer {
                 incoming: *log,
@@ -68,6 +68,10 @@
             final_dense: 0.5,
         },
         safe_softmax: !!python/name:braindecode.veganlasagne.nonlinearities.safe_softmax ,
+        identity: !!python/name:lasagne.nonlinearities.identity ,
+        elu: !!python/name:lasagne.nonlinearities.elu ,
+        square: !!python/name:theano.tensor.sqr ,
+        safe_log: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
     },
     variants: [[{
         layer_names_to_norms: [$layer_names_to_norms],
@@ -76,5 +80,8 @@
         n_classes: [4],
         pool_type: [Pool2DLayer],
         batch_norm_alpha: [0.1],
+        first_nonlin: [$square],
+        pool_mode: ['average_exc_pad'],
+        post_pool_nonlin: [$safe_log],
     }]]
 }
