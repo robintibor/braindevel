@@ -166,11 +166,15 @@ class PredictionServer(gevent.server.StreamServer):
         all_samples = np.concatenate(data_saver.sample_blocks).astype(np.float32)
         all_preds = np.array(all_preds).squeeze()
         all_pred_samples = np.array(all_pred_samples)
+        self.print_results(all_samples, all_preds, all_pred_samples)
         
+        if self.save_data:
+            data_saver.save()
+
+    def print_results(self, all_samples, all_preds, all_pred_samples):
         # y labels i from 0 to n_classes (inclusive!), 0 representing
         # non-trial => no known marker state
         y_labels = all_samples[:,-1]
-        print np.unique(y_labels)
         y_signal = np.ones((len(y_labels), 4)) * np.nan
         y_signal[:,0] = y_labels == 1
         y_signal[:,1] = y_labels == 2
@@ -184,20 +188,18 @@ class PredictionServer(gevent.server.StreamServer):
         interpolated_preds = interpolate_fn(range(0,len(y_labels)))
         corrcoeffs = np.corrcoef(interpolated_preds, 
                                  y_signal.T)[:4,4:]
-                                
+
+        print("Corrcoeffs")
         print corrcoeffs
+        print("mean across diagonal")
         print np.mean(np.diag(corrcoeffs))
         interpolated_pred_labels = np.argmax(interpolated_preds, axis=0)
         # -1 since we have 0 as "break" "non-trial" marker
         label_pred_equal = interpolated_pred_labels == y_labels - 1
         label_pred_trial_equal = label_pred_equal[y_labels!=0]
+        print("misclass inside trials")
         print np.sum(label_pred_trial_equal) / float(len(label_pred_trial_equal))
         
-        
-        
-        #print data_saver.sample_blocks
-        if self.save_data:
-            data_saver.save()
 
 class DataSaver(object):
     """ Remember and save data streamed during an online session."""
