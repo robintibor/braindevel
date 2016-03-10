@@ -16,6 +16,7 @@ import datetime
 import os.path
 import sys
 import gevent.select
+from scipy import interpolate
 from braindecode.experiments.experiment_runner import create_experiment
 from braindecode.veganlasagne.layers import transform_to_normal_net
 log = logging.getLogger(__name__)
@@ -132,6 +133,9 @@ class PredictionServer(gevent.server.StreamServer):
         if self.save_data:
             data_saver = DataSaver(chan_names)
         self.coordinator.initialize(n_chans=n_rows - 1) # one is a marker chan(!)
+        
+        all_preds =  []
+        all_pred_samples = []
         while True:
             array = self.read_until_bytes_received_or_enter_pressed(in_socket,
                 n_bytes)
@@ -155,6 +159,43 @@ class PredictionServer(gevent.server.StreamServer):
                 # +1 to convert 0-based to 1-based indexing
                 ui_socket.sendall("{:d}\n".format(i_sample + 1))
                 ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
+                
+                all_preds.append(pred)
+                all_pred_samples.append(i_sample)
+        
+        all_samples = np.concatenate(data_saver.sample_blocks).astype(np.float32)
+        all_preds = np.array(all_preds).squeeze()
+        all_pred_samples = np.array(all_pred_samples)
+        
+        # y labels i from 0 to n_classes (inclusive!), 0 representing
+        # non-trial => no known marker state
+        y_labels = all_samples[:,-1]
+        print np.unique(y_labels)
+        y_signal = np.ones((len(y_labels), 4)) * np.nan
+        y_signal[:,0] = y_labels == 1
+        y_signal[:,1] = y_labels == 2
+        y_signal[:,2] = np.logical_or(y_labels == 0, y_labels==3)
+        y_signal[:,3] = y_labels == 4
+        
+        assert not np.any(np.isnan(y_signal))
+        
+        interpolate_fn = interpolate.interp1d(all_pred_samples, all_preds.T,
+                                             bounds_error=False, fill_value=0)
+        interpolated_preds = interpolate_fn(range(0,len(y_labels)))
+        corrcoeffs = np.corrcoef(interpolated_preds, 
+                                 y_signal.T)[:4,4:]
+                                
+        print corrcoeffs
+        print np.mean(np.diag(corrcoeffs))
+        interpolated_pred_labels = np.argmax(interpolated_preds, axis=0)
+        # -1 since we have 0 as "break" "non-trial" marker
+        label_pred_equal = interpolated_pred_labels == y_labels - 1
+        label_pred_trial_equal = label_pred_equal[y_labels!=0]
+        print np.sum(label_pred_trial_equal) / float(len(label_pred_trial_equal))
+        
+        
+        
+        #print data_saver.sample_blocks
         if self.save_data:
             data_saver.save()
 
