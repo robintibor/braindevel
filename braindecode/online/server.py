@@ -23,22 +23,26 @@ log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
     def __init__(self, listener, coordinator, ui_hostname, ui_port, 
-        plot_sensors, save_data,
+        plot_sensors, save_data, use_ui_server,
             handle=None, backlog=None, spawn='default', **ssl_args):
         self.coordinator = coordinator
         self.ui_hostname = ui_hostname
         self.ui_port = ui_port
         self.plot_sensors = plot_sensors
         self.save_data = save_data
+        self.use_ui_server = use_ui_server
         super(PredictionServer, self).__init__(listener, handle=handle, spawn=spawn)
 
 
     def handle(self, in_socket, address):
         # Connect to UI Server
         log.info('New connection from {:s}!'.format(str(address)))
-        ui_socket = self.connect_to_ui_server()
-        log.info("Connected to UI Server")
-        
+        if self.use_ui_server:
+            ui_socket = self.connect_to_ui_server()
+            log.info("Connected to UI Server")
+        else:
+            ui_socket=None
+
         # Receive Header
         chan_names, n_rows, n_cols = self.receive_header(in_socket)
         n_numbers = n_rows * n_cols
@@ -156,10 +160,10 @@ class PredictionServer(gevent.server.StreamServer):
                 pred, i_sample = self.coordinator.pop_last_prediction_and_sample_ind()
                 log.info("Prediction for sample {:d}:\n{:s}".format(
                     i_sample, pred))
-                # +1 to convert 0-based to 1-based indexing
-                ui_socket.sendall("{:d}\n".format(i_sample + 1))
-                ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
-                
+                if self.use_ui_server:
+                    # +1 to convert 0-based to 1-based indexing
+                    ui_socket.sendall("{:d}\n".format(i_sample + 1))
+                    ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
                 all_preds.append(pred)
                 all_pred_samples.append(i_sample)
         
@@ -241,12 +245,16 @@ def parse_command_line_arguments():
         help="Don't show plots of the sensors first...")
     parser.add_argument('--nosave', action='store_true',
         help="Don't save data...")
+    parser.add_argument('--noui', action='store_true',
+        help="Don't wait for UI server ...")
     args = parser.parse_args()
     return args
 
-def main(ui_hostname, ui_port, base_name, plot_sensors, save_data):
+def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
+        use_ui_server):
     assert np.little_endian, "Should be in little endian"
     hostname = ''
+    # port of our server
     port = 1234
     params = np.load(base_name + '.npy')
     exp = create_experiment(base_name + '.yaml')
@@ -258,7 +266,7 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data):
     coordinator = OnlineCoordinator(data_processor, online_model, pred_freq=125)
     server = PredictionServer((hostname, port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
-        save_data=save_data)
+        save_data=save_data, use_ui_server=use_ui_server)
     log.setLevel("DEBUG")
     log.info("Starting server")
     server.start()
@@ -269,6 +277,7 @@ if __name__ == '__main__':
     logging.basicConfig()
     gevent.signal(signal.SIGQUIT, gevent.kill)
     args = parse_command_line_arguments()
-    main(args.host, args.port, args.modelfile, not args.noplot, not args.nosave)
+    main(args.host, args.port, args.modelfile, not args.noplot, not args.nosave,
+        not args.noui)
     
     
