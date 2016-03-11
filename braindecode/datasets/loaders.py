@@ -104,6 +104,10 @@ class BBCIDataset(object):
                 event_classes[left_mask] = 2
                 event_classes[rest_mask] = 3
                 event_classes[feet_mask] = 4
+            elif all_class_names == ['Right Hand Start', 'Left Hand Start',
+                'Rest Start', 'Feet Start', 'Right Hand End',
+                'Left Hand End', 'Rest End', 'Feet End']:
+                pass
             else:
                 # add another clause here for other class names...
                 raise ValueError("Unknown class names {:s}", all_class_names)

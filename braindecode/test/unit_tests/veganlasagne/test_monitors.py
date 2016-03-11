@@ -43,7 +43,7 @@ def test_cnt_trial_misclass_monitor():
                           [0,0,0,0],[1,0,0,0],[1,0,0,0],[0,0,0,0]])
     
     # first batch has two rows
-    # second ha sone
+    # second has one
     all_preds = np.array([[[0,0.1,0.1,0.8], [0,0.1,0.1,0.8], [0,0.8,0.1,0.1],[0,0.8,0.1,0.1]],
                  [[0.8,0.1,0.1,0.1],[0.8,0.1,0.1,0.1]]])
     

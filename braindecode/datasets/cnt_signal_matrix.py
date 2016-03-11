@@ -4,7 +4,7 @@ from braindecode.datasets.sensor_positions import sort_topologically
 import numpy as np
 import logging
 from braindecode.mywyrm.processing import select_marker_classes,\
-    get_event_samples_and_classes, create_cnt_y
+    get_event_samples_and_classes, create_cnt_y, create_cnt_y_start_end_marker
 from braindecode.datasets import signal_processor
 log = logging.getLogger(__name__)
 
@@ -13,12 +13,13 @@ class CntSignalMatrix(DenseDesignMatrix):
     def __init__(self, signal_processor,
         sensor_names='all',
         axes=('b', 'c', 0, 1),
-        sort_topological=True):
+        sort_topological=True,
+        end_marker_def=None):
         # sort sensors topologically to allow networks to exploit topology
         if (sensor_names is not None) and (sensor_names  != 'all') and sort_topological:
             sensor_names = sort_topologically(sensor_names)
         self.__dict__.update(locals())
-        del self.self       
+        del self.self
 
     def ensure_is_loaded(self):
         if not hasattr(self, 'X'):
@@ -51,9 +52,14 @@ class CntSignalMatrix(DenseDesignMatrix):
 
     def create_cnt_y(self):
         """Create continuous target signal"""
-        self.y = create_cnt_y(self.signal_processor.cnt,
-            self.signal_processor.segment_ival,
-            self.signal_processor.marker_def, timeaxis=-2)
+        if self.end_marker_def is None:
+            self.y = create_cnt_y(self.signal_processor.cnt,
+                self.signal_processor.segment_ival,
+                self.signal_processor.marker_def, timeaxis=-2)
+        else:
+            self.y = create_cnt_y_start_end_marker(self.signal_processor.cnt,
+                self.signal_processor.marker_def, self.end_marker_def,
+                self.signal_processor.segment_ival, timeaxis=-2)
 
     def create_dense_design_matrix(self):
         # add empty 01 (from bc01) axes ...

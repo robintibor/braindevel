@@ -17,7 +17,7 @@ from braindecode.datasets.grasp_lift import (KaggleGraspLiftSet,
     create_submission_csv_for_one_subject, AllSubjectsKaggleGraspLiftSet,
     create_submission_csv_for_all_subject_model)
 from braindecode.veganlasagne.layers import (get_n_sample_preds,
-    get_model_input_window)
+    get_model_input_window, get_input_time_length)
 from braindecode.veganlasagne.stopping import MaxEpochs
 from braindecode.datahandling.splitters import FixedTrialSplitter,\
     SeveralSetsSplitter
@@ -214,7 +214,9 @@ class ExperimentsRunner:
                 n_sample_preds =  get_n_sample_preds(final_layer)
                 log.info("Setting n_sample preds automatically to {:d}".format(
                     n_sample_preds))
-                train_dict['exp_args']['monitors'][1].n_sample_preds = n_sample_preds
+                for monitor in train_dict['exp_args']['monitors']:
+                    if hasattr(monitor, 'n_sample_preds'):
+                        monitor.n_sample_preds = n_sample_preds
                 train_dict['exp_args']['iterator'].n_sample_preds = n_sample_preds
                 log.info("Input window length is {:d}".format(
                     get_model_input_window(final_layer)))
@@ -284,7 +286,9 @@ class ExperimentsRunner:
             n_sample_preds =  get_n_sample_preds(final_layer)
             log.info("Setting n_sample preds automatically to {:d}".format(
                 n_sample_preds))
-            train_dict['exp_args']['monitors'][1].n_sample_preds = n_sample_preds
+            for monitor in train_dict['exp_args']['monitors']:
+                if hasattr(monitor, 'n_sample_preds'):
+                    monitor.n_sample_preds = n_sample_preds
             train_dict['exp_args']['iterator'].n_sample_preds = n_sample_preds
             log.info("Input window length is {:d}".format(
                 get_model_input_window(final_layer)))
@@ -403,9 +407,16 @@ def create_experiment(yaml_filename):
     splitter = train_dict['dataset_splitter']
     if (np.any([hasattr(l, 'n_stride') for l in layers])):
         n_sample_preds =  get_n_sample_preds(final_layer)
+        # for backwards compatibility input time length also
+        input_time_length = get_input_time_length(final_layer)
         log.info("Setting n_sample preds automatically to {:d}".format(
             n_sample_preds))
-        train_dict['exp_args']['monitors'][1].n_sample_preds = n_sample_preds
+        for monitor in train_dict['exp_args']['monitors']:
+            if hasattr(monitor, 'n_sample_preds'):
+                monitor.n_sample_preds = n_sample_preds
+            if hasattr(monitor, 'input_time_length'):
+                monitor.input_time_length = input_time_length
+                
         train_dict['exp_args']['iterator'].n_sample_preds = n_sample_preds
         log.info("Input window length is {:d}".format(
             get_model_input_window(final_layer)))

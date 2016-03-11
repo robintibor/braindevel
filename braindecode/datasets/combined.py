@@ -67,7 +67,6 @@ class CombinedCntSets(object):
                     dict(start=start, stop=stop)]
                 additional_cnt_preprocs.append(select_epochs)
                 
-                # HERE 
                 select_ival = [select_relevant_ival,
                      dict(segment_ival=self.segment_ival)]
                 additional_cnt_preprocs.append(select_ival)

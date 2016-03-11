@@ -4,15 +4,13 @@ class SignalProcessor(object):
     """ Class to process loaded wyrm set, segment to trials etc."""
     def __init__(self, set_loader, sensor_names=None,
             cnt_preprocessors=[], epo_preprocessors=[],
-            segment_ival=[0,4000], 
+            segment_ival=(0,4000), 
             marker_def={'1': [1], '2': [2], '3': [3], '4': [4]}):
         """ Constructor will not call superclass constructor yet"""
         self.__dict__.update(locals())
         del self.self
 
     def load(self):
-        """ This function actually loads the data. Will be called by the 
-        get dataset lazy loading function""" 
         # TODELAY: Later switch to a wrapper dataset for all files
         self.load_signal_and_markers()
         self.preprocess_continuous_signal()
@@ -28,6 +26,7 @@ class SignalProcessor(object):
             self.cnt = func(self.cnt, **kwargs)
 
     def segment_into_trials(self):
+        assert self.segment_ival is not None
         # adding the numbers at start to force later sort in segment_dat
         # to sort them in given order
         self.epo = segment_dat_fast(self.cnt, 

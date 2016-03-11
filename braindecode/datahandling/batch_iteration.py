@@ -231,6 +231,8 @@ class CntWindowsFromCntIterator(object):
         self.rng = RandomState(328774)
         
 class CntWindowTrialIterator(object):
+    """Cut out windows for several predictions from a continous dataset
+     with a trial marker y signal."""
     def __init__(self, batch_size, input_time_length, n_sample_preds):
         self.batch_size = batch_size
         self.input_time_length = input_time_length
@@ -241,12 +243,15 @@ class CntWindowTrialIterator(object):
         self.rng = RandomState(328774)
     
     def get_batches(self, dataset, shuffle):
-        i_trial_starts, i_trial_ends = compute_trial_start_end_samples(dataset.y)
-        assert i_trial_ends[0] - i_trial_starts[0] + 1 >= self.n_sample_preds, (
-            "Trial should be longer or equal than number of sample preds, "
-            "Trial length: {:d}, sample preds {:d}...".format(
-                i_trial_ends[0] - i_trial_starts[0] + 1,
-                self.n_sample_preds))
+        i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
+            dataset.y, check_trial_lengths_equal=False,
+            input_time_length=self.input_time_length)
+        for start, end in zip(i_trial_starts, i_trial_ends):
+            assert end - start + 1 >= self.n_sample_preds, (
+                "Trial should be longer or equal than number of sample preds, "
+                "Trial length: {:d}, sample preds {:d}...".format(
+                    end - start + 1,
+                    self.n_sample_preds))
         start_end_blocks_per_trial = self.compute_start_end_block_inds(
             i_trial_starts, i_trial_ends)
 
@@ -254,12 +259,8 @@ class CntWindowTrialIterator(object):
         y = dataset.y
 
         return self.yield_block_batches(topo, y, start_end_blocks_per_trial, shuffle=shuffle)
-        
+
     def compute_start_end_block_inds(self, i_trial_starts, i_trial_ends):
-        # possibly remove first trial if it is too early
-        while i_trial_starts[0] < self.input_time_length:
-            i_trial_starts = i_trial_starts[1:]
-            i_trial_ends = i_trial_ends[1:] 
         # create start stop indices for all batches still 2d trial -> start stop
         start_end_blocks_per_trial = []
         for i_trial in xrange(len(i_trial_starts)):
@@ -293,7 +294,10 @@ class CntWindowTrialIterator(object):
             batch = create_batch(topo,y, start_end_blocks, self.n_sample_preds)
             yield batch
         
-def compute_trial_start_end_samples(y, check_trial_lengths_equal=True):
+def compute_trial_start_end_samples(y, check_trial_lengths_equal=True,
+        input_time_length=None):
+    """ Specify input time length to kick out trials that are too short after
+    signal start."""
     trial_part = np.sum(y, 1) == 1
     boundaries = np.diff(trial_part.astype(np.int32))
     i_trial_starts = np.flatnonzero(boundaries == 1) + 1
@@ -311,7 +315,11 @@ def compute_trial_start_end_samples(y, check_trial_lengths_equal=True):
     
     assert(len(i_trial_starts) == len(i_trial_ends))
     assert(np.all(i_trial_starts < i_trial_ends))
-
+    # possibly remove first trials if they are too early
+    if input_time_length is not None:
+        while i_trial_starts[0] < input_time_length:
+            i_trial_starts = i_trial_starts[1:]
+            i_trial_ends = i_trial_ends[1:]
     if check_trial_lengths_equal:
         # just checking that all trial lengths are equal
         all_trial_lens = np.array(i_trial_ends) - np.array(i_trial_starts)

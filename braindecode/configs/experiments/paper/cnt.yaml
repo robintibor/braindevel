@@ -9,7 +9,8 @@
                 !obj:braindecode.veganlasagne.monitors.LossMonitor {},
                 !obj:braindecode.veganlasagne.monitors.MisclassMonitor {
                     chan_name: 'sample_misclass'},
-                !obj:braindecode.veganlasagne.monitors.CntTrialMisclassMonitor { },
+                !obj:braindecode.veganlasagne.monitors.CntTrialMisclassMonitor { 
+                    input_time_length: $input_time_length},
                 !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
         ],
         raw_set_train: !obj:braindecode.datasets.cnt_signal_matrix.CntSignalMatrix {

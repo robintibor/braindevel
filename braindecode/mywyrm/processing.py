@@ -11,6 +11,8 @@ import re
 import wyrm.types
 from copy import copy
 import scipy.signal
+import logging
+log = logging.getLogger(__name__)
 
 def select_marker_classes_epoch_range(cnt, classes, start,stop,copy_data=False):
     cnt = select_marker_classes(cnt, classes, copy_data)
@@ -67,6 +69,44 @@ def select_relevant_ival(cnt, segment_ival):
     # possibly subtract first element of timeaxis so timeaxis starts at 0 again?
     return cnt
 
+def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def, segment_ival, timeaxis=-2):
+    """Segment ival is : (offset to start marker, offset to end marker)"""
+    start_to_end_value = dict()
+    for class_name in start_marker_def:
+        start_marker_vals = start_marker_def[class_name]
+        end_marker_vals = end_marker_def[class_name]
+        assert len(start_marker_vals) == 1
+        assert len(end_marker_vals) == 1
+        start_to_end_value[start_marker_vals[0]] = end_marker_vals[0] 
+            
+        
+    assert len(cnt.markers) % 2 == 0
+    start_markers = cnt.markers[::2]
+    end_markers = cnt.markers[1::2]
+
+    # Assuming start marker vals are 1 ... n_classes
+    # Otherwise change code...
+    all_start_marker_vals = start_to_end_value.keys()
+    n_classes = np.max(all_start_marker_vals)
+    assert np.array_equal(np.sort(all_start_marker_vals),
+                         range(1,np.max(all_start_marker_vals)+1)), (
+        "Assume start marker values are from 1...n_classes")
+    
+    y = np.zeros((cnt.data.shape[0], np.max(all_start_marker_vals)), dtype= np.int32)
+    for i_event in xrange(len(start_markers)):
+        start_marker_ms, start_marker_val  = start_markers[i_event]
+        end_marker_ms, end_marker_val = end_markers[i_event]
+        assert end_marker_val == start_to_end_value[start_marker_val], (
+            "Expect the end marker value to be corresponding, but have"
+            "start marker: {:d}, end marker: {:d}".format(
+            start_marker_val, end_marker_val))
+        first_index = np.searchsorted(cnt.axes[timeaxis], start_marker_ms + segment_ival[0])
+        last_index = np.searchsorted(cnt.axes[timeaxis], end_marker_ms+segment_ival[1])
+        # -1 to transform 1-based to 0-based indexing
+        y[first_index:last_index, int(start_marker_val) - 1] = 1 
+        
+    return y
+        
 def create_cnt_y(cnt, segment_ival, marker_def=None, timeaxis=-2):
     """ Create a one-hot-encoded signal for all the markers in cnt.
     Dimensions will be #samples x #classes(i.e. marker types)"""

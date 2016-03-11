@@ -248,6 +248,9 @@ def get_reshaped_cnt_preds(all_preds, n_samples, input_time_length,
     return all_preds_arr
 
 class CntTrialMisclassMonitor(Monitor):
+    def __init__(self, input_time_length=None):
+        self.input_time_length = input_time_length
+
     def setup(self, monitor_chans, datasets):
         for setname in datasets:
             assert setname in ['train', 'valid', 'test']
@@ -260,8 +263,58 @@ class CntTrialMisclassMonitor(Monitor):
     def monitor_set(self, monitor_chans, setname, all_preds, losses, 
             all_batch_sizes, all_targets, dataset):
         """Assuming one hot encoding for now"""
+        assert self.input_time_length is not None, "Need to know input time length..."
         all_pred_labels = []
         all_target_labels = []
+        
+        i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
+            dataset.y, check_trial_lengths_equal=False,
+            input_time_length=self.input_time_length)
+        all_preds_arr = np.concatenate(all_preds, axis=0)
+        i_pred_block = 0
+        n_sample_preds = all_preds[0].shape[0] / all_batch_sizes[0]
+        preds_per_block = np.reshape(all_preds_arr, (-1, n_sample_preds,
+            all_preds_arr.shape[1]))
+        for i_trial in xrange(len(i_trial_starts)):
+            needed_samples = i_trial_ends[i_trial] - i_trial_starts[i_trial]
+            preds_this_trial = []
+            while needed_samples > 0:
+                # - needed_samples: only has an effect
+                # in case there are more samples thatn we actually still need
+                # in the block
+                # That can happen since final block of a trial can overlap
+                # with block before so we can have some redundant preds 
+                pred_samples = preds_per_block[i_pred_block, -needed_samples:]
+                preds_this_trial.append(pred_samples)
+                needed_samples -= len(pred_samples)
+                i_pred_block += 1
+            preds_this_trial = np.concatenate(preds_this_trial, axis=0)
+            pred_label = np.argmax(np.mean(preds_this_trial, axis=0))
+            all_pred_labels.append(pred_label)
+        assert i_pred_block == len(preds_per_block) , ("Expect that all "
+            "prediction blocks are needed, used {:d}, existing {:d}".format(
+                i_pred_block, len(preds_per_block)))
+            
+        for start, end in zip(i_trial_starts, i_trial_ends):
+            targets = dataset.y[start:end]
+            assert np.sum(np.max(targets, axis=0)) == 1, ("Trial should only "
+                 "have one class")
+            assert np.sum(targets) == len(targets), ("Every sample should have "
+                                                    "one positive marker")
+            target_label = np.argmax(np.max(targets, axis=0))
+            all_target_labels.append(target_label)
+        
+        
+        all_pred_labels = np.array(all_pred_labels)
+        all_target_labels = np.array(all_target_labels)
+        
+        misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
+            float(len(all_target_labels)))
+        monitor_key = "{:s}_misclass".format(setname)
+        monitor_chans[monitor_key].append(float(misclass))
+        return
+        
+        
         # Compute number of trials and reshape preds and targets
         # to #trials x #predicted_samples_per_trial x #classes
         i_trial_starts, i_trial_ends = compute_trial_start_end_samples(dataset.y)
