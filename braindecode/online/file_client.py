@@ -6,6 +6,7 @@ import gevent.select
 import sys
 from scipy import interpolate
 from braindecode.datasets.loaders import BBCIDataset
+from braindecode.experiments.experiment_runner import create_experiment
 
 
 class RememberPredictionsServer(gevent.server.StreamServer):
@@ -39,11 +40,22 @@ def start_remember_predictions_server():
     return server
 
 def send_file_data():
-    print("Loading file...")
-    offline_execution_set = BBCIDataset('data/four-sec-dry-32-sensors/' + 
-        'MaVoMuSc_dryEEG32S001_2.BBCI.mat')
+    print("Loading Experiment...")
+    # Use model to get cnt preprocessors
+    base_name = 'data/models/online/cnt/shallow-combined/12'
+    exp = create_experiment(base_name + '.yaml')
+
+    print("Loading File...")
+    offline_execution_set = BBCIDataset('data/four-sec-dry-32-sensors/cabin/'
+        'Martin_trainingS001R01_1-4.BBCI.mat')
 
     cnt = offline_execution_set.load()
+    print("Running preprocessings...")
+    cnt_preprocs = exp.dataset.cnt_preprocessors
+    assert cnt_preprocs[-1][0].__name__ == 'exponential_standardize_cnt'
+    # Do not do standardizing as it will be done by coordinator
+    for preproc, kwargs in cnt_preprocs[:-1]:
+        cnt = preproc(cnt, **kwargs)
     cnt_data = cnt.data.astype(np.float32)
     print("Done.")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -61,23 +73,35 @@ def send_file_data():
     s.send(np.array([n_chans], dtype=np.int32).tobytes())
     s.send(np.array([n_samples], dtype=np.int32).tobytes())
     
-    
-    
     i_block = 0
-    while i_block < 400:
+    y_labels = create_y_labels(cnt, trial_len=int(cnt.fs*4)).astype(np.float32)
+    
+    while i_block < 150:
         arr = cnt_data[i_block * n_samples:i_block*n_samples + n_samples,:].T
+        this_y = y_labels[i_block * n_samples:i_block*n_samples + n_samples]
         # chan x time
         # add fake marker
-        arr = np.concatenate((arr, np.zeros((1,arr.shape[1]))), axis=0).astype(
-            np.float32)
+        #arr = np.concatenate((arr, np.zeros((1,arr.shape[1]))), axis=0).astype(
+        #    np.float32)
+        arr = np.concatenate((arr, this_y[np.newaxis, :]), axis=0)
         s.send(arr.tobytes(order='F'))
         i_block +=1
         gevent.sleep(0)
     return cnt
 
+
+def create_y_labels(cnt, trial_len):
+    fs = cnt.fs
+    event_samples_and_classes = [(int(np.round(m[0] * fs/1000.0)), m[1]) 
+        for m in cnt.markers]
+    y = np.zeros((cnt.data.shape[0]), dtype=np.int32)
+    for i_sample, marker in event_samples_and_classes:
+        assert marker in [1,2,3,4], "Assuming 4 classes for now..."
+        y[i_sample:i_sample+trial_len] = marker
+    return y
+
 def create_y_signal(cnt, trial_len):
     fs = cnt.fs
-    assert fs == 512, "for now assuming this, probably this asseriton can be saefly removed if it is no longer true"
     event_samples_and_classes = [(int(np.round(m[0] * fs/1000.0)), m[1]) for m in cnt.markers]
     return get_y_signal(cnt.data, event_samples_and_classes, trial_len)
 
@@ -116,7 +140,7 @@ if __name__ == "__main__":
                 _ = sys.stdin.readline()
                 enter_pressed = True
     
-    y_signal = create_y_signal(cnt, trial_len=512*4)
+    y_signal = create_y_signal(cnt, trial_len=int(cnt.fs*4))
     i_pred_samples = [int(line[:-1]) for line in server.i_pred_samples]
     # -1 to convert from 1 to 0-based indexing
     i_pred_samples_arr = np.array(i_pred_samples) - 1

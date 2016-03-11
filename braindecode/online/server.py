@@ -16,28 +16,33 @@ import datetime
 import os.path
 import sys
 import gevent.select
+from scipy import interpolate
 from braindecode.experiments.experiment_runner import create_experiment
 from braindecode.veganlasagne.layers import transform_to_normal_net
 log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
     def __init__(self, listener, coordinator, ui_hostname, ui_port, 
-        plot_sensors, save_data,
+        plot_sensors, save_data, use_ui_server,
             handle=None, backlog=None, spawn='default', **ssl_args):
         self.coordinator = coordinator
         self.ui_hostname = ui_hostname
         self.ui_port = ui_port
         self.plot_sensors = plot_sensors
         self.save_data = save_data
+        self.use_ui_server = use_ui_server
         super(PredictionServer, self).__init__(listener, handle=handle, spawn=spawn)
 
 
     def handle(self, in_socket, address):
         # Connect to UI Server
         log.info('New connection from {:s}!'.format(str(address)))
-        ui_socket = self.connect_to_ui_server()
-        log.info("Connected to UI Server")
-        
+        if self.use_ui_server:
+            ui_socket = self.connect_to_ui_server()
+            log.info("Connected to UI Server")
+        else:
+            ui_socket=None
+
         # Receive Header
         chan_names, n_rows, n_cols = self.receive_header(in_socket)
         n_numbers = n_rows * n_cols
@@ -132,6 +137,9 @@ class PredictionServer(gevent.server.StreamServer):
         if self.save_data:
             data_saver = DataSaver(chan_names)
         self.coordinator.initialize(n_chans=n_rows - 1) # one is a marker chan(!)
+        
+        all_preds =  []
+        all_pred_samples = []
         while True:
             array = self.read_until_bytes_received_or_enter_pressed(in_socket,
                 n_bytes)
@@ -152,11 +160,50 @@ class PredictionServer(gevent.server.StreamServer):
                 pred, i_sample = self.coordinator.pop_last_prediction_and_sample_ind()
                 log.info("Prediction for sample {:d}:\n{:s}".format(
                     i_sample, pred))
-                # +1 to convert 0-based to 1-based indexing
-                ui_socket.sendall("{:d}\n".format(i_sample + 1))
-                ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
+                if self.use_ui_server:
+                    # +1 to convert 0-based to 1-based indexing
+                    ui_socket.sendall("{:d}\n".format(i_sample + 1))
+                    ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
+                all_preds.append(pred)
+                all_pred_samples.append(i_sample)
+        
+        all_samples = np.concatenate(data_saver.sample_blocks).astype(np.float32)
+        all_preds = np.array(all_preds).squeeze()
+        all_pred_samples = np.array(all_pred_samples)
+        self.print_results(all_samples, all_preds, all_pred_samples)
+        
         if self.save_data:
             data_saver.save()
+
+    def print_results(self, all_samples, all_preds, all_pred_samples):
+        # y labels i from 0 to n_classes (inclusive!), 0 representing
+        # non-trial => no known marker state
+        y_labels = all_samples[:,-1]
+        y_signal = np.ones((len(y_labels), 4)) * np.nan
+        y_signal[:,0] = y_labels == 1
+        y_signal[:,1] = y_labels == 2
+        y_signal[:,2] = np.logical_or(y_labels == 0, y_labels==3)
+        y_signal[:,3] = y_labels == 4
+        
+        assert not np.any(np.isnan(y_signal))
+        
+        interpolate_fn = interpolate.interp1d(all_pred_samples, all_preds.T,
+                                             bounds_error=False, fill_value=0)
+        interpolated_preds = interpolate_fn(range(0,len(y_labels)))
+        corrcoeffs = np.corrcoef(interpolated_preds, 
+                                 y_signal.T)[:4,4:]
+
+        print("Corrcoeffs")
+        print corrcoeffs
+        print("mean across diagonal")
+        print np.mean(np.diag(corrcoeffs))
+        interpolated_pred_labels = np.argmax(interpolated_preds, axis=0)
+        # -1 since we have 0 as "break" "non-trial" marker
+        label_pred_equal = interpolated_pred_labels == y_labels - 1
+        label_pred_trial_equal = label_pred_equal[y_labels!=0]
+        print("misclass inside trials")
+        print np.sum(label_pred_trial_equal) / float(len(label_pred_trial_equal))
+        
 
 class DataSaver(object):
     """ Remember and save data streamed during an online session."""
@@ -198,12 +245,16 @@ def parse_command_line_arguments():
         help="Don't show plots of the sensors first...")
     parser.add_argument('--nosave', action='store_true',
         help="Don't save data...")
+    parser.add_argument('--noui', action='store_true',
+        help="Don't wait for UI server ...")
     args = parser.parse_args()
     return args
 
-def main(ui_hostname, ui_port, base_name, plot_sensors, save_data):
+def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
+        use_ui_server):
     assert np.little_endian, "Should be in little endian"
     hostname = ''
+    # port of our server
     port = 1234
     params = np.load(base_name + '.npy')
     exp = create_experiment(base_name + '.yaml')
@@ -215,7 +266,7 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data):
     coordinator = OnlineCoordinator(data_processor, online_model, pred_freq=125)
     server = PredictionServer((hostname, port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
-        save_data=save_data)
+        save_data=save_data, use_ui_server=use_ui_server)
     log.setLevel("DEBUG")
     log.info("Starting server")
     server.start()
@@ -226,6 +277,7 @@ if __name__ == '__main__':
     logging.basicConfig()
     gevent.signal(signal.SIGQUIT, gevent.kill)
     args = parse_command_line_arguments()
-    main(args.host, args.port, args.modelfile, not args.noplot, not args.nosave)
+    main(args.host, args.port, args.modelfile, not args.noplot, not args.nosave,
+        not args.noui)
     
     
