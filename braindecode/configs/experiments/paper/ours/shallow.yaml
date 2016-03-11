@@ -29,68 +29,30 @@
         pool_time_stride: [15],
         pool_mode: ['average_exc_pad', 'max'],
         variants: [[
-        {
-            first_nonlin: [$square],
-            post_pool_nonlin: [$safe_log, $identity],
-        },
-        {
-            first_nonlin: [$elu],
-            post_pool_nonlin: [$identity],
-        }
+            {
+                first_nonlin: [$square],
+                post_pool_nonlin: [$safe_log, $identity],
+            },
+            {
+                first_nonlin: [$elu],
+                post_pool_nonlin: [$identity],
+            }
         ],
         [
             {
                 high_cut_hz: [4],
                 cnt_preprocessors: [$resample_lowpass_standardize],
                 low_cut_off_hz: ["null"], # just for ignoring variants..
-                variants: [[{
-                    dataset_filename: ['data/BBCI-without-last-runs/MaGlMoSc2S001R01_ds10_1-12.BBCI.mat'],
-                    test_filename: ['data/BBCI-only-last-runs/MaGlMoSc2S001R13_ds10_1-2BBCI.mat'],
-                },]]
             },
             {
                 cnt_preprocessors: [$resample_highpass_standardize],
                 low_cut_off_hz: ["null"],
-                variants: [[{
-                    dataset_filename: ['data/BBCI-without-last-runs/FrThMoSc1S001R01_ds10_1-11.BBCI.mat'],
-                    test_filename: ['data/BBCI-only-last-runs/FrThMoSc1S001R12_ds10_1-2BBCI.mat'],
-                },
-                {
-                    dataset_filename: ['data/BBCI-without-last-runs/GuJoMoSc01S001R01_ds10_1-11.BBCI.mat'],
-                    test_filename: ['data/BBCI-only-last-runs/GuJoMoSc01S001R12_ds10_1-2BBCI.mat'],
-                },
-                {
-                    dataset_filename: ['data/BBCI-without-last-runs/JoBeMoSc01S001R01_ds10_1-11.BBCI.mat'],
-                    test_filename: ['data/BBCI-only-last-runs/JoBeMoSc01S001R12_ds10_1-2BBCI.mat'],
-                },]]
             },
             {
                 cnt_preprocessors: [$resample_highpass_standardize],
                 low_cut_off_hz: [4],
-                variants: [[{
-                    dataset_filename: ['data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat'],
-                    test_filename: ['data/BBCI-only-last-runs/MaJaMoSc1S001R12_ds10_1-2BBCI.mat'],
-                },
-                {
-                    dataset_filename: ['data/BBCI-without-last-runs/MaKiMoSC01S001R01_ds10_1-4.BBCI.mat'],
-                    test_filename: ['data/BBCI-only-last-runs/MaKiMoSC01S001R05_ds10_1-2BBCI.mat'],
-                },
-                {
-                    dataset_filename: ['data/BBCI-without-last-runs/MaVoMoSc1S001R01_ds10_1-11.BBCI.mat'],
-                    test_filename: ['data/BBCI-only-last-runs/MaVoMoSc1S001R12_ds10_1-2BBCI.mat'],
-                },
-                {
-                    dataset_filename: ['data/BBCI-without-last-runs/NaMaMoSc1S001R01_ds10_1-11.BBCI.mat'],
-                    test_filename: ['data/BBCI-only-last-runs/NaMaMoSc1S001R12_ds10_1-2BBCI.mat'],
-                },
-                {
-                    dataset_filename: ['data/BBCI-without-last-runs/OlIlMoSc01S001R01_ds10_1-11.BBCI.mat'],
-                    test_filename: ['data/BBCI-only-last-runs/OlIlMoSc01S001R12_ds10_1-2BBCI.mat'],
-                },]]
             },
-            
         ]
-        
         ]
     }
     ]]

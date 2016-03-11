@@ -53,7 +53,7 @@ def select_marker_epochs(cnt, epoch_inds, copy_data=False):
         copied_cnt.markers = needed_markers
         return copied_cnt
 
-def select_relevant_ival(cnt, segment_ival):
+def select_ival_with_markers(cnt, segment_ival):
     """Select the ival of the data that has markers inside.
     Respect segment ival.
     Keeps data from 2 sec before first marker + segment_ival[0] to
@@ -98,7 +98,7 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def, segment
         end_marker_ms, end_marker_val = end_markers[i_event]
         assert end_marker_val == start_to_end_value[start_marker_val], (
             "Expect the end marker value to be corresponding, but have"
-            "start marker: {:d}, end marker: {:d}".format(
+            "start marker: {:f}, end marker: {:f}".format(
             start_marker_val, end_marker_val))
         first_index = np.searchsorted(cnt.axes[timeaxis], start_marker_ms + segment_ival[0])
         last_index = np.searchsorted(cnt.axes[timeaxis], end_marker_ms+segment_ival[1])

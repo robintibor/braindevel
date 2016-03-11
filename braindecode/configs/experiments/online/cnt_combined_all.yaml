@@ -176,10 +176,11 @@
             },
         ]},
         combined_cnt_set: !obj:braindecode.datasets.combined.CombinedCntSets {
-            set_args: !!python/object/apply:zip [$filenames, $set_types, $set_preprocs],
+            set_args: !!python/object/apply:zip [
+                $filenames, $set_types, 
+                $set_preprocs, $all_segment_ivals, $end_marker_defs],
             load_sensor_names: $load_sensor_names,
             sensor_names: $sensor_names,
-            segment_ival: [$trial_start, $trial_stop],
             marker_def: $marker_def,
             cnt_preprocessors: $cnt_preprocessors,
         },
@@ -189,10 +190,17 @@
             'AFz', 'AF4', 'AF8', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6',
             'FC1', 'FCz', 'FC2', 'C3', 'C1', 'Cz', 'C2', 'C4', 'CP3', 'CP1',
              'CPz', 'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz'],
+        end_markers_4_class: {'1': [5], '2': [6], '3': [7], '4': [8]},
     },
-    variants: [[{
+    variants: [[{ 
+        # Remove from params basically..
+        first_nonlin: [$square],
+        post_pool_nonlin: [$safe_log],
         test_filename: ["null"], # remove this from params basically.. its coming from base filenames :)
         dataset_splitter: [$several_sets_splitter],
+        dataset_filename: ['null'], # remove this from params basically.. its coming from base filenames :)q
+        pool_mode: ['average_exc_pad'],
+        
         valid_set_fraction: [0.2],
         cnt_preprocessors: [$resample_bandpass_cz_standardize],
         resample_fs: [500],
@@ -200,35 +208,49 @@
         sensor_names: ["null"],
         cleaner: [$no_cleaner],
         dataset: [$combined_cnt_set],
-        save_path: ['data/models/online/cnt/shallow-combined/'],
+        save_path: ['data/models/online/cnt/shallow-uneven-trials/'],
         low_cut_off_hz: [0.5],
         high_cut_hz: [40],
         final_dense_length: [9],
         trial_start: [1500],
         train_loader_type: [BBCIDataset],
         num_filters: [40],
-        dataset_filename: ['null'],
         
         filenames: [[
             'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat',
+            'data/four-sec-dry-32-sensors/cabin/Martin_sahara32_realMovementS001R01_ds10_1-7.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/MaVo2_sahara32_realMovementS001R02_ds10_1-5.BBCI.mat']],
-        set_types: [['bbci',  'bbci', 'bbci']],
+        set_types: [['bbci',  'bbci', 'bbci', 'bbci']],
         
-        run_after_early_stop: [false],
+        run_after_early_stop: [true],
         
-        set_preprocs: [[
+        set_preprocs: ["[
            [0, 300],
-           [0,320],
-           [0240,320],
+           [0,null],
+           [0,null],
+           [0,null],
+        ]"],
+        
+        all_segment_ivals: [[
+            [0,4000],
+            [0,4000],
+            [0,0],
+            [0,0],
         ]],
+        end_marker_defs: ["[
+            null,
+            null,
+            {'1': [5], '2': [6], '3': [7], '4': [8]},
+            {'1': [5], '2': [6], '3': [7], '4': [8]},
+        ]"],
         
         batch_size: [60], # make it faster(?)
         trial_start: [1500],
         trial_stop: [4000],
         n_sample_preds: [500],
         pool_type: [SumPool2dLayer],
-        input_time_length: [1350],
+        input_time_length: [1000],
         layers: [$cnt_shallow_square],
         pool_time_length: [200],
         pool_time_stride: [40],
