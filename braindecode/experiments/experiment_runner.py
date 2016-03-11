@@ -22,13 +22,14 @@ from braindecode.veganlasagne.stopping import MaxEpochs
 from braindecode.datahandling.splitters import FixedTrialSplitter,\
     SeveralSetsSplitter
 import logging
+from braindecode.util import dict_equal
 log = logging.getLogger(__name__)
 
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
             quiet=False, dry_run=False, cross_validation=False,
             shuffle=False, debug=False, only_first_n_sets=False,
-            batch_test=False):
+            batch_test=False, skip_existing=False):
         self._start_id = start_id
         self._stop_id = stop_id
         self._test = test
@@ -39,19 +40,63 @@ class ExperimentsRunner:
         self._debug = debug
         self._only_first_n_sets = only_first_n_sets
         self._batch_test=batch_test
+        self._skip_existing = skip_existing
         
     def run(self, all_train_strs):
         if (self._quiet):
             self._log_only_warnings()
         self._all_train_strs = all_train_strs
+        if self._skip_existing:
+            self._skip_already_done_experiments()
         log.info("Running {:d} experiments".format(self._get_stop_id() + 1 - 
             self._get_start_id()))
+        
         self._create_base_save_paths_for_all_experiments()
         self._run_all_experiments()
     
     def _log_only_warnings(self):
         logging.getLogger("pylearn2").setLevel(logging.WARN)
         logging.getLogger("braindecode").setLevel(logging.WARN)
+    
+    def _skip_already_done_experiments(self):
+        log.info("Check if some experiments were already run...")
+        clean_all_train_strs = []
+        # Go through all experiments, all result folders
+        # and check if experiments already exist
+        
+        # First collect all folder paths and load results
+        # in order not to load results twice
+        # Possible optimization: First get all save paths
+        # Then only load results once for respective save paths
+        all_folder_paths = []
+        for i_experiment in range(len(self._all_train_strs)):
+            folder_path = self._create_save_folder_path(i_experiment)
+            all_folder_paths.append(folder_path)
+        
+        unique_folder_paths = set(all_folder_paths)
+        folder_path_to_results = dict()
+        for folder_path in unique_folder_paths:
+            existing_result_files = glob(folder_path + "*[0-9].result.pkl")
+            results = [np.load(f) for f in existing_result_files]
+            folder_path_to_results[folder_path] = results
+        
+        
+        for i_experiment in range(len(self._all_train_strs)):
+            train_str = self._all_train_strs[i_experiment]
+            train_dict = self._load_without_layers(train_str)
+            original_params = train_dict['original_params']
+            folder_path = all_folder_paths[i_experiment]
+            results = folder_path_to_results[folder_path]
+            experiment_already_run = False
+            for r in results:
+                if dict_equal(r.parameters, original_params):
+                    experiment_already_run = True
+                    log.warn("Already ran id {:d} {:s}".format(i_experiment,
+                        str(original_params)))
+            if not experiment_already_run:
+                clean_all_train_strs.append(train_str)
+    
+        self._all_train_strs = clean_all_train_strs
     
     def _create_base_save_paths_for_all_experiments(self):
         self._base_save_paths = []

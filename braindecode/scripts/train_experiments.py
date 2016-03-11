@@ -60,6 +60,8 @@ def parse_command_line_arguments():
                         help='''Filter experiments by parameter values.
                         Only run those experiments where the parameter matches the given value.
                         Supply it in the form parameter1=value1 parameters2=value2, ...''')
+    parser.add_argument('--skipexisting', action="store_true",
+                        help='''Only run those experiments that werent run yet.''')
     args = parser.parse_args()
 
     if args.firstsets is None:
@@ -93,6 +95,7 @@ if __name__ == "__main__":
     exp_runner = ExperimentsRunner(quiet=args.quiet, start_id=args.startid,
         stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle,
         debug=args.debug, dry_run=args.dryrun, 
-        only_first_n_sets=args.firstsets, batch_test=args.batchtest)
+        only_first_n_sets=args.firstsets, batch_test=args.batchtest,
+        skip_existing=args.skipexisting)
     exp_runner.run(all_train_strs)
 

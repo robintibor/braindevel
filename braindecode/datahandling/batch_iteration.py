@@ -293,7 +293,7 @@ class CntWindowTrialIterator(object):
             batch = create_batch(topo,y, start_end_blocks, self.n_sample_preds)
             yield batch
         
-def compute_trial_start_end_samples(y):
+def compute_trial_start_end_samples(y, check_trial_lengths_equal=True):
     trial_part = np.sum(y, 1) == 1
     boundaries = np.diff(trial_part.astype(np.int32))
     i_trial_starts = np.flatnonzero(boundaries == 1) + 1
@@ -312,10 +312,11 @@ def compute_trial_start_end_samples(y):
     assert(len(i_trial_starts) == len(i_trial_ends))
     assert(np.all(i_trial_starts < i_trial_ends))
 
-    # just checking that all trial lengths are equal
-    all_trial_lens = np.array(i_trial_ends) - np.array(i_trial_starts)
-    assert all(all_trial_lens == all_trial_lens[0]), (
-        "All trial lengths should be equal, otherwise recheck code below...")
+    if check_trial_lengths_equal:
+        # just checking that all trial lengths are equal
+        all_trial_lens = np.array(i_trial_ends) - np.array(i_trial_starts)
+        assert all(all_trial_lens == all_trial_lens[0]), (
+            "All trial lengths should be equal...")
     return i_trial_starts, i_trial_ends
 
 def create_batch(topo, y, start_end_blocks, n_sample_preds):
