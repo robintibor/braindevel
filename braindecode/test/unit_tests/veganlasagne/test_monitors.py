@@ -44,16 +44,17 @@ def test_cnt_trial_misclass_monitor():
     
     # first batch has two rows
     # second has one
-    all_preds = np.array([[[0,0.1,0.1,0.8], [0,0.1,0.1,0.8], [0,0.8,0.1,0.1],[0,0.8,0.1,0.1]],
-                 [[0.8,0.1,0.1,0.1],[0.8,0.1,0.1,0.1]]])
+    all_preds = np.array([
+        np.array([[0,0.1,0.1,0.8], [0,0.1,0.1,0.8], [0,0.8,0.1,0.1],[0,0.8,0.1,0.1]]),
+                 np.array([[0.8,0.1,0.1,0.1],[0.8,0.1,0.1,0.1]])])
     
     all_targets = np.array([[[0,0,0,1], [0,0,0,1], [0,0,1,0],[0,0,1,0]],
                  [[1,0,0,0],[1,0,0,0]]])
     
     all_losses=None # ignoring
-    batch_sizes=None # ignoring
+    batch_sizes=[2,1]
     
-    monitor = CntTrialMisclassMonitor()
+    monitor = CntTrialMisclassMonitor(input_time_length=1)
     monitor.monitor_set(monitor_chans, 'test', all_preds, all_losses,
             batch_sizes, all_targets, fake_set)
     
