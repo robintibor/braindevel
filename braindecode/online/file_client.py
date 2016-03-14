@@ -7,6 +7,7 @@ import sys
 from scipy import interpolate
 from braindecode.datasets.loaders import BBCIDataset
 from braindecode.experiments.experiment import create_experiment
+from braindecode.mywyrm.processing import create_cnt_y_start_end_marker
 
 
 class RememberPredictionsServer(gevent.server.StreamServer):
@@ -42,13 +43,12 @@ def start_remember_predictions_server():
 def send_file_data():
     print("Loading Experiment...")
     # Use model to get cnt preprocessors
-    base_name = 'data/models/online/cnt/shallow-combined/12'
+    base_name = 'data/models/online/cnt/shallow-uneven-trials/8'
     exp = create_experiment(base_name + '.yaml')
 
     print("Loading File...")
     offline_execution_set = BBCIDataset('data/four-sec-dry-32-sensors/cabin/'
-        'Martin_trainingS001R01_1-4.BBCI.mat')
-
+        'MaVo2_sahara32_realMovementS001R02_ds10_1-5.BBCI.mat')
     cnt = offline_execution_set.load()
     print("Running preprocessings...")
     cnt_preprocs = exp.dataset.cnt_preprocessors
@@ -74,9 +74,9 @@ def send_file_data():
     s.send(np.array([n_samples], dtype=np.int32).tobytes())
     
     i_block = 0
-    y_labels = create_y_labels(cnt, trial_len=int(cnt.fs*4)).astype(np.float32)
+    y_labels = create_y_labels(cnt).astype(np.float32)
     
-    while i_block < 150:
+    while i_block < 500:
         arr = cnt_data[i_block * n_samples:i_block*n_samples + n_samples,:].T
         this_y = y_labels[i_block * n_samples:i_block*n_samples + n_samples]
         # chan x time
@@ -89,8 +89,39 @@ def send_file_data():
         gevent.sleep(0)
     return cnt
 
+def create_y_labels(cnt):
+    classes = np.unique([m[1] for m in cnt.markers])
+    if np.array_equal(range(1,5), classes):
+        return create_y_labels_fixed_trial_len(cnt, trial_len=int(cnt.fs*4))
+    elif np.array_equal(range(1,9), classes):
+        y_signal = create_cnt_y_start_end_marker(cnt,
+                start_marker_def=dict((('1',[1]), ('2', [2]), ('3',[3]), ('4', [4]))), 
+                end_marker_def=dict((('1',[5]), ('2', [6]), ('3',[7]), ('4', [8]))), 
+                segment_ival=(0,0), timeaxis=-2)
+        y_labels = np.zeros((cnt.data.shape[0]), dtype=np.int32)
+        y_labels[y_signal[:,0] == 1] = 1
+        y_labels[y_signal[:,1] == 1] = 2
+        y_labels[y_signal[:,2] == 1] = 3
+        y_labels[y_signal[:,3] == 1] = 4
+        return y_labels
+    else:
+        raise ValueError("Expect classes 1,2,3,4, possibly with end markers "
+            "5,6,7,8, instead got {:s}".format(str(classes)))
+    
 
-def create_y_labels(cnt, trial_len):
+def has_fixed_trial_len(cnt):
+    classes = np.unique([m[1] for m in cnt.markers])
+    if np.array_equal(range(1,5), classes):
+        return True
+    elif np.array_equal(range(1,9), classes):
+        return False
+    else:
+        raise ValueError("Expect classes 1,2,3,4, possibly with end markers "
+            "5,6,7,8, instead got {:s}".format(str(classes)))
+     
+
+
+def create_y_labels_fixed_trial_len(cnt, trial_len):
     fs = cnt.fs
     event_samples_and_classes = [(int(np.round(m[0] * fs/1000.0)), m[1]) 
         for m in cnt.markers]
@@ -100,7 +131,17 @@ def create_y_labels(cnt, trial_len):
         y[i_sample:i_sample+trial_len] = marker
     return y
 
-def create_y_signal(cnt, trial_len):
+
+def create_y_signal(cnt):
+    if has_fixed_trial_len(cnt):
+        return create_y_signal_fixed_trial_len(cnt, trial_len=int(cnt.fs*4))
+    else:
+        return create_cnt_y_start_end_marker(cnt,
+            start_marker_def=dict((('1',[1]), ('2', [2]), ('3',[3]), ('4', [4]))), 
+            end_marker_def=dict((('1',[5]), ('2', [6]), ('3',[7]), ('4', [8]))), 
+            segment_ival=(0,0), timeaxis=-2)
+
+def create_y_signal_fixed_trial_len(cnt, trial_len):
     fs = cnt.fs
     event_samples_and_classes = [(int(np.round(m[0] * fs/1000.0)), m[1]) for m in cnt.markers]
     return get_y_signal(cnt.data, event_samples_and_classes, trial_len)
@@ -140,7 +181,7 @@ if __name__ == "__main__":
                 _ = sys.stdin.readline()
                 enter_pressed = True
     
-    y_signal = create_y_signal(cnt, trial_len=int(cnt.fs*4))
+    y_signal = create_y_signal(cnt)
     i_pred_samples = [int(line[:-1]) for line in server.i_pred_samples]
     # -1 to convert from 1 to 0-based indexing
     i_pred_samples_arr = np.array(i_pred_samples) - 1

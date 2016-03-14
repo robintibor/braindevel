@@ -134,8 +134,7 @@ class PredictionServer(gevent.server.StreamServer):
 
     def make_predictions_and_save_data(self, chan_names, n_rows, n_cols, n_bytes,
         in_socket, ui_socket):
-        if self.save_data:
-            data_saver = DataSaver(chan_names)
+        data_saver = DataSaver(chan_names)
         self.coordinator.initialize(n_chans=n_rows - 1) # one is a marker chan(!)
         
         all_preds =  []
@@ -149,8 +148,7 @@ class PredictionServer(gevent.server.StreamServer):
             
             array = np.fromstring(array, dtype=np.float32)
             array = array.reshape(n_rows, n_cols, order='F')
-            if self.save_data:
-                data_saver.append_samples(array.T)
+            data_saver.append_samples(array.T)
             # here now also supply y to data processor...
             self.coordinator.receive_samples(array.T)
 
@@ -198,6 +196,15 @@ class PredictionServer(gevent.server.StreamServer):
         print("mean across diagonal")
         print np.mean(np.diag(corrcoeffs))
         interpolated_pred_labels = np.argmax(interpolated_preds, axis=0)
+        
+        # inside trials
+        corrcoeffs = np.corrcoef(interpolated_preds[:,y_labels!=0], 
+                                 y_signal[y_labels!=0].T)[:4,4:]
+        print("Corrcoeffs inside trial")
+        print corrcoeffs
+        print("mean across diagonal inside trial")
+        print np.mean(np.diag(corrcoeffs))
+        
         # -1 since we have 0 as "break" "non-trial" marker
         label_pred_equal = interpolated_pred_labels == y_labels - 1
         label_pred_trial_equal = label_pred_equal[y_labels!=0]
