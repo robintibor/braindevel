@@ -69,6 +69,7 @@
         },
         safe_softmax: !!python/name:braindecode.veganlasagne.nonlinearities.safe_softmax ,
         identity: !!python/name:lasagne.nonlinearities.identity ,
+        sigmoid: !!python/name:lasagne.nonlinearities.sigmoid ,
         elu: !!python/name:lasagne.nonlinearities.elu ,
         square: !!python/name:theano.tensor.sqr ,
         safe_log: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
