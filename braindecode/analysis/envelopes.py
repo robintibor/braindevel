@@ -6,7 +6,7 @@ import theano.tensor as T
 import argparse
 import yaml
 import theano
-from braindecode.experiments.experiment_runner import create_experiment
+from braindecode.experiments.experiment import create_experiment
 from braindecode.datasets.generate_filterbank import generate_filterbank
 from braindecode.analysis.util import (lowpass_topo,
                                        highpass_topo,

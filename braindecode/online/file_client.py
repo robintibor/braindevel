@@ -6,7 +6,7 @@ import gevent.select
 import sys
 from scipy import interpolate
 from braindecode.datasets.loaders import BBCIDataset
-from braindecode.experiments.experiment_runner import create_experiment
+from braindecode.experiments.experiment import create_experiment
 
 
 class RememberPredictionsServer(gevent.server.StreamServer):

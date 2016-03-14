@@ -3,7 +3,7 @@ import numpy as np
 import lasagne
 from braindecode.veganlasagne.layers import transform_to_normal_net,\
     get_used_input_length, get_input_shape, get_model_input_window
-from braindecode.experiments.experiment_runner import create_experiment
+from braindecode.experiments.experiment import create_experiment
 
 def load_model(filename):
     model = np.load(filename)

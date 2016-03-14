@@ -17,7 +17,7 @@ import os.path
 import sys
 import gevent.select
 from scipy import interpolate
-from braindecode.experiments.experiment_runner import create_experiment
+from braindecode.experiments.experiment import create_experiment
 from braindecode.veganlasagne.layers import transform_to_normal_net
 log = logging.getLogger(__name__)
 

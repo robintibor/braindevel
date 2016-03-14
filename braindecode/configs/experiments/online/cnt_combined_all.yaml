@@ -178,7 +178,7 @@
         combined_cnt_set: !obj:braindecode.datasets.combined.CombinedCntSets {
             set_args: !!python/object/apply:zip [
                 $filenames, $set_types, 
-                $set_preprocs, $all_segment_ivals, $end_marker_defs],
+                $trial_ranges, $all_segment_ivals, $end_marker_defs],
             load_sensor_names: $load_sensor_names,
             sensor_names: $sensor_names,
             marker_def: $marker_def,
@@ -211,6 +211,9 @@
         save_path: ['data/models/online/cnt/shallow-uneven-trials/'],
         low_cut_off_hz: [0.5],
         high_cut_hz: [40],
+        filter_time_length: [50],
+        pool_time_stride: [40],
+        pool_time_length: [200],
         final_dense_length: [9],
         trial_start: [1500],
         train_loader_type: [BBCIDataset],
@@ -221,22 +224,25 @@
             'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/Martin_sahara32_realMovementS001R01_ds10_1-7.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/MaVo2_sahara32_realMovementS001R02_ds10_1-5.BBCI.mat']],
-        set_types: [['bbci',  'bbci', 'bbci', 'bbci']],
+        set_types: [[
+        'bbci',
+        'bbci',
+        'bbci',
+        'bbci']],
         
         run_after_early_stop: [true],
-        
-        set_preprocs: ["[
-           [0, 300],
+        trial_ranges: ["[
+        [0, 300],
            [0,null],
            [0,null],
            [0,null],
         ]"],
         
         all_segment_ivals: [[
-            [0,4000],
-            [0,4000],
-            [0,0],
-            [0,0],
+            [1500,4000],
+            [1500,4000],
+            [750,0],
+            [750,0],
         ]],
         end_marker_defs: ["[
             null,
@@ -246,15 +252,10 @@
         ]"],
         
         batch_size: [60], # make it faster(?)
-        trial_start: [1500],
-        trial_stop: [4000],
-        n_sample_preds: [500],
+        n_sample_preds: [400], # will be overwritten anyways
         pool_type: [SumPool2dLayer],
-        input_time_length: [1000],
+        input_time_length: [750],
         layers: [$cnt_shallow_square],
-        pool_time_length: [200],
-        pool_time_stride: [40],
-        filter_time_length: [30],
         use_test_as_valid: [False], # False
         max_increasing_epochs: [40],
         max_epochs: [250],

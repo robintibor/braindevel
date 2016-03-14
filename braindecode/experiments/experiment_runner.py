@@ -397,39 +397,3 @@ def load_layers_from_dict(train_dict):
         return layers_obj
     else:
         return layers_obj.get_layers()
-
-def create_experiment(yaml_filename):
-    """Utility function to create experiment from yaml file"""
-    train_dict = yaml_parse.load(open(yaml_filename, 'r'))
-    layers = load_layers_from_dict(train_dict)
-    final_layer = layers[-1]
-    dataset = train_dict['dataset'] 
-    splitter = train_dict['dataset_splitter']
-    if (np.any([hasattr(l, 'n_stride') for l in layers])):
-        n_sample_preds =  get_n_sample_preds(final_layer)
-        # for backwards compatibility input time length also
-        input_time_length = get_input_time_length(final_layer)
-        log.info("Setting n_sample preds automatically to {:d}".format(
-            n_sample_preds))
-        for monitor in train_dict['exp_args']['monitors']:
-            if hasattr(monitor, 'n_sample_preds'):
-                monitor.n_sample_preds = n_sample_preds
-            if hasattr(monitor, 'input_time_length'):
-                monitor.input_time_length = input_time_length
-                
-        train_dict['exp_args']['iterator'].n_sample_preds = n_sample_preds
-        log.info("Input window length is {:d}".format(
-            get_model_input_window(final_layer)))
-    # add early stop chan, encessary for backwards compatibility
-    exp_args = train_dict['exp_args']
-    exp_args['remember_best_chan'] = train_dict['exp_args'].pop('remember_best_chan',
-        'valid_misclass')
-    exp_args['run_after_early_stop'] = train_dict['exp_args'].pop('run_after_early_stop',
-        True)
-    exp = Experiment(final_layer, dataset, splitter,
-                    **exp_args)
-    assert len(np.setdiff1d(layers, 
-        lasagne.layers.get_all_layers(final_layer))) == 0, ("All layers "
-        "should be used, unused {:s}".format(str(np.setdiff1d(layers, 
-        lasagne.layers.get_all_layers(final_layer)))))
-    return exp

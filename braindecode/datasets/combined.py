@@ -48,6 +48,7 @@ class CombinedCntSets(object):
     def construct_sets(self):
         self.sets = []
         for set_arg in self.set_args:
+            #Thinkabout: maybe do additional preprocs before?
             (filename, constructor, start_stop, 
                 segment_ival, end_marker_def) = set_arg
             if constructor == 'bbci':
