@@ -276,7 +276,10 @@ class CntTrialMisclassMonitor(Monitor):
         preds_per_block = np.reshape(all_preds_arr, (-1, n_sample_preds,
             all_preds_arr.shape[1]))
         for i_trial in xrange(len(i_trial_starts)):
-            needed_samples = i_trial_ends[i_trial] - i_trial_starts[i_trial]
+            # + 1 since end is inclusive
+            # so if trial end is 1 and trial start is 0
+            # need two samples (0 and 1)
+            needed_samples = i_trial_ends[i_trial] - i_trial_starts[i_trial] + 1
             preds_this_trial = []
             while needed_samples > 0:
                 # - needed_samples: only has an effect
@@ -288,6 +291,7 @@ class CntTrialMisclassMonitor(Monitor):
                 preds_this_trial.append(pred_samples)
                 needed_samples -= len(pred_samples)
                 i_pred_block += 1
+                #print ("needed samples", needed_samples)
             preds_this_trial = np.concatenate(preds_this_trial, axis=0)
             pred_label = np.argmax(np.mean(preds_this_trial, axis=0))
             all_pred_labels.append(pred_label)

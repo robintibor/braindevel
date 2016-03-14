@@ -7,6 +7,7 @@ from sklearn.metrics import confusion_matrix
 import itertools
 import logging
 from collections import Counter, OrderedDict
+from braindecode.util import dict_equal
 log = logging.getLogger(__name__)
 
 class Result:
@@ -368,6 +369,34 @@ def delete_results(result_folder, params):
         log.info("Deleting {:s}".format(file_name))
         os.unlink(file_name)
 
+def delete_duplicate_results(result_folder):
+    res_pool = ResultPool()
+    res_pool.load_results(result_folder)
+    
+    var_params = res_pool.varying_params()
+    
+    unique_var_params = []
+    duplicate_ids = []
+    all_result_file_names = res_pool.result_file_names()
+    for i_exp, params in enumerate(var_params):
+        if np.any([dict_equal(params, p) for p in unique_var_params]):
+            log.warn("Duplicate result {:s}".format(all_result_file_names[i_exp]))
+            duplicate_ids.append(i_exp)
+        else:
+            unique_var_params.append(params)
+
+    # Delete result/experiment/model files    
+    for i_exp in duplicate_ids:
+        result_file_name = all_result_file_names[i_exp]
+        yaml_file_name = result_file_name.replace('.result.pkl', '.yaml')
+        model_file_name = result_file_name.replace('.result.pkl', '.pkl')
+        model_param_file_name = result_file_name.replace('.result.pkl', '.npy')
+        os.unlink(result_file_name)
+        os.unlink(yaml_file_name)
+        os.unlink(model_file_name)
+        os.unlink(model_param_file_name)
+
+        
 def compute_confusion_matrix(result_objects):
     try:
         targets = [fold_res.targets for dataset_result_obj in result_objects for fold_res in dataset_result_obj]

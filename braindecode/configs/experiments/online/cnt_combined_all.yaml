@@ -214,7 +214,7 @@
         filter_time_length: [50],
         pool_time_stride: [40],
         pool_time_length: [200],
-        final_dense_length: [9],
+        final_dense_length: [18],
         trial_start: [1500],
         train_loader_type: [BBCIDataset],
         num_filters: [40],
@@ -239,11 +239,18 @@
         ]"],
         
         all_segment_ivals: [[
-            [1500,4000],
-            [1500,4000],
-            [750,0],
-            [750,0],
-        ]],
+            [0,4000],
+            [0,4000],
+            [0,0],
+            [0,0],
+        ],
+        [
+            [1000,4000],
+            [1000,4000],
+            [500,0],
+            [500,0],
+        ],
+        ],
         end_marker_defs: ["[
             null,
             null,
@@ -254,7 +261,7 @@
         batch_size: [60], # make it faster(?)
         n_sample_preds: [400], # will be overwritten anyways
         pool_type: [SumPool2dLayer],
-        input_time_length: [750],
+        input_time_length: [1250],
         layers: [$cnt_shallow_square],
         use_test_as_valid: [False], # False
         max_increasing_epochs: [40],

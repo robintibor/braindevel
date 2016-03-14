@@ -17,7 +17,6 @@ from braindecode.veganlasagne.monitors import MonitorManager, MisclassMonitor,\
 from braindecode.datahandling.batch_iteration import BalancedBatchIterator
 from braindecode.veganlasagne.layers import get_n_sample_preds,\
     get_input_time_length, get_model_input_window
-from braindecode.experiments.experiment_runner import load_layers_from_dict
 log = logging.getLogger(__name__)
 
 class ExperimentCrossValidation():
@@ -215,7 +214,15 @@ class Experiment(object):
             log.info("{:25s} {:.5f}".format(chan_name,
                 self.monitor_chans[chan_name][-1]))
         log.info("")
-    
+
+def load_layers_from_dict(train_dict):
+    """Layers can  be a list or an object that returns a list."""
+    layers_obj = train_dict['layers']
+    if hasattr(layers_obj, '__len__'):
+        return layers_obj
+    else:
+        return layers_obj.get_layers()
+
 def create_experiment(yaml_filename):
     """Utility function to create experiment from yaml file"""
     train_dict = yaml_parse.load(open(yaml_filename, 'r'))

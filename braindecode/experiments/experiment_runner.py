@@ -11,13 +11,14 @@ from pprint import pprint
 import numpy as np
 import re
 from braindecode.scripts.print_results import ResultPrinter
-from braindecode.experiments.experiment import Experiment, ExperimentCrossValidation
+from braindecode.experiments.experiment import Experiment, ExperimentCrossValidation,\
+    load_layers_from_dict
 from braindecode.results.results import Result
 from braindecode.datasets.grasp_lift import (KaggleGraspLiftSet,
     create_submission_csv_for_one_subject, AllSubjectsKaggleGraspLiftSet,
     create_submission_csv_for_all_subject_model)
 from braindecode.veganlasagne.layers import (get_n_sample_preds,
-    get_model_input_window, get_input_time_length)
+    get_model_input_window)
 from braindecode.veganlasagne.stopping import MaxEpochs
 from braindecode.datahandling.splitters import FixedTrialSplitter,\
     SeveralSetsSplitter
@@ -389,11 +390,3 @@ class ExperimentsRunner:
             res_printer.print_results()
             print("\n")
 
-
-def load_layers_from_dict(train_dict):
-    """Layers can  be a list or an object that returns a list."""
-    layers_obj = train_dict['layers']
-    if hasattr(layers_obj, '__len__'):
-        return layers_obj
-    else:
-        return layers_obj.get_layers()
