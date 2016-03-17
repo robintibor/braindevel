@@ -1,5 +1,10 @@
 import numpy as np
 import random
+import scipy.stats
+from braindecode.results.results import (extract_combined_results,
+    load_dataset_grouped_result_objects_for, get_final_misclasses,
+    get_training_times)
+import datetime
 
 def perm_mean_diffs_sampled(a,b, n_diffs=None):
     """Compute differences between all permutations of  labels.
@@ -96,3 +101,58 @@ def _compute_diffs(a, b, all_masks):
     diffs -= (1 - all_masks) * a
     diffs -= all_masks * b
     return np.mean(diffs, axis=1)
+
+def print_stats(results, csp_results, n_diffs=None):
+    res_misclasses = get_final_misclasses(results)
+    csp_misclasses = get_final_misclasses(csp_results)
+    res_times = get_training_times(results)
+    csp_times = get_training_times(csp_results)
+    if np.mean(res_misclasses) < np.mean(csp_misclasses):
+        a = res_misclasses
+        b = csp_misclasses
+    else:
+        a = csp_misclasses
+        b = res_misclasses
+
+
+    actual_diff = np.mean(a - b)
+
+    if n_diffs is None:
+        diffs = perm_mean_diffs(a, b)
+    else:
+        diffs = perm_mean_diffs_sampled(a,b,n_diffs=n_diffs)
+    res_to_csp_diff = np.mean(res_misclasses - csp_misclasses)
+
+    print ("deep accuracy:    {:.1f}".format( 100 * (1 - np.mean(res_misclasses))))
+    print ("csp  accuracy:    {:.1f}".format( 100 * (1 - np.mean(csp_misclasses))))
+    print ("diff accuracy:    {:.1f}".format( 100 * -res_to_csp_diff))
+    print ("std          :    {:.1f}".format( 100 * np.std(res_misclasses - 
+        csp_misclasses)))
+    
+    print("one sided perm     {:.5f}".format(np.sum(diffs <= actual_diff) 
+        / float(len(diffs))))
+    print("one sided wilcoxon {:.5f}".format(scipy.stats.wilcoxon(
+        res_misclasses, csp_misclasses)[1] / 2))
+    print("two sided perm     {:.5f}".format(np.sum(
+        abs(diffs) >= abs(actual_diff)) / float(len(diffs))))
+    print("two sided wilcoxon {:.5f}".format(scipy.stats.wilcoxon(
+        res_misclasses, csp_misclasses)[1]))
+    print ("deep time:        {:s}".format(str(datetime.timedelta(
+                seconds=round(np.mean(res_times))))))
+    print ("csp time:         {:s}".format(str(datetime.timedelta(
+                seconds=round(np.mean(csp_times))))))
+    #print ("deep time std:    {:s}".format(str(datetime.timedelta(
+    #            seconds=round(np.std(res_times))))))
+    #print ("csp time std:     {:s}".format(str(datetime.timedelta(
+    #            seconds=round(np.std(csp_times))))))
+
+def show_stats_for_combined_results(folder, params, folder_2,  params_2, 
+        combined_csp_results):
+    combined_results = extract_combined_results(folder, params, 
+        folder_2, params_2)
+    print_stats(combined_results, combined_csp_results, n_diffs=2**18)
+
+def show_stats_for_result(folder, params, combined_csp_results, n_diffs=2**18):
+    res = load_dataset_grouped_result_objects_for(folder, result_nr=0,
+                                                        params=params)
+    print_stats(res, combined_csp_results,  n_diffs=n_diffs)

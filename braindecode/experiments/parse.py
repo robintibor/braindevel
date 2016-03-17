@@ -5,7 +5,7 @@ from string import Template
 from collections import deque
 import numpy as np
 import logging
-from braindecode.util import add_message_to_exception
+from braindecode.util import add_message_to_exception, merge_dicts
 log = logging.getLogger(__name__)
 
 def transform_vals_to_string_constructor(loader, node):
@@ -246,16 +246,7 @@ def merge_parameters_and_templates(all_parameters, templates):
         all_final_params.append(final_params)
     return all_final_params
 
-def merge_dicts(*dict_args):
-    '''
-    Given any number of dicts, shallow copy and merge into a new dict,
-    precedence goes to key value pairs in latter dicts.
-    http://stackoverflow.com/a/26853961
-    '''
-    result = {}
-    for dictionary in dict_args:
-        result.update(dictionary)
-    return result
+
 
 def process_templates(templates, parameters):
     """Substitute parameters within templates, return substituted templates, 

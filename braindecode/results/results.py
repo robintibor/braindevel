@@ -349,15 +349,17 @@ class DatasetAveragedResults:
     def results(self):
         return self._results
 
-def load_dataset_grouped_result_objects_for(result_folder, result_nr, params):
+def load_dataset_grouped_result_objects_for(result_folder, params):
     resultpool = ResultPool()
     resultpool.load_results(result_folder, params=params)
     dataset_averaged_pool = DatasetAveragedResults()
     dataset_averaged_pool.extract_results(resultpool)
     results = dataset_averaged_pool.results()
-    wanted_results = results[result_nr]
-    result_objects = [res['result_objects'] for res in wanted_results]
-    return result_objects
+    result_objects_per_group = []
+    for group_results in results:
+        result_objects = [res['result_objects'] for res in group_results]
+        result_objects_per_group.append(result_objects)
+    return result_objects_per_group
 
 
 def delete_results(result_folder, params):
@@ -395,8 +397,23 @@ def delete_duplicate_results(result_folder):
         os.unlink(yaml_file_name)
         os.unlink(model_file_name)
         os.unlink(model_param_file_name)
-
         
+def extract_combined_results(folder, params, folder_2, params_2):
+    res = load_dataset_grouped_result_objects_for(folder, params=params)
+    assert len(res) == 1, "Assuming just one group result here"
+    res = res[0]
+    res2 = load_dataset_grouped_result_objects_for(folder_2, params=params_2)
+    assert len(res2) == 1, "Assuming just one group result here"
+    res2 = res2[0]
+    combined_res = np.concatenate((res, res2))
+    return combined_res
+
+def get_final_misclasses(results):
+    return np.array([r.get_misclasses()['test'][-1] for r in results])
+
+def get_training_times(results):
+    return np.array([r.training_time for r in results])
+
 def compute_confusion_matrix(result_objects):
     try:
         targets = [fold_res.targets for dataset_result_obj in result_objects for fold_res in dataset_result_obj]
