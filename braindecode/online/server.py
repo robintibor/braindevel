@@ -208,7 +208,7 @@ class PredictionServer(gevent.server.StreamServer):
         # -1 since we have 0 as "break" "non-trial" marker
         label_pred_equal = interpolated_pred_labels == y_labels - 1
         label_pred_trial_equal = label_pred_equal[y_labels!=0]
-        print("misclass inside trials")
+        print("Accuracy inside trials")
         print np.sum(label_pred_trial_equal) / float(len(label_pred_trial_equal))
         
 
@@ -242,7 +242,7 @@ def parse_command_line_arguments():
         Example: online/server.py --host 172.30.2.129 --port 30000"""
     )
     parser.add_argument('--host', action='store',
-        default='172.30.2.129', help='Hostname/IP of the UI server')
+        default='172.30.0.117', help='Hostname/IP of the UI server')
     parser.add_argument('--port', action='store',
         default=30000, help='Port of the UI server')
     parser.add_argument('--modelfile', action='store',
