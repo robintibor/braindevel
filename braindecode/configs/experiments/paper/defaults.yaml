@@ -1,36 +1,6 @@
 {
     extends: ['configs/experiments/defaults.yaml'],
     templates: {
-        resample_highpass_standardize: 
-        [[
-                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
-                {'newfs': $resample_fs},
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
-                {'low_cut_off_hz': $low_cut_off_hz}
-        ],
-            [
-                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
-                { }
-        ]],
-        resample_car_highpass_standardize: 
-        [[
-                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
-                {'newfs': $resample_fs},
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
-                { },
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
-                {'low_cut_off_hz': $low_cut_off_hz}
-        ],
-            [
-                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
-                { }
-        ]],
         no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner {
         segment_ival: [$trial_start, $trial_stop],
         marker_def: $marker_def},
@@ -76,8 +46,6 @@
         marker_def: [$markers_4_class],
         dataset_splitter: [$several_sets_splitter],
         valid_set_fraction: [0.2],
-        cnt_preprocessors: [$resample_highpass_standardize],
-        low_cut_off_hz: ["null", 4],
         preprocessor: ["null"],
         rejection_var_ival: [[0,4000]],
         rejection_blink_ival: [[-500,4000]],

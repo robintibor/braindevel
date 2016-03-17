@@ -4,20 +4,43 @@
     ],
     
     variants: [[{
-        cleaner: [$no_cleaner, $train_normal_cleaner],#$, train_normal_cleaner
+        cleaner: [$no_cleaner],#$, train_normal_cleaner
         test_cleaner: [$no_cleaner],
         n_selected_features: [20],#10,
         save_path: ['data/models/paper/ours/csp//'],
         n_selected_features: [20],#10,
-        min_freq: [7],#4
-        max_freq: [87],#91,103
-        low_width: [6],
-        high_width: [8],
-        high_overlap: [4],
-        last_low_freq: [31],
-        low_overlap: [3],
-        trial_stop: [4000],#
-        sensor_names: ["null", $C_sensors],
         max_min: [600], #!important otherwise cleaning cleans everything...
+        sensor_names: [$C_sensors], #,"null"
+        trial_stop: [4000],#
+        variants: [[{
+            min_freq: [1],
+            max_freq: [87],#91,103
+            low_width: [6],
+            high_width: [8],
+            high_overlap: [4],
+            last_low_freq: [31],
+            low_overlap: [3],
+        },
+        {
+            min_freq: [7],
+            max_freq: [87],#91,103
+            low_width: [6],
+            high_width: [8],
+            high_overlap: [4],
+            last_low_freq: [31],
+            low_overlap: [3],
+            tag: ["repl"],
+        },
+        {
+            resample_fs: [100],
+            min_freq: [0.5],
+            max_freq: [3.5],
+            low_width: [1],
+            high_width: [1], # ignored anyways
+            high_overlap: [0.5],  # ignored anyways
+            last_low_freq: [3.5],
+            low_overlap: [0.5],
+        }
+        ]]
     }]]
 }

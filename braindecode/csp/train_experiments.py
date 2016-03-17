@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import time
 import logging
+import yaml
 from pylearn2.utils.logger import (
     CustomStreamHandler, CustomFormatter)
 import argparse
@@ -101,6 +102,12 @@ def parse_command_line_arguments():
                         help='''Start with experiment at specified id....''')
     parser.add_argument('--stopid', type=int,
                         help='''Stop with experiment at specified id....''')
+    parser.add_argument('--filters', nargs='*', default=[],
+                        help='''Filter experiments by parameter values.
+                        Only run those experiments where the parameter matches the given value.
+                        Supply it in the form parameter1=value1 parameters2=value2, ...''')
+    parser.add_argument('--skipexisting', action="store_true",
+                        help='''Only run those experiments that werent run yet.''')
     args = parser.parse_args()
     assert (not (args.shuffle and (not args.cv))), ("Use shuffle only "
         "together with cross validation.")
@@ -108,6 +115,11 @@ def parse_command_line_arguments():
     param_dict =  dict([param_and_value.split('=') 
                         for param_and_value in args.params])
     args.params = param_dict
+    # already load as yaml here to compare to later loaded params...
+    filter_dict =  dict([(param_and_value.split('=')[0], 
+                    yaml.load(param_and_value.split('=')[1]))
+                        for param_and_value in args.filters])
+    args.filters = filter_dict
     if (args.startid is  not None):
         args.startid = args.startid - 1 # model ids printed are 1-based, python is zerobased
     if (args.stopid is  not None):
@@ -120,8 +132,10 @@ if __name__ == "__main__":
 
     all_train_strs = create_experiment_yaml_strings_from_files(
         args.experiments_file_name, args.template_file_name,
-        debug=args.debug, command_line_params=args.params)
+        debug=args.debug, command_line_params=args.params,
+        filter_params=args.filters)
     exp_runner = CSPExperimentsRunner(quiet=args.quiet, start_id=args.startid,
-        stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle)
+        stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle,
+        skip_existing=args.skipexisting)
     exp_runner.run(all_train_strs)
 

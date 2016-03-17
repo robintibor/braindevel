@@ -1,0 +1,13 @@
+ {
+     variants: [[
+            {
+                first_nonlin: [$square],
+                post_pool_nonlin: [$safe_log, $identity],
+            },
+            {
+                first_nonlin: [$elu],
+                post_pool_nonlin: [$identity],
+            }
+        ],
+        ]
+}

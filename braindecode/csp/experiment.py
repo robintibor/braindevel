@@ -11,7 +11,8 @@ from copy import deepcopy
 from pylearn2.utils import serial
 from braindecode.datasets.sensor_positions import sort_topologically
 from numpy.random import RandomState
-from braindecode.datasets.generate_filterbank import generate_filterbank
+from braindecode.datasets.generate_filterbank import generate_filterbank,\
+    filterbank_is_stable
 import logging
 log = logging.getLogger(__name__)
 
@@ -204,6 +205,9 @@ class CSPExperiment(object):
             max_freq=self.max_freq, last_low_freq=self.last_low_freq, 
             low_width=self.low_width, low_overlap=self.low_overlap,
             high_width=self.high_width, high_overlap=self.high_overlap)
+        assert filterbank_is_stable(self.filterbands, self.filt_order, 
+            self.cnt.fs), (
+                "Expect filter bank to be stable given filter order.")
         n_classes = len(self.marker_def)
         self.class_pairs = list(itertools.combinations(range(n_classes),2))
         # use only number of clean trials to split folds
@@ -384,6 +388,9 @@ class TwoFileCSPExperiment(CSPExperiment):
             max_freq=self.max_freq, last_low_freq=self.last_low_freq, 
             low_width=self.low_width, low_overlap=self.low_overlap,
             high_width=self.high_width, high_overlap=self.high_overlap)
+        assert filterbank_is_stable(self.filterbands, self.filt_order, 
+            self.cnt.fs), (
+                "Expect filter bank to be stable given filter order.")
         self.class_pairs = list(itertools.combinations([0,1,2,3],2))
         train_fold = range(len(self.cnt.markers))
         test_fold = np.arange(len(self.test_cnt.markers)) + len(train_fold)

@@ -4,18 +4,41 @@
     ],
     
     variants: [[{
-        cleaner: [$train_normal_cleaner],#$no_cleaner, , train_normal_cleaner
+        cleaner: [$no_cleaner],#$, , train_normal_cleaner
         test_cleaner: [$no_cleaner],
         n_selected_features: [20],#10,
         save_path: ['data/models/paper/bci-competition/csp/'],
         n_selected_features: [20],#10,
-        min_freq: [7],
-        max_freq: [35],
-        low_width: [6],
-        high_width: [8],
-        high_overlap: [4],
-        last_low_freq: [19],
-        low_overlap: [3],
-        trial_stop: [2500,4000],#
+        trial_stop: [4000],#2500,
+        
+        variants: [[{
+            min_freq: [1],
+            max_freq: [35],
+            low_width: [6],
+            high_width: [8],
+            high_overlap: [4],
+            last_low_freq: [19],
+            low_overlap: [3],
+        },
+        {
+            min_freq: [7],
+            max_freq: [35],
+            low_width: [6],
+            high_width: [8],
+            high_overlap: [4],
+            last_low_freq: [19],
+            low_overlap: [3],
+        },
+        {
+            resample_fs: [100],
+            min_freq: [0.5],
+            max_freq: [3.5],
+            low_width: [1],
+            high_width: [1], # ignored anyways
+            high_overlap: [0.5],  # ignored anyways
+            last_low_freq: [3.5],
+            low_overlap: [0.5],
+            tag: ["after0.2Hzmin"],
+        }]]
     }]]
 }

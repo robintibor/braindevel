@@ -1,6 +1,6 @@
 {
 templates: {
-    bci_competition_eog_sensors: ['EOG-left', 'EOG-central', 'EOG-right'],
+    bci_competition_eog_sensors: ['EOG-left', 'EOG-central', 'EOG-right'], 
 },
 variants: [[{
         
@@ -8,7 +8,10 @@ variants: [[{
     loader_type: [BCICompetition4Set2A],
     sensor_names: ["null"],
     resample_fs: [250],
-    variants: [[
+    
+    
+    variants: [
+    [
         {
             dataset_filename: ['data/bci-competition-iv/2a/A01T.mat'],
             test_filename: ['data/bci-competition-iv/2a/A01E.mat'],

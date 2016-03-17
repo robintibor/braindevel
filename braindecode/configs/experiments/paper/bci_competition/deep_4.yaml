@@ -1,6 +1,7 @@
  {
     extends: [
         'configs/experiments/paper/4_layer_no_nin.yaml',
+        'configs/experiments/paper/net_preprocessors.yaml',
         ],
     variants: [[
     {

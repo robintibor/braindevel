@@ -2,23 +2,10 @@
     extends: [
         'configs/experiments/paper/defaults.yaml',
         'configs/experiments/paper/shallow_square.yaml',
+        'configs/experiments/paper/shallow_nonlins.yaml',
         'configs/experiments/paper/bci_competition/files_train_test.yaml',
+        'configs/experiments/paper/net_preprocessors.yaml',
         ],
-    templates: {
-        resample_lowpass_standardize: 
-        [[
-                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
-                {'newfs': $resample_fs},
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.lowpass_cnt , 
-                {'high_cut_off_hz': $high_cut_hz}
-        ],
-            [
-                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
-                { }
-        ]],
-       },
     variants: [[
     {
         num_filters: [40],
@@ -27,30 +14,6 @@
         pool_time_length: [75],
         pool_time_stride: [15],
         pool_mode: ['average_exc_pad', 'max'],
-        variants: [[
-        {
-            first_nonlin: [$square],
-            post_pool_nonlin: [$safe_log, $identity],
-        },
-        {
-            first_nonlin: [$elu],
-            post_pool_nonlin: [$identity],
-        }
-        ],
-        [
-            {
-                high_cut_hz: [4],
-                cnt_preprocessors: [$resample_lowpass_standardize],
-                low_cut_off_hz: ["null"], # just for ignoring variants..
-            },
-            {
-                cnt_preprocessors: [$resample_highpass_standardize],
-                low_cut_off_hz: ["null", 4],
-            },
-            
-        ]
-        
-        ]
     }
     ]]
 }
