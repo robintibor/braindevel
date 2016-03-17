@@ -209,45 +209,52 @@
         cleaner: [$no_cleaner],
         dataset: [$combined_cnt_set],
         save_path: ['data/models/online/cnt/shallow-uneven-trials/'],
-        low_cut_off_hz: [0.5],
-        high_cut_hz: [40],
+        low_cut_off_hz: [4],
+        high_cut_hz: [80],
         filter_time_length: [50],
         pool_time_stride: [40],
         pool_time_length: [200],
-        final_dense_length: [9],
+        final_dense_length: [5],
         trial_start: [1500],
         train_loader_type: [BBCIDataset],
         num_filters: [40],
         
         filenames: [[
-            'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
+            #'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/Martin_sahara32_realMovementS001R01_ds10_1-7.BBCI.mat',
-            'data/four-sec-dry-32-sensors/cabin/MaVo2_sahara32_realMovementS001R02_ds10_1-5.BBCI.mat']],
+            'data/four-sec-dry-32-sensors/cabin/MaVo2_sahara32_realMovementS001R02_ds10_1-5.BBCI.mat',
+            'data/four-sec-dry-32-sensors/cabin/MaVo_sahara32_realMovement_onlineFeedback_20160315S001R01_1-9.BBCI.mat',
+            ]],
         set_types: [[
+        #'bbci',
         'bbci',
         'bbci',
         'bbci',
         'bbci']],
         
         run_after_early_stop: [true],
+
+#        [0, 300],
         trial_ranges: ["[
-        [0, 300],
+           [0,null],
            [0,null],
            [0,null],
            [0,null],
         ]"],
         
         all_segment_ivals: [[
+#            [1500,4000],
             [1500,4000],
-            [1500,4000],
+            [750,0],
             [750,0],
             [750,0],
         ],
         ],
+#            null,
         end_marker_defs: ["[
             null,
-            null,
+            {'1': [5], '2': [6], '3': [7], '4': [8]},
             {'1': [5], '2': [6], '3': [7], '4': [8]},
             {'1': [5], '2': [6], '3': [7], '4': [8]},
         ]"],
@@ -255,10 +262,10 @@
         batch_size: [60], # make it faster(?)
         n_sample_preds: [200], # will be overwritten anyways
         pool_type: [SumPool2dLayer],
-        input_time_length: [750],
+        input_time_length: [600],
         layers: [$cnt_shallow_square],
         use_test_as_valid: [True], # False
         max_increasing_epochs: [40],
-        max_epochs: [250],
+        max_epochs: [20],#250],
     }]],
 }
