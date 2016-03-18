@@ -1,5 +1,6 @@
 from pylearn2.utils import serial
 from glob import glob
+import pickle
 import os
 import numpy as np
 from copy import deepcopy
@@ -366,12 +367,12 @@ def delete_results(result_folder, params):
     res_pool = ResultPool()
     res_pool.load_results(result_folder, params=params)
     log.warn("Deleting {:d} results from {:s}".format(
-        len(res_pool._result_file_names)), result_folder)
+        len(res_pool._result_file_names), result_folder))
     for file_name in res_pool._result_file_names:
         log.info("Deleting {:s}".format(file_name))
         os.unlink(file_name)
 
-def delete_duplicate_results(result_folder):
+def delete_duplicate_results(result_folder, model_files=True, param_files=True):
     res_pool = ResultPool()
     res_pool.load_results(result_folder)
     
@@ -391,13 +392,38 @@ def delete_duplicate_results(result_folder):
     for i_exp in duplicate_ids:
         result_file_name = all_result_file_names[i_exp]
         yaml_file_name = result_file_name.replace('.result.pkl', '.yaml')
-        model_file_name = result_file_name.replace('.result.pkl', '.pkl')
-        model_param_file_name = result_file_name.replace('.result.pkl', '.npy')
         os.unlink(result_file_name)
         os.unlink(yaml_file_name)
-        os.unlink(model_file_name)
-        os.unlink(model_param_file_name)
-        
+        if model_files:
+            model_file_name = result_file_name.replace('.result.pkl', '.pkl')
+            os.unlink(model_file_name)
+        if param_files:
+            model_param_file_name = result_file_name.replace('.result.pkl', '.npy')
+            os.unlink(model_param_file_name)
+
+def tag_duplicate_results(result_folder, tag_dict):
+    res_pool = ResultPool()
+    res_pool.load_results(result_folder)
+    
+    var_params = res_pool.varying_params()
+    
+    unique_var_params = []
+    duplicate_ids = []
+    all_result_file_names = res_pool.result_file_names()
+    for i_exp, params in enumerate(var_params):
+        if np.any([dict_equal(params, p) for p in unique_var_params]):
+            log.warn("Duplicate result {:s}".format(all_result_file_names[i_exp]))
+            duplicate_ids.append(i_exp)
+        else:
+            unique_var_params.append(params)
+
+    # Delete result/experiment/model files    
+    for i_exp in duplicate_ids:
+        result_file_name = all_result_file_names[i_exp]
+        result = np.load(result_file_name)
+        result.parameters.update(tag_dict)
+        pickle.dump(result, open(result_file_name, 'w'))
+    
 def extract_combined_results(folder, params, folder_2, params_2):
     res = load_dataset_grouped_result_objects_for(folder, params=params)
     assert len(res) == 1, "Assuming just one group result here"
