@@ -22,6 +22,12 @@
         pool_time_length: [3],
         pool_time_stride: [3],
         drop_in_prob: [0.],
+        
+        variants: [[{
+            first_nonlin: [$square],
+            first_pool_mode: ['average_exc_pad'],
+            first_pool_nonlin: [$safe_log],
+        }]]
     }
     ]]
 }
