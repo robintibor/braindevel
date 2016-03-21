@@ -1,5 +1,7 @@
 import numpy as np
 from braindecode.online.ring_buffer import RingBuffer
+import logging
+log = logging.getLogger(__name__)
 
 class OnlineCoordinator(object):
     """ Online coordinator accepts samples, preprocesses them with 
@@ -7,7 +9,7 @@ class OnlineCoordinator(object):
     when necessary.
     Online coordinator is mainly responsible
     for cutting out correct time windows for the model to predict on. """
-    def __init__(self, data_processor, model, pred_freq):
+    def __init__(self, data_processor, model, trainer, pred_freq):
         self.data_processor = data_processor
         self.model = model
         self.pred_freq = pred_freq
@@ -15,6 +17,7 @@ class OnlineCoordinator(object):
         self.marker_buffer = RingBuffer(np.ones(
             data_processor.n_samples_in_buffer, 
             dtype=np.int32))
+        self.trainer = trainer
 
     def initialize(self, n_chans):
         self.data_processor.initialize(n_chans)
@@ -23,6 +26,10 @@ class OnlineCoordinator(object):
         self.last_pred = None
         self.model.initialize()
         self.n_samples_pred_window = self.model.get_n_samples_pred_window()
+        self.trainer.set_model(self.model.model) # lasagne model...
+        self.trainer.set_data_processor(self.data_processor)
+        self.trainer.set_marker_buffer(self.marker_buffer)
+        self.trainer.initialize()
 
     def receive_samples(self, samples):
         """Expect samples in timexchan format"""
@@ -33,6 +40,9 @@ class OnlineCoordinator(object):
         self.n_samples += len(samples)
         if self.should_do_next_prediction():
             self.predict()
+        # important to do after marker buffer and data processor
+        # have processed samples...
+        self.trainer.process_samples(samples)
 
     def should_do_next_prediction(self):
         return (self.n_samples >= self.n_samples_pred_window and 
@@ -58,16 +68,6 @@ class OnlineCoordinator(object):
         self.last_pred = self.model.predict(topo)
         # -1 since we have 0-based indexing in python
         self.i_last_pred = self.n_samples - n_samples_after_pred - 1
-    
-#         if end is None:
-#             end_y = -1
-#         else:
-#             end_y = end
-#         target = self.marker_buffer[end_y]
-#         if target != 0:
-#             print ("training")
-#             target = target-1
-#             self.model.train(topo, [np.int32(target)])
 
     
     def pop_last_prediction_and_sample_ind(self):
@@ -85,6 +85,7 @@ def make_predictions_with_online_predictor(predictor, cnt_data,
     all_preds = []
     i_pred_samples = []
     block = np.ones((block_len, cnt_data.shape[1] + 1),dtype=np.float32)
+    perc_done = 0 # Logging progress
     for i_start_sample in xrange(input_start - window_len + 1, input_end+1,block_len):
         block = cnt_data[i_start_sample:i_start_sample+block_len]
         y_block = y_labels[i_start_sample:i_start_sample+block_len]
@@ -95,18 +96,12 @@ def make_predictions_with_online_predictor(predictor, cnt_data,
             assert ((i_sample + 1) - window_len) % predictor.pred_freq == 0
             all_preds.append(pred)
             i_pred_samples.append(i_sample)
-            if y_labels[i_sample] == 0:
-                target = 2
-            else:
-                # -1 due to class 0 being marker for nothing...
-                target = y_labels[i_sample] - 1
-                # -2* window len +1 because already we start with -windowlen+1
-                # in this loop
-                #predictor.model.train(cnt_data[input_start+i_sample-2*window_len+1:
-                #    input_start-window_len+1+i_sample], 
-                #    [np.int32(target)])
-
-
+        # Logging process
+        input_len = input_end -input_start
+        if (100 * (i_start_sample - input_start) / float(input_len)) > perc_done:
+            log.info("{:d}% done.".format(perc_done))
+            perc_done += 5
+    log.info("100% done.")
     preds = np.array(all_preds).squeeze()
     i_pred_sample_arr = np.array(i_pred_samples) + input_start - window_len + 1
     #assert np.array_equal(i_pred_sample_arr, range(input_start,input_end+1,sample_stride))

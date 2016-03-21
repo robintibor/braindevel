@@ -260,17 +260,16 @@ class CntWindowTrialIterator(object):
 
         return self.yield_block_batches(topo, y, start_end_blocks_per_trial, shuffle=shuffle)
 
+    
+
     def compute_start_end_block_inds(self, i_trial_starts, i_trial_ends):
         # create start stop indices for all batches still 2d trial -> start stop
         start_end_blocks_per_trial = []
         for i_trial in xrange(len(i_trial_starts)):
-            i_window_end = i_trial_starts[i_trial] - 1
-            start_end_blocks = []
-            while i_window_end  < i_trial_ends[i_trial]:
-                i_window_end += self.n_sample_preds
-                i_adjusted_end = min(i_window_end, i_trial_ends[i_trial])
-                i_window_start = i_adjusted_end - self.input_time_length + 1
-                start_end_blocks.append((i_window_start, i_adjusted_end))
+            trial_start = i_trial_starts[i_trial] - 1
+            trial_end = i_trial_ends[i_trial]
+            start_end_blocks = get_start_end_blocks_for_trial(trial_start,
+                trial_end, self.input_time_length, self.n_sample_preds)
         
             # check that block is correct, all predicted samples should be the trial samples
             all_predicted_samples = [range(start_end[1] - self.n_sample_preds + 1, 
@@ -293,6 +292,17 @@ class CntWindowTrialIterator(object):
             start_end_blocks = start_end_blocks_flat[i_block:i_block_stop]
             batch = create_batch(topo,y, start_end_blocks, self.n_sample_preds)
             yield batch
+    
+def get_start_end_blocks_for_trial(trial_start, trial_end, input_time_length,
+        n_sample_preds):
+    start_end_blocks = []
+    i_window_end = trial_start
+    while i_window_end < trial_end:
+        i_window_end += n_sample_preds
+        i_adjusted_end = min(i_window_end, trial_end)
+        i_window_start = i_adjusted_end - input_time_length + 1
+        start_end_blocks.append((i_window_start, i_adjusted_end))
+    return start_end_blocks
         
 def compute_trial_start_end_samples(y, check_trial_lengths_equal=True,
         input_time_length=None):

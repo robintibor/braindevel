@@ -19,6 +19,7 @@ import gevent.select
 from scipy import interpolate
 from braindecode.experiments.experiment import create_experiment
 from braindecode.veganlasagne.layers import transform_to_normal_net
+from braindecode.online.trainer import BatchWiseCntTrainer
 log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
@@ -270,7 +271,11 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
     lasagne.layers.set_all_param_values(model, params)
     data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(model)
-    coordinator = OnlineCoordinator(data_processor, online_model, pred_freq=125)
+    online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break=3, 
+        batch_size=45, learning_rate=1e-3, n_min_trials=20,
+        trial_start_offset=1250)
+    coordinator = OnlineCoordinator(data_processor, online_model, online_trainer,
+        pred_freq=125)
     server = PredictionServer((hostname, port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
         save_data=save_data, use_ui_server=use_ui_server)
