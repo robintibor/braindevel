@@ -6,6 +6,7 @@ from braindecode.datahandling.preprocessing import exponential_running_standardi
 from braindecode.online.data_processor import StandardizeProcessor
 from braindecode.online.coordinator import OnlineCoordinator
 from braindecode.online.model import OnlineModel
+from braindecode.online.trainer import NoTrainer
 
 def test_online_predictor():
     """ Test whether predictions are done at correct timepoints.
@@ -28,7 +29,8 @@ def test_online_predictor():
         n_samples_in_buffer=n_samples_in_buffer)
     
     online_model = OnlineModel(model)
-    online_pred = OnlineCoordinator(processor, online_model, pred_freq=pred_freq)
+    online_pred = OnlineCoordinator(processor, online_model, pred_freq=pred_freq,
+        trainer=NoTrainer())
     
     online_pred.initialize(n_chans=dataset.shape[1])
     all_preds = []
@@ -63,7 +65,8 @@ def test_sum_prediction():
         n_samples_in_buffer=n_samples_in_buffer)
     
     online_model = OnlineModel(model)
-    online_pred = OnlineCoordinator(processor, online_model, pred_freq=pred_freq)
+    online_pred = OnlineCoordinator(processor, online_model, pred_freq=pred_freq,
+        trainer=NoTrainer())
     
     online_pred.initialize(n_chans=dataset.shape[1])
     all_preds = []

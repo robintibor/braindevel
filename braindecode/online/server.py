@@ -255,6 +255,8 @@ def parse_command_line_arguments():
         help="Don't save data...")
     parser.add_argument('--noui', action='store_true',
         help="Don't wait for UI server ...")
+    parser.add_argument('--noadapt', action='store_true',
+        help="Don't adapt model online ...")
     args = parser.parse_args()
     return args
 
