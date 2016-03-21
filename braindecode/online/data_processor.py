@@ -14,9 +14,9 @@ class StandardizeProcessor(object):
     def initialize(self, n_chans):
         self.running_mean = None
         self.running_var = None
-        self.sample_buffer = RingBuffer(np.ones((
+        self.sample_buffer = RingBuffer(np.zeros((
             self.n_samples_in_buffer, n_chans), dtype=np.float32))
-        self.y_buffer = RingBuffer(np.ones((
+        self.y_buffer = RingBuffer(np.zeros((
             self.n_samples_in_buffer), dtype=np.float32))
         
     def process_samples(self, samples):
