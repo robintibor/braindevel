@@ -281,7 +281,7 @@ def setup_logging():
     root_logger.handlers  = []
     root_logger.addHandler(handler)
     root_logger.setLevel(logging.DEBUG)
-    
+
 def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
         use_ui_server, adapt_model):
     setup_logging()

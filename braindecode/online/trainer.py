@@ -25,6 +25,7 @@ class BatchWiseCntTrainer(object):
     def process_samples(self, samples):
         marker_samples_with_overlap = np.copy(
             self.marker_buffer[-len(samples)-2:])
+        print ("marker samples overlap", marker_samples_with_overlap)
         trial_has_ended = np.sum(np.diff(marker_samples_with_overlap) < 0) > 0
         if trial_has_ended:
             log.info("Trial has ended")
@@ -32,7 +33,9 @@ class BatchWiseCntTrainer(object):
             # at the index 1 before the increase=> the trial start
             trial_start = np.flatnonzero(np.diff(self.marker_buffer) > 0)[-1] + 1
             trial_end = np.flatnonzero(np.diff(self.marker_buffer) < 0)[-1]
-            assert trial_start < trial_end
+            assert trial_start < trial_end, ("trial start {:d} should be "
+                "before trial end {:d}, markers: {:s}").format(trial_start, 
+                    trial_end, str(marker_samples_with_overlap))
             self.add_blocks(trial_start, trial_end)
             self.train()
         

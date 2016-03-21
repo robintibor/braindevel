@@ -9,7 +9,6 @@ from braindecode.datasets.loaders import BBCIDataset
 from braindecode.experiments.experiment import create_experiment
 from braindecode.mywyrm.processing import create_cnt_y_start_end_marker
 
-
 class RememberPredictionsServer(gevent.server.StreamServer):
     def __init__(self, listener,
             handle=None, backlog=None, spawn='default', **ssl_args):
@@ -84,7 +83,7 @@ def send_file_data():
     s.send(np.array([n_chans], dtype=np.int32).tobytes())
     s.send(np.array([n_samples], dtype=np.int32).tobytes())
     print("Sending data...")
-    i_block = 0 # if setting i block to sth higher, printed results will incorrect
+    i_block = 0 # if setting i_block to sth higher, printed results will incorrect
     max_stop_block = np.ceil(len(cnt_data) / float(n_samples))
     stop_block = 1000
     assert stop_block < max_stop_block
@@ -92,7 +91,7 @@ def send_file_data():
         arr = cnt_data[i_block * n_samples:i_block*n_samples + n_samples,:].T
         this_y = y_labels[i_block * n_samples:i_block*n_samples + n_samples]
         # chan x time
-        arr = np.concatenate((arr, this_y[np.newaxis, :]), axis=0)
+        arr = np.concatenate((arr, this_y[np.newaxis, :]), axis=0).astype(np.float32)
         if np.max(np.abs(arr)) > 500:
             print("max", np.max(arr))
             print("min", np.min(arr))
