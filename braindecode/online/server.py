@@ -174,6 +174,11 @@ class PredictionServer(gevent.server.StreamServer):
         
         if self.save_data:
             data_saver.save()
+            all_layers = lasagne.layers.get_all_layers(self.coordinator.model.model)
+            time_string = get_now_timestring()
+            filename = os.path.join('data/online/', time_string + '.npy')
+            log.info("Saving to {:s}...".format(filename))
+            np.save(filename, lasagne.layers.get_all_param_values(all_layers))
 
     def print_results(self, all_samples, all_preds, all_pred_samples):
         # y labels i from 0 to n_classes (inclusive!), 0 representing
@@ -226,8 +231,7 @@ class DataSaver(object):
         
     def save(self):
         # save with time as filename
-        now = datetime.datetime.now()
-        time_string = now.strftime('%Y-%m-%d_%H-%M-%S')
+        time_string = get_now_timestring()
         filename = os.path.join('data/online/', time_string + '.hdf5')
         log.info("Saving to {:s}...".format(filename))
         all_samples = np.concatenate(self.sample_blocks).astype(np.float32)
@@ -237,7 +241,12 @@ class DataSaver(object):
             dset[:] = self.chan_names
             out_file.create_dataset("cnt_samples", data=all_samples)
         log.info("Done.")
-        
+
+def get_now_timestring():
+    now = datetime.datetime.now()
+    time_string = now.strftime('%Y-%m-%d_%H-%M-%S')
+    return time_string      
+
 def parse_command_line_arguments():
     parser = argparse.ArgumentParser(
         description="""Launch server for online decoding.
@@ -271,8 +280,8 @@ def setup_logging():
     handler = CustomStreamHandler(formatter=formatter)
     root_logger.handlers  = []
     root_logger.addHandler(handler)
-    root_logger.setLevel(logging.INFO)
-    
+    root_logger.setLevel(logging.DEBUG)
+
 def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
         use_ui_server, adapt_model):
     setup_logging()
@@ -284,13 +293,15 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
     exp = create_experiment(base_name + '.yaml')
     model = exp.final_layer
     model = transform_to_normal_net(model)
+    #params = np.load('adapted_params.npy')
     lasagne.layers.set_all_param_values(model, params)
+    
     data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(model)
     if adapt_model:
-        online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break=5, 
-            batch_size=45, learning_rate=1e-3, n_min_trials=15,
-            trial_start_offset=1000)
+        online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break=2, 
+            batch_size=15, learning_rate=1e-3, n_min_trials=8,
+            trial_start_offset=600)
     else:
         log.info("Not adapting model...")
         online_trainer = NoTrainer()
@@ -306,7 +317,6 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
     server.serve_forever()
 
 if __name__ == '__main__':
-    logging.basicConfig()
     gevent.signal(signal.SIGQUIT, gevent.kill)
     args = parse_command_line_arguments()
     main(args.host, args.port, args.modelfile, not args.noplot, not args.nosave,

@@ -14,7 +14,7 @@ class OnlineCoordinator(object):
         self.model = model
         self.pred_freq = pred_freq
         # assuming 4 classes
-        self.marker_buffer = RingBuffer(np.ones(
+        self.marker_buffer = RingBuffer(np.zeros(
             data_processor.n_samples_in_buffer, 
             dtype=np.int32))
         self.trainer = trainer
