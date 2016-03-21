@@ -67,7 +67,6 @@ class BatchWiseCntTrainer(object):
             trial_end))
         trial_topo = trial_topo[:,:,np.newaxis,np.newaxis]
         all_markers = self.marker_buffer[needed_sample_start:trial_end]
-        print all_markers.tolist()
         assert (len(np.unique(all_markers[(samples_per_pred - 1):])) == 1), (
             ("Trial should have exactly one class, markers: {:s} "
                 "trial start: {:d}, trial_end: {:d}").format(
