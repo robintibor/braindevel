@@ -262,6 +262,7 @@ def parse_command_line_arguments():
 
 def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
         use_ui_server, adapt_model):
+    log.setLevel("DEBUG")
     assert np.little_endian, "Should be in little endian"
     hostname = ''
     # port of our server
@@ -278,13 +279,13 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
             batch_size=45, learning_rate=1e-3, n_min_trials=20,
             trial_start_offset=1250)
     else:
+        log.info("Not adapting model...")
         online_trainer = NoTrainer()
     coordinator = OnlineCoordinator(data_processor, online_model, online_trainer,
         pred_freq=125)
     server = PredictionServer((hostname, port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
         save_data=save_data, use_ui_server=use_ui_server)
-    log.setLevel("DEBUG")
     log.info("Starting server")
     server.start()
     log.info("Started server")
