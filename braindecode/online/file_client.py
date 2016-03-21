@@ -57,6 +57,8 @@ def send_file_data():
     for preproc, kwargs in cnt_preprocs[:-1]:
         cnt = preproc(cnt, **kwargs)
     cnt_data = cnt.data.astype(np.float32)
+    y_labels = create_y_labels(cnt).astype(np.float32)
+    print ("unique y labels", np.unique(y_labels))
     print("Done.")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(("127.0.0.1", 1234))
@@ -74,15 +76,10 @@ def send_file_data():
     s.send(np.array([n_samples], dtype=np.int32).tobytes())
     
     i_block = 0
-    y_labels = create_y_labels(cnt).astype(np.float32)
-    
     while i_block < 500:
         arr = cnt_data[i_block * n_samples:i_block*n_samples + n_samples,:].T
         this_y = y_labels[i_block * n_samples:i_block*n_samples + n_samples]
         # chan x time
-        # add fake marker
-        #arr = np.concatenate((arr, np.zeros((1,arr.shape[1]))), axis=0).astype(
-        #    np.float32)
         arr = np.concatenate((arr, this_y[np.newaxis, :]), axis=0)
         s.send(arr.tobytes(order='F'))
         i_block +=1
@@ -118,8 +115,6 @@ def has_fixed_trial_len(cnt):
     else:
         raise ValueError("Expect classes 1,2,3,4, possibly with end markers "
             "5,6,7,8, instead got {:s}".format(str(classes)))
-     
-
 
 def create_y_labels_fixed_trial_len(cnt, trial_len):
     fs = cnt.fs

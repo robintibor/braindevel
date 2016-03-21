@@ -53,6 +53,7 @@ class BatchWiseCntTrainer(object):
         targets = T.ivector()
         self.exp.updates_expression = FuncAndArgs(adam,
             learning_rate=self.learning_rate)
+        log.info("Compile train function...")
         self.exp.create_theano_functions(targets)
         log.info("Done compiling train function.")
     
@@ -66,8 +67,12 @@ class BatchWiseCntTrainer(object):
             trial_end))
         trial_topo = trial_topo[:,:,np.newaxis,np.newaxis]
         all_markers = self.marker_buffer[needed_sample_start:trial_end]
+        print all_markers.tolist()
         assert (len(np.unique(all_markers[(samples_per_pred - 1):])) == 1), (
-            "Trial should have exactly one class")
+            ("Trial should have exactly one class, markers: {:s} "
+                "trial start: {:d}, trial_end: {:d}").format(
+                np.unique(all_markers[(samples_per_pred - 1):]),
+                needed_sample_start, trial_end))
         trial_y = np.copy(all_markers) - 1 # -1 as zero is non-trial marker
         # trial start can't be at zeor atm or else we would have to take more data
         trial_len = len(trial_topo)

@@ -250,16 +250,18 @@ def parse_command_line_arguments():
         default='data/models/raw-net-512/3', 
         help='Basename of the modelfile')
     parser.add_argument('--noplot', action='store_true',
-        help="Don't show plots of the sensors first...")
+        help="Don't show plots of the sensors first.")
     parser.add_argument('--nosave', action='store_true',
-        help="Don't save data...")
+        help="Don't save data.")
     parser.add_argument('--noui', action='store_true',
-        help="Don't wait for UI server ...")
+        help="Don't wait for UI server.")
+    parser.add_argument('--noadapt', action='store_true',
+        help="Don't adapt model while running online.")
     args = parser.parse_args()
     return args
 
 def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
-        use_ui_server):
+        use_ui_server, adapt_model):
     assert np.little_endian, "Should be in little endian"
     hostname = ''
     # port of our server
@@ -271,9 +273,12 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
     lasagne.layers.set_all_param_values(model, params)
     data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(model)
-    online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break=3, 
-        batch_size=45, learning_rate=1e-3, n_min_trials=20,
-        trial_start_offset=1250)
+    if adapt_model:
+        online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break=3, 
+            batch_size=45, learning_rate=1e-3, n_min_trials=20,
+            trial_start_offset=1250)
+    else:
+        online_trainer = NoTrainer()
     coordinator = OnlineCoordinator(data_processor, online_model, online_trainer,
         pred_freq=125)
     server = PredictionServer((hostname, port), coordinator=coordinator,
@@ -290,6 +295,6 @@ if __name__ == '__main__':
     gevent.signal(signal.SIGQUIT, gevent.kill)
     args = parse_command_line_arguments()
     main(args.host, args.port, args.modelfile, not args.noplot, not args.nosave,
-        not args.noui)
+        not args.noui, not args.noadapt)
     
     

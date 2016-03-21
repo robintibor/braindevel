@@ -89,7 +89,7 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def, segment
     all_start_marker_vals = start_to_end_value.keys()
     n_classes = np.max(all_start_marker_vals)
     assert np.array_equal(np.sort(all_start_marker_vals),
-                         range(1,np.max(all_start_marker_vals)+1)), (
+                         range(1, n_classes+1)), (
         "Assume start marker values are from 1...n_classes")
     
     y = np.zeros((cnt.data.shape[0], np.max(all_start_marker_vals)), dtype= np.int32)
