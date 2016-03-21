@@ -28,6 +28,10 @@ def load_trial_env(basename, model, i_layer, train_set, n_inputs_per_trial):
     env = np.load(basename + '.env.npy')
     env = [e for e in env] # transform that outer part is list so you can freely delete parts inside next function
     log.info("Transforming to trial envelope...")
+    trial_env = transform_to_trial_env(env, model, i_layer, train_set, n_inputs_per_trial)
+    return trial_env
+
+def transform_to_trial_env(env, model, i_layer, train_set, n_inputs_per_trial):
     all_layers = lasagne.layers.get_all_layers(model)
     layer = all_layers[i_layer]
     field_size = get_receptive_field_size(layer)
@@ -117,12 +121,12 @@ def create_envelopes(folder_name, params):
 
 
 def create_envelopes_for_experiment(experiment_file_name):
-    iterator, train_set, train_topo = _load_experiment(experiment_file_name)
+    iterator, train_set = _load_experiment(experiment_file_name)
     filterbands = generate_filterbank(min_freq=1, max_freq=99,
         last_low_freq=31, low_width=6, low_overlap=3,
         high_width=8, high_overlap=4)
     env_per_filterband = create_envelops_per_filterband(iterator,
-        train_set, train_topo, filterbands)
+        train_set, filterbands)
     log.info("Saving...")
     np.save(experiment_file_name.replace('.yaml', '.env.npy'),
         env_per_filterband)
@@ -134,12 +138,11 @@ def _load_experiment(experiment_file_name):
     exp = create_experiment(experiment_file_name)
     exp.dataset.load()
     train_set = exp.dataset_provider.get_train_merged_valid_test(exp.dataset)['train']
-    train_topo = train_set.get_topological_view()
-    return exp.iterator, train_set, train_topo
+    return exp.iterator, train_set
 
-def create_envelops_per_filterband(iterator, train_set, train_topo,
-    filterbands):
+def create_envelops_per_filterband(iterator, train_set, filterbands):
     env_per_filterband = []
+    train_topo = train_set.get_topological_view()
     for low_cut_hz, high_cut_hz in filterbands:
         log.info("Compute filterband from {:.1f} to {:.1f}...".format(
             low_cut_hz, high_cut_hz))
@@ -148,9 +151,6 @@ def create_envelops_per_filterband(iterator, train_set, train_topo,
                                      high_cut_hz, sampling_rate=250.0, axis=0, filt_order=4)
         elif low_cut_hz == 0:
             filtered = lowpass_topo(train_topo, high_cut_hz, 
-                                sampling_rate=250.0, axis=0, filt_order=4)
-        elif high_cut_hz == 125:
-            filtered = highpass_topo(train_topo, low_cut_hz, 
                                 sampling_rate=250.0, axis=0, filt_order=4)
         filtered = filtered.astype(np.float32)
         filt_set = DenseDesignMatrixWrapper(topo_view=filtered,y=train_set.y,

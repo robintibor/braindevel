@@ -27,7 +27,12 @@ def compute_trial_acts(model, i_layer, iterator, train_set):
     trial_acts: 4darray of float
         Activations per trial per sample.
     """
-    
+    # compute number of inputs per trial
+    i_trial_starts, i_trial_ends =  compute_trial_start_end_samples(
+                train_set.y, check_trial_lengths_equal=True,
+                input_time_length=iterator.input_time_length)
+    trial_len = i_trial_ends[0] - i_trial_starts[0]
+    n_inputs_per_trial = int(np.ceil(trial_len / float(iterator.n_sample_preds)))
     log.info("Create theano function...")
     all_layers = lasagne.layers.get_all_layers(model)
     all_out_fn = create_pred_fn(all_layers[i_layer])
@@ -45,7 +50,7 @@ def compute_trial_acts(model, i_layer, iterator, train_set):
     log.info("Transform to trial activations...")
     trial_acts = get_trial_acts(all_outs_per_batch,
                                   batch_sizes, n_trials=n_trials, 
-                                n_inputs_per_trial=2,
+                                n_inputs_per_trial=n_inputs_per_trial,
                                   n_trial_len=n_trial_len, 
                                 n_sample_preds=iterator.n_sample_preds)
     log.info("Done.")
