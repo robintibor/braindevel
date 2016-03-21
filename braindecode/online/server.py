@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from braindecode.online.live_plot import LivePlot
 import gevent.server
 import signal
 import numpy as np
@@ -112,6 +111,7 @@ class PredictionServer(gevent.server.StreamServer):
 
     def plot_sensors_until_enter_press(self, chan_names, in_socket, n_bytes,
             n_rows, n_cols):
+        from  braindecode.online.live_plot import LivePlot
         live_plot = LivePlot(plot_freq=150)
         live_plot.initPlots(chan_names)
 
