@@ -105,7 +105,7 @@ class BatchWiseCntTrainer(object):
                 lasagne.layers.get_all_param_values(all_layers_trained))
             
 
-class DummyTrainer(object):
+class NoTrainer(object):
     def process_samples(self, samples):
         pass
         

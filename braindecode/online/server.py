@@ -19,7 +19,7 @@ import gevent.select
 from scipy import interpolate
 from braindecode.experiments.experiment import create_experiment
 from braindecode.veganlasagne.layers import transform_to_normal_net
-from braindecode.online.trainer import BatchWiseCntTrainer
+from braindecode.online.trainer import BatchWiseCntTrainer, NoTrainer
 log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
