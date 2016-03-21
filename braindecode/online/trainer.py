@@ -86,6 +86,7 @@ class BatchWiseCntTrainer(object):
     def train(self):
         n_trials = len(self.data_batches)
         if n_trials > self.n_min_trials:
+            log.info("Training model...")
             all_blocks = np.concatenate(self.data_batches, axis=0)
             all_y_blocks = np.concatenate(self.y_batches, axis=0)
             # reshape to per block

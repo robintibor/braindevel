@@ -43,7 +43,7 @@ def start_remember_predictions_server():
 def send_file_data():
     print("Loading Experiment...")
     # Use model to get cnt preprocessors
-    base_name = 'data/models/online/cnt/shallow-uneven-trials/8'
+    base_name = 'data/models/online/cnt/shallow-uneven-trials/9'
     exp = create_experiment(base_name + '.yaml')
 
     print("Loading File...")
@@ -57,8 +57,17 @@ def send_file_data():
     for preproc, kwargs in cnt_preprocs[:-1]:
         cnt = preproc(cnt, **kwargs)
     cnt_data = cnt.data.astype(np.float32)
+    assert not np.any(np.isnan(cnt_data))
+    assert not np.any(np.isinf(cnt_data))
+    assert not np.any(np.isneginf(cnt_data))
+    print ("max block", np.ceil(len(cnt_data) / 50.0))
+    print "max cnt data", np.max(cnt_data)
+    print "min cnt data", np.min(cnt_data)
+    print "mean cnt data", np.mean(cnt_data)
+    print "mean abs cnt data", np.mean(np.abs(cnt_data))
+    print "std data", np.std(cnt_data)
     y_labels = create_y_labels(cnt).astype(np.float32)
-    print ("unique y labels", np.unique(y_labels))
+    assert np.array_equal(np.unique(y_labels), range(5))
     print("Done.")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(("127.0.0.1", 1234))
@@ -74,16 +83,23 @@ def send_file_data():
     n_samples = 50
     s.send(np.array([n_chans], dtype=np.int32).tobytes())
     s.send(np.array([n_samples], dtype=np.int32).tobytes())
-    
-    i_block = 0
-    while i_block < 500:
+    print("Sending data...")
+    i_block = 0 # if setting i block to sth higher, printed results will incorrect
+    max_stop_block = np.ceil(len(cnt_data) / float(n_samples))
+    stop_block = 1000
+    assert stop_block < max_stop_block
+    while i_block < stop_block:
         arr = cnt_data[i_block * n_samples:i_block*n_samples + n_samples,:].T
         this_y = y_labels[i_block * n_samples:i_block*n_samples + n_samples]
         # chan x time
         arr = np.concatenate((arr, this_y[np.newaxis, :]), axis=0)
+        if np.max(np.abs(arr)) > 500:
+            print("max", np.max(arr))
+            print("min", np.min(arr))
         s.send(arr.tobytes(order='F'))
         i_block +=1
         gevent.sleep(0)
+    print("Done.")
     return cnt
 
 def create_y_labels(cnt):

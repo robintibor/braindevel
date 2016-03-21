@@ -84,6 +84,8 @@ def exponential_running_mean(data, factor_new, start_mean=None,
         running_means[i] = next_mean
         current_mean = next_mean
     
+    if np.any(np.isnan(running_means)):
+        print "running means",running_means
     assert not np.any(np.isnan(running_means))
     return running_means
 

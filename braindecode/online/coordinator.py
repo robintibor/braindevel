@@ -29,7 +29,7 @@ class OnlineCoordinator(object):
         self.trainer.set_model(self.model.model) # lasagne model...
         self.trainer.set_data_processor(self.data_processor)
         self.trainer.set_marker_buffer(self.marker_buffer)
-        self.trainer.initialize()
+        
 
     def receive_samples(self, samples):
         """Expect samples in timexchan format"""
@@ -78,10 +78,11 @@ class OnlineCoordinator(object):
     def has_new_prediction(self):
         return self.last_pred is not None
              
-def make_predictions_with_online_predictor(predictor, cnt_data, 
+def make_predictions_with_online_predictor(coordinator, cnt_data, 
     y_labels, block_len, input_start, input_end):
-    predictor.initialize(n_chans=cnt_data.shape[1])
-    window_len = predictor.model.get_n_samples_pred_window()
+    coordinator.trainer.initialize() # like online, first init trainer
+    coordinator.initialize(n_chans=cnt_data.shape[1])
+    window_len = coordinator.model.get_n_samples_pred_window()
     all_preds = []
     i_pred_samples = []
     block = np.ones((block_len, cnt_data.shape[1] + 1),dtype=np.float32)
@@ -90,10 +91,10 @@ def make_predictions_with_online_predictor(predictor, cnt_data,
         block = cnt_data[i_start_sample:i_start_sample+block_len]
         y_block = y_labels[i_start_sample:i_start_sample+block_len]
         block = np.concatenate((block, y_block[:,np.newaxis]), axis=1)
-        predictor.receive_samples(block)
-        if predictor.has_new_prediction():
-            pred, i_sample = predictor.pop_last_prediction_and_sample_ind()
-            assert ((i_sample + 1) - window_len) % predictor.pred_freq == 0
+        coordinator.receive_samples(block)
+        if coordinator.has_new_prediction():
+            pred, i_sample = coordinator.pop_last_prediction_and_sample_ind()
+            assert ((i_sample + 1) - window_len) % coordinator.pred_freq == 0
             all_preds.append(pred)
             i_pred_samples.append(i_sample)
         # Logging process

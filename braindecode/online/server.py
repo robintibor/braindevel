@@ -20,6 +20,7 @@ from scipy import interpolate
 from braindecode.experiments.experiment import create_experiment
 from braindecode.veganlasagne.layers import transform_to_normal_net
 from braindecode.online.trainer import BatchWiseCntTrainer, NoTrainer
+from pylearn2.utils.logger import (CustomStreamHandler, CustomFormatter)
 log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
@@ -260,9 +261,21 @@ def parse_command_line_arguments():
     args = parser.parse_args()
     return args
 
+def setup_logging():
+    """ Set up a root logger so that other modules can use logging
+    Adapted from scripts/train.py from pylearn"""
+
+    root_logger = logging.getLogger()
+    prefix = '%(asctime)s '
+    formatter = CustomFormatter(prefix=prefix)
+    handler = CustomStreamHandler(formatter=formatter)
+    root_logger.handlers  = []
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.INFO)
+    
 def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
         use_ui_server, adapt_model):
-    log.setLevel("DEBUG")
+    setup_logging()
     assert np.little_endian, "Should be in little endian"
     hostname = ''
     # port of our server
@@ -275,9 +288,9 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
     data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(model)
     if adapt_model:
-        online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break=3, 
-            batch_size=45, learning_rate=1e-3, n_min_trials=20,
-            trial_start_offset=1250)
+        online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break=5, 
+            batch_size=45, learning_rate=1e-3, n_min_trials=15,
+            trial_start_offset=1000)
     else:
         log.info("Not adapting model...")
         online_trainer = NoTrainer()
@@ -286,6 +299,7 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
     server = PredictionServer((hostname, port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
         save_data=save_data, use_ui_server=use_ui_server)
+    online_trainer.initialize()
     log.info("Starting server")
     server.start()
     log.info("Started server")
