@@ -35,6 +35,7 @@ class OnlineCoordinator(object):
         """Expect samples in timexchan format"""
         sensor_samples = samples[:,:-1]
         markers = samples[:,-1]
+        print("markers", markers)
         self.marker_buffer.extend(markers)
         self.data_processor.process_samples(sensor_samples)
         self.n_samples += len(samples)

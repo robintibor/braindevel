@@ -9,6 +9,7 @@ from braindecode.datasets.loaders import BBCIDataset
 from braindecode.experiments.experiment import create_experiment
 from braindecode.mywyrm.processing import create_cnt_y_start_end_marker
 
+
 class RememberPredictionsServer(gevent.server.StreamServer):
     def __init__(self, listener,
             handle=None, backlog=None, spawn='default', **ssl_args):
@@ -30,6 +31,10 @@ class RememberPredictionsServer(gevent.server.StreamServer):
             self.all_preds.append(preds)
             self.i_pred_samples.append(i_sample)
             print("")
+            
+            if len(self.i_pred_samples) > 210:
+                print("Remove this here")
+                break
     
 def start_remember_predictions_server():
     hostname = ''
@@ -59,14 +64,15 @@ def send_file_data():
     assert not np.any(np.isnan(cnt_data))
     assert not np.any(np.isinf(cnt_data))
     assert not np.any(np.isneginf(cnt_data))
-    print ("max block", np.ceil(len(cnt_data) / 50.0))
-    print "max cnt data", np.max(cnt_data)
-    print "min cnt data", np.min(cnt_data)
-    print "mean cnt data", np.mean(cnt_data)
-    print "mean abs cnt data", np.mean(np.abs(cnt_data))
-    print "std data", np.std(cnt_data)
+    print("max block", np.ceil(len(cnt_data) / 50.0))
+    print("max cnt data", np.max(cnt_data))
+    print("min cnt data", np.min(cnt_data))
+    print("mean cnt data", np.mean(cnt_data))
+    print("mean abs cnt data", np.mean(np.abs(cnt_data)))
+    print("std data", np.std(cnt_data))
     y_labels = create_y_labels(cnt).astype(np.float32)
-    assert np.array_equal(np.unique(y_labels), range(5))
+    assert np.array_equal(np.unique(y_labels), range(5)), ("Should only have "
+        "labels 0-4")
     print("Done.")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(("127.0.0.1", 1234))
@@ -85,7 +91,7 @@ def send_file_data():
     print("Sending data...")
     i_block = 0 # if setting i_block to sth higher, printed results will incorrect
     max_stop_block = np.ceil(len(cnt_data) / float(n_samples))
-    stop_block = 1000
+    stop_block = 750
     assert stop_block < max_stop_block
     while i_block < stop_block:
         arr = cnt_data[i_block * n_samples:i_block*n_samples + n_samples,:].T
@@ -96,6 +102,8 @@ def send_file_data():
             print("max", np.max(arr))
             print("min", np.min(arr))
         s.send(arr.tobytes(order='F'))
+        print("markers sent", arr[-1,:])
+        assert arr.shape == (n_chans, n_samples)
         i_block +=1
         gevent.sleep(0)
     print("Done.")
@@ -159,13 +167,12 @@ def create_y_signal_fixed_trial_len(cnt, trial_len):
 def get_y_signal(cnt_data, event_samples_and_classes, trial_len):
         # Generate class "signals", rest always inbetween trials
     y = np.zeros((cnt_data.shape[0], 4), dtype=np.int32)
-
     y[:,2] = 1 # put rest class everywhere
     for i_sample, marker in event_samples_and_classes:
         i_class = marker - 1
         # set rest to zero, correct class to 1
-        y[i_sample:i_sample+trial_len,2] = 0 
-        y[i_sample:i_sample+trial_len,i_class] = 1 
+        y[i_sample:i_sample+trial_len,2] = 0
+        y[i_sample:i_sample+trial_len,i_class] = 1
     return y
 
 if __name__ == "__main__":
