@@ -1,10 +1,11 @@
 import lasagne
 import numpy as np
+import theano
 import theano.tensor as T
 from lasagne.updates import adam
 from numpy.random import RandomState
 from braindecode.veganlasagne.layers import (get_input_time_length,
-    get_n_sample_preds)
+    get_n_sample_preds, get_input_var)
 from braindecode.datahandling.batch_iteration import (create_batch, 
     get_start_end_blocks_for_trial)
 from braindecode.util import FuncAndArgs
@@ -59,18 +60,52 @@ class BatchWiseCntTrainer(object):
         self.data_batches = []
         self.y_batches = []
         # create train function
-        targets = T.ivector()
-        self.exp.updates_expression = FuncAndArgs(adam,
-            learning_rate=self.learning_rate)
         log.info("Compile train function...")
-        self.exp.create_theano_functions(targets,
-            deterministic_training=self.deterministic_training)
+        self._create_train_function()
         log.info("Done compiling train function.")
+        
+    def _create_train_function(self):
+        targets = T.ivector()
+        updates_expression = FuncAndArgs(adam, learning_rate=self.learning_rate)
+        prediction = lasagne.layers.get_output(self.exp.final_layer,
+            deterministic=self.deterministic_training)
+        # Loss function might need layers or not...
+        try:
+            loss = self.exp.loss_expression(prediction, targets).mean()
+        except TypeError:
+            loss = self.exp.loss_expression(prediction, targets,
+                self.exp.final_layer).mean()
+        # create parameter update expressions
+        params = lasagne.layers.get_all_params(self.exp.final_layer,
+            trainable=True)
+        updates = updates_expression(loss, params)
+        if self.exp.updates_modifier is not None:
+            # put norm constraints on all layer, for now fixed to max kernel norm
+            # 2 and max col norm 0.5
+            updates = self.exp.updates_modifier.modify(updates,
+                self.exp.final_layer)
+            
+        # Hack for now: only update a certain layer:
+        """wanted_layers = ['final_dense']
+        all_keys = updates.keys()
+        for param in all_keys:
+            for layer in lasagne.layers.get_all_layers(self.exp.final_layer):
+                if param in layer.__dict__.values() and layer.name not in wanted_layers:
+                    updates.pop(param)
+                    log.warn("Removing {:s} updates".format(str(param)))
+        """        
+            
+            
+        input_var = get_input_var(self.exp.final_layer)
+        self.train_func = theano.function([input_var, targets], updates=updates)
     
     def add_blocks(self, trial_start, trial_end):
         samples_per_pred = self.input_time_length - self.n_sample_preds + 1
         pred_start = trial_start + self.trial_start_offset
         if pred_start + self.n_sample_preds - 1 > trial_end:
+            log.warn("Too little data in this trial to train in it, only "
+                "{:d} predictable samples, need atleast {:d}".format(
+                    trial_end - pred_start, self.n_sample_preds))
             return # Too little data in this trial to train on it...
         needed_sample_start = pred_start - samples_per_pred + 1
         trial_topo = np.copy(self.data_processor.get_samples(needed_sample_start, 
@@ -107,7 +142,7 @@ class BatchWiseCntTrainer(object):
                 i_blocks = self.rng.choice(len(all_y_blocks), size=self.batch_size)
                 this_y = np.concatenate(all_y_blocks[i_blocks], axis=0)
                 this_topo = all_blocks[i_blocks]
-                self.exp.train_func(this_topo, this_y)
+                self.train_func(this_topo, this_y)
             # Copy over new values
             all_layers_trained = lasagne.layers.get_all_layers(self.exp.final_layer)
             all_layers_used = lasagne.layers.get_all_layers(self.model)

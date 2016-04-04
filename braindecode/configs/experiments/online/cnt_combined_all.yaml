@@ -136,14 +136,14 @@
                 nonlinearity: !!python/name:theano.tensor.sqr ,
                 name: 'spat_conv',
             },
-#            &batch_norm !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
-#                incoming: *spat_conv,
-#                epsilon: 1e-4,
-#                alpha: $batch_norm_alpha,
-#                nonlinearity: !!python/name:theano.tensor.sqr ,
-#            },
+            &batch_norm !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *spat_conv,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+                nonlinearity: !!python/name:theano.tensor.sqr ,
+            },
             &pool !obj:braindecode.veganlasagne.pool.$pool_type {
-                    incoming: *spat_conv,
+                    incoming: *batch_norm,
                     pool_size: [$pool_time_length,1],
                     stride: [1,1],
                     mode: 'average_exc_pad',
@@ -191,6 +191,12 @@
             'FC1', 'FCz', 'FC2', 'C3', 'C1', 'Cz', 'C2', 'C4', 'CP3', 'CP1',
              'CPz', 'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz'],
         end_markers_4_class: {'1': [5], '2': [6], '3': [7], '4': [8]},
+        tied_neighbours: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [$categorical_crossentropy,
+                !!python/name:braindecode.veganlasagne.objectives.tied_neighbours_cnt_model ,
+            ]
+        },
     },
     variants: [[{ 
         # Remove from params basically..
@@ -198,9 +204,9 @@
         post_pool_nonlin: [$safe_log],
         test_filename: ["null"], # remove this from params basically.. its coming from base filenames :)
         dataset_splitter: [$several_sets_splitter],
-        dataset_filename: ['null'], # remove this from params basically.. its coming from base filenames :)q
+        dataset_filename: ['null'], # remove this from params basically.. its coming from base filenames :)
         pool_mode: ['average_exc_pad'],
-        
+        #loss_expression: [$categorical_crossentropy],
         valid_set_fraction: [0.2],
         cnt_preprocessors: [$resample_bandpass_cz_standardize],
         resample_fs: [500],
@@ -210,33 +216,33 @@
         dataset: [$combined_cnt_set],
         save_path: ['data/models/online/cnt/shallow-uneven-trials/'],
         low_cut_off_hz: [4],
-        high_cut_hz: [80],
+        high_cut_hz: [90],
         filter_time_length: [50],
         pool_time_stride: [40],
         pool_time_length: [200],
         final_dense_length: [5],
-        trial_start: [1500],
         train_loader_type: [BBCIDataset],
         num_filters: [40],
         
         filenames: [[
-            #'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
+            'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/Martin_sahara32_realMovementS001R01_ds10_1-7.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/MaVo2_sahara32_realMovementS001R02_ds10_1-5.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/MaVo_sahara32_realMovement_onlineFeedback_20160315S001R01_1-9.BBCI.mat',
             ]],
         set_types: [[
-        #'bbci',
         'bbci',
         'bbci',
         'bbci',
-        'bbci']],
+        'bbci',
+        'bbci'
+        ]],
         
         run_after_early_stop: [true],
 
-#        [0, 300],
         trial_ranges: ["[
+           [0, 300],
            [0,null],
            [0,null],
            [0,null],
@@ -244,15 +250,15 @@
         ]"],
         
         all_segment_ivals: [[
-#            [1500,4000],
-            [1500,4000],
-            [750,0],
-            [750,0],
-            [750,0],
+            [1000,4000],
+            [1000,4000],
+            [500,0],
+            [500,0],
+            [0,0],
         ],
         ],
-#            null,
         end_marker_defs: ["[
+            null,
             null,
             {'1': [5], '2': [6], '3': [7], '4': [8]},
             {'1': [5], '2': [6], '3': [7], '4': [8]},
@@ -264,8 +270,8 @@
         pool_type: [SumPool2dLayer],
         input_time_length: [600],
         layers: [$cnt_shallow_square],
-        use_test_as_valid: [True], # False
+        use_test_as_valid: [False], # False
         max_increasing_epochs: [40],
-        max_epochs: [20],#250],
+        max_epochs: [30],#250],
     }]],
 }
