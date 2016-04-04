@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 class BatchWiseCntTrainer(object):
     def __init__(self, exp, n_updates_per_break, batch_size, learning_rate,
-                n_min_trials, trial_start_offset):
+                n_min_trials, trial_start_offset, deterministic_training=False):
         self.cnt_model = exp.final_layer
         self.exp = exp
         self.n_updates_per_break = n_updates_per_break
@@ -22,6 +22,7 @@ class BatchWiseCntTrainer(object):
         self.learning_rate = learning_rate
         self.n_min_trials = n_min_trials
         self.trial_start_offset = trial_start_offset
+        self.deterministic_training = deterministic_training
         
     def process_samples(self, samples):
         marker_samples_with_overlap = np.copy(
@@ -53,6 +54,7 @@ class BatchWiseCntTrainer(object):
         self.marker_buffer = marker_buffer
         
     def initialize(self):
+        """ Initialize data containers and theano functions for training."""
         self.rng = RandomState(30948348)
         self.data_batches = []
         self.y_batches = []
@@ -61,7 +63,8 @@ class BatchWiseCntTrainer(object):
         self.exp.updates_expression = FuncAndArgs(adam,
             learning_rate=self.learning_rate)
         log.info("Compile train function...")
-        self.exp.create_theano_functions(targets)
+        self.exp.create_theano_functions(targets,
+            deterministic_training=self.deterministic_training)
         log.info("Done compiling train function.")
     
     def add_blocks(self, trial_start, trial_end):
