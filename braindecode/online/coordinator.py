@@ -36,7 +36,6 @@ class OnlineCoordinator(object):
         markers = samples[:,-1]
         assert np.all([m in [0,1,2,3,4] for m in markers]), ("Expect all "
             "markers to be from 0-4, instead got {:s}".format(markers))
-        print("markers", markers)
         self.marker_buffer.extend(markers)
         self.data_processor.process_samples(sensor_samples)
         self.n_samples += len(samples)

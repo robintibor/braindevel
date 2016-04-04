@@ -9,6 +9,7 @@ from braindecode.datahandling.batch_iteration import (create_batch,
     get_start_end_blocks_for_trial)
 from braindecode.util import FuncAndArgs
 import logging
+from pylearn2.utils.timing import log_timing
 log = logging.getLogger(__name__)
 
 class BatchWiseCntTrainer(object):
@@ -25,7 +26,6 @@ class BatchWiseCntTrainer(object):
     def process_samples(self, samples):
         marker_samples_with_overlap = np.copy(
             self.marker_buffer[-len(samples)-2:])
-        print ("marker samples overlap", marker_samples_with_overlap)
         trial_has_ended = np.sum(np.diff(marker_samples_with_overlap) < 0) > 0
         if trial_has_ended:
             log.info("Trial has ended")
@@ -37,7 +37,9 @@ class BatchWiseCntTrainer(object):
                 "before trial end {:d}, markers: {:s}").format(trial_start, 
                     trial_end, str(marker_samples_with_overlap))
             self.add_blocks(trial_start, trial_end)
-            self.train()
+            
+            with log_timing(log, None, final_msg='Time for training:'):
+                self.train()
         
     def set_model(self, model):
         self.model = model

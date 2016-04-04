@@ -26,8 +26,8 @@ class RememberPredictionsServer(gevent.server.StreamServer):
             i_sample = socket_file.readline()
             preds = socket_file.readline()
             print("Number of predictions", len(self.i_pred_samples) + 1)
-            print(i_sample)
-            print(preds)
+            print(i_sample[:-1]) # :-1 => without newline
+            print(preds[:-1])
             self.all_preds.append(preds)
             self.i_pred_samples.append(i_sample)
             print("")
@@ -60,12 +60,7 @@ def send_file_data():
     assert not np.any(np.isnan(cnt_data))
     assert not np.any(np.isinf(cnt_data))
     assert not np.any(np.isneginf(cnt_data))
-    print("max block", np.ceil(len(cnt_data) / 50.0))
-    print("max cnt data", np.max(cnt_data))
-    print("min cnt data", np.min(cnt_data))
-    print("mean cnt data", np.mean(cnt_data))
-    print("mean abs cnt data", np.mean(np.abs(cnt_data)))
-    print("std data", np.std(cnt_data))
+    print("max possible block", np.ceil(len(cnt_data) / 50.0))
     y_labels = create_y_labels(cnt).astype(np.float32)
     assert np.array_equal(np.unique(y_labels), range(5)), ("Should only have "
         "labels 0-4")
@@ -87,20 +82,17 @@ def send_file_data():
     print("Sending data...")
     i_block = 0 # if setting i_block to sth higher, printed results will incorrect
     max_stop_block = np.ceil(len(cnt_data) / float(n_samples))
-    stop_block = 750
+    stop_block = 1000
     assert stop_block < max_stop_block
     while i_block < stop_block:
         arr = cnt_data[i_block * n_samples:i_block*n_samples + n_samples,:].T
         this_y = y_labels[i_block * n_samples:i_block*n_samples + n_samples]
         # chan x time
         arr = np.concatenate((arr, this_y[np.newaxis, :]), axis=0).astype(np.float32)
-        if np.max(np.abs(arr)) > 500:
-            print("max", np.max(arr))
-            print("min", np.min(arr))
         s.send(arr.tobytes(order='F'))
         assert arr.shape == (n_chans, n_samples)
         i_block +=1
-        gevent.sleep(0)
+        gevent.sleep(0.01)
     print("Done.")
     return cnt
 
