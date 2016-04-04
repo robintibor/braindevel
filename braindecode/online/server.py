@@ -186,6 +186,7 @@ class PredictionServer(gevent.server.StreamServer):
         
         if self.save_data:
             data_saver.save()
+            # Save parameters
             all_layers = lasagne.layers.get_all_layers(self.coordinator.model.model)
             time_string = get_now_timestring()
             filename = os.path.join('data/online/', time_string + '.npy')
@@ -311,9 +312,9 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
     data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(model)
     if adapt_model:
-        online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break=2, 
-            batch_size=15, learning_rate=1e-3, n_min_trials=8,
-            trial_start_offset=600)
+        online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break=5, 
+            batch_size=45, learning_rate=1e-3, n_min_trials=8,
+            trial_start_offset=1250)
     else:
         log.info("Not adapting model...")
         online_trainer = NoTrainer()
