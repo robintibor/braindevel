@@ -25,16 +25,12 @@ class RememberPredictionsServer(gevent.server.StreamServer):
         while True:
             i_sample = socket_file.readline()
             preds = socket_file.readline()
-            print "Number of predictions", len(self.i_pred_samples) + 1
-            print i_sample[:-1]
-            print preds[:-1]
+            print("Number of predictions", len(self.i_pred_samples) + 1)
+            print(i_sample)
+            print(preds)
             self.all_preds.append(preds)
             self.i_pred_samples.append(i_sample)
             print("")
-            
-            if len(self.i_pred_samples) > 210:
-                print("Remove this here")
-                break
     
 def start_remember_predictions_server():
     hostname = ''
@@ -102,7 +98,6 @@ def send_file_data():
             print("max", np.max(arr))
             print("min", np.min(arr))
         s.send(arr.tobytes(order='F'))
-        print("markers sent", arr[-1,:])
         assert arr.shape == (n_chans, n_samples)
         i_block +=1
         gevent.sleep(0)

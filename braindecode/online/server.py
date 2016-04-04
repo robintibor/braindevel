@@ -73,6 +73,17 @@ class PredictionServer(gevent.server.StreamServer):
         return array
 
     def read_until_bytes_received_or_enter_pressed(self, socket, n_bytes):
+        '''
+        Read bytes from socket until reaching given number of bytes, cancel
+        if enter was pressed.
+        
+        Parameters
+        __________
+        socket:
+            Socket to read from.
+        n_bytes: int
+            Number of bytes to read.
+        '''
         enter_pressed = False
         array = ''
         while len(array) < n_bytes and not enter_pressed:
@@ -86,6 +97,7 @@ class PredictionServer(gevent.server.StreamServer):
         if enter_pressed:
             return None
         else:
+            assert len(array) == n_bytes
             return array
     
     def receive_header(self, in_socket):
@@ -130,7 +142,7 @@ class PredictionServer(gevent.server.StreamServer):
                 if s == sys.stdin:
                     _ = sys.stdin.readline()
                     enter_pressed = True
-        
+
         live_plot.close()
         log.info("Plot finished")
 

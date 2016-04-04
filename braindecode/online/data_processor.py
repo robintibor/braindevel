@@ -26,10 +26,6 @@ class StandardizeProcessor(object):
     def update_and_standardize(self, samples):
         if self.running_mean is not None:
             assert self.running_var is not None
-            #print ("samples", samples)
-            #print "running mean", self.running_mean
-            #print "max", np.max(samples)
-            #print "min", np.min(samples)
             next_means = exponential_running_mean(samples,
                 factor_new=self.factor_new, start_mean=self.running_mean)
             
