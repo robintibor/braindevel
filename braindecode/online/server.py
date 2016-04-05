@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
     def __init__(self, listener, coordinator, ui_hostname, ui_port, 
-        plot_sensors, save_data, use_ui_server,
+        plot_sensors, save_data, use_ui_server, model_base_name,
             handle=None, backlog=None, spawn='default', **ssl_args):
         self.coordinator = coordinator
         self.ui_hostname = ui_hostname
@@ -32,6 +32,7 @@ class PredictionServer(gevent.server.StreamServer):
         self.plot_sensors = plot_sensors
         self.save_data = save_data
         self.use_ui_server = use_ui_server
+        self.model_base_name = model_base_name
         super(PredictionServer, self).__init__(listener, handle=handle, spawn=spawn)
 
 
@@ -188,8 +189,8 @@ class PredictionServer(gevent.server.StreamServer):
             data_saver.save()
             # Save parameters
             all_layers = lasagne.layers.get_all_layers(self.coordinator.model.model)
-            time_string = get_now_timestring()
-            filename = os.path.join('data/online/', time_string + '.npy')
+            filename = "{:s}.{:s}.adapted.npy".format(self.model_base_name,
+                get_now_timestring())
             log.info("Saving to {:s}...".format(filename))
             np.save(filename, lasagne.layers.get_all_param_values(all_layers))
 
@@ -272,6 +273,8 @@ def parse_command_line_arguments():
     parser.add_argument('--modelfile', action='store',
         default='data/models/raw-net-512/3', 
         help='Basename of the modelfile')
+    parser.add_argument('--paramsfile', action='store', 
+        help='Use these (possibly adapted) parameters for the model')
     parser.add_argument('--noplot', action='store_true',
         help="Don't show plots of the sensors first.")
     parser.add_argument('--nosave', action='store_true',
@@ -280,6 +283,17 @@ def parse_command_line_arguments():
         help="Don't wait for UI server.")
     parser.add_argument('--noadapt', action='store_true',
         help="Don't adapt model while running online.")
+    parser.add_argument('--updatesperbreak', action='store', default=5,
+        type=int, help="How many updates to adapt the model during trial break.")
+    parser.add_argument('--batchsize', action='store', default=45, type=int,
+        help="Batch size for adaptation updates.")
+    parser.add_argument('--learningrate', action='store', default=1e-3, 
+        type=float, help="Learning rate for adaptation updates.")
+    parser.add_argument('--mintrials', action='store', default=8, type=int,
+        help="Number of trials before starting adaptation updates.")
+    parser.add_argument('--adaptoffset', action='store', default=500, type=int,
+        help="Sample offset for the first sample to use (within a trial) "
+        "for adaptation updates.")
     args = parser.parse_args()
     return args
 
@@ -295,26 +309,32 @@ def setup_logging():
     root_logger.addHandler(handler)
     root_logger.setLevel(logging.DEBUG)
 
-def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
-        use_ui_server, adapt_model):
+def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_data,
+        use_ui_server, adapt_model, n_updates_per_break, batch_size,
+        learning_rate, n_min_trials, trial_start_offset):
     setup_logging()
     assert np.little_endian, "Should be in little endian"
     hostname = ''
     # port of our server
     port = 1234
-    params = np.load(base_name + '.npy')
+    if args.paramsfile is not None:
+        params = np.load(params_filename)
+    else:
+        params = np.load(base_name + '.npy')
     exp = create_experiment(base_name + '.yaml')
+    # Have to set for both exp final layer and actually used model
+    # as exp final layer might be used for adaptation
+    # maybe check this all for correctness?
     model = exp.final_layer
+    lasagne.layers.set_all_param_values(model, params)
     model = transform_to_normal_net(model)
-    #params = np.load('adapted_params.npy')
     lasagne.layers.set_all_param_values(model, params)
     
     data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(model)
     if adapt_model:
-        online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break=5, 
-            batch_size=45, learning_rate=1e-3, n_min_trials=8,
-            trial_start_offset=1250)
+        online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break, 
+            batch_size, learning_rate, n_min_trials, trial_start_offset)
     else:
         log.info("Not adapting model...")
         online_trainer = NoTrainer()
@@ -322,7 +342,8 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
         pred_freq=125)
     server = PredictionServer((hostname, port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
-        save_data=save_data, use_ui_server=use_ui_server)
+        save_data=save_data, use_ui_server=use_ui_server, 
+        model_base_name=base_name)
     online_trainer.initialize()
     log.info("Starting server")
     server.start()
@@ -332,7 +353,7 @@ def main(ui_hostname, ui_port, base_name, plot_sensors, save_data,
 if __name__ == '__main__':
     gevent.signal(signal.SIGQUIT, gevent.kill)
     args = parse_command_line_arguments()
-    main(args.host, args.port, args.modelfile, not args.noplot, not args.nosave,
-        not args.noui, not args.noadapt)
-    
+    main(args.host, args.port, args.modelfile, args.paramsfile, not args.noplot, not args.nosave,
+        not args.noui, not args.noadapt, args.updatesperbreak, args.batchsize,
+        args.learningrate, args.mintrials, args.adaptoffset)
     

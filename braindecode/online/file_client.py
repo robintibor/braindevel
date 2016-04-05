@@ -82,7 +82,7 @@ def send_file_data():
     print("Sending data...")
     i_block = 0 # if setting i_block to sth higher, printed results will incorrect
     max_stop_block = np.ceil(len(cnt_data) / float(n_samples))
-    stop_block = 1000
+    stop_block = 800
     assert stop_block < max_stop_block
     while i_block < stop_block:
         arr = cnt_data[i_block * n_samples:i_block*n_samples + n_samples,:].T
