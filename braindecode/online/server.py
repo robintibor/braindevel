@@ -322,6 +322,7 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_da
     # port of our server
     port = 1234
     if args.paramsfile is not None:
+        log.info("Loading params from {:s}".format(args.paramsfile))
         params = np.load(params_filename)
     else:
         params = np.load(base_name + '.npy')
