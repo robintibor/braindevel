@@ -37,9 +37,11 @@ class PredictionServer(gevent.server.StreamServer):
 
 
     def handle(self, in_socket, address):
-        # Connect to UI Server
         log.info('New connection from {:s}!'.format(str(address)))
+      
+        # Connect to UI Server
         if self.use_ui_server:
+            gevent.sleep(1) # hack to wait until ui server open
             ui_socket = self.connect_to_ui_server()
             log.info("Connected to UI Server")
         else:
@@ -50,6 +52,7 @@ class PredictionServer(gevent.server.StreamServer):
         n_numbers = n_rows * n_cols
         n_bytes = n_numbers * 4 # float32
         log.info("Numbers in total:  {:d}".format(n_numbers))
+        
         
         # Possibly plot
         if self.plot_sensors:
@@ -63,6 +66,7 @@ class PredictionServer(gevent.server.StreamServer):
 
     def connect_to_ui_server(self):
         ui_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print (self.ui_hostname, self.ui_port)
         ui_socket.connect((self.ui_hostname, self.ui_port))
         return ui_socket
         
