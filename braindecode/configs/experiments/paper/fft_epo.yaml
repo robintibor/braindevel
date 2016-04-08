@@ -31,6 +31,8 @@
         fft_preprocessor: !obj:braindecode.datasets.fft.FFTPreprocessor {
             include_phase: $include_phase,
             square_amplitude: $square_amplitude,
+            window_length: $fft_window_len,
+            window_stride: $fft_window_stride,
         },
         linear_classifier: [ 
            &in_layer_l !obj:lasagne.layers.InputLayer {
@@ -149,34 +151,6 @@
                 incoming: *pool_nonlin_3,
                 p: 0.5,
             },
-#            &combined_conv_4 !obj:lasagne.layers.Conv2DLayer {
-#                incoming: *drop_feature_3,
-#                num_filters: $num_filters_4,
-#                filter_size: [$filter_length_4, 1],
-#                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
-#                name: 'combined_conv_4',
-#                pad: [1,0],
-#            },
-#            &batch_norm_4 !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
-#                incoming: *combined_conv_4 ,
-#                epsilon: 1e-4,
-#                alpha: $batch_norm_alpha,
-#                nonlinearity: $later_nonlin,
-#            },
-#            &pool_4 !obj:braindecode.veganlasagne.pool.$pool_layers {
-#                    incoming: *batch_norm_4,
-#                    pool_size: [$pool_time_length,1],
-#                    mode: $later_pool_mode,
-#                    stride: $pool_time_stride,
-#            },
-#            &pool_nonlin_4 !obj:lasagne.layers.NonlinearityLayer {
-#                    incoming: *pool_4,
-#                    nonlinearity: $later_pool_nonlin ,
-#            },
-#            &drop_feature_4 !obj:lasagne.layers.DropoutLayer {
-#                incoming: *pool_nonlin_4,
-#                p: 0.5,
-#            },
             &final_dense !obj:lasagne.layers.DenseLayer {
                 incoming: *drop_feature_3,
                 num_units: $n_classes,
@@ -191,6 +165,50 @@
             combined_conv_3: $conv_norm,
             final_dense: $final_norm,
         },
+        
+        seperated_linear: [
+            &in_layer_c !obj:lasagne.layers.InputLayer {
+                shape: [null, in_sensors, in_rows, in_cols]
+            },
+            &drop_in_c !obj:lasagne.layers.DropoutLayer {
+                incoming: *in_layer_c,
+                p: $drop_in_prob,
+            },
+            &spat_conv_c !obj:lasagne.layers.Conv2DLayer {
+                incoming: *drop_in_c,
+                num_filters: $num_filters_simple,
+                filter_size: [1, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'spat_conv',
+            },
+            &drop_pre_spat_c !obj:lasagne.layers.DropoutLayer {
+                incoming: *spat_conv_c,
+                p: 0.5,
+            },
+            &freq_conv_c !obj:lasagne.layers.Conv2DLayer {
+                incoming: *drop_pre_spat_c,
+                num_filters: $num_filters_simple,
+                filter_size: [1, in_cols],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'freq_conv',
+            },
+            &drop_pre_final_c !obj:lasagne.layers.DropoutLayer {
+                incoming: *freq_conv_c,
+                p: 0.5,
+            },
+            &final_dense_c !obj:lasagne.layers.DenseLayer {
+                incoming: *drop_pre_final_c,
+                num_units: $n_classes,
+                nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+                name: 'final_dense',
+            },
+        ],
+        seperated_linear_names_to_norms: {
+            spat_conv: $conv_norm,
+            freq_conv: $conv_norm,
+            final_dense: $final_norm,
+        },
+
         square: !!python/name:theano.tensor.sqr ,
         sigmoid: !!python/name:lasagne.nonlinearities.sigmoid ,
         identity: !!python/name:lasagne.nonlinearities.identity ,
@@ -200,12 +218,15 @@
         safe_log: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
         safe_softmax: !!python/name:braindecode.veganlasagne.nonlinearities.safe_softmax ,
         
+        trial_wise: !obj:braindecode.datahandling.preprocessing.TrialwiseStandardize {
+            axes: $norm_axes,
+        },
     },
     variants: [[{
         layer_names_to_norms: [$deep_fft_names_to_norms],
         layers: [$deep_fft_net],
         unsupervised_preprocessor: [$fft_preprocessor],
-        preprocessor: [$online_chan_freq_wise],
+        
         trial_start: [0],
         cleaner: [$no_cleaner],
         layer_modifier: [TransformToNormalNet],
@@ -223,8 +244,9 @@
         filter_length_3: [3],
         filter_length_4: [3],
         
-        # copied from 4_layer_no_nin.yaml
         drop_in_prob: [0.],
+        
+        # copied from 4_layer_no_nin.yaml
         final_norm: [0.5],
         conv_norm: [2.0],
         first_nonlin: [$elu],

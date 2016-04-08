@@ -833,9 +833,8 @@ class OnlineChannelwiseStandardize(ChannelwiseStandardize):
 
 class TrialwiseStandardize(Preprocessor):
     """
-    Subtracts the mean and divides by the standard deviation channel-wise.
-    Difference to pylearn: channel-wise standardization(!), so only compute
-    means and standard deviations of channels
+    Subtracts the mean and divides by the standard deviation for given axes.
+    Difference to pylearn: axes to use gien
 
     Parameters
     ----------
@@ -846,7 +845,9 @@ class TrialwiseStandardize(Preprocessor):
         Default is `1e-4`.
     """
 
-    def __init__(self, std_eps=1e-4):
+    def __init__(self, axes, std_eps=1e-4):
+        assert 'b' in axes, "Should not remove trial axes, want stds/means per trial"
+        self._axes = axes
         self._std_eps = std_eps
 
     def apply(self, dataset, can_fit=False):
@@ -857,11 +858,12 @@ class TrialwiseStandardize(Preprocessor):
         """
         topo_view = dataset.get_topological_view()
         assert tuple(dataset.view_converter.axes) == ('b', 'c', 0, 1)
-        mean = np.mean(topo_view, axis=(2,3))
-        std = np.std(topo_view, axis=(2,3))
-        
-        mean = mean[:,:, np.newaxis, np.newaxis]
-        std = std[:,:, np.newaxis, np.newaxis]
+        # self.axes are axes to keep => to compute means and stds for(!)
+        remove_dims = [i_ax for i_ax, ax  in enumerate(('b', 'c', 0, 1)) if
+            ax not in self._axes]
+        remove_dims = tuple(remove_dims)
+        mean = np.mean(topo_view, axis=remove_dims, keepdims=True)
+        std = np.std(topo_view, axis=remove_dims, keepdims=True)
         new_topo_view = (topo_view - mean) / (self._std_eps + std)
         dataset.set_topological_view(new_topo_view,  dataset.view_converter.axes)
         

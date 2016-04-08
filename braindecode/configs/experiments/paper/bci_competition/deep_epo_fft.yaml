@@ -14,8 +14,17 @@
         low_cut_off_hz: ["null"],
         high_cut_hz: ['undefined'], # prevent duplicate experiments
         
-        include_phase: [True, False],
-        square_amplitude: [True, False],
+        
+        layer_names_to_norms: [$deep_fft_names_to_norms],
+        layers: [$deep_fft_net],
+        num_filters_simple: [10],
+        drop_in_prob: [0.],
+        #include_phase: [True, False],
+        square_amplitude: [False],
+        preprocessor: ['null'],
+        fft_window_len: [125],
+        fft_window_stride: [12],
+        tag: [repl],
         variants: [[{
             filter_time_length: [3],
             filter_length_2: [3],

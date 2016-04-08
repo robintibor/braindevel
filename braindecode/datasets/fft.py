@@ -3,22 +3,30 @@ from braindecode.datasets.raw import CleanSignalMatrix
 from scipy.signal.windows import blackmanharris
 
 class FFTPreprocessor(object):
-    def __init__(self, include_phase=False,
+    def __init__(self, window_length, window_stride,
+                include_phase=False,
                  square_amplitude=False):
-        self.include_phase = False
-        self.square_amplitude = False
+        self.include_phase = include_phase
+        self.square_amplitude = square_amplitude
+        self.window_length = window_length
+        self.window_stride = window_stride
+        
     
     def apply(self, dataset, can_fit=False):
         old_topo = dataset.get_topological_view().squeeze()
         if self.include_phase:
             new_topo = compute_power_and_phase(old_topo,
-               window_length=125,window_stride=12,
-               divide_win_length=False, square_amplitude=self.square_amplitude,
+               window_length=self.window_length,
+               window_stride=self.window_stride,
+               divide_win_length=False, 
+               square_amplitude=self.square_amplitude,
                 phases_diff=False)
         else:
             new_topo = compute_power_spectra(old_topo,
-               window_length=125, window_stride=12,
-               divide_win_length=False, square_amplitude=self.square_amplitude)
+               window_length=self.window_length,
+               window_stride=self.window_stride,
+               divide_win_length=False, 
+               square_amplitude=self.square_amplitude)
         dataset.set_topological_view(new_topo.astype(np.float32), 
             dataset.view_converter.axes)
         return dataset

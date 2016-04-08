@@ -370,9 +370,24 @@ def delete_results(result_folder, params):
         len(res_pool._result_file_names), result_folder))
     for file_name in res_pool._result_file_names:
         log.info("Deleting {:s}".format(file_name))
-        os.unlink(file_name)
+        yaml_file_name = file_name.replace('.result.pkl', '.yaml')
+        model_file_name = file_name.replace('.result.pkl', '.pkl')
+        model_param_file_name = file_name.replace('.result.pkl', '.npy')
+        delete_if_exists(file_name)
+        delete_if_exists(yaml_file_name)
+        delete_if_exists(model_file_name)
+        delete_if_exists(model_param_file_name)    
 
-def delete_duplicate_results(result_folder, model_param_files=True):
+
+def delete_if_exists(filename):
+    """Delete file if it exists. Else do nothing."""
+    try:
+        os.remove(filename)
+    except OSError:
+        pass
+
+
+def delete_duplicate_results(result_folder):
     res_pool = ResultPool()
     res_pool.load_results(result_folder)
     
@@ -388,17 +403,16 @@ def delete_duplicate_results(result_folder, model_param_files=True):
         else:
             unique_var_params.append(params)
 
-    # Delete result/experiment/model files    
+    # Delete result/experiment/model(outdated, used to exist)/param files    
     for i_exp in duplicate_ids:
         result_file_name = all_result_file_names[i_exp]
         yaml_file_name = result_file_name.replace('.result.pkl', '.yaml')
-        os.unlink(result_file_name)
-        os.unlink(yaml_file_name)
-        if model_param_files:
-            model_file_name = result_file_name.replace('.result.pkl', '.pkl')
-            model_param_file_name = result_file_name.replace('.result.pkl', '.npy')
-            os.unlink(model_file_name)
-            os.unlink(model_param_file_name)
+        model_file_name = result_file_name.replace('.result.pkl', '.pkl')
+        model_param_file_name = result_file_name.replace('.result.pkl', '.npy')
+        delete_if_exists(result_file_name)
+        delete_if_exists(yaml_file_name)
+        delete_if_exists(model_file_name)
+        delete_if_exists(model_param_file_name)    
 
 def tag_duplicate_results(result_folder, tag_dict):
     res_pool = ResultPool()

@@ -4,6 +4,9 @@ import numpy as np
 from collections import OrderedDict
 from numpy.random import RandomState
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
+from copy import deepcopy
+import logging
+log = logging.getLogger(__name__)
 
 
 class TrainValidTestSplitter(object):
@@ -197,9 +200,14 @@ class PreprocessedSplitter(object):
         if dataset.reloadable:
             dataset.free_memory()
         if self.preprocessor is not None:
+            log.info("Preprocessing...")
+            # lets make copy so that changes by preprocesosr are not permanent
+            # i.e. still there after early stop
+            datasets = deepcopy(datasets)
             self.preprocessor.apply(datasets['train'], can_fit=True)
             self.preprocessor.apply(datasets['valid'], can_fit=False)
             self.preprocessor.apply(datasets['test'], can_fit=False)
+            log.info("Done.")
         return datasets
 
     def get_train_merged_valid_test(self, dataset):
@@ -213,8 +221,15 @@ class PreprocessedSplitter(object):
         n_train_set_trials = len(this_datasets['train'].y)
         del this_datasets['train']
         if self.preprocessor is not None:
+            log.info("Preprocessing...")
+            # lets make copy of test set just to be sure
+            # probably unnecessary...
+            # train_valid set should already be a new object
+            # after concatenation call above...
+            test_set = deepcopy(test_set)
             self.preprocessor.apply(train_valid_set, can_fit=True)
             self.preprocessor.apply(test_set, can_fit=False)
+            log.info("Done.")
         _, valid_set = self.split_sets(train_valid_set, 
             n_train_set_trials, len(this_datasets['valid'].y))
         # train valid is the new train set!!
