@@ -99,7 +99,7 @@
                 filter_size: [$filter_length_2, 1],
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
                 name: 'combined_conv_2',
-                pad: [1,0],
+                pad: [$pad_time,0],
             },
             &batch_norm_2 !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
                 incoming: *combined_conv_2 ,
@@ -127,7 +127,7 @@
                 filter_size: [$filter_length_3, 1],
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
                 name: 'combined_conv_3',
-                pad: [1,0],
+                pad: [$pad_time,0],
             },
             &batch_norm_3 !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
                 incoming: *combined_conv_3 ,
