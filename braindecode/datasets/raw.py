@@ -102,8 +102,9 @@ class SignalMatrix(DenseDesignMatrix):
         return new_topo_view, new_y
 
     def apply_unsupervised_preprocessor(self):
+        log.info("Applying unsupervised preprocessing...")
         self.unsupervised_preprocessor.apply(self, can_fit=False)
-        log.info("Applied unsupervised preprocessing, dataset shape now: {:s}".format(
+        log.info("Done, shape now: {:s}".format(
             str(self.get_topological_view().shape)))
 
 
