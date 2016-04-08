@@ -6,5 +6,6 @@
         resample_fs: [250],
         eog_sensors: [['EOGv', 'EOGh']],
         sensor_names: [$C_sensors],
+        n_classes: [4],
     }]]
 }

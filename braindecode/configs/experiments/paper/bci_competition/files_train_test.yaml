@@ -8,6 +8,7 @@ variants: [[{
     loader_type: [BCICompetition4Set2A],
     sensor_names: ["null"],
     resample_fs: [250],
+    n_classes: [4],
     
     
     variants: [

@@ -12,6 +12,7 @@
             },
             cleaner: $cleaner,
             sensor_names: $sensor_names,
+            unsupervised_preprocessor: $unsupervised_preprocessor,
         },
         raw_set_test: !obj:braindecode.datasets.raw.CleanSignalMatrix {
             signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
@@ -25,9 +26,11 @@
             },
             cleaner: $cleaner,
             sensor_names: $sensor_names,
+            unsupervised_preprocessor: $unsupervised_preprocessor,
         },
     },
     variants: [[{
+        unsupervised_preprocessor: ['null'],
         trial_start: [0],
         cleaner: [$no_cleaner],
         layer_modifier: [TransformToNormalNet],

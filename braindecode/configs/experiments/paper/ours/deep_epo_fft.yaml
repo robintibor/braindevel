@@ -1,0 +1,24 @@
+ {
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/ours/our_data.yaml',
+        'configs/experiments/paper/net_preprocessors.yaml',
+        'configs/experiments/paper/fft_epo.yaml',
+        ],
+    variants: [[
+    {
+        trial_stop: [4000],
+        trial_start: [-32],
+        save_path: ['data/models/paper/ours/epo/deep-fft/'],
+        input_time_length: [2000], # will be overwritten by actual net size...
+        final_dense_length: [8],
+        cnt_preprocessors: [$resample_highpass_standardize],
+        low_cut_off_hz: ["null"],
+        high_cut_hz: ['undefined'], # prevent duplicate experiments
+#        variants: [[{
+#            cnt_preprocessors: [$resample_car_highpass_standardize],
+#            save_path: ['data/models/paper/ours/epo/deep4/car/'],
+#        }]],
+    }
+    ]]
+}
