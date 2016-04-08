@@ -1,5 +1,5 @@
 import theano.tensor as T
-from lasagne.nonlinearities import softmax
+from lasagne.nonlinearities import softmax, elu
 
 def safe_log(x, eps=1e-6):
     """ Prevents log(0) by using max of eps and given x."""
@@ -14,3 +14,6 @@ def safe_softmax(x, eps=1e-6):
 
 def square(x):
     return T.sqr(x)
+
+def elu_square(x):
+    return T.sqr(elu(x))

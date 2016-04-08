@@ -1,0 +1,58 @@
+{
+    extends: [
+        'configs/experiments/paper/bci_competition/shallow.yaml',
+        'configs/experiments/paper/cnt.yaml',
+        ],
+    variants: [[{
+        save_path: ['data/models/paper/bci-competition/cnt/shallow/'],
+        final_dense_length: [30],
+        input_time_length: [1000],
+        n_sample_preds : [500], # will be overwritten anyways
+        first_nonlin: [$square],
+        post_pool_nonlin: [$safe_log],
+        pool_mode: ['average_exc_pad'],
+        cnt_preprocessors: [$resample_highpass_standardize],
+        low_cut_off_hz: ["null"],
+        high_cut_hz: ['undefined'], # prevent duplicate experiments
+        
+        
+        drop_p: [0.5],
+        layers: [$cnt_shallow_square],
+#        variants: [[
+#        { 
+#            post_pool_nonlin: [$sqrt],
+#            first_nonlin: [$square],
+#        },
+#        {
+#            post_pool_nonlin: [$safe_log, $sqrt],
+#            first_nonlin: [$elu_square],
+#        }
+#        ]
+#        ]
+        
+#        variants: [[
+#        {
+#            loss_expression: [$categorical_crossentropy],
+#        },
+#        {
+#            loss_expression: [$tied_neighbours],
+#            layers: [$cnt_shallow_merged],
+#            layer_names_to_norms: [$merged_layer_names_to_norms],
+#        },
+#        ]]
+        
+        variants: [[
+        {
+            layers: [$cnt_shallow_square],
+            drop_p: [0.],
+            
+        },
+        {
+            layers: [$cnt_shallow_square_no_bnorm],
+            drop_p: [0.5, 0.],
+            
+        },
+        ]]
+        
+    }]],
+}

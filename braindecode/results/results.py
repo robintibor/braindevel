@@ -427,11 +427,16 @@ def extract_combined_results(folder, params, folder_2, params_2):
     res = load_dataset_grouped_result_objects_for(folder, params=params)
     assert len(res) == 1, "Assuming just one group result here"
     res = res[0]
+    res = sort_results_by_filename(res)
     res2 = load_dataset_grouped_result_objects_for(folder_2, params=params_2)
     assert len(res2) == 1, "Assuming just one group result here"
     res2 = res2[0]
+    res2 = sort_results_by_filename(res2)
     combined_res = np.concatenate((res, res2))
     return combined_res
+
+def sort_results_by_filename(results):
+    return sorted(results, key=lambda r: r.parameters['dataset_filename'])
 
 def get_final_misclasses(results):
     return np.array([r.get_misclasses()['test'][-1] for r in results])

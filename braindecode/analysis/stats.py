@@ -107,6 +107,7 @@ def print_stats(results, csp_results, n_diffs=None):
     csp_misclasses = get_final_misclasses(csp_results)
     res_times = get_training_times(results)
     csp_times = get_training_times(csp_results)
+    # make a the smaller misclass, b the larger misclass
     if np.mean(res_misclasses) < np.mean(csp_misclasses):
         a = res_misclasses
         b = csp_misclasses

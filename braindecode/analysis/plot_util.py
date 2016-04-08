@@ -11,6 +11,16 @@ import os.path
 from matplotlib import gridspec
 import seaborn
 
+def show_misclass_scatter_plot(first_misclasses, second_misclasses, figsize=(4,4)):
+    fig = plt.figure(figsize=figsize)
+    first_acc = (1-first_misclasses) * 100
+    second_acc = (1-second_misclasses) * 100
+    plt.plot(first_acc, second_acc, 'o', markersize=5)
+    plt.plot([0,100],[0,100], 'k:')
+    plt.ylim(20,100)
+    plt.xlim(20,100)
+    return fig
+    
 def plot_heatmap(trial, relevances, sensor_names, sensor_map, figsize=(14, 10)):
     fig = plot_head_signals_tight(trial,
                                   sensor_names,

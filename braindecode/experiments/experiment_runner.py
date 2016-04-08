@@ -335,6 +335,7 @@ class ExperimentsRunner:
         with open(result_file_name, 'w') as resultfile:
             pickle.dump(result_or_results, resultfile)
 
+        """ Remove this? since yaml file is saved alrdy
         log.info("Saving model...")
         model_file_name = self._get_model_save_path(experiment_index)
         # Let's save model
@@ -347,7 +348,9 @@ class ExperimentsRunner:
         with open(model_file_name, 'w') as modelfile:
             pickle.dump(model, modelfile)
         sys.setrecursionlimit(old_limit)
+        """
         
+        model_file_name = self._get_model_save_path(experiment_index)
         param_file_name = model_file_name.replace('.pkl', '.npy')
         np.save(param_file_name, lasagne.layers.get_all_param_values(model))
         
@@ -371,9 +374,6 @@ class ExperimentsRunner:
         elif hasattr(splitter, 'use_test_as_valid') and splitter.use_test_as_valid:
             raise ValueError("Splitter has use test as valid set, but unknown dataset type" 
                 "" + str(dataset.__class__.__name__))
-            
-    
-        
          
     def _save_train_string(self, train_string, experiment_index):
         file_name = self._base_save_paths[experiment_index] + ".yaml"
@@ -389,4 +389,3 @@ class ExperimentsRunner:
             res_printer = ResultPrinter(folder_path)
             res_printer.print_results()
             print("\n")
-

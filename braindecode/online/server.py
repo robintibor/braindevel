@@ -79,7 +79,7 @@ class PredictionServer(gevent.server.StreamServer):
         if enter was pressed.
         
         Parameters
-        __________
+        ----------
         socket:
             Socket to read from.
         n_bytes: int
