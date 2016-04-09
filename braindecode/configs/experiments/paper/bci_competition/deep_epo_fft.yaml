@@ -16,7 +16,7 @@
         
         
         layer_names_to_norms: [$deep_fft_names_to_norms],
-        layers: [$deep_fft_net],
+        layers: [$deep_fft_net_spat_time_freq],
         num_filters_simple: [10],
         drop_in_prob: [0.],
         #include_phase: [True, False],
@@ -24,7 +24,7 @@
         preprocessor: ['null'],
         fft_window_len: [125],
         fft_window_stride: [12],
-        tag: [repl],
+        tag: [pool_pad],
         variants: [[{
             filter_time_length: [3],
             filter_length_2: [3],
@@ -32,13 +32,13 @@
             filter_length_4: [3],
             pad_time: [1],
         },
-        {
-            filter_time_length: [1],
-            filter_length_2: [1],
-            filter_length_3: [1],
-            filter_length_4: [1],
-            pad_time: [0]
-        }
+#        {
+#            filter_time_length: [1],
+#            filter_length_2: [1],
+#            filter_length_3: [1],
+#            filter_length_4: [1],
+#            pad_time: [0]
+#        }
         ]]        
         
     }

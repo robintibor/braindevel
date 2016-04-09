@@ -1,4 +1,9 @@
 {
+    extends: [
+        'configs/experiments/paper/fft_epo_spat_freq_time.yaml',
+        'configs/experiments/paper/fft_epo_freq_spat_time.yaml',
+        'configs/experiments/paper/fft_epo_freq_time_spat.yaml',
+        'configs/experiments/paper/fft_epo_combined.yaml'],
     templates: {
         raw_set_train: !obj:braindecode.datasets.raw.CleanSignalMatrix {
             signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
@@ -48,35 +53,39 @@
         linear_names_to_norms: {
             final_dense: 0.5,
         },
-        deep_fft_net: [ 
+        deep_fft_net_spat_time_freq: [ 
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, in_rows, in_cols]
             },
-            &shuffle !obj:lasagne.layers.DimshuffleLayer {
-                incoming: *in_layer,
-                pattern: [0,3,2,1],
-            },
             &drop_in !obj:lasagne.layers.DropoutLayer {
-                incoming: *shuffle,
+                incoming: *in_layer,
                 p: $drop_in_prob,
             },
-            &time_freq_conv !obj:lasagne.layers.Conv2DLayer {
+            &spat_conv !obj:braindecode.veganlasagne.layers.Conv2DLayer {
                 incoming: *drop_in,
+                num_filters: $num_filters_spat,
+                filter_size: [1, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'spat_conv',
+            },
+            &time_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *spat_conv,
                 num_filters: $num_filters_time,
                 filter_size: [$filter_time_length, 1],
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
                 name: 'time_freq_conv',
                 pad: [$pad_time,0],
             },
-            &spat_conv !obj:braindecode.veganlasagne.layers.Conv2DAllColsLayer {
-                incoming: *time_freq_conv,
-                num_filters: $num_filters_spat,
-                filter_size: [1, -1],
+            &freq_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *time_conv,
+                num_filters: $num_filters_time,
+                filter_size: [1, in_cols],
                 nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
-                name: 'spat_conv',
+                name: 'time_freq_conv',
+                pad: [0,0],
             },
             &batch_norm_1 !obj:braindecode.veganlasagne.batch_norm.BatchNormLayer {
-                incoming: *spat_conv ,
+                incoming: *freq_conv ,
                 epsilon: 1e-4,
                 alpha: $batch_norm_alpha,
                 nonlinearity: $first_nonlin,
@@ -86,6 +95,7 @@
                     pool_size: [$pool_time_length,1],
                     mode: $first_pool_mode,
                     stride: $pool_time_stride,
+                    ignore_border: False,
             },
             &pool_nonlin_1 !obj:lasagne.layers.NonlinearityLayer {
                     incoming: *pool,
@@ -114,6 +124,7 @@
                 pool_size: [$pool_time_length,1],
                 mode: $later_pool_mode,
                 stride: $pool_time_stride,
+                ignore_border: False,
             },
             &pool_nonlin_2 !obj:lasagne.layers.NonlinearityLayer {
                 incoming: *pool_2,
@@ -142,6 +153,7 @@
                     pool_size: [$pool_time_length,1],
                     mode: $later_pool_mode,
                     stride: $pool_time_stride,
+                    ignore_border: False,
             },
             &pool_nonlin_3 !obj:lasagne.layers.NonlinearityLayer {
                     incoming: *pool_3,
@@ -158,6 +170,7 @@
                 name: 'final_dense',
             },
         ],
+        
         deep_fft_names_to_norms: {
             time_freq_conv: $conv_norm,
             spat_conv: $conv_norm,
