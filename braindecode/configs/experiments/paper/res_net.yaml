@@ -1,0 +1,23 @@
+{
+    templates: {
+        residual_net: !obj:braindecode.models.resnet.ResNet { 
+                in_chans: in_sensors,
+                input_time_length: $input_time_length,
+                n_layers_per_block: $n_layers_per_block,
+        },
+        layer_names_to_norms: {
+        },
+        square: !!python/name:theano.tensor.sqr ,
+        sigmoid: !!python/name:lasagne.nonlinearities.sigmoid ,
+        identity: !!python/name:lasagne.nonlinearities.identity ,
+        elu: !!python/name:lasagne.nonlinearities.elu ,
+        relu: !!python/name:lasagne.nonlinearities.rectify ,
+        leaky_relu: !!python/name:lasagne.nonlinearities.leaky_rectify ,
+        safe_log: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
+        safe_softmax: !!python/name:braindecode.veganlasagne.nonlinearities.safe_softmax ,
+    },
+    variants: [[{
+        layer_names_to_norms: [$layer_names_to_norms],
+        layers: [$residual_net],
+    }]]
+}

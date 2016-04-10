@@ -458,6 +458,44 @@ def get_final_misclasses(results):
 def get_training_times(results):
     return np.array([r.training_time for r in results])
 
+def get_all_misclasses(results):
+    misclass_dict = dict()
+    for set_type in ['train', 'valid', 'test']:
+        misclass_dict[set_type] = [r.get_misclasses()[set_type] for r in results]
+    
+    return misclass_dict
+
+def get_padded_misclasses(all_exp_misclasses):
+    """Pad misclasses for several experiments to maximum number of epochs across experiments.
+    Pad with the last value for given experiment. For example if you have two experiment with misclasses:
+    [0.5,0.2,0.1]
+    [0.6,0.4]
+    Then pad to:
+    [0.5,0.2,0.1]
+    [0.6,0.4,0.4]
+    
+    Parameters
+    --------
+    all_exp_misclasses: list of 1d arrays
+    
+    Returns
+    -------
+    padded_misclasses: 2d array
+        Misclasses padded to same length/number of epochs.
+    n_exps_by_epoch: 1d array
+        Number of experiments that were still running in per epoch.
+    """
+
+    max_length = max([len(m) for m in all_exp_misclasses])
+    padded_misclasses = np.ones((len(all_exp_misclasses), max_length)) * np.nan
+    n_exps_by_epoch = np.zeros(max_length)
+    for i_exp, misclasses in enumerate(all_exp_misclasses):
+        padded_misclasses[i_exp,:len(misclasses)] = misclasses
+        padded_misclasses[i_exp,len(misclasses):] = misclasses[-1]
+        n_exps_by_epoch[:len(misclasses)] += 1
+    assert not np.any(np.isnan(padded_misclasses))
+    return padded_misclasses, n_exps_by_epoch
+
 def compute_confusion_matrix(result_objects):
     try:
         targets = [fold_res.targets for dataset_result_obj in result_objects for fold_res in dataset_result_obj]
@@ -489,3 +527,11 @@ def compute_confusion_matrix_csp(result_objects):
     confusion_mat = confusion_matrix(y_true=test_labels_flat, 
                                      y_pred=test_predicted_labels_flat)
     return confusion_mat
+
+def extract_single_group_result_sorted(folder, params):
+    res = load_dataset_grouped_result_objects_for(folder, params=params)
+    assert len(res) == 1, "Assuming just one group result here"
+    res = res[0]
+    # sort by filename!!
+    res = sort_results_by_filename(res)
+    return res

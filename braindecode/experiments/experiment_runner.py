@@ -256,8 +256,8 @@ class ExperimentsRunner:
         del train_set
 
         assert 'in_sensors' in train_str
-        #not for cnt net assert 'in_rows' in train_str
-        assert 'in_cols' in train_str
+        # not for cnt net assert 'in_rows' in train_str
+        # not for resnet: assert 'in_cols' in train_str
         
         train_str = train_str.replace('in_sensors',
             str(dummy_batch_topo.shape[1]))

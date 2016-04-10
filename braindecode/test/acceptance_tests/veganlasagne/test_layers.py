@@ -105,6 +105,41 @@ def test_stride_reshape_layer():
         dtype=np.float32),
         layer_activations[5])
     
+def test_stride_reshape_layer_with_padding():
+    """Testign with padding... actually should never be any problem, as
+    Stide reshape layer is independent of padding before..."""
+    input_var = T.tensor4('inputs').astype(theano.config.floatX)
+    network = lasagne.layers.InputLayer(shape=[None,1,15,1], input_var=input_var)
+    network = lasagne.layers.Conv2DLayer(network, num_filters=1, pad='same', filter_size=[3, 1],
+                                         W=lasagne.init.Constant(1), stride=(1,1),
+                                    )
+    network = StrideReshapeLayer(network, n_stride=2, invalid_fill_value=np.nan)
+    
+    preds_cnt = lasagne.layers.get_output(lasagne.layers.get_all_layers(network)[1:])
+    pred_cnt_func = theano.function([input_var], preds_cnt)
+    layer_activations = pred_cnt_func(to_4d_time_array([range(1,16), range(16,31)]))
+    assert equal_without_nans(np.array([[[[  3.], [  6.], [  9.], [ 12.], [ 15.], [ 18.], [ 21.], 
+                           [ 24.], [ 27.], [ 30.], [ 33.], [ 36.], [ 39.], 
+                           [ 42.], [ 29.]]],
+        [[[ 33.], [ 51.], [ 54.], [ 57.], [ 60.], [ 63.], [ 66.], 
+          [ 69.], [ 72.], [75.], [ 78.], [ 81.], [ 84.], 
+          [ 87.], [59. ]]]], 
+            dtype=np.float32),
+        layer_activations[0])
+        
+    assert equal_without_nans(np.array(
+        [[[[3.], [  9.], [ 15.], [ 21.], [ 27.], [ 33.], [ 39.], [29.]]],
+       [[[33.], [ 54.], [ 60.], [ 66.], [ 72.], [ 78.], [ 84.], [59.]]],
+       [[[  6.], [ 12.], [ 18.], [ 24.], [ 30.], [ 36.], [ 42.], [ np.nan]]],
+       [[[ 51.], [ 57.], [ 63.], [ 69.], [ 75.], [ 81.], [ 87.], [ np.nan]]]],
+       dtype=np.float32),
+       layer_activations[1])
+
+
+
+
+    
+    
 def test_raw_net_trial_based_and_continuous():
     softmax_rng = RandomState(3094839048)
     orig_softmax_weights = softmax_rng.randn(4,20,54,1).astype(theano.config.floatX) * 0.01

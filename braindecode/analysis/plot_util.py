@@ -4,7 +4,7 @@ from matplotlib import cm
 from braindecode.datasets.sensor_positions import (get_C_sensors_sorted,
     get_sensor_pos, tight_C_positions, cap_positions)
 from braindecode.results.results import (
-    DatasetAveragedResults, compute_confusion_matrix)
+    DatasetAveragedResults, compute_confusion_matrix, get_padded_misclasses)
 from copy import deepcopy
 from pylearn2.utils import serial
 import os.path
@@ -52,6 +52,24 @@ def plot_with_tube(x,y,deviation, axis=0, color=None):
     ax = plt.gca()
     ax.fill_between(x, y - deviation, y + deviation, alpha=0.2, color=color)
 
+def plot_mean_std_misclasses_over_time(misclasses):
+    padded_misclasses, _ = get_padded_misclasses(misclasses['train'])
+    plot_mean_and_std(padded_misclasses, color=seaborn.color_palette()[0])
+    padded_misclasses, _ = get_padded_misclasses(misclasses['valid'])
+    plot_mean_and_std(padded_misclasses, color=seaborn.color_palette()[1])
+    padded_misclasses, n_exps_by_epoch = get_padded_misclasses(misclasses['test'])
+    plot_mean_and_std(padded_misclasses, color=seaborn.color_palette()[2])
+    plt.plot(n_exps_by_epoch / float(n_exps_by_epoch[0]), color='black', lw=1)
+    plt.ylim(0,1)
+    
+def plot_misclasses_over_time(misclasses, alpha=1, lw=0.75):
+    for single_misclass in misclasses['train']:
+        plt.plot(single_misclass, color=seaborn.color_palette()[0], alpha=alpha, lw=lw)
+    for single_misclass in misclasses['valid']:
+        plt.plot(single_misclass, color=seaborn.color_palette()[1], alpha=alpha, lw=lw)
+    for single_misclass in misclasses['test']:
+        plt.plot(single_misclass, color=seaborn.color_palette()[2], alpha=alpha, lw=lw)
+    
 def plot_multiple_head_signals_tight(signals, sensor_names=None, 
     figsize=(12, 7),
         plot_args=None, hspace=0.35, sensor_map=tight_C_positions,

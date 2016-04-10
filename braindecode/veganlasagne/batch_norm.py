@@ -16,7 +16,7 @@ import theano.tensor as T
 
 class BatchNormLayer(lasagne.layers.Layer):
 
-    def __init__(self, incoming, axes=None, epsilon=0.01, alpha=0.5,
+    def __init__(self, incoming, axes=None, epsilon=0.01, alpha=0.1,
             nonlinearity=None, **kwargs):
         """
         Instantiates a layer performing batch normalization of its inputs,

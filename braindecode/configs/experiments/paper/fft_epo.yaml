@@ -38,6 +38,9 @@
             square_amplitude: $square_amplitude,
             window_length: $fft_window_len,
             window_stride: $fft_window_stride,
+            frequency_start: $frequency_start,
+            frequency_end: $frequency_end,
+            fs: $resample_fs,
         },
         linear_classifier: [ 
            &in_layer_l !obj:lasagne.layers.InputLayer {

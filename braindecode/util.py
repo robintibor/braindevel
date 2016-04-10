@@ -1,6 +1,3 @@
-from lasagne.init import Initializer
-import theano
-
 class FuncAndArgs(object):
     """Container for a function and its arguments. 
     Useful in case you want to pass a function and its arguments 
@@ -38,6 +35,11 @@ class GetAttr(object):
     def __new__(cls, obj, attr):
         return getattr(obj, attr) 
 
+class ApplyFunc(object):
+    """ Hacky class to wrap function call in object for yaml loading... """
+    def __new__(cls, func,args, kwargs):
+        return func(*args, **kwargs)
+
 def add_message_to_exception(exc, additional_message):
     #  give some more info...
     # see http://www.ianbicking.org/blog/2007/09/re-raising-exceptions.html
@@ -49,8 +51,8 @@ def add_message_to_exception(exc, additional_message):
     arg0 += additional_message
     exc.args = (arg0, ) + args[1:]
     
-def unzip(list):
-    return zip(*list)
+def unzip(l):
+    return zip(*l)
 
 def dict_compare(d1, d2):
     """From http://stackoverflow.com/a/18860653/1469195"""

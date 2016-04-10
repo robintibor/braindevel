@@ -5,11 +5,20 @@ from scipy.signal.windows import blackmanharris
 class FFTPreprocessor(object):
     def __init__(self, window_length, window_stride,
                 include_phase=False,
-                 square_amplitude=False):
+                 square_amplitude=False,
+                 frequency_start=None,
+                 frequency_end=None,
+                 fs=None):
         self.include_phase = include_phase
         self.square_amplitude = square_amplitude
         self.window_length = window_length
         self.window_stride = window_stride
+        assert not ((fs is None) and ((frequency_start is not None) or
+            (frequency_end is not None))), ("Need to know sampling rate "
+            "to select subsets of frequencies")
+        self.frequency_start = frequency_start
+        self.frequency_end = frequency_end
+        self.fs = fs
         
     
     def apply(self, dataset, can_fit=False):
@@ -27,9 +36,33 @@ class FFTPreprocessor(object):
                window_stride=self.window_stride,
                divide_win_length=False, 
                square_amplitude=self.square_amplitude)
+        
+        if self.frequency_end is not None or self.frequency_start is not None:
+            new_topo = self.select_subset_of_freqs(new_topo)
+            
         dataset.set_topological_view(new_topo.astype(np.float32), 
             dataset.view_converter.axes)
         return dataset
+    
+    def select_subset_of_freqs(self, new_topo):
+        assert self.fs is not None
+        freq_bins = np.fft.rfftfreq(self.window_length, 1.0 / self.fs).tolist()
+        # None means to ignore => take all...
+        i_freq_start = None
+        i_freq_stop = None
+        if self.frequency_start is not None:
+            assert self.frequency_start in freq_bins, ("Please choose center "
+                "of a frequency bin. Choose from: {:s}".format(str(freq_bins)))
+            i_freq_start = freq_bins.index(self.frequency_start)
+        if self.frequency_end is not None:
+            assert self.frequency_end in freq_bins, ("Please choose center "
+                "of a frequency bin. Choose from: {:s}".format(str(freq_bins)))
+            # +1 since index will be exclusive
+            i_freq_stop = freq_bins.index(self.frequency_end) + 1
+        new_topo = new_topo[:,:,:,i_freq_start:i_freq_stop]
+        return new_topo
+        
+        
     
 class FFTCleanSignalMatrix(CleanSignalMatrix):
     def __init__(self, transform_function_and_args,

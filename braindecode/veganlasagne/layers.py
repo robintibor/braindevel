@@ -139,6 +139,8 @@ def transform_to_normal_net(final_layer):
             # for stride
             all_layers[i_layer].stride = (last_stride, all_layers[i_layer].stride[1])
             last_stride = None
+        if hasattr(all_layers[i_layer], 'pad'):
+            assert all_layers[i_layer].pad == (0,0), "Not tested for padded models"
 
     # Fix shapes by iterating through layers... 
     # Use original input window, only
@@ -340,7 +342,7 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         return [None, input_shape[1]]
     
 def get_3rd_dim_shapes_without_invalids(layer):
-    all_layers = lasagne.layers.get_all_layers(layer)
+    all_layers = get_single_path(layer)
     return get_3rd_dim_shapes_without_invalids_for_layers(all_layers)
 
 def get_3rd_dim_shapes_without_invalids_for_layers(all_layers):
@@ -355,7 +357,8 @@ def get_3rd_dim_shapes_without_invalids_for_layers(all_layers):
         if hasattr(l, 'filter_size'):
             if l.pad == (0,0):
                 cur_lengths = cur_lengths - l.filter_size[0] + 1
-            elif l.pad == ((l.filter_size[0] - 1) / 2, (l.filter_size[1] - 1) / 2):
+            elif (l.pad == 'same') or (l.pad == 
+                ((l.filter_size[0] - 1) / 2, (l.filter_size[1] - 1) / 2)):
                 cur_lengths = cur_lengths
             else:
                 print l
@@ -371,13 +374,18 @@ def get_3rd_dim_shapes_without_invalids_for_layers(all_layers):
     return cur_lengths
 
 def get_n_sample_preds(layer):
+    """ Old version, now hoping single path checking is fine?
     paths = get_all_paths(layer)
     preds_per_path = [np.sum(get_3rd_dim_shapes_without_invalids_for_layers(
         layers)) for layers in paths]
     # all path should have same length
     assert len(np.unique(preds_per_path)) == 1, ("All paths, should have same "
         "lengths, pathlengths are" + str(preds_per_path))
-    return preds_per_path[0]
+    """
+    layers = get_single_path(layer)
+    n_preds = np.sum(get_3rd_dim_shapes_without_invalids_for_layers(
+        layers))
+    return n_preds
 
 
 def get_input_time_length(layer):
@@ -474,6 +482,30 @@ def get_all_paths(layer, treat_as_input=None):
 
 
     return all_paths
+
+def get_single_path(layer):
+    """
+    This function gathers a single path through the net by depth search.
+    Useful if you know all paths through the network are similar and it would take too long
+    to take too long to get them all.
+    ----------
+    layer : Layer or list
+        the :class:`Layer` instance for which to gather a single path feeding
+        into it.
+    Returns
+    -------
+    list of list
+        a list of :class:`Layer' forming a path feeding into the given layer.
+    """
+    all_layers_in_path =  [layer]
+    while hasattr(layer, 'input_layers') or hasattr(layer, 'input_layer'):
+        if hasattr(layer, 'input_layers'):
+            prev_layer = layer.input_layers[0]
+        else:
+            prev_layer = layer.input_layer
+        all_layers_in_path.append(prev_layer)
+        layer = prev_layer
+    return all_layers_in_path[::-1]
 
 def unfold_filters(channel_weights, kernel_weights):
     """ Unfolds bc and b01 weights into prober bc01 weights """

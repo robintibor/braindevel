@@ -1,0 +1,37 @@
+ {
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/bci_competition/files_train_test.yaml',
+        'configs/experiments/paper/cnt.yaml',
+        'configs/experiments/paper/bci_competition/deep_4.yaml', # maybe removable? but then add trial stop here
+        'configs/experiments/paper/res_net.yaml',
+        ],
+    templates: {
+        tied_neighbours_decay: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [$categorical_crossentropy,
+                !!python/name:braindecode.veganlasagne.objectives.tied_neighbours_cnt_model ,
+                !obj:braindecode.util.FuncAndArgs {
+                    func: !!python/name:braindecode.veganlasagne.objectives.weight_decay ,
+                    factor: $l2_factor
+                },
+            ]
+        },
+    },
+    variants: [[
+    {
+        save_path: ['data/models/paper/bci-competition/cnt/resnet/'],
+        input_time_length: [1000],
+        n_sample_preds : [500], # will be overwritten anyways
+        train_cleaner: [$no_cleaner],
+        test_cleaner: [$no_cleaner],
+        low_cut_off_hz: ['null'],
+        high_cut_hz: ['undefined'],
+        cnt_preprocessors: [$resample_highpass_standardize],
+        loss_expression: [$tied_neighbours_decay],
+        l2_factor: [1e-4],
+        n_layers_per_block: [3],
+        
+    }
+    ]]
+}
