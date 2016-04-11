@@ -121,3 +121,30 @@ def get_trial_acts(all_outs_per_batch, batch_sizes, n_trials, n_inputs_per_trial
                       for t in trial_batch_acts]
     trial_acts = np.array(trial_acts)
     return trial_acts
+
+
+def model_structure_equal(final_layer_1, final_layer_2):
+    """Compare if two networks have the same structure, i.e. same layers
+    with same sizes etc. Ignores if they have different parameters."""
+    all_equal = True
+    all_layers_1 = lasagne.layers.get_all_layers(final_layer_1)
+    all_layers_2 = lasagne.layers.get_all_layers(final_layer_2)
+    if len(all_layers_1) != len(all_layers_2):
+        log.warn("Unequal number of layers: {:d} and {:d}".format(
+            len(all_layers_1), len(all_layers_2)))
+        return False
+    for l1,l2 in zip(all_layers_1, all_layers_2):
+        ignore_keys = ['yaml_src', 'input_var', 'input_layer', '_srng', 'b', 'W', 'params',
+                      'std', 'beta', 'mean', 'gamma']
+        if l1.__class__.__name__ != l2.__class__.__name__:
+            log.warn("Different classnames {:s} and {:s}".format(
+                l1.__class__.__name__, l2.__class__.__name__))
+            all_equal = False
+        for key in l1.__dict__:
+            if key in ignore_keys:
+                continue
+            if l1.__dict__[key] != l2.__dict__[key]:
+                all_equal = False
+                log.warn("Different attributes:\n{:s}: {:s} and {:s}".format(
+                    key, l1.__dict__[key], l2.__dict__[key]))
+    return all_equal

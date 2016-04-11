@@ -182,17 +182,17 @@
         layers: [$cnt_4l],
         final_norm: [0.5],
         conv_norm: [2.0],
+        pool_time_length: [3],
+        pool_time_stride: [3],
         first_nonlin: [$elu],
-        later_nonlin: [$elu],
-        final_nonlin: [$safe_softmax],
         first_pool_layer: [Pool2DLayer],
         first_pool_mode: ['max'], # just to prevent errors on square run, reenable
         first_pool_nonlin: [$identity],
+        later_nonlin: [$elu],
         pool_layers: [Pool2DLayer],
         later_pool_mode: ['max'], # just to prevent errors on square run, reenable
-        pool_time_length: [3],
-        pool_time_stride: [3],
         later_pool_nonlin: [$identity],
         batch_norm_alpha: [0.1], 
+        final_nonlin: [$safe_softmax],
     }]]
 }

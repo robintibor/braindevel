@@ -2,7 +2,6 @@
     extends: [
         'configs/experiments/paper/defaults.yaml',
         'configs/experiments/paper/shallow_square.yaml',
-        'configs/experiments/paper/shallow_nonlins.yaml',
         'configs/experiments/paper/ours/our_data.yaml',
         'configs/experiments/paper/net_preprocessors.yaml',
         ],
@@ -14,7 +13,6 @@
         filter_time_length: [25],
         pool_time_length: [75],
         pool_time_stride: [15],
-        pool_mode: ['average_exc_pad', 'max'],
     }
     ]]
 }
