@@ -1,7 +1,7 @@
 {
     templates: {
         cnt_4l: !obj:braindecode.veganlasagne.layer_modifiers.$layer_modifier { 
-        layers: [ 
+        layers_or_layer_obj: [ 
            &in_layer !obj:lasagne.layers.InputLayer {
                 shape: [null, in_sensors, $input_time_length, in_cols]
             },

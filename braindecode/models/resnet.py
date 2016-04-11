@@ -23,8 +23,7 @@ class ResNet(object):
         model = residual_block(model, increase_units_factor=2, half_time=True)
         for _ in range(1,self.n_layers_per_block):
             model = residual_block(model)
-            
-        
+
         model = residual_block(model, increase_units_factor=1.5, half_time=True)
         for _ in range(1,self.n_layers_per_block):
             model = residual_block(model)

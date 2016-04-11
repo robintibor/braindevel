@@ -20,6 +20,9 @@
         first_nonlin: [$square],
         first_pool_mode: ['max'],
         first_pool_nonlin: [$safe_log],
+        later_nonlin: [$square],
+        later_pool_mode: ['max'],
+        later_pool_nonlin: [$safe_log],
 #        variants: [[{
 #            cnt_preprocessors: [$resample_car_highpass_standardize],
 #            save_path: ['data/models/paper/ours/cnt/deep4/car/'],

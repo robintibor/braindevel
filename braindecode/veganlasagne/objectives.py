@@ -27,9 +27,10 @@ def sum_of_losses(preds, targets, final_layer, loss_expressions):
     return total_loss
 
 def weight_decay(preds, targets, final_layer, factor):
-    params = lasagne.layers.get_all_params(final_layer, regularizable = True)
-    loss = factor * sum(T.sum(param ** 2) for param in params)
-    return loss
+    loss = lasagne.regularization.regularize_network_params(final_layer,
+        lasagne.regularization.l2)
+    
+    return loss * factor
 
 def tied_losses_cnt_model(preds, targets, final_layer, n_pairs):
     n_sample_preds = get_n_sample_preds(final_layer)
