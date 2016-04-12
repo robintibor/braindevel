@@ -23,8 +23,9 @@ from braindecode.veganlasagne.stopping import MaxEpochs
 from braindecode.datahandling.splitters import FixedTrialSplitter,\
     SeveralSetsSplitter
 import logging
-from braindecode.util import dict_equal
+from braindecode.util import dict_equal, touch_file
 log = logging.getLogger(__name__)
+
 
 class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
@@ -53,6 +54,7 @@ class ExperimentsRunner:
             self._get_start_id()))
         
         self._create_base_save_paths_for_all_experiments()
+        self._create_lock_files_for_all_experiments()
         self._run_all_experiments()
     
     def _log_only_warnings(self):
@@ -109,16 +111,27 @@ class ExperimentsRunner:
     def _create_base_save_path(self, experiment_index):
         folder_path = self._create_save_folder_path(experiment_index) 
         self._folder_paths.append(folder_path) # store for result printing
-        result_nr = experiment_index + 1
         # try not to overwrite existing models, instead
         # use higher numbers
+        # earlier I did this by using result files
+        # now I use lock files to prevent experiments that are started
+        # while old experiment is running from overwriting new experiment
+        lower_offset = 0
         existing_result_files = glob(folder_path + "*[0-9].result.pkl")
         if (len(existing_result_files) > 0):
             # model nrs are last part of file name before .pkl
             existing_result_nrs = [int(file_name.split('/')[-1][:-len('.result.pkl')])\
                 for file_name in existing_result_files]
             highest_result_nr = max(existing_result_nrs)
-            result_nr = highest_result_nr + result_nr
+            lower_offset = max(lower_offset, highest_result_nr)
+        existing_lock_files = glob(folder_path + "*[0-9].lock.pkl")
+        if (len(existing_lock_files) > 0):
+            # model nrs are last part of file name before .pkl
+            existing_lock_nrs = [int(file_name.split('/')[-1][:-len('.lock.pkl')])\
+                for file_name in existing_lock_files]
+            highest_lock_nr = max(existing_lock_nrs)
+            lower_offset = max(lower_offset, highest_lock_nr)
+        result_nr = lower_offset + experiment_index + 1
         return os.path.join(folder_path, str(result_nr))
     
     def _create_save_folder_path(self, experiment_index):
@@ -142,6 +155,9 @@ class ExperimentsRunner:
 
     def _get_result_save_path(self, experiment_index):
         return self._base_save_paths[experiment_index] + ".result.pkl"
+    
+    def _get_lock_save_path(self, experiment_index):
+        return self._base_save_paths[experiment_index] + ".lock.pkl"
         
     @staticmethod
     def _load_without_layers(train_str):
@@ -154,6 +170,11 @@ class ExperimentsRunner:
         train_str = train_str.replace("layers: [", "layers: !DoNotLoad [")
 
         return yaml_parse.load(train_str)
+
+    def _create_lock_files_for_all_experiments(self):
+        for i_exp in range(self._get_start_id(),  self._get_stop_id() + 1):
+            lock_path = self._get_lock_save_path(i_exp)
+            touch_file(lock_path)
 
     def _run_all_experiments(self):
         

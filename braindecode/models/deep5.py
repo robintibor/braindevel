@@ -18,7 +18,8 @@ class Deep5Net(object):
             drop_prob, num_filters_2, filter_length_2, later_nonlin,
             later_pool_mode, later_pool_nonlin, num_filters_3,
             filter_length_3, num_filters_4, filter_length_4,
-            final_dense_length, n_classes, final_nonlin, double_time_convs):
+            final_dense_length, n_classes, final_nonlin, double_time_convs,
+            batch_norm=True):
         self.__dict__.update(locals())
         del self.self
         
@@ -43,8 +44,9 @@ class Deep5Net(object):
             filter_size=[1,-1],
             nonlinearity=identity,
             name='spat_conv')
-        l = BatchNormLayer(l, epsilon=1e-4, alpha=self.batch_norm_alpha,
-            nonlinearity=self.first_nonlin)
+        if self.batch_norm:
+            l = BatchNormLayer(l, epsilon=1e-4, alpha=self.batch_norm_alpha,
+                nonlinearity=self.first_nonlin)
         l = Pool2DLayer(l, 
             pool_size=[self.pool_time_length,1],
             stride=[1,1],
@@ -65,9 +67,9 @@ class Deep5Net(object):
                     filter_size=[filter_length, 1],
                     nonlinearity=identity,
                     name='combined_conv_{:d}'.format(i_block))
-                
-            l = BatchNormLayer(l, epsilon=1e-4, alpha=self.batch_norm_alpha,
-                nonlinearity=self.later_nonlin)
+            if self.batch_norm:
+                l = BatchNormLayer(l, epsilon=1e-4, alpha=self.batch_norm_alpha,
+                    nonlinearity=self.later_nonlin)
             l = Pool2DLayer(l, 
                 pool_size=[self.pool_time_length, 1],
                 stride=[1,1],

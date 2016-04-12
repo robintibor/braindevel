@@ -1,12 +1,14 @@
 import theano.tensor as T
 import numpy as np
 import lasagne
-from braindecode.veganlasagne.layers import transform_to_normal_net,\
-    get_used_input_length, get_input_shape, get_model_input_window
 from braindecode.experiments.experiment import create_experiment
 
-def load_model(filename):
-    model = np.load(filename)
+def load_model(basename):
+    """Load model with params from .yaml and .npy files."""
+    exp = create_experiment(basename + '.yaml')
+    params = np.load(basename + '.npy')
+    model = exp.final_layer
+    lasagne.layers.set_all_param_values(model, params)
     all_layers = lasagne.layers.get_all_layers(model)
     for l in all_layers:
         if hasattr(l, 'convolve'):
@@ -22,7 +24,7 @@ def load_model(filename):
 
 def load_exp_and_model(basename):
     """ Loads experiment and model for analysis, sets invalid fillv alues to NaN."""
-    model = load_model(basename + '.pkl')
+    model = load_model(basename)
     exp = create_experiment(basename + '.yaml')
     all_layers = lasagne.layers.get_all_layers(model)
     # mark nans to be sure you are doing correct transformations

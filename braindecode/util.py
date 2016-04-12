@@ -1,3 +1,5 @@
+import os
+
 class FuncAndArgs(object):
     """Container for a function and its arguments. 
     Useful in case you want to pass a function and its arguments 
@@ -73,6 +75,10 @@ def dict_equal(d1,d2):
     return (intersect_keys == d2_keys and intersect_keys == d1_keys and
         len(modified) == 0)
     
+def dict_is_subset(d1,d2):
+    added, removed, modified, same = dict_compare(d1, d2)
+    return (len(added) == 0 and len(modified) == 0)
+    
 def merge_dicts(*dict_args):
     '''
     Given any number of dicts, shallow copy and merge into a new dict,
@@ -83,3 +89,11 @@ def merge_dicts(*dict_args):
     for dictionary in dict_args:
         result.update(dictionary)
     return result
+
+def touch_file(path):
+    # from http://stackoverflow.com/a/12654798/1469195
+    basedir = os.path.dirname(path)
+    if not os.path.exists(basedir):
+        os.makedirs(basedir)
+    with open(path, 'a'):
+        os.utime(path, None)

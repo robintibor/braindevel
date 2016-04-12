@@ -8,7 +8,7 @@ from sklearn.metrics import confusion_matrix
 import itertools
 import logging
 from collections import Counter, OrderedDict
-from braindecode.util import dict_equal
+from braindecode.util import dict_equal, dict_is_subset
 log = logging.getLogger(__name__)
 
 class Result:
@@ -376,8 +376,18 @@ def delete_results(result_folder, params):
         delete_if_exists(file_name)
         delete_if_exists(yaml_file_name)
         delete_if_exists(model_file_name)
-        delete_if_exists(model_param_file_name)    
+        delete_if_exists(model_param_file_name)
 
+def set_result_parameters_to(result_folder, params, **update_params):
+    res_pool = ResultPool()
+    res_pool.load_results(result_folder, params=params)
+    for file_name in res_pool._result_file_names:
+        result = np.load(file_name)
+        # check if result already same, mainly for info
+        if not dict_is_subset(update_params, result.parameters):
+            log.info("Updating result {:s}".format(file_name))
+            result.parameters.update(**update_params)
+            pickle.dump(result, open(file_name,'w'))
 
 def delete_if_exists(filename):
     """Delete file if it exists. Else do nothing."""

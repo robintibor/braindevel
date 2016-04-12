@@ -31,13 +31,15 @@
             n_classes: $n_classes,
             final_nonlin: $final_nonlin,
             double_time_convs: $double_time_convs,
+            batch_norm: $batch_norm,
         },
     },
     variants: [[
     {
         layers: [$deep_5],
-        double_time_convs: [true],
+     
         drop_prob: [0.5],
+        batch_norm: [true],
         
         save_path: ['data/models/paper/ours/cnt/deep4/'],
         final_dense_length: [2],
@@ -46,24 +48,31 @@
         train_cleaner: [$no_cleaner],
         test_cleaner: [$no_cleaner],
         
-        variants: [[{
-            filter_time_length: [5],
-            filter_length_2: [5],
-            filter_length_3: [5],
-            filter_length_4: [5],
+        filter_time_length: [10],
+        filter_length_2: [10],
+        filter_length_3: [10],
+        filter_length_4: [10],
+        double_time_convs: [false],
+        variants: [[
+        {
+            loss_expression: [$categorical_crossentropy],
         },
         {
-            filter_time_length: [6],
-            filter_length_2: [6],
-            filter_length_3: [6],
-            filter_length_4: [6],
-        }]],
-        
-        
-#        variants: [[{
-#            cnt_preprocessors: [$resample_car_highpass_standardize],
-#            save_path: ['data/models/paper/ours/cnt/deep4/car/'],
-#        }]],
+            batch_norm: [false],
+            drop_p: [0.5,0.],
+        },
+        {
+            batch_norm: [true],
+            drop_p: [0.],
+        },
+#        {
+#            double_time_convs: [true],
+#            filter_time_length: [6],
+#            filter_length_2: [6],
+#            filter_length_3: [6],
+#            filter_length_4: [6],
+#        }
+        ]],
     }
     ]]
 }

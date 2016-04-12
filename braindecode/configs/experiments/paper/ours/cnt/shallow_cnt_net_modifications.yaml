@@ -11,36 +11,13 @@
         first_nonlin: [$square],
         post_pool_nonlin: [$safe_log],
         pool_mode: ['average_exc_pad'],
-        cnt_preprocessors: [$resample_highpass_standardize],
-        low_cut_off_hz: ["null"],
-        high_cut_hz: ['undefined'], # prevent duplicate experiments
-        
         
         drop_p: [0.5],
         layers: [$cnt_shallow_square],
-        variants: [[
-        {
-            loss_expression: [$categorical_crossentropy],
-        },
-        {
-            loss_expression: [$tied_neighbours],
-            layers: [$cnt_shallow_merged],
-            layer_names_to_norms: [$merged_layer_names_to_norms],
-        },
         
-        ]]
-#        variants: [[
-##        {
-##            layers: [$cnt_shallow_square],
-##            drop_p: [0.],
-##            
-##        },
-#        {
-#            layers: [$cnt_shallow_square_no_bnorm],
-#            drop_p: [0.5, 0.],
-#            
-#        },
-#        ]]
+        variants: [[ {
+            final_dense_length: [32],
+        }]]
         
     }]],
 }
