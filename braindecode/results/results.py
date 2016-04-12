@@ -545,3 +545,8 @@ def extract_single_group_result_sorted(folder, params):
     # sort by filename!!
     res = sort_results_by_filename(res)
     return res
+
+def extract_single_group_misclasses_sorted(folder, params):
+    results = extract_single_group_result_sorted(folder, params)
+    misclasses = get_final_misclasses(results)
+    return misclasses

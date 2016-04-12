@@ -18,6 +18,5 @@
         variants: [[ {
             final_dense_length: [32],
         }]]
-        
     }]],
 }

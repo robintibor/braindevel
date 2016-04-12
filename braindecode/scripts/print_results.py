@@ -18,14 +18,14 @@ class ResultPrinter:
     
     def print_results(self, templates=False,
             constants=False,
-            individual_datasets=True,
+            sets=False,
             start=None, stop=None,
             params=None, shorten=True,
             ignore=()):
         print ("Printing results in {:s}:".format(self._folder_name))
         self._collect_parameters_and_results(start, stop, params)
         self._format_results()
-        self._print(templates, constants, individual_datasets, shorten, ignore)
+        self._print(templates, constants, sets, shorten, ignore)
         
     def _collect_parameters_and_results(self, start, stop, params):
         self._result_pool = ResultPool()

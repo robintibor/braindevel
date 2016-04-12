@@ -19,34 +19,50 @@ class Deep5Net(object):
             later_pool_mode, later_pool_nonlin, num_filters_3,
             filter_length_3, num_filters_4, filter_length_4,
             final_dense_length, n_classes, final_nonlin, double_time_convs,
+            split_first_layer=True,
             batch_norm=True):
         self.__dict__.update(locals())
         del self.self
         
-        
     def get_layers(self):
         l = InputLayer([None, self.in_chans, self.input_time_length, 1])
-        l = DimshuffleLayer(l, pattern=[0,3,2,1])
-        l = DropoutLayer(l, p=self.drop_in_prob)
-        l = Conv2DLayer(l,
-            num_filters=self.num_filters_time,
-            filter_size=[self.filter_time_length, 1], 
-            nonlinearity=identity,
-            name='time_conv')
-        if self.double_time_convs:
+        if self.split_first_layer:
+            l = DimshuffleLayer(l, pattern=[0,3,2,1])
+            l = DropoutLayer(l, p=self.drop_in_prob)
             l = Conv2DLayer(l,
                 num_filters=self.num_filters_time,
                 filter_size=[self.filter_time_length, 1], 
                 nonlinearity=identity,
                 name='time_conv')
-        l = Conv2DAllColsLayer(l, 
-            num_filters=self.num_filters_spat,
-            filter_size=[1,-1],
-            nonlinearity=identity,
-            name='spat_conv')
+            if self.double_time_convs:
+                l = Conv2DLayer(l,
+                    num_filters=self.num_filters_time,
+                    filter_size=[self.filter_time_length, 1], 
+                    nonlinearity=identity,
+                    name='time_conv')
+            l = Conv2DAllColsLayer(l, 
+                num_filters=self.num_filters_spat,
+                filter_size=[1,-1],
+                nonlinearity=identity,
+                name='spat_conv')
+        else: #keep channel dim in first, so it will also be convolved over
+            l = DropoutLayer(l, p=self.drop_in_prob)
+            l = Conv2DLayer(l,
+                num_filters=self.num_filters_time,
+                filter_size=[self.filter_time_length, 1], 
+                nonlinearity=identity,
+                name='time_conv')
+            if self.double_time_convs:
+                l = Conv2DLayer(l,
+                    num_filters=self.num_filters_time,
+                    filter_size=[self.filter_time_length, 1], 
+                    nonlinearity=identity,
+                    name='time_conv')
         if self.batch_norm:
             l = BatchNormLayer(l, epsilon=1e-4, alpha=self.batch_norm_alpha,
                 nonlinearity=self.first_nonlin)
+        else:
+            l = NonlinearityLayer(l, nonlinearity=self.first_nonlin)
         l = Pool2DLayer(l, 
             pool_size=[self.pool_time_length,1],
             stride=[1,1],
@@ -70,6 +86,8 @@ class Deep5Net(object):
             if self.batch_norm:
                 l = BatchNormLayer(l, epsilon=1e-4, alpha=self.batch_norm_alpha,
                     nonlinearity=self.later_nonlin)
+            else:
+                l = NonlinearityLayer(l, nonlinearity=self.later_nonlin)
             l = Pool2DLayer(l, 
                 pool_size=[self.pool_time_length, 1],
                 stride=[1,1],
