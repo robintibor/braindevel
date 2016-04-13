@@ -138,7 +138,9 @@ class ConfigParser(object):
                 variant['max_epochs'] = 1
                 variant['sensor_names'] = ['C3', 'C4', 'Cz']
                 variant['load_sensor_names'] = ['C3', 'C4', 'Cz']
-                variant['last_subject'] = 1
+                #variant['last_subject'] = 1
+                #ignore_before = variant.pop('ignore_unused', [])
+                #variant['ignore_unused'] = ignore_before + ['last_subject']
         
         # Update all params with command line params
         if self.command_line_params is not None:
@@ -159,7 +161,6 @@ class ConfigParser(object):
             this_params = final_params[i_config]
             this_templates_to_params = templates_to_used_params[i_config]
             
-            print("templates -> used params", this_templates_to_params)
             # Check that parameters are all being used while substituting
             # Keep in mind parameters specified to be unused
             # have already been removed
@@ -181,43 +182,43 @@ def create_config_objects(all_config_strings):
     return config_objects
 
 def create_variants_recursively(variants):
-        """
-        Create Variants, variants are like structured like trees of ranges basically...
-        >>> variant_dict_list = [[{'batches': [1, 2]}]]
-        >>> create_variants_recursively(variant_dict_list)
-        [{'batches': 1}, {'batches': 2}]
-        >>> variant_dict_list = [[{'batches': [1, 2], 'algorithm': ['bgd', 'sgd']}]]
-        >>> create_variants_recursively(variant_dict_list)
-        [{'batches': 1, 'algorithm': 'bgd'}, {'batches': 1, 'algorithm': 'sgd'}, {'batches': 2, 'algorithm': 'bgd'}, {'batches': 2, 'algorithm': 'sgd'}]
-        
-        >>> variant_dict_list = [[{'batches': [1,2]}, {'algorithm': ['bgd', 'sgd']}]]
-        >>> create_variants_recursively(variant_dict_list)
-        [{'batches': 1}, {'batches': 2}, {'algorithm': 'bgd'}, {'algorithm': 'sgd'}]
+    """
+    Create Variants, variants are like structured like trees of ranges basically...
+    >>> variant_dict_list = [[{'batches': [1, 2]}]]
+    >>> create_variants_recursively(variant_dict_list)
+    [{'batches': 1}, {'batches': 2}]
+    >>> variant_dict_list = [[{'batches': [1, 2], 'algorithm': ['bgd', 'sgd']}]]
+    >>> create_variants_recursively(variant_dict_list)
+    [{'batches': 1, 'algorithm': 'bgd'}, {'batches': 1, 'algorithm': 'sgd'}, {'batches': 2, 'algorithm': 'bgd'}, {'batches': 2, 'algorithm': 'sgd'}]
+    
+    >>> variant_dict_list = [[{'batches': [1,2]}, {'algorithm': ['bgd', 'sgd']}]]
+    >>> create_variants_recursively(variant_dict_list)
+    [{'batches': 1}, {'batches': 2}, {'algorithm': 'bgd'}, {'algorithm': 'sgd'}]
 
-        >>> variant_dict_list = [[{'algorithm': ['bgd'], 'variants': [[{'batches': [1, 2]}]]}]]
-        >>> create_variants_recursively(variant_dict_list)
-        [{'batches': 1, 'algorithm': 'bgd'}, {'batches': 2, 'algorithm': 'bgd'}]
-        
-        >>> variant_dict_list = [[{'batches': [1, 2]}], [{'algorithm': ['bgd', 'sgd']}]]
-        >>> create_variants_recursively(variant_dict_list)
-        [{'batches': 1, 'algorithm': 'bgd'}, {'batches': 1, 'algorithm': 'sgd'}, {'batches': 2, 'algorithm': 'bgd'}, {'batches': 2, 'algorithm': 'sgd'}]
+    >>> variant_dict_list = [[{'algorithm': ['bgd'], 'variants': [[{'batches': [1, 2]}]]}]]
+    >>> create_variants_recursively(variant_dict_list)
+    [{'batches': 1, 'algorithm': 'bgd'}, {'batches': 2, 'algorithm': 'bgd'}]
+    
+    >>> variant_dict_list = [[{'batches': [1, 2]}], [{'algorithm': ['bgd', 'sgd']}]]
+    >>> create_variants_recursively(variant_dict_list)
+    [{'batches': 1, 'algorithm': 'bgd'}, {'batches': 1, 'algorithm': 'sgd'}, {'batches': 2, 'algorithm': 'bgd'}, {'batches': 2, 'algorithm': 'sgd'}]
 
 
-        """
-        list_of_lists_of_all_dicts = []
-        for dict_list in variants:
-            list_of_lists_of_dicts = []
-            for param_dict in dict_list:
-                param_dict = deepcopy(param_dict)
-                variants = param_dict.pop('variants', None) # pop in case it exists
-                param_dicts = cartesian_dict_of_lists_product(param_dict)
-                if (variants is not None):
-                    list_of_variant_param_dicts =  create_variants_recursively(variants)
-                    param_dicts = product_of_lists_of_dicts(param_dicts, list_of_variant_param_dicts)
-                list_of_lists_of_dicts.append(param_dicts)
-            list_of_dicts =  merge_lists(list_of_lists_of_dicts)
-            list_of_lists_of_all_dicts.append(list_of_dicts)
-        return product_of_list_of_lists_of_dicts(list_of_lists_of_all_dicts)
+    """
+    list_of_lists_of_all_dicts = []
+    for dict_list in variants:
+        list_of_lists_of_dicts = []
+        for param_dict in dict_list:
+            param_dict = deepcopy(param_dict)
+            variants = param_dict.pop('variants', None) # pop in case it exists
+            param_dicts = cartesian_dict_of_lists_product(param_dict)
+            if (variants is not None):
+                list_of_variant_param_dicts =  create_variants_recursively(variants)
+                param_dicts = product_of_lists_of_dicts(param_dicts, list_of_variant_param_dicts)
+            list_of_lists_of_dicts.append(param_dicts)
+        list_of_dicts =  merge_lists(list_of_lists_of_dicts)
+        list_of_lists_of_all_dicts.append(list_of_dicts)
+    return product_of_list_of_lists_of_dicts(list_of_lists_of_all_dicts)
         
 
 def cartesian_dict_of_lists_product(params):
@@ -339,8 +340,8 @@ def process_templates(templates, parameters):
     for template_name in needed_template_names:
         template_string = templates[template_name]
         params_for_this_template = get_placeholders(template_string)
-        params_for_this_template = (set(params_for_this_template) - 
-            set(template_names))
+        params_for_this_template = set(params_for_this_template)# - 
+        #    set(template_names))
         templates_to_used_params[template_name] = params_for_this_template
         try:
             template_string = Template(template_string).substitute(

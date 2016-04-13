@@ -64,7 +64,10 @@
         filter_length_4: [10],
         double_time_convs: [false],
         split_first_layer: [true],
-        
+        ignore_unused: [['max_min', 'whisker_length', 'pool_layers', 'i_test_fold', 
+        'first_pool_layer', 'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
+        'misclass_monitor', 'rejection_blink_ival', 
+        'whisker_percent', 'layer_modifier']],
         variants: [[
 #        {
 #            batch_norm: [false],
