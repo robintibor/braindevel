@@ -424,7 +424,7 @@ def delete_duplicate_results(result_folder):
         delete_if_exists(model_file_name)
         delete_if_exists(model_param_file_name)    
 
-def tag_duplicate_results(result_folder, tag_dict):
+def mark_duplicate_results(result_folder, tag_dict):
     res_pool = ResultPool()
     res_pool.load_results(result_folder)
     
