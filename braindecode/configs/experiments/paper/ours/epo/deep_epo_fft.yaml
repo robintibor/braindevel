@@ -5,20 +5,49 @@
         'configs/experiments/paper/net_preprocessors.yaml',
         'configs/experiments/paper/fft_epo.yaml',
         ],
-    variants: [[
+     variants: [[
     {
         trial_stop: [4000],
         trial_start: [-32],
         save_path: ['data/models/paper/ours/epo/deep-fft/'],
-        input_time_length: [2000], # will be overwritten by actual net size...
-        final_dense_length: [8],
-        cnt_preprocessors: [$resample_highpass_standardize],
-        low_cut_off_hz: ["null"],
-        high_cut_hz: ['undefined'], # prevent duplicate experiments
-#        variants: [[{
-#            cnt_preprocessors: [$resample_car_highpass_standardize],
-#            save_path: ['data/models/paper/ours/epo/deep4/car/'],
-#        }]],
+        
+        
+        num_filters_simple: [10],
+        drop_in_prob: [0.],
+        include_phase: [True, False],
+        square_amplitude: [True, False],
+        preprocessor: ['null'],
+        fft_window_len: [125],
+        fft_window_stride: [12],
+        tag: [pool_pad],
+        
+        filter_time_length: [3],
+        filter_length_2: [3],
+        filter_length_3: [3],
+        filter_length_4: [3],
+        pad_time: [1],
+        
+        variants: [[ {
+            frequency_start: [0],
+            frequency_end: [40],
+        },
+        {
+            frequency_start: ['null'],
+            frequency_end: ['null'],
+        },
+        ],
+        [
+            {
+                layer_names_to_norms: [$deep_fft_names_to_norms],
+                layers: [$deep_fft_net_spat_time_freq],
+            },
+            {
+                layer_names_to_norms: [$seperated_linear_names_to_norms],
+                layers: [$seperated_linear],
+                
+                fft_window_stride: [12, 62],
+            }
+        ]],
     }
     ]]
 }

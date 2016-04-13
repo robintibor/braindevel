@@ -2,8 +2,8 @@ import yaml
 from braindecode.experiments.parse import (create_variants_recursively, 
     merge_parameters_and_templates, transform_vals_to_string_constructor,
     create_experiment_yaml_strings, 
-    substitute_check_superfluous_mappings)
-import ConfigParser
+    substitute_check_superfluous_mappings, ConfigParser)
+import pytest
 
 def test_variants_simple():
     config_obj = {
@@ -117,8 +117,8 @@ def test_missing_param():
         }]]
     }"""
     
-    with pytest.raises(AssertionError) as excinfo:
-        all_train_strs = create_experiment_yaml_strings([experiment_str],
+    with pytest.raises(KeyError) as excinfo:
+        create_experiment_yaml_strings([experiment_str],
             template_str)
     assert excinfo.value.message == 'test_param'
 
@@ -131,8 +131,8 @@ def test_unused_param():
            test_param_2: [2], 
         }]]
     }"""
-    with pytest.raises(AssertionError) as excinfo:
-        all_train_strs = create_experiment_yaml_strings([experiment_str],
+    with pytest.raises(ValueError) as excinfo:
+        create_experiment_yaml_strings([experiment_str],
             template_str)
     assert excinfo.value.message == "Unused parameters: ['test_param_2']"
     
@@ -181,7 +181,7 @@ def test_cycle_in_param_template_logic():
         }]]
     }"""
         
-    with pytest.raises(AssertionError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         create_experiment_yaml_strings([experiment_str],
             template_str)
     assert excinfo.value.message == "Could not replace all templates"
@@ -200,7 +200,7 @@ def test_param_in_unused_template():
         }]]
     }"""
         
-    with pytest.raises(AssertionError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         create_experiment_yaml_strings([experiment_str],
             template_str)
     assert excinfo.value.message == "Unused parameters: ['test_param_2']"
@@ -240,7 +240,7 @@ def test_param_in_unused_nested_template():
         }]]
     }"""
         
-    with pytest.raises(AssertionError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         create_experiment_yaml_strings([experiment_str],
             template_str)
     assert excinfo.value.message == "Unused parameters: ['test_param_2']"

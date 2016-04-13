@@ -158,6 +158,8 @@ class ConfigParser(object):
         for i_config in range(len(final_params)):
             this_params = final_params[i_config]
             this_templates_to_params = templates_to_used_params[i_config]
+            
+            print("templates -> used params", this_templates_to_params)
             # Check that parameters are all being used while substituting
             # Keep in mind parameters specified to be unused
             # have already been removed
