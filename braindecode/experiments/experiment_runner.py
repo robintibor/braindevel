@@ -52,9 +52,9 @@ class ExperimentsRunner:
             self._skip_already_done_experiments()
         log.info("Running {:d} experiments".format(self._get_stop_id() + 1 - 
             self._get_start_id()))
-        
         self._create_base_save_paths_for_all_experiments()
-        self._create_lock_files_for_all_experiments()
+        if not self._dry_run:
+            self._create_lock_files_for_all_experiments()
         self._run_all_experiments()
     
     def _log_only_warnings(self):
@@ -104,11 +104,23 @@ class ExperimentsRunner:
     def _create_base_save_paths_for_all_experiments(self):
         self._base_save_paths = []
         self._folder_paths = [] # will be set inside function for later result printing
-        for i in range(len(self._all_train_strs)):
+        # for performance reasons set save path of experiments
+        # that will not be run to None
+        # still should set those at start to have correct indices
+        # after stop should never be accessed
+        # so safe to not set them at all
+        for i in range(self._get_start_id()):
+            self._base_save_paths.append(None)
+            self._folder_paths.append(None)
+            
+        for i in range(self._get_start_id(), self._get_stop_id() +1):
             save_path = self._create_base_save_path(i)
             self._base_save_paths.append(save_path)
+        
 
     def _create_base_save_path(self, experiment_index):
+        assert experiment_index >= self._get_start_id()
+        assert experiment_index <= self._get_stop_id() # inclusive(!)..
         folder_path = self._create_save_folder_path(experiment_index) 
         self._folder_paths.append(folder_path) # store for result printing
         # try not to overwrite existing models, instead
@@ -151,12 +163,18 @@ class ExperimentsRunner:
         return folder_path
     
     def _get_model_save_path(self, experiment_index):
+        assert experiment_index >= self._get_start_id()
+        assert experiment_index <= self._get_stop_id() # inclusive(!)..
         return self._base_save_paths[experiment_index] + ".pkl"
 
     def _get_result_save_path(self, experiment_index):
+        assert experiment_index >= self._get_start_id()
+        assert experiment_index <= self._get_stop_id() # inclusive(!)..
         return self._base_save_paths[experiment_index] + ".result.pkl"
     
     def _get_lock_save_path(self, experiment_index):
+        assert experiment_index >= self._get_start_id()
+        assert experiment_index <= self._get_stop_id() # inclusive(!)..
         return self._base_save_paths[experiment_index] + ".lock.pkl"
         
     @staticmethod
@@ -177,10 +195,8 @@ class ExperimentsRunner:
             touch_file(lock_path)
 
     def _run_all_experiments(self):
-        
         for i in range(self._get_start_id(),  self._get_stop_id() + 1):
             self._run_experiment(i)           
-            
         if (not self._dry_run and (not self._quiet)):
             self._print_results()
     
@@ -196,11 +212,15 @@ class ExperimentsRunner:
         return num_experiments - 1 if self._stop_id is None else self._stop_id
 
     def _run_experiment(self, i):
+        assert i >= self._get_start_id()
+        assert i <= self._get_stop_id() # inclusive(!)..
         train_str = self._all_train_strs[i]
         log.info("Now running {:d} of {:d}".format(i + 1, self._get_stop_id() + 1))
         self._run_experiments_with_string(i, train_str)
     
     def _run_experiments_with_string(self, experiment_index, train_str):
+        assert experiment_index >= self._get_start_id()
+        assert experiment_index <= self._get_stop_id() # inclusive(!)..
         lasagne.random.set_rng(RandomState(9859295))
         # Save train string now, will be overwritten later after 
         # input dimensions determined, save now for debug in
