@@ -65,34 +65,32 @@
         double_time_convs: [false],
         split_first_layer: [true],
         
-        
-        
         variants: [[
 #        {
 #            batch_norm: [false],
 #        },
 #        {
-#            split_first_layer: [false],
-#            layer_names_to_norms: [$layer_norms_no_spat],
-#        },
-        {
-            batch_norm: [false],
-            drop_prob: [0.],
-        },
-        {
-            batch_norm: [true],
-            drop_prob: [0.5],
-        },
-#        {
-#            loss_expression: [$categorical_crossentropy],
+#            batch_norm: [false],
+#            drop_prob: [0.],
 #        },
 #        {
-#            double_time_convs: [true],
-#            filter_time_length: [6],
-#            filter_length_2: [6],
-#            filter_length_3: [6],
-#            filter_length_4: [6],
-#        }
+#            batch_norm: [true],
+#            drop_prob: [0.5],
+#        },
+        {
+            split_first_layer: [false],
+            layer_names_to_norms: [$layer_norms_no_spat],
+        },
+        {
+            loss_expression: [$categorical_crossentropy],
+        },
+        {
+            double_time_convs: [true],
+            filter_time_length: [6],
+            filter_length_2: [6],
+            filter_length_3: [6],
+            filter_length_4: [6],
+        }
         ]],
     }
     ]]
