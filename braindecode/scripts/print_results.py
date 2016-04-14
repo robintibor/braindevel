@@ -422,6 +422,8 @@ class ResultPrinter:
           ('filter_time_length', 'f_time_len'),
           ('num_filters_', 'n_f'),
           ('num_filters', 'n_f'),
+          ('n_layers_per_block', 'n_l_per_bl'),
+          ('final_pool_length', 'final_p_len'),
           ])
         for header in table_headers:
             pretty_header = header

@@ -148,3 +148,43 @@ def model_structure_equal(final_layer_1, final_layer_2):
                 log.warn("Different attributes:\n{:s}: {:s} and {:s}".format(
                     key, l1.__dict__[key], l2.__dict__[key]))
     return all_equal
+
+def print_layers(model):
+    """Print all layers, including all output shapes """
+    print(layers_to_str(model))
+
+def layers_to_str(final_layer):
+    all_layers_str = ""
+    all_layers = lasagne.layers.get_all_layers(final_layer)
+    cur_shape = None
+    for i, layer in enumerate(all_layers):
+        layer_str = "{:25s}".format(layer.__class__.__name__)
+        # Add filter sizes and strides
+        filter_size = None
+        if hasattr(layer, 'filter_size'):
+            filter_size = layer.filter_size
+        if hasattr(layer, 'pool_size'):
+            filter_size = layer.pool_size
+        if filter_size is not None:
+            filter_str = "{:d}x{:d}".format(filter_size[0],
+                filter_size[1])
+            if layer.stride != (1,1):
+                filter_str += " ::{:d} ::{:d}".format(layer.stride[0],
+                    layer.stride[1])
+            layer_str += "{:15s}".format(filter_str)
+        # Also for stride reshape layer
+        if hasattr(layer, 'n_stride'):
+            filter_str = "    ::{:d} ::1".format(layer.n_stride)
+            layer_str += "{:15s}".format(filter_str)
+        layer_str = "{:2d} {:50s}".format(i, layer_str)
+        # Possibly add nonlinearities
+        if hasattr(layer, 'nonlinearity') and layer.nonlinearity.func_name != 'linear':
+            layer_str += " {:15s}".format(layer.nonlinearity.func_name)
+        else:
+            layer_str += " {:15s}".format("")
+        # Possibly add changing output shape
+        if layer.output_shape != cur_shape:
+            layer_str += " {:s}".format(layer.output_shape)
+            cur_shape = layer.output_shape
+        all_layers_str += layer_str + "\n"
+    return all_layers_str

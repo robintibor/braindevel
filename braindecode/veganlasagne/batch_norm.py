@@ -107,7 +107,7 @@ def batch_norm(layer, epsilon, alpha):
     nonlinearity = getattr(layer, 'nonlinearity', None)
     if nonlinearity is not None:
         layer.nonlinearity = lasagne.nonlinearities.identity
-    if hasattr(layer, 'b'):
+    if hasattr(layer, 'b') and layer.b is not None:
         del layer.params[layer.b]
         layer.b = None
     return BatchNormLayer(layer, epsilon=epsilon, alpha=alpha,

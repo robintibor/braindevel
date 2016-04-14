@@ -17,6 +17,7 @@ from braindecode.veganlasagne.monitors import MonitorManager, MisclassMonitor,\
 from braindecode.datahandling.batch_iteration import BalancedBatchIterator
 from braindecode.veganlasagne.layers import get_n_sample_preds,\
     get_input_time_length, get_model_input_window
+from braindecode.veganlasagne.layer_util import layers_to_str
 log = logging.getLogger(__name__)
 
 class ExperimentCrossValidation():
@@ -93,10 +94,9 @@ class Experiment(object):
 
     def print_layer_sizes(self):
         log.info("Layers...")
-        layers = lasagne.layers.get_all_layers(self.final_layer)
-        for l in layers:
-            log.info(l.__class__.__name__)
-            log.info(l.output_shape)
+        # start on newline so everything starts from left end of terminal, 
+        # including input layer string
+        log.info('\n' + layers_to_str(self.final_layer))
     
     def create_theano_functions(self, target_var, deterministic_training=False):
         if target_var is None:

@@ -12,13 +12,7 @@ from lasagne.utils import as_tuple
 from lasagne.theano_extensions import padding
 import theano
 from lasagne.nonlinearities import identity
-
-def print_layers(final_layer):
-    """Print all layers, including all output shapes """
-    all_layers = lasagne.layers.get_all_layers(final_layer)
-    for i, layer in enumerate(all_layers):
-        print("{:2d} {:25s} {:s}".format(i, layer.__class__.__name__,
-            layer.output_shape))
+            
 class BiasLayer(Layer):
     def __init__(self, incoming, bias_value, **kwargs):
         super(BiasLayer, self).__init__(incoming, **kwargs)

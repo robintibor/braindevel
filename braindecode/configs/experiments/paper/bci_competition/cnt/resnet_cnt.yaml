@@ -26,17 +26,23 @@
         n_sample_preds : [500], # will be overwritten anyways
         train_cleaner: [$no_cleaner],
         test_cleaner: [$no_cleaner],
-        low_cut_off_hz: ['null'],
-        high_cut_hz: ['undefined'],
-        cnt_preprocessors: [$resample_highpass_standardize],
         loss_expression: [$tied_neighbours_decay],
         l2_factor: [1e-4],
-        n_layers_per_block: [3],
-        n_first_filters: [24],
-        first_filter_length: [3],
-        
+#        n_first_filters: [24,48],#24
+#        first_filter_length: [3],#11
+#        final_pool_length: [10],#
+#        projection: [True, False],
+        n_first_filters: [24],#24
+        first_filter_length: [3],#11
+        final_pool_length: [10],#
+        projection: [False],#$relu, 
+        nonlinearity: [$elu],
+        max_epochs: [500],
+        n_layers_per_block: [2,3],#,3
+#        dataset_filename: ['data/bci-competition-iv/2a/A03T.mat'],
+#        test_filename: ['data/bci-competition-iv/2a/A03E.mat'],
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
-        'high_cut_hz', 'eog_sensors', 'rejection_var_ival', 'n_classes',
+        'eog_sensors', 'rejection_var_ival', 'n_classes',
         'num_split_folds', 'misclass_monitor', 'rejection_blink_ival',
         'whisker_percent', 'layer_modifier']],
         

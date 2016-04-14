@@ -151,7 +151,12 @@ class ConfigParser(object):
         for variant in all_variants:
             ignore_unused = variant.pop('ignore_unused', [])
             for param in ignore_unused:
-                variant.pop(param)
+                try:
+                    variant.pop(param)
+                except KeyError, exc:
+                    additional_message = ' (when removing unused params})'
+                    add_message_to_exception(exc, additional_message)
+                    raise
         return templates, all_variants
     
     def _substitute_in_main_template(self, final_params, main_template_str,

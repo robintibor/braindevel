@@ -259,12 +259,6 @@ class ResultPool():
 
     def result_objects(self):
         return self._result_objects
-    
-    @staticmethod
-    def load_result_objects_for_folder(result_folder):
-        resultpool = ResultPool()
-        resultpool.load_results(result_folder)
-        return resultpool.result_objects()
 
 class DatasetAveragedResults:
     def extract_results(self, result_pool):
@@ -350,6 +344,12 @@ class DatasetAveragedResults:
     def results(self):
         return self._results
 
+    
+def load_result_objects_for_folder(result_folder):
+    resultpool = ResultPool()
+    resultpool.load_results(result_folder)
+    return resultpool.result_objects()
+
 def load_dataset_grouped_result_objects_for(result_folder, params):
     resultpool = ResultPool()
     resultpool.load_results(result_folder, params=params)
@@ -387,6 +387,20 @@ def set_result_parameters_to(result_folder, params, **update_params):
         if not dict_is_subset(update_params, result.parameters):
             log.info("Updating result {:s}".format(file_name))
             result.parameters.update(**update_params)
+            pickle.dump(result, open(file_name,'w'))
+
+def set_nonexisting_parameters_to(result_folder, params, **update_params):
+    res_pool = ResultPool()
+    res_pool.load_results(result_folder, params=params)
+    for file_name in res_pool._result_file_names:
+        result = np.load(file_name)
+        # check if result already has parameter, else set it
+        params_changed = False
+        for param in update_params:
+            if param not in result.parameters:
+                result.parameters[param] = update_params[param]
+        if params_changed:
+            log.info("Updating result {:s}".format(file_name))
             pickle.dump(result, open(file_name,'w'))
 
 def delete_if_exists(filename):

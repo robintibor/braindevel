@@ -69,6 +69,18 @@ def perm_mean_diffs(a,b):
     diffs = _compute_diffs(a, b, all_masks)
     return diffs
 
+def perm_mean_diff_test(a,b, n_diffs=None):
+    """Return one sided p-value of perm mean diff."""
+    if n_diffs is None:
+        diffs = perm_mean_diffs(a, b)
+    else:
+        diffs = perm_mean_diffs_sampled(a, b, n_diffs)
+    
+    actual_diff = np.mean(a - b)
+    n_samples_as_large_diff = np.sum(np.abs(diffs) >= np.abs(actual_diff))
+    # 2 * for one sided p-value
+    return n_samples_as_large_diff / (2 * float(len(diffs)))
+
 
 def _create_masks(n_exps):
     """ Create all (2^n_exps) binary selection masks for this number of experiments.
