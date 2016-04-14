@@ -2,7 +2,7 @@
     extends: [
         'configs/experiments/paper/defaults.yaml',
         'configs/experiments/paper/bci_competition/files_train_test.yaml',
-        'configs/experiments/paper/net_preprocessors.yaml',
+        'configs/experiments/paper/cnt_preprocessors.yaml',
         'configs/experiments/paper/fft_epo.yaml',
         ],
     variants: [[

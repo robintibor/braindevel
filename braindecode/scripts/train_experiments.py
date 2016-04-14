@@ -79,9 +79,11 @@ def parse_command_line_arguments():
                         for param_and_value in args.filters])
     args.filters = filter_dict
     if (args.startid is  not None):
-        args.startid = args.startid - 1 # model ids printed are 1-based, python is zerobased
-    if (args.stopid is  not None):
-        args.stopid = args.stopid - 1 # model ids printed are 1-based, python is zerobased
+        # model ids printed are 1-based, python is zerobased
+        # stop id can remain same as stop implies exlusive index
+        # and 1-based inclusive == 0-based exclusive
+        args.startid = args.startid - 1 
+    
     return args
 
 if __name__ == "__main__":

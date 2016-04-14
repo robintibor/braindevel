@@ -3,7 +3,7 @@
         'configs/experiments/paper/defaults.yaml',
         'configs/experiments/paper/shallow_square.yaml',
         'configs/experiments/paper/ours/our_data.yaml',
-        'configs/experiments/paper/net_preprocessors.yaml',
+        'configs/experiments/paper/cnt_preprocessors.yaml',
         ],
         
     variants: [[
