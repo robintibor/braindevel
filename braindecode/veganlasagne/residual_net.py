@@ -9,8 +9,8 @@ from braindecode.veganlasagne.layers import StrideReshapeLayer
 
 
 # create a residual learning building block with two stacked 3x3 convlayers as in paper
-def residual_block(l, increase_units_factor=None, 
-        half_time=False, projection=False):
+def residual_block(l, batch_norm_alpha, batch_norm_epsilon,
+    increase_units_factor=None, half_time=False, projection=False):
     assert projection is False, "projection method not adapted"
     input_num_filters = l.output_shape[1]
     if increase_units_factor is not None:
@@ -22,12 +22,16 @@ def residual_block(l, increase_units_factor=None,
 
     stack_1 = batch_norm(Conv2DLayer(l, num_filters=out_num_filters, filter_size=(3,3), 
                                    stride=(1,1), nonlinearity=rectify, pad='same', 
-                                   W=lasagne.init.HeNormal(gain='relu')))
+                                   W=lasagne.init.HeNormal(gain='relu')),
+                                   epsilon=batch_norm_epsilon,
+                                   alpha=batch_norm_alpha)
     if half_time:
         stack_1 = StrideReshapeLayer(stack_1,n_stride=2)
     stack_2 = batch_norm(Conv2DLayer(stack_1, num_filters=out_num_filters, filter_size=(3,3), 
                                    stride=(1,1), nonlinearity=None, pad='same', 
-                                   W=lasagne.init.HeNormal(gain='relu')))
+                                   W=lasagne.init.HeNormal(gain='relu')),
+                                   epsilon=batch_norm_epsilon,
+                                   alpha=batch_norm_alpha)
 
     # add shortcut connections
     identity = l
@@ -37,9 +41,7 @@ def residual_block(l, increase_units_factor=None,
     if increase_units_factor is not None:
         n_extra_chans = out_num_filters - input_num_filters
         identity = PadLayer(identity, [n_extra_chans//2,0,0], batch_ndim=1)
-        
     block = NonlinearityLayer(ElemwiseSumLayer([stack_2, identity]),nonlinearity=rectify)
-
     return block
 
 def multiple_residual_blocks(incoming, n_layers, projection=False):

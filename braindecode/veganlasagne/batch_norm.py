@@ -93,7 +93,7 @@ class BatchNormLayer(lasagne.layers.Layer):
         normalized = (input - mean) * (gamma / std) + beta
         return self.nonlinearity(normalized)
 
-def batch_norm(layer):
+def batch_norm(layer, epsilon, alpha):
     """
     Convenience function to apply batch normalization to a given layer's output.
     Will steal the layer's nonlinearity if there is one (effectively introducing
@@ -110,4 +110,5 @@ def batch_norm(layer):
     if hasattr(layer, 'b'):
         del layer.params[layer.b]
         layer.b = None
-    return BatchNormLayer(layer, nonlinearity=nonlinearity)
+    return BatchNormLayer(layer, epsilon=epsilon, alpha=alpha,
+        nonlinearity=nonlinearity)

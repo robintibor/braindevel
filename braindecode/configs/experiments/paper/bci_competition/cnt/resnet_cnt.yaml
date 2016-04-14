@@ -3,7 +3,7 @@
         'configs/experiments/paper/defaults.yaml',
         'configs/experiments/paper/bci_competition/files_train_test.yaml',
         'configs/experiments/paper/cnt.yaml',
-        'configs/experiments/paper/bci_competition/deep_4.yaml', # maybe removable? but then add trial stop here
+        'configs/experiments/paper/cnt_preprocessors.yaml',
         'configs/experiments/paper/res_net.yaml',
         ],
     templates: {
@@ -20,6 +20,7 @@
     },
     variants: [[
     {
+        trial_stop: [4000],
         save_path: ['data/models/paper/bci-competition/cnt/resnet/'],
         input_time_length: [1000],
         n_sample_preds : [500], # will be overwritten anyways
@@ -31,6 +32,14 @@
         loss_expression: [$tied_neighbours_decay],
         l2_factor: [1e-4],
         n_layers_per_block: [3],
+        n_first_filters: [24],
+        first_filter_length: [3],
+        
+        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
+        'high_cut_hz', 'eog_sensors', 'rejection_var_ival', 'n_classes',
+        'num_split_folds', 'misclass_monitor', 'rejection_blink_ival',
+        'whisker_percent', 'layer_modifier']],
+        
         
     }
     ]]

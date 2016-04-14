@@ -4,6 +4,10 @@
                 in_chans: in_sensors,
                 input_time_length: $input_time_length,
                 n_layers_per_block: $n_layers_per_block,
+                n_first_filters: $n_first_filters,
+                first_filter_length: $first_filter_length,
+                batch_norm_alpha: $batch_norm_alpha,
+                batch_norm_epsilon: $batch_norm_epsilon
         },
         layer_names_to_norms: {
         },
@@ -19,5 +23,7 @@
     variants: [[{
         layer_names_to_norms: [$layer_names_to_norms],
         layers: [$residual_net],
+        batch_norm_alpha: [0.1],
+        batch_norm_epsilon: [1e-4],
     }]]
 }
