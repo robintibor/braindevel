@@ -34,11 +34,11 @@
 #        projection: [True, False],
         n_first_filters: [24],#24
         first_filter_length: [3],#11
-        final_pool_length: [10],#
+        final_pool_length: [8,9],#10
         projection: [False],#$relu, 
         nonlinearity: [$elu],
         max_epochs: [500],
-        n_layers_per_block: [2,3],#,3
+        n_layers_per_block: [2],#,3
 #        dataset_filename: ['data/bci-competition-iv/2a/A03T.mat'],
 #        test_filename: ['data/bci-competition-iv/2a/A03E.mat'],
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',

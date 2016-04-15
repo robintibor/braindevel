@@ -64,8 +64,7 @@ class ResNet(object):
         
         # Replacement for global mean pooling
         model = Pool2DLayer(model, pool_size=(self.final_pool_length,1),
-            stride=(1,1), 
-            mode='average_exc_pad')
+            stride=(1,1), mode='average_exc_pad')
         model = Conv2DLayer(model, filter_size=(1,1), num_filters=4,
             W=lasagne.init.HeNormal(), nonlinearity=identity)
         model = FinalReshapeLayer(model)
