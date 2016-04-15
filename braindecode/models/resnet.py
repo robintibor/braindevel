@@ -4,6 +4,7 @@ from lasagne.nonlinearities import softmax, identity
 from braindecode.veganlasagne.batch_norm import batch_norm
 import lasagne
 from braindecode.veganlasagne.layers import FinalReshapeLayer
+from lasagne.layers.noise import DropoutLayer
 
 class ResNet(object):
     def __init__(self, in_chans, input_time_length,
@@ -11,7 +12,9 @@ class ResNet(object):
             n_first_filters, first_filter_length, final_pool_length,
             nonlinearity,
             batch_norm_alpha,
-            batch_norm_epsilon,):
+            batch_norm_epsilon,
+            drop_before_pool,
+            final_aggregator):
         self.__dict__.update(locals())
         del self.self
 
@@ -62,11 +65,21 @@ class ResNet(object):
             
         model = resnet_residual_block(model, half_time=True)
         
+        if self.drop_before_pool:
+            model = DropoutLayer(model, p=0.5)
         # Replacement for global mean pooling
-        model = Pool2DLayer(model, pool_size=(self.final_pool_length,1),
-            stride=(1,1), mode='average_exc_pad')
-        model = Conv2DLayer(model, filter_size=(1,1), num_filters=4,
-            W=lasagne.init.HeNormal(), nonlinearity=identity)
+        if self.final_aggregator == 'pool':
+            model = Pool2DLayer(model, pool_size=(self.final_pool_length,1),
+                stride=(1,1), mode='average_exc_pad')
+            model = Conv2DLayer(model, filter_size=(1,1), num_filters=4,
+                W=lasagne.init.HeNormal(), nonlinearity=identity)
+        elif self.final_aggregator == 'conv':
+            model = Conv2DLayer(model, filter_size=(self.final_pool_length,1), 
+                num_filters=4, W=lasagne.init.HeNormal(), nonlinearity=identity)
+        else:
+            raise ValueError("Unknown final aggregator {:s}".format(
+                self.final_aggregator))
+            
         model = FinalReshapeLayer(model)
         model = NonlinearityLayer(model, nonlinearity=softmax)
         return lasagne.layers.get_all_layers(model)

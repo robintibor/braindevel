@@ -1,4 +1,3 @@
-import sys
 from glob import glob
 import yaml
 from numpy.random import RandomState 

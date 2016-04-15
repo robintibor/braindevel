@@ -1,7 +1,9 @@
-from braindecode.results.results import get_final_misclasses, ResultPool
+from braindecode.results.results import get_final_misclasses, ResultPool,\
+    get_training_times
 import pandas as pd
 import numpy as np
 from braindecode.analysis.stats import perm_mean_diff_test
+from pandas.core.index import MultiIndex
 
 def remove_dollar(param_val):
     if isinstance(param_val, str) and param_val[0] == '$':
@@ -23,17 +25,18 @@ def load_data_frame(folder, params):
     var_param_vals = np.array(var_param_vals)
 
     accuracies = (1-get_final_misclasses(result_objs)) * 100
-
-    vals_and_misclasses = np.append(var_param_vals, accuracies[np.newaxis,:].T, 
+    training_times = get_training_times(result_objs)
+    vals_and_misclasses = np.append(var_param_vals, 
+        np.array([training_times, accuracies]).T, 
         axis=1)
     data_frame = pd.DataFrame(vals_and_misclasses, 
-        columns=var_param_keys + ['accuracy'])
+        columns=var_param_keys + ['time', 'test'])
     return to_numeric_where_possible(data_frame)
 
 def pairwise_compare_frame(df):
     table_vals = []
     table_indices = []
-    param_keys = set(df.keys()) - set(['accuracy'])
+    param_keys = set(df.keys()) - set(['test'])
     for key in param_keys:
         possible_vals = df[key].unique()
         for i_value_1 in range(0, len(possible_vals) - 1):
@@ -79,4 +82,24 @@ def round_numeric_columns(df, decimals):
     df = df.copy(deep=True)
     tmp = df.select_dtypes(include=[np.number])
     df.loc[:, tmp.columns] = np.round(tmp, decimals)
+    return df
+
+def remove_indices_with_same_value(df):
+    """Remove indices from a MultiIndex, in case all rows have the same value for that index."""
+    df = df.copy(deep=True)
+    old_index = df.index
+    levels, labels, names = old_index.levels, old_index.labels, old_index.names
+    selection_mask = np.array([len(np.unique(l)) > 1 for l in labels])
+    new_levels = np.array(levels)[selection_mask]
+    new_labels = np.array(labels)[selection_mask]
+    new_names = np.array(names)[selection_mask]
+    df.index = MultiIndex(levels=new_levels,
+               labels=new_labels,
+               names=new_names)
+    return df
+
+def remove_columns_with_same_value(df):
+    wanted_cols = np.array([len(np.unique(df[c])) > 1 for c in df.columns])
+
+    df = df.iloc[:,wanted_cols]
     return df

@@ -28,19 +28,33 @@
         test_cleaner: [$no_cleaner],
         loss_expression: [$tied_neighbours_decay],
         l2_factor: [1e-4],
-#        n_first_filters: [24,48],#24
-#        first_filter_length: [3],#11
-#        final_pool_length: [10],#
-#        projection: [True, False],
         n_first_filters: [24],#24
-        first_filter_length: [3],#11
-        final_pool_length: [8,9],#10
+        first_filter_length: [3],
+        final_pool_length: [10],#10
         projection: [False],#$relu, 
         nonlinearity: [$elu],
         max_epochs: [500],
         n_layers_per_block: [2],#,3
 #        dataset_filename: ['data/bci-competition-iv/2a/A03T.mat'],
 #        test_filename: ['data/bci-competition-iv/2a/A03E.mat'],
+        variants: [[{
+            final_aggregator: ['pool'],
+            drop_before_pool: [False],
+            n_first_filters: [48],
+        },
+        {
+            final_aggregator: ['pool'],
+            drop_before_pool: [True],
+            n_first_filters: [24,48],
+        },
+        {
+            final_aggregator: ['conv'],
+            drop_before_pool: [True, False],
+            n_first_filters: [24, 48],
+        },
+        ]],
+
+
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
         'eog_sensors', 'rejection_var_ival', 'n_classes',
         'num_split_folds', 'misclass_monitor', 'rejection_blink_ival',

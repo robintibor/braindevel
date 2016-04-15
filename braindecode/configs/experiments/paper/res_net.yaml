@@ -11,6 +11,8 @@
                 batch_norm_alpha: $batch_norm_alpha,
                 batch_norm_epsilon: $batch_norm_epsilon,
                 nonlinearity: $nonlinearity,
+                drop_before_pool: $drop_before_pool,
+                final_aggregator: $final_aggregator,
         },
         layer_names_to_norms: {
         },
