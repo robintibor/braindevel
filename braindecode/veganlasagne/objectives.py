@@ -40,8 +40,13 @@ def tied_losses(preds, n_sample_preds, n_classes, n_pairs):
     preds_per_trial_row = preds.reshape((-1, n_sample_preds, n_classes))
     _srng = RandomStreams(get_rng().randint(1, 2147462579))
     rand_inds = _srng.choice([n_pairs  * 2], n_sample_preds, replace=False)
-    loss = categorical_crossentropy(preds_per_trial_row[:,rand_inds[:n_pairs]],
-        preds_per_trial_row[:,rand_inds[n_pairs:]])
+    part_1 = preds_per_trial_row[:,rand_inds[:n_pairs]]
+    part_2 = preds_per_trial_row[:,rand_inds[n_pairs:]]
+    # Have to now ensure first values are larger zero
+    # for numerical stability :/
+    eps = 1e-4
+    part_1 = T.maximum(part_1, eps)
+    loss = categorical_crossentropy(part_1, part_2)
     return loss
 
 def tied_neighbours_cnt_model(preds, targets, final_layer):
