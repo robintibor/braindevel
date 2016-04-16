@@ -354,96 +354,19 @@ class ResultPrinter:
     def _prettify_headers_rows(self, table_headers, table_rows):
         """ Shorten names for nicer printing """
         pretty_headers = []
-        substitutions = OrderedDict([
-          ('frequency_start', 'freq_start'),
-          ('frequency_stop', 'freq_stop'),
-          ('updates_per_batch', 'batch_updates'),
-          ('dataset_filename', 'filename'),
-          ('max_increasing_epochs', '>epochs'),
-          ('first_kernel_shape', 'k_shape1'),
-          ('first_kernel_stride', 'k_stride1'),
-          ('first_pool_shape', 'p_shape1'),
-          ('first_pool_stride', 'p_stride1'),
-          ('second_kernel_shape', 'k_shape2'),
-          ('second_kernel_stride', 'k_stride2'),
-          ('second_pool_shape', 'p_shape2'),
-          ('second_pool_stride', 'p_stride2'),
-          ('learning_', 'l'),
-          ('momentum_rule', 'momentum'),
-          ('sgd_callbacks', 'sgd_calls'),
-          ('anneal', 'an'),
-          ('max_kernel_norm', 'kernel_norm'),
-          ('spatial', 'spat'),
-          ('dropout', 'drop'),
-          ('transform_function_and_args', 'transform_func'),
-          ('square_amplitude', 'amplitude^2'),
-          ('divide_win_length', 'div_win_len'),
-          ('fraction_of_lowest_epoch' , 'frac_epochs'),
-          ('kernel_shape', 'k_shape'),
-          ('wanted_classes', 'classes'),
-          ('!obj,pylearn2.models.mlp.IdentityConvNonlinearity { }', 'identity'),
-          ('!obj,pylearn2.models.mlp.RectifierConvNonlinearity { }', 'rectified'),
-          ('*two_file_splitter', 'two_file'),
-          ('*train_test_splitter', 'train_test'),
-          ('set_cleaner', 'set'),
-          ('dataset_splitter', 'splitter'),
-          ('train_cleaner', 'cleaner'),
-          ('_func', ''),
-          ('all_EEG_sensors', 'all_EEG'),
-          ('stop_when_no_improvement', 'stop_improve'),
-          ('num_selected_features', 'sel_feat'),
-          ('num_selected_filterbands', 'sel_filt'),
-          ('forward_steps', 'for'),
-          ('backward_steps', 'back'),
-          ('fraction_outside_trials', 'frac_out_trial'),
-          ('updates_per_epoch', 'epoch_ups'),
-          ('n_temporal_units', 't_units'),
-          ('n_spat_units', 'spat_units'),
-          ('use_test_as_valid', 'test=valid'),
-          ('imbalance_factor', 'imba_factor'),
-          ('n_sample_preds', 'preds'),
-          ('pool_time_stride', 'pool_str'),
-          ('pool_time_length', 'p_len'),
-          ('oversample_targets', 'oversample'),
-          ('first', '1st'),
-          ('average_exc_pad', 'mean'),
-          ('SumPool2dLayer', 'Sum'),
-          ('Pool2DLayer', 'Pool'),
-          ('final_dense_length', 'final_len'),
-          ('batch_size', '#batch'),
-          ('preprocessor', 'preproc'),
-          ('standardize_series_wise', 'preproc_series'),
-          ('remove_baseline_mean', 'rm_baseline'),
-          ('input_time_length', 'input_len'),
-          ('online_chan_freq_wise', 'online_c_1'),
-          ('n_selected_features', 'n_features'),
-          ('filter_length_', 'f_len'),
-          ('filter_length', 'f_len'),
-          ('filter_time_length', 'f_time_len'),
-          ('num_filters_', 'n_f'),
-          ('num_filters', 'n_f'),
-          ('n_layers_per_block', 'n_l_per_bl'),
-          ('final_pool_length', 'final_p_len'),
-          ])
         for header in table_headers:
-            pretty_header = header
-            for key in substitutions:
-                pretty_header = pretty_header.replace(key, substitutions[key])
+            pretty_header = prettify_word(header)
             pretty_headers.append(pretty_header)
         pretty_rows = []
         for row in table_rows:
             pretty_row = []
             # go through all parameter values and prettify
             for value in row:
-                pretty_value = str(value)
-                for key in substitutions:
-                    pretty_value = pretty_value.replace(key, substitutions[key])
+                pretty_value = prettify_word(str(value))
                 pretty_row.append(pretty_value)
             pretty_rows.append(pretty_row)
-            
         return pretty_headers, pretty_rows  
-        
-        
+
     def _print_table(self, headers, rows):
         print("\nTerminal Table\n")
         # first determine maximum length for any column
@@ -491,7 +414,83 @@ class ResultPrinter:
             rowline = "|".join(rowstrings)
             rowline = "|" + rowline + "|"
             print rowline
-    
+
+def prettify_word(word):
+    substitutions = OrderedDict([
+      ('frequency_start', 'freq_start'),
+      ('frequency_stop', 'freq_stop'),
+      ('updates_per_batch', 'batch_updates'),
+      ('dataset_filename', 'filename'),
+      ('max_increasing_epochs', '>epochs'),
+      ('first_kernel_shape', 'k_shape1'),
+      ('first_kernel_stride', 'k_stride1'),
+      ('first_pool_shape', 'p_shape1'),
+      ('first_pool_stride', 'p_stride1'),
+      ('second_kernel_shape', 'k_shape2'),
+      ('second_kernel_stride', 'k_stride2'),
+      ('second_pool_shape', 'p_shape2'),
+      ('second_pool_stride', 'p_stride2'),
+      ('learning_', 'l'),
+      ('momentum_rule', 'momentum'),
+      ('sgd_callbacks', 'sgd_calls'),
+      ('anneal', 'an'),
+      ('max_kernel_norm', 'kernel_norm'),
+      ('spatial', 'spat'),
+      ('dropout', 'drop'),
+      ('transform_function_and_args', 'transform_func'),
+      ('square_amplitude', 'amplitude^2'),
+      ('divide_win_length', 'div_win_len'),
+      ('fraction_of_lowest_epoch' , 'frac_epochs'),
+      ('kernel_shape', 'k_shape'),
+      ('wanted_classes', 'classes'),
+      ('!obj,pylearn2.models.mlp.IdentityConvNonlinearity { }', 'identity'),
+      ('!obj,pylearn2.models.mlp.RectifierConvNonlinearity { }', 'rectified'),
+      ('*two_file_splitter', 'two_file'),
+      ('*train_test_splitter', 'train_test'),
+      ('set_cleaner', 'set'),
+      ('dataset_splitter', 'splitter'),
+      ('train_cleaner', 'cleaner'),
+      ('_func', ''),
+      ('all_EEG_sensors', 'all_EEG'),
+      ('stop_when_no_improvement', 'stop_improve'),
+      ('num_selected_features', 'sel_feat'),
+      ('num_selected_filterbands', 'sel_filt'),
+      ('forward_steps', 'for'),
+      ('backward_steps', 'back'),
+      ('fraction_outside_trials', 'frac_out_trial'),
+      ('updates_per_epoch', 'epoch_ups'),
+      ('n_temporal_units', 't_units'),
+      ('n_spat_units', 'spat_units'),
+      ('use_test_as_valid', 'test=valid'),
+      ('imbalance_factor', 'imba_factor'),
+      ('n_sample_preds', 'preds'),
+      ('pool_time_stride', 'pool_str'),
+      ('pool_time_length', 'p_len'),
+      ('oversample_targets', 'oversample'),
+      ('first', '1st'),
+      ('average_exc_pad', 'mean'),
+      ('SumPool2dLayer', 'Sum'),
+      ('Pool2DLayer', 'Pool'),
+      ('final_dense_length', 'final_len'),
+      ('batch_size', '#batch'),
+      ('preprocessor', 'preproc'),
+      ('standardize_series_wise', 'preproc_series'),
+      ('remove_baseline_mean', 'rm_baseline'),
+      ('input_time_length', 'input_len'),
+      ('online_chan_freq_wise', 'online_c_1'),
+      ('n_selected_features', 'n_features'),
+      ('filter_length_', 'f_len'),
+      ('filter_length', 'f_len'),
+      ('filter_time_length', 'f_time_len'),
+      ('num_filters_', 'n_f'),
+      ('num_filters', 'n_f'),
+      ('n_layers_per_block', 'n_l_per_bl'),
+      ('final_pool_length', 'final_p_len'),
+      ])
+    for key in substitutions:
+        word = word.replace(key, substitutions[key])
+    return word
+
 def parse_command_line_arguments():
     parser = argparse.ArgumentParser(
         description="""Print results stored in a folder.

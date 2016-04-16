@@ -476,8 +476,8 @@ def extract_combined_results(folder, params, folder_2, params_2):
 def sort_results_by_filename(results):
     return sorted(results, key=lambda r: r.parameters['dataset_filename'])
 
-def get_final_misclasses(results):
-    return np.array([r.get_misclasses()['test'][-1] for r in results])
+def get_final_misclasses(results, set_type='test'):
+    return np.array([r.get_misclasses()[set_type][-1] for r in results])
 
 def get_training_times(results):
     return np.array([r.training_time for r in results])

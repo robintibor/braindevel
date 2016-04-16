@@ -1,9 +1,9 @@
 import lasagne
-import theano.tensor as T
 from braindecode.veganlasagne.layers import get_n_sample_preds
 from lasagne.objectives import categorical_crossentropy
 from theano.tensor.shared_randomstreams import RandomStreams
 from lasagne.random import get_rng
+import theano.tensor as T
 
 def weighted_binary_cross_entropy(preds, targets, imbalance_factor):
     factor_no_target = (imbalance_factor + 1) / (2.0 *  imbalance_factor)
@@ -29,7 +29,6 @@ def sum_of_losses(preds, targets, final_layer, loss_expressions):
 def weight_decay(preds, targets, final_layer, factor):
     loss = lasagne.regularization.regularize_network_params(final_layer,
         lasagne.regularization.l2)
-    
     return loss * factor
 
 def tied_losses_cnt_model(preds, targets, final_layer, n_pairs):
@@ -52,10 +51,26 @@ def tied_neighbours_cnt_model(preds, targets, final_layer):
 
 def tied_neighbours(preds, n_sample_preds, n_classes):
     preds_per_trial_row = preds.reshape((-1, n_sample_preds, n_classes))
-    _srng = RandomStreams(get_rng().randint(1, 2147462579))
-    loss = categorical_crossentropy(preds_per_trial_row[:,1:],
-        preds_per_trial_row[:,:-1])
+    earlier_neighbours = preds_per_trial_row[:,:-1]
+    later_neighbours = preds_per_trial_row[:,1:]
+    # Have to now ensure first values are larger zero
+    # for numerical stability :/
+    # Example of problem otherwise:
+    """
+    a = T.fmatrix()
+    b = T.fmatrix()
+    soft_out_a =softmax(a)
+    soft_out_b =softmax(b)
+    
+    loss = categorical_crossentropy(soft_out_a[:,1:],soft_out_b[:,:-1])
+    neigh_fn = theano.function([a,b], loss)
+    
+    neigh_fn(np.array([[0,1000,0]], dtype=np.float32), 
+        np.array([[0.1,0.9,0.3]], dtype=np.float32))
+    -> inf
+    """
+    eps = 1e-4
+    earlier_neighbours = T.maximum(earlier_neighbours, eps)
+    loss = categorical_crossentropy(earlier_neighbours, later_neighbours)
     return loss
-
-
     
