@@ -76,6 +76,10 @@ def tied_neighbours(preds, n_sample_preds, n_classes):
     """
     eps = 1e-4
     earlier_neighbours = T.maximum(earlier_neighbours, eps)
+    # not sure if necessary
+    earlier_neighbours = T.minimum(earlier_neighbours, 1-eps)
+    # renormalize(?)
+    earlier_neighbours = earlier_neighbours / T.sum(earlier_neighbours, axis=2, keepdims=True)
     loss = categorical_crossentropy(earlier_neighbours, later_neighbours)
     return loss
     

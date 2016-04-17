@@ -69,7 +69,8 @@ def create_default_experiment(final_layer, dataset, num_epochs=100):
 class Experiment(object):
     def __init__(self, final_layer, dataset, splitter, preprocessor,
             iterator, loss_expression, updates_expression, updates_modifier,
-            monitors, stop_criterion, remember_best_chan, run_after_early_stop):
+            monitors, stop_criterion, remember_best_chan, run_after_early_stop,
+            batch_modifier=None):
         self.final_layer = final_layer
         self.dataset = dataset
         self.dataset_provider = PreprocessedSplitter(splitter, preprocessor)
@@ -83,6 +84,7 @@ class Experiment(object):
         self.monitor_manager = MonitorManager(monitors)
         self.remember_extension = RememberBest(remember_best_chan)
         self.run_after_early_stop = run_after_early_stop
+        self.batch_modifier = batch_modifier
     
     def setup(self, target_var=None):
         lasagne.random.set_rng(RandomState(9859295))
@@ -176,6 +178,9 @@ class Experiment(object):
         batch_generator = self.iterator.get_batches(datasets['train'], shuffle=True)
         with log_timing(log, None, final_msg='Time updates following epoch:'):
             for inputs, targets in batch_generator:
+                if self.batch_modifier is not None:
+                    inputs, targets = self.batch_modifier.process(inputs,
+                        targets)
                 self.train_func(inputs, targets)
         
         self.monitor_epoch(datasets)

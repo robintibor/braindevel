@@ -6,6 +6,8 @@ from braindecode.analysis.stats import perm_mean_diff_test
 from pandas.core.index import MultiIndex
 from braindecode.scripts.print_results import prettify_word
 from collections import OrderedDict
+import logging
+log = logging.getLogger(__name__)
 
 def remove_dollar(param_val):
     if isinstance(param_val, str) and param_val[0] == '$':
@@ -13,7 +15,7 @@ def remove_dollar(param_val):
     else:
         return param_val
 
-def load_data_frame(folder, params, shorten_headers=True):
+def load_data_frame(folder, params=None, shorten_headers=True):
     res_pool = ResultPool()
     res_pool.load_results(folder, params=params)
     result_objs = res_pool.result_objects()
@@ -112,12 +114,19 @@ def pairwise_compare_frame(df, with_p_vals=False):
     return compare_frame
 
 def tmean(series):
+    """Mean of time and rounding."""
     return pd.Timedelta.round(np.mean(series), 's')
 
 def dataset_averaged_frame(data_frame):
     param_keys = [k for k in data_frame.keys() if k not in ['test', 'dataset_filename', 'test_filename', 'time',
                                                        'train', 'filename']]
     grouped = data_frame.groupby(param_keys)
+    # Check for dup
+    for name, group in grouped:
+        duplicates = group.filename[group.filename.duplicated()]
+        if duplicates.size > 0:
+            log.warn("Duplicate filenames : {:s}".format(str(duplicates)))
+            log.warn("From group {:s}".format(str(name)))
     averaged_frame = grouped.agg(OrderedDict([('time', [len, tmean]), 
           ('test', [np.mean, np.std]),
            ('train', [np.mean, np.std]),]))

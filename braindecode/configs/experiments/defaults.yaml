@@ -46,5 +46,6 @@
         max_epochs: [1500],
         early_stop_chan: ['valid_misclass'],
         run_after_early_stop: [true],
+        batch_modifier: ['null'],
     }]]
 }

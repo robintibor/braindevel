@@ -25,6 +25,7 @@
                 ]
             },
             remember_best_chan: $early_stop_chan,
-            run_after_early_stop: $run_after_early_stop
+            run_after_early_stop: $run_after_early_stop,
+            batch_modifier: $batch_modifier,
         },
 }

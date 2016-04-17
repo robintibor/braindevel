@@ -17,6 +17,15 @@
                 },
             ]
         },
+        categorical_crossentropy_decay: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [$categorical_crossentropy,
+                !obj:braindecode.util.FuncAndArgs {
+                    func: !!python/name:braindecode.veganlasagne.objectives.weight_decay ,
+                    factor: $l2_factor
+                },
+            ]
+        },
     },
     variants: [[
     {
