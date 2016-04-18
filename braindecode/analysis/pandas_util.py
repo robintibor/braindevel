@@ -32,7 +32,9 @@ def to_data_frame(result_objs, varying_params, shorten_headers=True):
     
     var_param_keys = varying_params[0].keys()
     var_param_vals = [[v[key] for key in var_param_keys] for v in varying_params]
-    var_param_vals = np.array(var_param_vals)
+    # transform lists to tuples to make them hashable
+    var_param_vals = [[to_tuple_if_list(v) for v in var_list] for var_list in var_param_vals]
+    var_param_vals = np.array(var_param_vals, dtype=object)
     test_accs = (1 - get_final_misclasses(result_objs, 'test')) * 100
     train_accs = (1 - get_final_misclasses(result_objs, 'train')) * 100
     training_times = get_training_times(result_objs)
@@ -47,6 +49,12 @@ def to_data_frame(result_objs, varying_params, shorten_headers=True):
     data_frame.time = pd.to_timedelta(np.round(data_frame.time), unit='s')
     return data_frame
 
+def to_tuple_if_list(val):
+    if isinstance(val, list):
+        return tuple(val)
+    else:
+        return val
+    
 def pairwise_compare_frame(df, with_p_vals=False):
     table_vals = []
     table_indices = []
