@@ -143,7 +143,7 @@ class ExperimentsRunner:
                 for file_name in existing_lock_files]
             highest_lock_nr = max(existing_lock_nrs)
             lower_offset = max(lower_offset, highest_lock_nr)
-        result_nr = lower_offset + experiment_index + 1
+        result_nr = lower_offset + 1
         return os.path.join(folder_path, str(result_nr))
     
     def _create_save_folder_path(self, experiment_index):
