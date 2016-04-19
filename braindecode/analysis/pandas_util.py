@@ -125,6 +125,10 @@ def tmean(series):
     """Mean of time and rounding."""
     return pd.Timedelta.round(np.mean(series), 's')
 
+def tstd(series):
+    """Std of time and rounding."""
+    return pd.Timedelta.round(np.std(series), 's')
+
 def dataset_averaged_frame(data_frame):
     param_keys = [k for k in data_frame.keys() if k not in ['test', 'dataset_filename', 'test_filename', 'time',
                                                        'train', 'filename']]
@@ -133,9 +137,9 @@ def dataset_averaged_frame(data_frame):
     for name, group in grouped:
         duplicates = group.filename[group.filename.duplicated()]
         if duplicates.size > 0:
-            log.warn("Duplicate filenames : {:s}".format(str(duplicates)))
+            log.warn("Duplicate filenames:\n{:s}".format(str(duplicates)))
             log.warn("From group {:s}".format(str(name)))
-    averaged_frame = grouped.agg(OrderedDict([('time', [len, tmean]), 
+    averaged_frame = grouped.agg(OrderedDict([('time', [len, tmean, tstd]), 
           ('test', [np.mean, np.std]),
            ('train', [np.mean, np.std]),]))
     averaged_frame = round_numeric_columns(averaged_frame, 1)

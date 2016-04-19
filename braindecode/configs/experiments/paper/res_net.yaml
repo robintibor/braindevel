@@ -13,6 +13,7 @@
                 nonlinearity: $nonlinearity,
                 drop_before_pool: $drop_before_pool,
                 final_aggregator: $final_aggregator,
+                final_nonlin: $final_nonlin,
         },
         layer_names_to_norms: {
         },
@@ -24,6 +25,7 @@
         leaky_relu: !!python/name:lasagne.nonlinearities.leaky_rectify ,
         safe_log: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
         safe_softmax: !!python/name:braindecode.veganlasagne.nonlinearities.safe_softmax ,
+        log_softmax: !!python/name:braindecode.veganlasagne.nonlinearities.log_softmax ,
     },
     variants: [[{
         layer_names_to_norms: [$layer_names_to_norms],

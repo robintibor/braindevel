@@ -31,7 +31,7 @@
     variants: [[
     {
         trial_stop: [4000],
-        save_path: ['data/models/paper/ours/cnt/resnet/'],
+        save_path: ['data/models/debug/locking/'],
         input_time_length: [1000],
         n_sample_preds : [500], # will be overwritten anyways
         train_cleaner: [$no_cleaner],

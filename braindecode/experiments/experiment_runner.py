@@ -8,6 +8,7 @@ import lasagne
 from pylearn2.config import yaml_parse
 from pprint import pprint
 import numpy as np
+import fasteners
 import re
 from braindecode.scripts.print_results import ResultPrinter
 from braindecode.experiments.experiment import Experiment, ExperimentCrossValidation,\
@@ -110,19 +111,31 @@ class ExperimentsRunner:
             self._folder_paths.append(None)
             
         for i_exp in range(self._get_start_id(), self._get_stop_id()):
+            folder_path = self._create_save_folder_path(i_exp) 
+            self._folder_paths.append(folder_path) 
+            
+            # Make sure experiments are not overriding each others
+            # results by using a lockfile in the determined result folder
+            if not self._dry_run:
+                folder_lock_file = os.path.join(folder_path, 'global.lock')
+                folder_lock = fasteners.InterProcessLock(folder_lock_file)
+                log.info("Wait for file lock...")
+                folder_lock.acquire()
+                log.info("Done.")
             save_path = self._create_base_save_path(i_exp)
             self._base_save_paths.append(save_path)
-            # Create lockfile already
+            # Create lockfile which will prevent next experiment from using
+            # same resultfile (basically marking this basename as used already)
             if not self._dry_run:
                 lock_path = self._get_lock_save_path(i_exp)
                 touch_file(lock_path)
+            folder_lock.release()
         
 
     def _create_base_save_path(self, experiment_index):
         assert experiment_index >= self._get_start_id()
         assert experiment_index < self._get_stop_id()
-        folder_path = self._create_save_folder_path(experiment_index) 
-        self._folder_paths.append(folder_path) # store for result printing
+        folder_path = self._folder_paths[experiment_index]
         # try not to overwrite existing models, instead
         # use higher numbers
         # earlier I did this by using result files

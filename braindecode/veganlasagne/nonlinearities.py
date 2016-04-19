@@ -17,3 +17,9 @@ def square(x):
 
 def elu_square(x):
     return T.sqr(elu(x))
+
+def log_softmax(x):
+    """Prevents instabilities when used with categorical_crossentropy_domain.
+    From https://github.com/Lasagne/Lasagne/issues/332#issuecomment-122328992"""
+    xdev = x - x.max(1, keepdims=True)
+    return xdev - T.log(T.sum(T.exp(xdev), axis=1, keepdims=True))

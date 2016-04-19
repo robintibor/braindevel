@@ -52,9 +52,12 @@ def generate_cluster_job(queue, job_args):
         train_args_string)
     
     # Replace queue in compiledir of fileprefix
-    file_prefix = file_prefix % dict(queue="rz")
+    # Probably having queue as part of compiledir name
+    # is not necessary sine we are using /tmp/ as our compile dir
+    # which should be local to each machine(?)
+    file_prefix_with_queue = file_prefix % dict(queue="rz")
 
-    job_string = "{:s}\n{:s}\n".format(file_prefix, train_command)
+    job_string = "{:s}\n{:s}\n".format(file_prefix_with_queue, train_command)
     job_filename = os.path.splitext(os.path.basename(config_file))[0] + ".pbs"
     job_filepath = "data/jobs/" + job_filename
     with open(job_filepath, "w") as job_file:

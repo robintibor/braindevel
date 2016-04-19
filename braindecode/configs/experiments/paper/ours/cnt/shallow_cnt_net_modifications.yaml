@@ -16,7 +16,11 @@
         layers: [$cnt_shallow_square],
         
         variants: [[ {
-            final_dense_length: [32],
-        }]]
+            batch_modifier: [$bp_meaner],
+        }]],
+        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
+        'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
+        'misclass_monitor', 'rejection_blink_ival', 'whisker_percent']]
+
     }]],
 }

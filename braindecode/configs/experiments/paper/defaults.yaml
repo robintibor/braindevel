@@ -39,6 +39,8 @@
             valid_set_fraction: $valid_set_fraction,
         },
         markers_4_class: {'1': [1], '2': [2], '3': [3], '4': [4]},
+        bp_meaner: !obj:braindecode.datahandling.batch_modifier.BandpowerMeaner { },
+        
         
     },
     variants: [[{

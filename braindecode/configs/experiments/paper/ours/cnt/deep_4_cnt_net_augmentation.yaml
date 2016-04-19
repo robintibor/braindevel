@@ -41,7 +41,6 @@
             combined_conv_4: $conv_norm,
             final_dense: $final_norm,
         },
-        bp_meaner: !obj:braindecode.datahandling.batch_modifier.BandpowerMeaner { },
     },
     variants: [[
     {

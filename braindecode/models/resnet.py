@@ -14,7 +14,8 @@ class ResNet(object):
             batch_norm_alpha,
             batch_norm_epsilon,
             drop_before_pool,
-            final_aggregator):
+            final_aggregator,
+            final_nonlin):
         self.__dict__.update(locals())
         del self.self
 
@@ -81,6 +82,6 @@ class ResNet(object):
                 self.final_aggregator))
             
         model = FinalReshapeLayer(model)
-        model = NonlinearityLayer(model, nonlinearity=softmax)
+        model = NonlinearityLayer(model, nonlinearity=self.final_nonlin)
         return lasagne.layers.get_all_layers(model)
 
