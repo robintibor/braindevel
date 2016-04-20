@@ -10,14 +10,14 @@
                  'CCP2h', 'CPP1h', 'CPP2h'],
     },
     variants: [[{
-        csp_train_obj: ['*csp_train_two_files'],
+        csp_train_obj: ['*csp_train_single_file'],
         load_sensor_names: [$C_sensors],
         sensor_names: [$C_sensors],
         filt_order: [4],
         trial_start: [500],
         trial_stop: [4000],
         standardize: [false],
-        n_folds: ["null"],
+        n_folds: [10],
         n_top_bottom_csp_filters: [5],
         n_selected_filterbands: ["null"],
         forward_steps: [2],
@@ -46,87 +46,30 @@
         
         
     loader_type: [BBCIDataset],
-    variants: [[
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/AnWeMoSc1S001R01_ds10_1-12.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/AnWeMoSc1S001R13_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/BhNoMoSc1S001R01_ds10_1-12.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/BhNoMoSc1S001R13_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/FaMaMoSc1S001R01_ds10_1-14.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/FaMaMoSc1S001R15_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/FrThMoSc1S001R01_ds10_1-11.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/FrThMoSc1S001R12_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/GuJoMoSc01S001R01_ds10_1-11.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/GuJoMoSc01S001R12_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/JoBeMoSc01S001R01_ds10_1-11.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/JoBeMoSc01S001R12_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/KaUsMoSc1S001R01_ds10_1-11.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/KaUsMoSc1S001R12_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/LaKaMoSc1S001R01_ds10_1-9.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/LaKaMoSc1S001R10_ds10_1-2BBCI.mat'],
-        },
-#        {
-#            dataset_filename: ['data/BBCI-without-last-runs/LuFiMoSc3S001R01_ds10_1-11.BBCI.mat'],
-#            test_filename: ['data/BBCI-only-last-runs/LuFiMoSc3S001R12_ds10_1-2BBCI.mat'],
-#        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/MaGlMoSc2S001R01_ds10_1-12.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/MaGlMoSc2S001R13_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/MaJaMoSc1S001R12_ds10_1-2BBCI.mat'],
-        },
-#        {
-#            dataset_filename: ['data/BBCI-without-last-runs/MaKiMoSC01S001R01_ds10_1-4.BBCI.mat'],
-#            test_filename: ['data/BBCI-only-last-runs/MaKiMoSC01S001R05_ds10_1-2BBCI.mat'],
-#        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/MaVoMoSc1S001R01_ds10_1-11.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/MaVoMoSc1S001R12_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/NaMaMoSc1S001R01_ds10_1-11.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/NaMaMoSc1S001R12_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/OlIlMoSc01S001R01_ds10_1-11.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/OlIlMoSc01S001R12_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/PiWiMoSc1S001R01_ds10_1-11.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/PiWiMoSc1S001R12_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/RoBeMoSc03S001R01_ds10_1-9.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/RoBeMoSc03S001R10_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/RoScMoSc1S001R01_ds10_1-11.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/RoScMoSc1S001R12_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/StHeMoSc01S001R01_ds10_1-10.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/StHeMoSc01S001R11_ds10_1-2BBCI.mat'],
-        },
-        {
-            dataset_filename: ['data/BBCI-without-last-runs/SvMuMoSc1S001R01_ds10_1-12.BBCI.mat'],
-            test_filename: ['data/BBCI-only-last-runs/SvMuMoSc1S001R13_ds10_1-2BBCI.mat'],
-        },
-        ]]       
+    variants: [[ {
+        test_filename: ['null'],
+        dataset_filename: [
+        'data/BBCI-all-runs/AnWeMoSc1S001R01_ds10_1-14BBCI.mat',
+        'data/BBCI-all-runs/BhNoMoSc1S001R01_ds10_1-14BBCI.mat',
+        'data/BBCI-all-runs/FaMaMoSc1S001R01_ds10_1-16BBCI.mat',
+        'data/BBCI-all-runs/FrThMoSc1S001R01_ds10_1-13BBCI.mat',
+        'data/BBCI-all-runs/GuJoMoSc01S001R01_ds10_1-13BBCI.mat',
+        'data/BBCI-all-runs/JoBeMoSc01S001R01_ds10_1-13BBCI.mat',
+        'data/BBCI-all-runs/KaUsMoSc1S001R01_ds10_1-13BBCI.mat',
+        'data/BBCI-all-runs/LaKaMoSc1S001R01_ds10_1-11BBCI.mat',
+#        'data/BBCI-all-runs/LuFiMoSc3S001R01_ds10_1-13BBCI.mat',
+        'data/BBCI-all-runs/MaGlMoSc2S001R01_ds10_1-14BBCI.mat',
+        'data/BBCI-all-runs/MaJaMoSc1S001R01_ds10_1-13BBCI.mat',
+#        'data/BBCI-all-runs/MaKiMoSC01S001R01_ds10_1-6BBCI.mat',
+        'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
+        'data/BBCI-all-runs/NaMaMoSc1S001R01_ds10_1-13BBCI.mat',
+        'data/BBCI-all-runs/OlIlMoSc01S001R01_ds10_1-13BBCI.mat',
+        'data/BBCI-all-runs/PiWiMoSc1S001R01_ds10_1-13BBCI.mat',
+        'data/BBCI-all-runs/RoBeMoSc03S001R01_ds10_1-11BBCI.mat',
+        'data/BBCI-all-runs/RoScMoSc1S001R01_ds10_1-13BBCI.mat',
+        'data/BBCI-all-runs/StHeMoSc01S001R01_ds10_1-12BBCI.mat',
+        'data/BBCI-all-runs/SvMuMoSc1S001R01_ds10_1-14BBCI.mat'],
+        }
+        ]]    
     }]]
 }
