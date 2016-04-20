@@ -130,22 +130,38 @@ def tstd(series):
     return pd.Timedelta.round(np.std(series), 's')
 
 def dataset_averaged_frame(data_frame):
-    param_keys = [k for k in data_frame.keys() if k not in ['test', 'dataset_filename', 'test_filename', 'time',
-                                                       'train', 'filename']]
-    grouped = data_frame.groupby(param_keys)
-    # Check for dup
-    for name, group in grouped:
-        duplicates = group.filename[group.filename.duplicated()]
-        if duplicates.size > 0:
-            log.warn("Duplicate filenames:\n{:s}".format(str(duplicates)))
-            log.warn("From group {:s}".format(str(name)))
-    averaged_frame = grouped.agg(OrderedDict([('time', [len, tmean, tstd]), 
-          ('test', [np.mean, np.std]),
-           ('train', [np.mean, np.std]),]))
-    averaged_frame = round_numeric_columns(averaged_frame, 1)
-    averaged_frame = averaged_frame.sort_values(by=('test', 'mean'),
-        ascending=False)
-    return averaged_frame
+    param_keys = [k for k in data_frame.keys() if k not in ['test',
+        'dataset_filename', 'test_filename', 'time', 'train', 'filename']]
+    if len(param_keys) > 0:
+        grouped = data_frame.groupby(param_keys)
+        # Check for dup
+        for name, group in grouped:
+            duplicates = group.filename[group.filename.duplicated()]
+            if duplicates.size > 0:
+                log.warn("Duplicate filenames:\n{:s}".format(str(duplicates)))
+                log.warn("From group {:s}".format(str(name)))
+        avg_frame = grouped.agg(OrderedDict([('time', [len, tmean, tstd]), 
+              ('test', [np.mean, np.std]),
+               ('train', [np.mean, np.std]),]))
+        avg_frame = avg_frame.sort_values(by=('test', 'mean'),
+            ascending=False)
+    else:
+        # Recreate group result manually for just one group
+        avg_frame = pd.DataFrame(columns=pd.MultiIndex(
+        levels=[[u'time', u'test', u'train'], 
+                [u'len', u'mean', u'std', u'tmean', u'tstd']],
+           labels=[[0, 0, 0, 1, 1, 2, 2], [0, 3, 4, 1, 2, 1, 2]]))
+        avg_frame[('time', 'len')] = [data_frame.time.size]
+        avg_frame[('time', 'tmean')] = [pd.Timedelta.round(
+            np.mean(data_frame.time), 's')]
+        avg_frame[('time', 'tstd')] = [pd.Timedelta.round(
+            np.std(data_frame.time), 's')]
+        avg_frame[('test', 'mean')] = [np.mean(data_frame.test)]
+        avg_frame[('test', 'std')] = [np.std(data_frame.test)]
+        avg_frame[('train', 'mean')] = [np.mean(data_frame.train)]
+        avg_frame[('train', 'std')] = [np.std(data_frame.train)]
+    avg_frame = round_numeric_columns(avg_frame, 1)
+    return avg_frame
 
 def to_numeric_where_possible(df):
     df = df.copy(deep=True)
@@ -157,6 +173,12 @@ def round_numeric_columns(df, decimals):
     df = df.copy(deep=True)
     tmp = df.select_dtypes(include=[np.number], exclude=[np.timedelta64])
     df.loc[:, tmp.columns] = np.round(tmp, decimals)
+    return df
+
+def round_time_columns(df):
+    df = df.copy(deep=True)
+    tmp = df.select_dtypes(include=[np.timedelta64])
+    df.loc[:, tmp.columns] =  pd.Timedelta.round(tmp, 's')
     return df
 
 def remove_indices_with_same_value(df):

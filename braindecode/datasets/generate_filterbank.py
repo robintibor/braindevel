@@ -15,7 +15,7 @@ def generate_filterbank(min_freq, max_freq, last_low_freq,
     low_step = low_width - low_overlap
     assert (last_low_freq - min_freq) % low_step  == 0, ("last low freq "
         "needs to be exactly the center of a low_width filter band. "
-        " Nearest center: {:.0f}".format(
+        " Close center: {:.0f}".format(
             last_low_freq - ((last_low_freq - min_freq) % low_step)))
     assert max_freq >= last_low_freq
     high_step = high_width - high_overlap
@@ -23,7 +23,7 @@ def generate_filterbank(min_freq, max_freq, last_low_freq,
     assert (max_freq == last_low_freq or  
         (max_freq - high_start) % high_step == 0), ("max freq needs to be "
             "exactly the center of a filter band "
-        " Nearest center: {:d}".format(
+        " Close center: {:d}".format(
             max_freq - ((max_freq - high_start) % high_step)))
     low_centers = np.arange(min_freq,last_low_freq+1e-5, low_step)
     high_centers = np.arange(high_start, max_freq+1e-5, high_step)

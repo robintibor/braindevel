@@ -1,0 +1,132 @@
+{
+    templates: {
+        no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { },
+        markers_4_classes: {'1': [1], '2': [2], '3': [3], '4': [4]},
+        C_sensors: &C_sensors ['FC5', 'FC1', 'FC2', 'FC6', 'C3', 'Cz', 'C4', 'CP5',
+                'CP1', 'CP2', 'CP6', 'FC3', 'FCz', 'FC4', 'C5', 'C1', 'C2', 'C6',
+                'CP3', 'CPz', 'CP4', 'FFC5h', 'FFC3h', 'FFC4h', 'FFC6h', 'FCC5h',
+                'FCC3h', 'FCC4h', 'FCC6h', 'CCP5h', 'CCP3h', 'CCP4h', 'CCP6h', 'CPP5h',
+                'CPP3h', 'CPP4h', 'CPP6h', 'FFC1h', 'FFC2h', 'FCC1h', 'FCC2h', 'CCP1h',
+                 'CCP2h', 'CPP1h', 'CPP2h'],
+    },
+    variants: [[{
+        csp_train_obj: ['*csp_train_two_files'],
+        load_sensor_names: [$C_sensors],
+        sensor_names: [$C_sensors],
+        filt_order: [4],
+        trial_start: [500],
+        trial_stop: [4000],
+        standardize: [false],
+        n_folds: ["null"],
+        n_top_bottom_csp_filters: [5],
+        n_selected_filterbands: ["null"],
+        forward_steps: [2],
+        backward_steps: [1],
+        stop_when_no_improvement: [false],
+        restricted_n_trials: ["null"],
+        common_average_reference: [false],
+        ival_optimizer: ["null"],
+
+        cleaner: [$no_cleaner],#$, train_normal_cleaner
+        test_cleaner: [$no_cleaner],
+        n_selected_features: [20],
+        save_path: ['data/models/ecaterina-repl-csp/'],
+        sensor_names: [$C_sensors], #,"null"
+        trial_stop: [4000],#
+        filt_order: [3],
+        min_freq: [0],
+        low_width: [2],
+        low_overlap: [0],
+        last_low_freq: [30],
+        high_width: [6],
+        high_overlap: [0],
+        max_freq: [66],
+        resample_fs: [150],
+        marker_def: [$markers_4_classes],
+        
+        
+    loader_type: [BBCIDataset],
+    variants: [[
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/AnWeMoSc1S001R01_ds10_1-12.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/AnWeMoSc1S001R13_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/BhNoMoSc1S001R01_ds10_1-12.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/BhNoMoSc1S001R13_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/FaMaMoSc1S001R01_ds10_1-14.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/FaMaMoSc1S001R15_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/FrThMoSc1S001R01_ds10_1-11.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/FrThMoSc1S001R12_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/GuJoMoSc01S001R01_ds10_1-11.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/GuJoMoSc01S001R12_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/JoBeMoSc01S001R01_ds10_1-11.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/JoBeMoSc01S001R12_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/KaUsMoSc1S001R01_ds10_1-11.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/KaUsMoSc1S001R12_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/LaKaMoSc1S001R01_ds10_1-9.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/LaKaMoSc1S001R10_ds10_1-2BBCI.mat'],
+        },
+#        {
+#            dataset_filename: ['data/BBCI-without-last-runs/LuFiMoSc3S001R01_ds10_1-11.BBCI.mat'],
+#            test_filename: ['data/BBCI-only-last-runs/LuFiMoSc3S001R12_ds10_1-2BBCI.mat'],
+#        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/MaGlMoSc2S001R01_ds10_1-12.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/MaGlMoSc2S001R13_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/MaJaMoSc1S001R12_ds10_1-2BBCI.mat'],
+        },
+#        {
+#            dataset_filename: ['data/BBCI-without-last-runs/MaKiMoSC01S001R01_ds10_1-4.BBCI.mat'],
+#            test_filename: ['data/BBCI-only-last-runs/MaKiMoSC01S001R05_ds10_1-2BBCI.mat'],
+#        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/MaVoMoSc1S001R01_ds10_1-11.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/MaVoMoSc1S001R12_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/NaMaMoSc1S001R01_ds10_1-11.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/NaMaMoSc1S001R12_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/OlIlMoSc01S001R01_ds10_1-11.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/OlIlMoSc01S001R12_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/PiWiMoSc1S001R01_ds10_1-11.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/PiWiMoSc1S001R12_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/RoBeMoSc03S001R01_ds10_1-9.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/RoBeMoSc03S001R10_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/RoScMoSc1S001R01_ds10_1-11.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/RoScMoSc1S001R12_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/StHeMoSc01S001R01_ds10_1-10.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/StHeMoSc01S001R11_ds10_1-2BBCI.mat'],
+        },
+        {
+            dataset_filename: ['data/BBCI-without-last-runs/SvMuMoSc1S001R01_ds10_1-12.BBCI.mat'],
+            test_filename: ['data/BBCI-only-last-runs/SvMuMoSc1S001R13_ds10_1-2BBCI.mat'],
+        },
+        ]]       
+    }]]
+}

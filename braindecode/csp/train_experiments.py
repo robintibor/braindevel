@@ -45,7 +45,7 @@ class CSPExperimentsRunner(ExperimentsRunner):
                     csp_trainer=csp_train,
                     parameters=train_dict['original_params'],
                     training_time=endtime - starttime)   
-            folder_path = self._folder_paths[0]
+            folder_path = self._folder_paths[experiment_index]
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
             
@@ -54,9 +54,12 @@ class CSPExperimentsRunner(ExperimentsRunner):
                 pickle.dump(result, resultfile)
 
     def _print_results(self):
-        for folder_path in np.unique(self._folder_paths):
+        valid_folder_paths = [p for p in self._folder_paths 
+            if p is not None]
+        for folder_path in np.unique(valid_folder_paths):
             res_printer = CSPResultPrinter(folder_path)
             res_printer.print_results()
+            print("\n")
     
 def setup_logging():
     """ Set up a root logger so that other modules can use logging
@@ -121,9 +124,10 @@ def parse_command_line_arguments():
                         for param_and_value in args.filters])
     args.filters = filter_dict
     if (args.startid is  not None):
-        args.startid = args.startid - 1 # model ids printed are 1-based, python is zerobased
-    if (args.stopid is  not None):
-        args.stopid = args.stopid - 1 # model ids printed are 1-based, python is zerobased
+        # model ids printed are 1-based, python is zerobased
+        # stop id can remain same as stop implies exclusive index
+        # and 1-based inclusive == 0-based exclusive
+        args.startid = args.startid - 1 
     return args
 
 if __name__ == "__main__":
