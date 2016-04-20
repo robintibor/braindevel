@@ -363,20 +363,29 @@ def load_dataset_grouped_result_objects_for(result_folder, params):
     return result_objects_per_group
 
 
-def delete_results(result_folder, params):
+def delete_results(result_folder, params, test=True):
     res_pool = ResultPool()
     res_pool.load_results(result_folder, params=params)
-    log.warn("Deleting {:d} results from {:s}".format(
-        len(res_pool._result_file_names), result_folder))
+    if test:
+        log.warn("Would delete {:d} results from {:s}".format(
+            len(res_pool._result_file_names), result_folder))
+    else:
+        log.warn("Deleting {:d} results from {:s}".format(
+            len(res_pool._result_file_names), result_folder))
     for file_name in res_pool._result_file_names:
-        log.info("Deleting {:s}".format(file_name))
-        yaml_file_name = file_name.replace('.result.pkl', '.yaml')
-        model_file_name = file_name.replace('.result.pkl', '.pkl')
-        model_param_file_name = file_name.replace('.result.pkl', '.npy')
-        delete_if_exists(file_name)
-        delete_if_exists(yaml_file_name)
-        delete_if_exists(model_file_name)
-        delete_if_exists(model_param_file_name)
+        if test:
+            log.info("Would delete {:s}".format(file_name))
+        else:
+            log.info("Deleting {:s}".format(file_name))
+            yaml_file_name = file_name.replace('.result.pkl', '.yaml')
+            model_file_name = file_name.replace('.result.pkl', '.pkl')
+            model_param_file_name = file_name.replace('.result.pkl', '.npy')
+            lock_file_name = file_name.replace('.result.pkl', 'lock.pkl')
+            delete_if_exists(file_name)
+            delete_if_exists(yaml_file_name)
+            delete_if_exists(model_file_name)
+            delete_if_exists(model_param_file_name)
+            delete_if_exists(lock_file_name)
 
 def set_result_parameters_to(result_folder, params, **update_params):
     res_pool = ResultPool()

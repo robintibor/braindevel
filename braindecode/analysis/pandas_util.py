@@ -143,6 +143,8 @@ def dataset_averaged_frame(data_frame):
           ('test', [np.mean, np.std]),
            ('train', [np.mean, np.std]),]))
     averaged_frame = round_numeric_columns(averaged_frame, 1)
+    averaged_frame = averaged_frame.sort_values(by=('test', 'mean'),
+        ascending=False)
     return averaged_frame
 
 def to_numeric_where_possible(df):

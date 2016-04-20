@@ -1,10 +1,13 @@
 from lasagne.layers import InputLayer, Conv2DLayer, Pool2DLayer, NonlinearityLayer
 from braindecode.veganlasagne.residual_net import residual_block
-from lasagne.nonlinearities import softmax, identity
+from lasagne.nonlinearities import identity
 from braindecode.veganlasagne.batch_norm import batch_norm
 import lasagne
 from braindecode.veganlasagne.layers import FinalReshapeLayer
 from lasagne.layers.noise import DropoutLayer
+from copy import deepcopy
+
+
 
 class ResNet(object):
     def __init__(self, in_chans, input_time_length,
@@ -15,21 +18,24 @@ class ResNet(object):
             batch_norm_epsilon,
             drop_before_pool,
             final_aggregator,
-            final_nonlin):
+            final_nonlin,
+            survival_prob):
+        assert survival_prob <= 1 and survival_prob >= 0
         self.__dict__.update(locals())
         del self.self
 
     def get_layers(self):
         def resnet_residual_block(model, 
             increase_units_factor=None, half_time=False):
-            """ With correct batch norm alpha and epsilon. """
+            """Calling with correct attributes from this object. """
             return residual_block(model, 
                 batch_norm_epsilon=self.batch_norm_epsilon,
                 batch_norm_alpha=self.batch_norm_alpha,
                 increase_units_factor=increase_units_factor, 
                 half_time=half_time,
                 nonlinearity=self.nonlinearity,
-                projection=self.projection)
+                projection=self.projection,
+                survival_prob=self.survival_prob)
 
         model = InputLayer([None, self.in_chans, self.input_time_length, 1])
         model = batch_norm(Conv2DLayer(model,
@@ -83,5 +89,25 @@ class ResNet(object):
             
         model = FinalReshapeLayer(model)
         model = NonlinearityLayer(model, nonlinearity=self.final_nonlin)
+        model = set_survival_probs_to_linear_decay(model, self.survival_prob)
         return lasagne.layers.get_all_layers(model)
 
+def set_survival_probs_to_linear_decay(model, survival_prob):
+    model = deepcopy(model)
+    all_layers = lasagne.layers.get_all_layers(model)
+    random_switch_layers = [l for l in all_layers 
+        if hasattr(l, '_survival_prob') and 
+            l.__class__.__name__ == 'RandomSwitchLayer']
+    
+    n_switch_layers = len(random_switch_layers)
+    
+    for i_switch_layer, layer in enumerate(random_switch_layers):
+        #http://arxiv.org/pdf/1603.09382v2.pdf#page=6
+        # Note this goes from 1 to .. (l-1) / l * p_l
+        # not from 1 to p_l as paper says...
+        # Seems to be same in their code though?
+        # https://github.com/yueatsprograms/Stochastic_Depth/blob/e55dc1d74ba22ba7c56331aa1db35db048e3881e/main.lua#L98-L107
+        this_prob = 1 - ((i_switch_layer / float(n_switch_layers)) * 
+            (1.0 - survival_prob))
+        layer._survival_prob = this_prob
+    return model

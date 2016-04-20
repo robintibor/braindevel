@@ -50,6 +50,15 @@
         final_aggregator: ['pool'], #'conv'
         drop_before_pool: [False], #True
         final_nonlin: [$log_softmax],
+        survival_prob: [1],
+        variants: [[{
+            survival_prob: [0.5],
+        },
+        {
+            survival_prob: [1],
+            n_layers_per_block: [1],
+        },
+        ]],
 
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
         'eog_sensors', 'rejection_var_ival', 'n_classes',

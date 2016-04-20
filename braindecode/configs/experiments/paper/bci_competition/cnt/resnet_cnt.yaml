@@ -38,8 +38,19 @@
 #        dataset_filename: ['data/bci-competition-iv/2a/A03T.mat'],
 #        test_filename: ['data/bci-competition-iv/2a/A03E.mat'],
         final_aggregator: ['pool'],
-        drop_before_pool: [True, False],
-
+        drop_before_pool: [False],
+        final_nonlin: [$safe_softmax],
+        
+        survival_prob: [1],
+        variants: [[{
+            survival_prob: [0.5],
+        },
+        {
+            survival_prob: [1],
+            n_layers_per_block: [1],
+        },
+        
+        ]],
 
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
         'eog_sensors', 'rejection_var_ival', 'n_classes',

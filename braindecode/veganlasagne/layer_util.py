@@ -178,7 +178,6 @@ def layers_to_str(final_layer):
             layer_str += "{:15s}".format(filter_str)
         layer_str = "{:2d} {:50s}".format(i, layer_str)
         # Possibly add nonlinearities
-        print layer
         if (hasattr(layer, 'nonlinearity') and 
             hasattr(layer.nonlinearity, 'func_name') and 
             layer.nonlinearity.func_name != 'linear'):

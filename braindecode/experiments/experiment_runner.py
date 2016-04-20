@@ -129,7 +129,7 @@ class ExperimentsRunner:
             if not self._dry_run:
                 lock_path = self._get_lock_save_path(i_exp)
                 touch_file(lock_path)
-            folder_lock.release()
+                folder_lock.release()
         
 
     def _create_base_save_path(self, experiment_index):

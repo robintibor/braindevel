@@ -486,6 +486,8 @@ def prettify_word(word):
       ('num_filters', 'n_f'),
       ('n_layers_per_block', 'n_l_per_bl'),
       ('final_pool_length', 'final_p_len'),
+      ('batch_norm_epsilon', 'bnorm_eps'),
+      ('final_aggregator', 'final_agg'),
       ])
     for key in substitutions:
         word = word.replace(key, substitutions[key])
