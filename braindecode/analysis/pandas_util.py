@@ -136,7 +136,9 @@ def dataset_averaged_frame(data_frame):
         grouped = data_frame.groupby(param_keys)
         # Check for dup
         for name, group in grouped:
-            duplicates = group.filename[group.filename.duplicated()]
+            filename_key = ('filename' if 'filename' in data_frame.keys() 
+                else 'dataset_filename')
+            duplicates = group[filename_key][group[filename_key].duplicated()]
             if duplicates.size > 0:
                 log.warn("Duplicate filenames:\n{:s}".format(str(duplicates)))
                 log.warn("From group {:s}".format(str(name)))
@@ -196,7 +198,7 @@ def remove_indices_with_same_value(df):
     return df
 
 def remove_columns_with_same_value(df):
-    wanted_cols = np.array([len(np.unique(df[c])) > 1 for c in df.columns])
+    wanted_cols = np.array([len(set(df[c])) > 1 for c in df.columns])
 
     df = df.iloc[:,wanted_cols]
     return df

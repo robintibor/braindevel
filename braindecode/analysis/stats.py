@@ -3,8 +3,9 @@ import random
 import scipy.stats
 from braindecode.results.results import (extract_combined_results,
     load_dataset_grouped_result_objects_for, get_final_misclasses,
-    get_training_times)
+    get_training_times, extract_single_group_result_sorted)
 import datetime
+from braindecode.scripts.print_results import ResultPrinter
 
 def perm_mean_diffs_sampled(a,b, n_diffs=None):
     """Compute differences between all permutations of  labels.
@@ -146,10 +147,10 @@ def print_stats(results, csp_results, n_diffs=None):
         / float(len(diffs))))
     print("one sided wilcoxon {:.5f}".format(scipy.stats.wilcoxon(
         res_misclasses, csp_misclasses)[1] / 2))
-    print("two sided perm     {:.5f}".format(np.sum(
-        abs(diffs) >= abs(actual_diff)) / float(len(diffs))))
-    print("two sided wilcoxon {:.5f}".format(scipy.stats.wilcoxon(
-        res_misclasses, csp_misclasses)[1]))
+    #print("two sided perm     {:.5f}".format(np.sum(
+    #    abs(diffs) >= abs(actual_diff)) / float(len(diffs))))
+    #print("two sided wilcoxon {:.5f}".format(scipy.stats.wilcoxon(
+    #    res_misclasses, csp_misclasses)[1]))
     print ("deep time:        {:s}".format(str(datetime.timedelta(
                 seconds=round(np.mean(res_times))))))
     print ("csp time:         {:s}".format(str(datetime.timedelta(
@@ -166,6 +167,5 @@ def show_stats_for_combined_results(folder, params, folder_2,  params_2,
     print_stats(combined_results, combined_csp_results, n_diffs=2**18)
 
 def show_stats_for_result(folder, params, combined_csp_results, n_diffs=2**18):
-    res = load_dataset_grouped_result_objects_for(folder, result_nr=0,
-                                                        params=params)
+    res = extract_single_group_result_sorted(folder, params=params)
     print_stats(res, combined_csp_results,  n_diffs=n_diffs)

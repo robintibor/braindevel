@@ -6,6 +6,7 @@ import lasagne
 from braindecode.veganlasagne.layers import FinalReshapeLayer
 from lasagne.layers.noise import DropoutLayer
 from copy import deepcopy
+from lasagne.layers.shape import DimshuffleLayer
 
 
 
@@ -19,7 +20,8 @@ class ResNet(object):
             drop_before_pool,
             final_aggregator,
             final_nonlin,
-            survival_prob):
+            survival_prob,
+            split_first_layer):
         assert survival_prob <= 1 and survival_prob >= 0
         self.__dict__.update(locals())
         del self.self
@@ -38,13 +40,32 @@ class ResNet(object):
                 survival_prob=self.survival_prob)
 
         model = InputLayer([None, self.in_chans, self.input_time_length, 1])
-        model = batch_norm(Conv2DLayer(model,
-            num_filters=self.n_first_filters, 
-            filter_size=(self.first_filter_length,1),
-            stride=(1,1), nonlinearity=self.nonlinearity, 
-             pad='same', W=lasagne.init.HeNormal(gain='relu')),
-             epsilon=self.batch_norm_epsilon,
-             alpha=self.batch_norm_alpha)
+        
+        if self.split_first_layer:
+            # shift channel dim out
+            model = DimshuffleLayer(model, (0,3,2,1))
+            # first timeconv
+            model = Conv2DLayer(model,
+                num_filters=self.n_first_filters, 
+                filter_size=(self.first_filter_length,1),
+                stride=(1,1), nonlinearity=identity, 
+                 pad='same', W=lasagne.init.HeNormal(gain='relu'))
+            # now spatconv
+            model = batch_norm(Conv2DLayer(model,
+                num_filters=self.n_first_filters, 
+                filter_size=(1,self.in_chans),
+                stride=(1,1), nonlinearity=self.nonlinearity, 
+                 pad=0, W=lasagne.init.HeNormal(gain='relu')),
+                 epsilon=self.batch_norm_epsilon,
+                 alpha=self.batch_norm_alpha)
+        else:
+            model = batch_norm(Conv2DLayer(model,
+                num_filters=self.n_first_filters, 
+                filter_size=(self.first_filter_length,1),
+                stride=(1,1), nonlinearity=self.nonlinearity, 
+                 pad='same', W=lasagne.init.HeNormal(gain='relu')),
+                 epsilon=self.batch_norm_epsilon,
+                 alpha=self.batch_norm_alpha)
         for _ in range(self.n_layers_per_block):
             model = resnet_residual_block(model)
 

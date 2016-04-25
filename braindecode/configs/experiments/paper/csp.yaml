@@ -9,11 +9,11 @@
             rejection_var_ival: $rejection_var_ival,
             rejection_blink_ival: $rejection_blink_ival,
             max_min: $max_min,
-            whisker_percent: $whisker_percent, 
+            whisker_percent: $whisker_percent,
             whisker_length: $whisker_length,
             marker_def: $marker_def,
         },
-        test_normal_cleaner: !obj:braindecode.mywyrm.clean.SetCleaner { 
+        test_normal_cleaner: !obj:braindecode.mywyrm.clean.SetCleaner {
             eog_set: !obj:braindecode.datasets.loaders.$loader_type {
                 filename: $test_filename,
                 load_sensor_names: $eog_sensors,
@@ -21,7 +21,7 @@
             rejection_var_ival: $rejection_var_ival,
             rejection_blink_ival: $rejection_blink_ival,
             max_min: $max_min,
-            whisker_percent: $whisker_percent, 
+            whisker_percent: $whisker_percent,
             whisker_length: $whisker_length,
             marker_def: $marker_def,
         },

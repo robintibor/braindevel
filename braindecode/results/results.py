@@ -471,14 +471,8 @@ def mark_duplicate_results(result_folder, tag_dict):
         pickle.dump(result, open(result_file_name, 'w'))
     
 def extract_combined_results(folder, params, folder_2, params_2):
-    res = load_dataset_grouped_result_objects_for(folder, params=params)
-    assert len(res) == 1, "Assuming just one group result here"
-    res = res[0]
-    res = sort_results_by_filename(res)
-    res2 = load_dataset_grouped_result_objects_for(folder_2, params=params_2)
-    assert len(res2) == 1, "Assuming just one group result here"
-    res2 = res2[0]
-    res2 = sort_results_by_filename(res2)
+    res = extract_single_group_result_sorted(folder, params=params)
+    res2 = extract_single_group_result_sorted(folder_2, params=params_2)
     combined_res = np.concatenate((res, res2))
     return combined_res
 

@@ -15,6 +15,7 @@
                 final_aggregator: $final_aggregator,
                 final_nonlin: $final_nonlin,
                 survival_prob: $survival_prob,
+                split_first_layer: $split_first_layer,
         },
         layer_names_to_norms: {
         },

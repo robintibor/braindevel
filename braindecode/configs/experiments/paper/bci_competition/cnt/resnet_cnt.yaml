@@ -40,16 +40,11 @@
         final_aggregator: ['pool'],
         drop_before_pool: [False],
         final_nonlin: [$safe_softmax],
-        
         survival_prob: [1],
+        split_first_layer: [False],
         variants: [[{
-            survival_prob: [0.5],
+            split_first_layer: [True],
         },
-        {
-            survival_prob: [1],
-            n_layers_per_block: [1],
-        },
-        
         ]],
 
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',

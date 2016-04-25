@@ -9,6 +9,9 @@
         save_path: ['data/models/paper/ours/epo/deep4/'],
         input_time_length: [2000], # will be overwritten by actual net size...
         final_dense_length: [8],
+        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
+        'eog_sensors', 'rejection_var_ival', 'num_split_folds',
+        'rejection_blink_ival', 'whisker_percent']],
 #        variants: [[{
 #            cnt_preprocessors: [$resample_car_highpass_standardize],
 #            save_path: ['data/models/paper/ours/epo/deep4/car/'],

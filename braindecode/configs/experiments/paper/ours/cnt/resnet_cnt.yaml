@@ -51,12 +51,9 @@
         drop_before_pool: [False], #True
         final_nonlin: [$log_softmax],
         survival_prob: [1],
+        split_first_layer: [False],
         variants: [[{
-            survival_prob: [0.5],
-        },
-        {
-            survival_prob: [1],
-            n_layers_per_block: [1],
+            split_first_layer: [True],
         },
         ]],
 

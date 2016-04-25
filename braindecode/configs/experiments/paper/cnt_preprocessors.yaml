@@ -47,14 +47,13 @@
     
     
     variants: [[
-#        {
-#            high_cut_hz: [4],
-#            cnt_preprocessors: [$resample_lowpass_standardize],
-#            low_cut_off_hz: ["null"], # remove this, for now just to keep result parameters same
-#        },
+        {
+            high_cut_hz: [4],
+            cnt_preprocessors: [$resample_lowpass_standardize],
+        },
         {
             cnt_preprocessors: [$resample_highpass_standardize],
-            low_cut_off_hz: ["null"], #4
+            low_cut_off_hz: ["null", 4], 
         },
     ]]
 }
