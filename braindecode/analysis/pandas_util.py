@@ -7,6 +7,7 @@ from pandas.core.index import MultiIndex
 from braindecode.scripts.print_results import prettify_word
 from collections import OrderedDict
 import logging
+from braindecode.util import merge_dicts
 log = logging.getLogger(__name__)
 
 def remove_dollar(param_val):
@@ -20,31 +21,35 @@ def load_data_frame(folder, params=None, shorten_headers=True):
     res_pool.load_results(folder, params=params)
     result_objs = res_pool.result_objects()
     varying_params = res_pool.varying_params()
-    data_frame = to_data_frame(result_objs, varying_params,
+    constant_params = res_pool.constant_params()
+    data_frame = to_data_frame(result_objs, varying_params, constant_params,
         shorten_headers=shorten_headers)
     return data_frame
 
-def to_data_frame(result_objs, varying_params, shorten_headers=True):
-    # remove dollars
-    for var_param_dict in varying_params:
-        for key, val in var_param_dict.iteritems():
-            var_param_dict[key] = remove_dollar(val)
+def to_data_frame(result_objs, varying_params, constant_params,
+    shorten_headers=True):
+    all_params = [merge_dicts(var, constant_params) for var in varying_params]
     
-    var_param_keys = varying_params[0].keys()
-    var_param_vals = [[v[key] for key in var_param_keys] for v in varying_params]
+    # remove dollars
+    for param_dict in all_params:
+        for key, val in param_dict.iteritems():
+            param_dict[key] = remove_dollar(val)
+    
+    param_keys = all_params[0].keys()
+    param_vals = [[v[key] for key in param_keys] for v in all_params]
     # transform lists to tuples to make them hashable
-    var_param_vals = [[to_tuple_if_list(v) for v in var_list] for var_list in var_param_vals]
-    var_param_vals = np.array(var_param_vals, dtype=object)
+    param_vals = [[to_tuple_if_list(v) for v in var_list] for var_list in param_vals]
+    param_vals = np.array(param_vals, dtype=object)
     test_accs = (1 - get_final_misclasses(result_objs, 'test')) * 100
     train_accs = (1 - get_final_misclasses(result_objs, 'train')) * 100
     training_times = get_training_times(result_objs)
-    vals_and_misclasses = np.append(var_param_vals, 
+    vals_and_misclasses = np.append(param_vals, 
         np.array([training_times, test_accs, train_accs]).T, 
         axis=1)
     if shorten_headers:
-        var_param_keys = [prettify_word(key) for key in var_param_keys]
+        param_keys = [prettify_word(key) for key in param_keys]
     data_frame = pd.DataFrame(vals_and_misclasses, 
-        columns=var_param_keys + ['time', 'test', 'train'])
+        columns=param_keys + ['time', 'test', 'train'])
     data_frame = to_numeric_where_possible(data_frame)
     data_frame.time = pd.to_timedelta(np.round(data_frame.time), unit='s')
     return data_frame
@@ -197,8 +202,8 @@ def remove_indices_with_same_value(df):
                names=new_names)
     return df
 
-def remove_columns_with_same_value(df):
-    wanted_cols = np.array([len(set(df[c])) > 1 for c in df.columns])
-
-    df = df.iloc[:,wanted_cols]
+def remove_columns_with_same_value(df, exclude=('train',)):
+    cols_multiple_vals = np.array([len(set(df[c])) > 1 for c in df.columns])
+    excluded_cols = np.array([c in exclude for c in df.columns])
+    df = df.iloc[:,(cols_multiple_vals | excluded_cols)]
     return df

@@ -87,13 +87,13 @@ class ExperimentsRunner:
             original_params = train_dict['original_params']
             folder_path = all_folder_paths[i_experiment]
             results = folder_path_to_results[folder_path]
-            experiment_already_run = False
+            experiment_already_ran = False
             for r in results:
                 if dict_equal(r.parameters, original_params):
-                    experiment_already_run = True
+                    experiment_already_ran = True
                     log.warn("Already ran id {:d} {:s}".format(i_experiment,
                         str(original_params)))
-            if not experiment_already_run:
+            if not experiment_already_ran:
                 clean_all_train_strs.append(train_str)
     
         self._all_train_strs = clean_all_train_strs
