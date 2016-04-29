@@ -40,6 +40,14 @@
             combined_conv_4: $conv_norm,
             final_dense: $final_norm,
         },
+        # in case of no split first layer
+        layer_norms_no_spat: {
+            time_conv: $conv_norm,
+            combined_conv_2: $conv_norm,
+            combined_conv_3: $conv_norm,
+            combined_conv_4: $conv_norm,
+            final_dense: $final_norm,
+        },
         square: !!python/name:theano.tensor.sqr ,
         sigmoid: !!python/name:lasagne.nonlinearities.sigmoid ,
         identity: !!python/name:lasagne.nonlinearities.identity ,

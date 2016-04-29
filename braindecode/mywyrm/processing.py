@@ -12,6 +12,7 @@ import wyrm.types
 from copy import copy
 import scipy.signal
 import logging
+from braindecode.datasets.generate_filterbank import filter_is_stable
 log = logging.getLogger(__name__)
 
 def select_marker_classes_epoch_range(cnt, classes, start,stop,copy_data=False):
@@ -705,17 +706,20 @@ def highpass_cnt(cnt, low_cut_off_hz, filt_order=3):
     if low_cut_off_hz is None:
         return cnt.copy()
     b,a = scipy.signal.butter(filt_order, low_cut_off_hz/(cnt.fs/2.0),btype='highpass')
+    assert filter_is_stable(a)
     cnt_highpassed = lfilter(cnt,b,a)
     return cnt_highpassed
 
 def lowpass_cnt(cnt, high_cut_off_hz, filt_order=3):
     b,a = scipy.signal.butter(filt_order, high_cut_off_hz/(cnt.fs/2.0),btype='lowpass')
+    assert filter_is_stable(a)
     cnt_highpassed = lfilter(cnt,b,a)
     return cnt_highpassed
 
 
 def highpass_filt_filt_cnt(cnt, low_cut_off_hz, filt_order=3):
     b,a = scipy.signal.butter(filt_order, low_cut_off_hz/(cnt.fs/2.0),btype='highpass')
+    assert filter_is_stable(a)
     cnt_highpassed = filtfilt(cnt,b,a)
     return cnt_highpassed
 
@@ -742,7 +746,7 @@ def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     low = low_cut_hz / nyq_freq
     high = high_cut_hz / nyq_freq
     b, a = scipy.signal.butter(filt_order, [low, high], btype='bandpass')
-    
+    assert filter_is_stable(a)
     cnt_bandpassed = lfilter(cnt,b,a)
     return cnt_bandpassed
 
@@ -752,5 +756,6 @@ def bandstop_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     high = high_cut_hz / nyq_freq
     b, a = scipy.signal.butter(filt_order, [low, high], btype='bandstop')
     
+    assert filter_is_stable(a)
     cnt_bandpassed = lfilter(cnt,b,a)
     return cnt_bandpassed

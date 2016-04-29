@@ -246,7 +246,7 @@ class ResultPool():
 
     def varying_params(self):
         return self._varying_params
-    
+
     def result_file_names(self):
         return self._result_file_names
     
