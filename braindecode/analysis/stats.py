@@ -2,10 +2,9 @@ import numpy as np
 import random
 import scipy.stats
 from braindecode.results.results import (extract_combined_results,
-    load_dataset_grouped_result_objects_for, get_final_misclasses,
+    get_final_misclasses,
     get_training_times, extract_single_group_result_sorted)
 import datetime
-from braindecode.scripts.print_results import ResultPrinter
 
 def perm_mean_diffs_sampled(a,b, n_diffs=None):
     """Compute differences between all permutations of  labels.
@@ -61,6 +60,12 @@ def perm_mean_diffs(a,b):
     diffs: 1d-numpy array
         Differences between means of labelled values
         for all label-switched values.
+        
+    Notes
+    -----
+    http://www.stat.ncsu.edu/people/lu/courses/ST505/Ch4.pdf#page=10
+    http://stats.stackexchange.com/a/64215/56289
+    (probably, didnt read: http://finzi.psych.upenn.edu/R/library/EnvStats/html/twoSamplePermutationTestLocation.html)
     """
     a = np.array(a)
     b = np.array(b)
@@ -71,7 +76,7 @@ def perm_mean_diffs(a,b):
     return diffs
 
 def perm_mean_diff_test(a,b, n_diffs=None):
-    """Return one sided p-value of perm mean diff."""
+    """Return two sided p-value of perm mean diff."""
     if n_diffs is None:
         diffs = perm_mean_diffs(a, b)
     else:
@@ -79,8 +84,7 @@ def perm_mean_diff_test(a,b, n_diffs=None):
     
     actual_diff = np.mean(a - b)
     n_samples_as_large_diff = np.sum(np.abs(diffs) >= np.abs(actual_diff))
-    # 2 * for one sided p-value
-    return n_samples_as_large_diff / (2 * float(len(diffs)))
+    return n_samples_as_large_diff / float(len(diffs))
 
 
 def _create_masks(n_exps):
