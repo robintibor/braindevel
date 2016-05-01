@@ -45,7 +45,7 @@ class Deep5Net(object):
                 filter_size=[1,-1],
                 nonlinearity=identity,
                 name='spat_conv')
-        else: #keep channel dim in first, so it will also be convolved over
+        else: #keep channel dim in first dim, so it will also be convolved over
             l = DropoutLayer(l, p=self.drop_in_prob)
             l = Conv2DLayer(l,
                 num_filters=self.num_filters_time,
