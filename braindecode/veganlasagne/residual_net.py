@@ -11,7 +11,7 @@ import theano.tensor as T
 
 # create a residual learning building block with two stacked 3x3 convlayers as in paper
 def residual_block(l, batch_norm_alpha, batch_norm_epsilon,
-    nonlinearity, survival_prob,
+    nonlinearity, survival_prob, add_after_nonlin,
     increase_units_factor=None, half_time=False, projection=False,
     ):
     assert survival_prob <= 1 and survival_prob >= 0
@@ -57,7 +57,11 @@ def residual_block(l, batch_norm_alpha, batch_norm_epsilon,
             # identity shortcut, as option A in paper
             n_extra_chans = out_num_filters - input_num_filters
             shortcut = PadLayer(shortcut, [n_extra_chans//2,0,0], batch_ndim=1)
-    block = NonlinearityLayer(ElemwiseSumLayer([stack_2, shortcut]),
+    if add_after_nonlin:
+        stack_2 = NonlinearityLayer(stack_2)
+        block = ElemwiseSumLayer([stack_2, shortcut])
+    else:
+        block = NonlinearityLayer(ElemwiseSumLayer([stack_2, shortcut]),
         nonlinearity=nonlinearity)
     if survival_prob != 1:
         # Hack to make both be broadcastable along empty third dim

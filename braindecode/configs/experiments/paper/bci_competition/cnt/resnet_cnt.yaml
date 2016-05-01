@@ -42,10 +42,10 @@
         final_nonlin: [$safe_softmax],
         survival_prob: [1],
         split_first_layer: [False],
+        add_after_nonlin: [False],
         variants: [[{
-            split_first_layer: [True],
-        },
-        ]],
+            add_after_nonlin: [True],
+        }]],
 
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
         'eog_sensors', 'rejection_var_ival', 'n_classes',

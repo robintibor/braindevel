@@ -8,8 +8,6 @@ from lasagne.layers.noise import DropoutLayer
 from copy import deepcopy
 from lasagne.layers.shape import DimshuffleLayer
 
-
-
 class ResNet(object):
     def __init__(self, in_chans, input_time_length,
             projection,  n_layers_per_block,
@@ -21,7 +19,8 @@ class ResNet(object):
             final_aggregator,
             final_nonlin,
             survival_prob,
-            split_first_layer):
+            split_first_layer,
+            add_after_nonlin):
         assert survival_prob <= 1 and survival_prob >= 0
         self.__dict__.update(locals())
         del self.self
@@ -37,7 +36,8 @@ class ResNet(object):
                 half_time=half_time,
                 nonlinearity=self.nonlinearity,
                 projection=self.projection,
-                survival_prob=self.survival_prob)
+                survival_prob=self.survival_prob,
+                add_after_nonlin=self.add_after_nonlin)
 
         model = InputLayer([None, self.in_chans, self.input_time_length, 1])
         

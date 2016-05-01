@@ -16,6 +16,7 @@
                 final_nonlin: $final_nonlin,
                 survival_prob: $survival_prob,
                 split_first_layer: $split_first_layer,
+                add_after_nonlin: $add_after_nonlin,
         },
         layer_names_to_norms: {
         },
