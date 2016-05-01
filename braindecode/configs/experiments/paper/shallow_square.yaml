@@ -185,9 +185,10 @@
         sigmoid: !!python/name:lasagne.nonlinearities.sigmoid ,
         elu: !!python/name:lasagne.nonlinearities.elu ,
         square: !!python/name:theano.tensor.sqr ,
-        sqrt: !!python/name:theano.tensor.sqrt ,
+        #sqrt: !!python/name:theano.tensor.sqrt ,
         elu_square: !!python/name:braindecode.veganlasagne.nonlinearities.elu_square ,
         safe_log: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
+        safe_sqrt: !!python/name:braindecode.veganlasagne.nonlinearities.safe_sqrt ,
     },
     variants: [[{
         layer_names_to_norms: [$layer_names_to_norms],

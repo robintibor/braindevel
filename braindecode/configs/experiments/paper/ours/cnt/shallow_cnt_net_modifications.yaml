@@ -17,7 +17,7 @@
         
         variants: [[
             {
-                post_pool_nonlin: [$sqrt],
+                post_pool_nonlin: [$safe_sqrt],
             },
             {
                 first_nonlin: [$elu],
