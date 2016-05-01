@@ -5,6 +5,10 @@ def safe_log(x, eps=1e-6):
     """ Prevents log(0) by using max of eps and given x."""
     return  T.log(T.maximum(x, eps))
 
+def safe_sqrt(x, eps=1e-4):
+    """ Prevents that input of sqrt is too close to 0... just for check."""
+    return  T.sqrt(T.maximum(x, eps))
+
 def safe_softmax(x, eps=1e-6):
     """ Prevents that any of the outputs become exactly 1 or 0 """
     x = softmax(x)
