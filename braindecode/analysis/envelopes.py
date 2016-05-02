@@ -19,6 +19,7 @@ from braindecode.veganlasagne.layer_util import get_receptive_field_size
 from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
 from braindecode.veganlasagne.layers import get_n_sample_preds
 import logging
+from braindecode.datahandling import batch_modifier
 log = logging.getLogger(__name__)
 
 
@@ -196,7 +197,7 @@ if __name__ == "__main__":
     args = parse_command_line_arguments()
     if args.folder is None:
         create_envelopes('data/models/paper/ours/cnt/deep4/car/',
-            params=dict(low_cut_off_hz="null"))
+            params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null"))
         """
         create_envelopes('data/models/paper/ours/cnt/deep4/',
             params=dict(layers='$cnt_4l',
