@@ -38,21 +38,24 @@
         test_cleaner: [$no_cleaner],
         loss_expression: [$safe_tied_neighbours_decay],
         l2_factor: [1e-4],
-        n_first_filters: [48],#24
+        n_first_filters: [48],
         first_filter_length: [3],
-        final_pool_length: [10],#10
-        projection: [False],#$relu, 
+        final_pool_length: [10],
+        projection: [False],
         nonlinearity: [$elu],
         max_epochs: [500],
-        n_layers_per_block: [2],#,3
-        final_aggregator: ['pool'], #'conv'
-        drop_before_pool: [False], #True
+        n_layers_per_block: [2],
+        final_aggregator: ['pool'],
+        drop_before_pool: [False],
         final_nonlin: [$log_softmax],
         survival_prob: [1],
-        split_first_layer: [False],
+        split_first_layer: [True],
         add_after_nonlin: [False],
+        reduction_method: ['conv'],
+        reduction_pool_mode: ['null'],
         variants: [[{
-            add_after_nonlin: [True],
+            reduction_method: ['pool'],
+            reduction_pool_mode: ['average_exc_pad', 'max'],
         }]],
 
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',

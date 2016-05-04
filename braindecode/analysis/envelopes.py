@@ -112,7 +112,7 @@ def get_meaned_trial_env(env, field_size, n_trials, n_inputs_per_trial,
 def create_envelopes(folder_name, params, start, stop):
     res_pool = ResultPool()
     res_pool.load_results(folder_name, params=params)
-    res_file_names = res_pool.result_file_names()
+    res_file_names = res_pool.result_file_names()[1:]
     yaml_file_names = [name.replace('.result.pkl', '.yaml')
         for name in res_file_names]
     stop = stop or len(yaml_file_names)

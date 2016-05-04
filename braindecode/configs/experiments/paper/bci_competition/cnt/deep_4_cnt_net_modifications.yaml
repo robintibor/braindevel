@@ -32,6 +32,14 @@
         
         variants: [[
         {
+            first_nonlin: [$relu],
+            first_pool_mode: ['max'],
+            first_pool_nonlin: [$identity],
+            later_nonlin: [$relu],
+            later_pool_mode: ['max'],
+            later_pool_nonlin: [$identity],
+        },
+        {
             first_nonlin: ['$square'],
             first_pool_mode: ['average_exc_pad'],
             first_pool_nonlin: [$safe_log],

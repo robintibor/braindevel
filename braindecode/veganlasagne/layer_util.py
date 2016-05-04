@@ -186,6 +186,8 @@ def layers_to_str(final_layer):
             not hasattr(layer.nonlinearity, 'func_name') and
             hasattr(layer.nonlinearity, 'name')):
             layer_str += " {:15s}".format(layer.nonlinearity.name)
+        elif (hasattr(layer, 'pool_size')):
+            layer_str += " {:15s}".format(layer.mode)
         else:
             layer_str += " {:15s}".format("")
         # Possibly add changing output shape

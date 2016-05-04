@@ -3,7 +3,8 @@ import numpy as np
 import theano
 import lasagne
 from theano.tensor.nnet import conv2d
-from braindecode.veganlasagne.layers import get_input_shape, BiasLayer
+from braindecode.veganlasagne.layers import get_input_shape, \
+    StrideReshapeLayer
 from braindecode.veganlasagne.batch_norm import BatchNormLayer
 import sklearn.preprocessing
 
@@ -11,36 +12,32 @@ def create_heatmap_fn(all_layers, rules, min_in=None, max_in=None,
         return_all=False, use_output_as_relevance=False):
     # only using single trial, so one less dim than input shape
     if len(get_input_shape(all_layers[-1])) == 2:
-        input_trial = T.fvector()
+        input_trials = T.fmatrix()
     elif len(get_input_shape(all_layers[-1])) == 4:
-        input_trial = T.ftensor3()
+        input_trials = T.ftensor4()
     if use_output_as_relevance:
-        if input_trial.ndim == 1:
-            input_var = input_trial.dimshuffle('x',0)
-        elif input_trial.ndim == 3:
-            input_var = input_trial.dimshuffle('x', 0,1,2)
         out_relevances = lasagne.layers.get_output(all_layers[-1], 
-            inputs=input_var, deterministic=True, input_var=input_var)[0]
+            inputs=input_trials, deterministic=True, input_var=input_trials)
     else:
-        # again, just single trial:
         if len(all_layers[-1].output_shape) == 2:
-            out_relevances = T.fvector()
+            out_relevances = T.fmatrix()
         elif len(all_layers[-1].output_shape) == 4:
-            out_relevances = T.ftensor3()
-    heatmap = create_heatmap(out_relevances, input_trial, all_layers, rules,
+            out_relevances = T.ftensor4()
+    heatmap = create_heatmap(out_relevances, input_trials, all_layers, rules,
                             min_in, max_in, return_all)
     if use_output_as_relevance:
-        heatmap_fn = theano.function([input_trial], heatmap)
+        heatmap_fn = theano.function([input_trials], heatmap)
     else:
-        heatmap_fn = theano.function([out_relevances, input_trial], heatmap)         
+        heatmap_fn = theano.function([out_relevances, input_trials], heatmap)         
     return heatmap_fn
 
-def create_heatmap(out_relevances, input_trial, all_layers, 
+def create_heatmap(out_relevances, input_trials, all_layers, 
         all_rules, min_in=None, max_in=None, return_all=False):
     """Theano expression for computing the heatmap.
     Expects a single input trial not a batch. Similarly a single output relevance"""
     # First make all rules correct in case just rule for first layer
     # and remaining layers given
+    
     
     if len(all_rules) == 2 and (not len(all_layers) == 2):
         # then expect that there is rule for layers until first weights
@@ -63,12 +60,8 @@ def create_heatmap(out_relevances, input_trial, all_layers,
     assert len(all_rules) == len(all_layers), ("number of rules "
         "{:d} number layers {:d}".format(len(all_rules), len(all_layers)))
     
-    if input_trial.ndim == 1:
-        input_var = input_trial.dimshuffle('x',0)
-    elif input_trial.ndim == 3:
-        input_var = input_trial.dimshuffle('x', 0,1,2)
     activations_per_layer = lasagne.layers.get_output(all_layers, 
-         input_var,deterministic=True, input_var=input_var)
+         input_trials, deterministic=True, input_var=input_trials)
     
     assert len(activations_per_layer) == len(all_layers)
     
@@ -78,11 +71,11 @@ def create_heatmap(out_relevances, input_trial, all_layers,
     for i_layer in xrange(len(all_layers)-1, 0,-1):
         # We have out relevance for that layer, now 
         layer = all_layers[i_layer]
-        in_activations = activations_per_layer[i_layer-1][0]
+        in_activations = activations_per_layer[i_layer-1]
         rule = all_rules[i_layer]
         if isinstance(layer, lasagne.layers.DenseLayer):
-            if in_activations.ndim > 1:
-                in_act_flat = in_activations.flatten()
+            if in_activations.ndim > 2:
+                in_act_flat = in_activations.flatten(2)
             out_relevances = relevance_dense(out_relevances,
                  in_act_flat, layer.W, rule, min_in, max_in)
         elif hasattr(layer, 'pool_size'):
@@ -91,17 +84,18 @@ def create_heatmap(out_relevances, input_trial, all_layers,
         elif hasattr(layer, 'filter_size'):
             out_relevances = relevance_conv(out_relevances, in_activations,
                 layer.W, rule, min_in, max_in)
+        elif isinstance(layer, StrideReshapeLayer):
+            out_relevances = relevance_back_by_grad(out_relevances,
+                in_activations, layer)
+        elif isinstance(layer, lasagne.layers.DimshuffleLayer):
+            pattern = layer.pattern
+            reverse_pattern = [pattern.index(i) for i in range(len(pattern))]
+            out_relevances = out_relevances.dimshuffle(reverse_pattern)
         elif (isinstance(layer, lasagne.layers.DropoutLayer) or
             isinstance(layer, lasagne.layers.NonlinearityLayer) or
             isinstance(layer, lasagne.layers.FlattenLayer)or
             isinstance(layer, BatchNormLayer)):
             pass
-        elif isinstance(layer, lasagne.layers.DimshuffleLayer):
-            pattern = layer.pattern
-            reverse_pattern = np.array([pattern.index(i) for i in range(len(pattern))])
-            reverse_pattern = (reverse_pattern[1:]-1).tolist()
-            # starting at 1 since no trial axis there..
-            out_relevances = out_relevances.dimshuffle(reverse_pattern)
         else:
             raise ValueError("Trying to propagate through unknown layer "
                 "{:s}".format(layer.__class__.__name__))
@@ -112,41 +106,6 @@ def create_heatmap(out_relevances, input_trial, all_layers,
         return all_heatmaps[::-1]
     else:
         return all_heatmaps[-1]
-
-def compute_heatmap(out_relevances, all_activations_per_layer, all_layers, 
-        all_rules, min_in=None, max_in=None):
-    """Numpy version to compute relevance heatmap."""
-    
-    for rule in all_rules:
-        assert rule in ['w_sqr', 'z_plus', 'z_b', None]
-    # stop before first layer...as it should be input layer...
-    # and we alwasys need activations from before
-    for i_layer in xrange(len(all_layers)-1, 0,-1):
-        # We have out relevance for that layer, now 
-        layer = all_layers[i_layer]
-        in_activations = all_activations_per_layer[i_layer-1]
-        rule = all_rules[i_layer]
-        if isinstance(layer, lasagne.layers.DenseLayer):
-            dense_weights = layer.W.get_value()
-            out_relevances = back_relevance_dense_layer(out_relevances,
-                 in_activations, dense_weights, rule)
-        elif hasattr(layer, 'pool_size'):
-            assert layer.stride == layer.pool_size, (
-                "Only works with stride equal size at the moment")
-            out_relevances = back_relevance_pool(out_relevances, in_activations,
-                 pool_size=layer.pool_size, pool_stride=layer.stride)
-        elif hasattr(layer, 'filter_size'):
-            conv_weights = layer.W.get_value()
-            out_relevances = back_relevance_conv(out_relevances, in_activations,
-                conv_weights, rule, min_in, max_in)
-        elif isinstance(layer, lasagne.layers.DropoutLayer):
-            pass
-        else:
-            raise ValueError("Trying to propagate through unknown layer "
-                "{:s}".format(layer.__class__.__name__))
-        if out_relevances.shape != in_activations.shape:
-            out_relevances = out_relevances.reshape(in_activations.shape)
-    return out_relevances
 
 def relevance_conv(out_relevances, inputs, weights, rule, min_in=None,
         max_in=None):
@@ -178,25 +137,47 @@ def relevance_conv_w_sqr(out_relevances, weights):
     weights_norm = weights_norm + (T.eq(weights_norm, 0) * 1)
     weights_scaled = weights_sqr / weights_norm
     # upconv
-    in_relevances = conv2d(out_relevances.dimshuffle('x',0,1,2), 
+    in_relevances = conv2d(out_relevances, 
                            weights_scaled.dimshuffle(1,0,2,3)[:,:,::-1,::-1],
-                           border_mode='full')[0]
+                           border_mode='full')
     return in_relevances
 
 def relevance_conv_z_plus(out_relevances, inputs, weights):
     # hack for negative inputs
     #inputs = T.abs_(inputs)
     weights_plus = weights * T.gt(weights, 0)
-    norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), weights_plus)[0]
+    norms_for_relevances = conv2d(inputs, weights_plus)
     # prevent division by 0...
-    norms_for_relevances += T.eq(norms_for_relevances, 0) * 1
+    # adds 1 to every entry that is 0 -> sets 0s to 1
+    relevances_are_0 = T.eq(norms_for_relevances, 0)
+    norms_for_relevances += relevances_are_0 * 1
+    
     normed_relevances = out_relevances / norms_for_relevances
     # upconv
-    in_relevances = conv2d(normed_relevances.dimshuffle('x',0,1,2), 
-                           weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], border_mode='full')[0]
+    in_relevances = conv2d(normed_relevances, 
+                           weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+                           border_mode='full')
+   
     in_relevances_proper = in_relevances * inputs
+    
+    # Correct for those parts where all inputs of a relevance were
+    # zero, spread relevance equally them
+    pool_ones = T.ones(weights_plus.shape, dtype=np.float32)
+    # mean across channel, 0, 1 dims (hope this is correct?)
+    pool_fractions = pool_ones / T.prod(weights_plus.shape[1:]).astype(
+        theano.config.floatX)
+    in_relevances_from_0 = conv2d(out_relevances * relevances_are_0, 
+                           pool_fractions.dimshuffle(1,0,2,3), 
+                           subsample=(1,1),
+                           border_mode='full')
+     
+    in_relevances_proper += in_relevances_from_0
+    
+    
     return in_relevances_proper
 
+def relevance_conv_a_b(out_relevances, inputs, weights):
+    return "TODO"
 
 def relevance_conv_z_b(out_relevances, inputs, weights, min_in, max_in):
     #assert min_in <= 0
@@ -204,48 +185,175 @@ def relevance_conv_z_b(out_relevances, inputs, weights, min_in, max_in):
     weights_b = T.lt(weights, 0) * weights * -max_in
     weights_b += T.gt(weights, 0) * weights * -min_in
 
-    norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), weights)[0]
-    norms_for_relevances += T.sum(weights_b, axis=(1,2,3)).dimshuffle(0,'x','x')
+    norms_for_relevances = conv2d(inputs, weights)
+    norms_for_relevances += T.sum(weights_b, axis=(1,2,3)).dimshuffle(
+        'x',0,'x','x')
     # prevent division by 0...
     norms_for_relevances += T.eq(norms_for_relevances, 0) * 1
     normed_relevances = out_relevances / norms_for_relevances
     # upconv data
-    in_relevances_data = conv2d(normed_relevances.dimshuffle('x',0,1,2), 
+    in_relevances_data = conv2d(normed_relevances, 
                            weights.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
-                           border_mode='full')[0]
+                           border_mode='full')
     in_relevances_data *= inputs
     # upconv weight offsets to enforce positivity
-    in_relevances_b = conv2d(normed_relevances.dimshuffle('x',0,1,2), 
+    in_relevances_b = conv2d(normed_relevances, 
                            weights_b.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
-                           border_mode='full')[0]
+                           border_mode='full')
     in_relevances = in_relevances_data + in_relevances_b
     return in_relevances
 
+
+def _forward_positive_z(inputs, weights, bias=None):
+    inputs_plus = inputs * T.gt(inputs, 0)
+    weights_plus = weights * T.gt(weights, 0)
+    inputs_minus = inputs * T.lt(inputs, 0)
+    weights_minus = weights * T.lt(weights, 0)
+    plus_part_a = conv2d(inputs_plus, weights_plus)
+    plus_part_b = conv2d(inputs_minus, weights_minus)
+
+    together = plus_part_a + plus_part_b
+    if bias is not None:
+        bias_plus = bias * T.gt(bias, 0)
+        together +=  bias_plus.dimshuffle('x',0,'x','x')
+    
+    return together
+    
+def _forward_negative_z(inputs, weights, bias=None):
+    inputs_plus = inputs * T.gt(inputs, 0)
+    weights_plus = weights * T.gt(weights, 0)
+    inputs_minus = inputs * T.lt(inputs, 0)
+    weights_minus = weights * T.lt(weights, 0)
+    negative_part_a = conv2d(inputs_plus, weights_minus)
+    negative_part_b = conv2d(inputs_minus, weights_plus)
+
+    together = negative_part_a + negative_part_b
+    if bias is not None:
+        bias_negative = bias * T.lt(bias, 0)
+        together +=  bias_negative.dimshuffle('x',0,'x','x')
+    
+    return together
+
+def _backward_positive_z(inputs, weights, normed_relevances, bias=None):
+    inputs_plus = inputs * T.gt(inputs, 0)
+    weights_plus = weights * T.gt(weights, 0)
+    inputs_minus = inputs * T.lt(inputs, 0)
+    weights_minus = weights * T.lt(weights, 0)
+    # Compute weights+ * inputs+ and weights- * inputs-
+    positive_part_a = conv2d(normed_relevances, 
+          weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    positive_part_a *= inputs_plus
+    positive_part_b = conv2d(normed_relevances, 
+          weights_minus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    positive_part_b *= inputs_minus
+    
+    together = positive_part_a + positive_part_b
+    if bias is not None:
+        bias_plus = bias * T.gt(bias, 0)
+        bias_relevance = bias_plus.dimshuffle('x',0,'x','x') * normed_relevances
+        # Divide bias by weight size before convolving back
+        # mean across channel, 0, 1 dims (hope this is correct?)
+        fraction_bias = bias_relevance / T.prod(weights.shape[1:]).astype(
+            theano.config.floatX)
+        bias_rel_in = conv2d(fraction_bias, 
+          T.ones_like(weights).dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full') 
+        together +=  bias_rel_in
+    return together
+    
+def _backward_negative_z(inputs, weights, normed_relevances, bias=None):
+    inputs_plus = inputs * T.gt(inputs, 0)
+    weights_plus = weights * T.gt(weights, 0)
+    inputs_minus = inputs * T.lt(inputs, 0)
+    weights_minus = weights * T.lt(weights, 0)
+    # Compute weights+ * inputs- and weights+ * inputs+
+    negative_part_a = conv2d(normed_relevances, 
+          weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    negative_part_a *= inputs_minus
+    negative_part_b = conv2d(normed_relevances, 
+          weights_minus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    negative_part_b *= inputs_plus
+    
+    together = negative_part_a + negative_part_b
+    if bias is not None:
+        bias_negative = bias * T.lt(bias, 0)
+        bias_relevance = bias_negative.dimshuffle('x',0,'x','x') * normed_relevances
+        # Divide bias by weight size before convolving back
+        # mean across channel, 0, 1 dims (hope this is correct?)
+        fraction_bias = bias_relevance / T.prod(weights.shape[1:]).astype(
+            theano.config.floatX)
+        bias_rel_in = conv2d(fraction_bias, 
+          T.ones_like(weights).dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full') 
+        together +=  bias_rel_in
+    return together
+    
+    
+def relevance_conv_stable_sign(inputs, weights, out_relevances, bias=None):
+    negative_norm = _forward_negative_z(inputs, weights, bias)
+    positive_norm = _forward_positive_z(inputs, weights, bias)
+    
+    # Set zeros to 1 to prevent division by 0
+    positive_norm_nonzero = positive_norm + T.eq(positive_norm, 0)
+    pos_minus_neg_nonzero = (positive_norm - negative_norm)
+    pos_minus_neg_nonzero +=  T.eq(pos_minus_neg_nonzero, 0)
+    positive_factor = (positive_norm - 2 * negative_norm) / (
+        positive_norm_nonzero * pos_minus_neg_nonzero)
+    
+    positive_rel_normed = out_relevances * positive_factor
+    negative_rel_normed = out_relevances / pos_minus_neg_nonzero
+    
+    in_rel_from_pos = _backward_positive_z(inputs, weights, positive_rel_normed, bias=bias)
+    in_rel_from_neg = _backward_negative_z(inputs, weights, negative_rel_normed, bias=bias)
+    return in_rel_from_pos + in_rel_from_neg
+
 def relevance_dense(out_relevances, in_activations, weights, rule,
     min_in=None, max_in=None):
-    """Mostly copied from paper supplementary pseudocode:
-    http://arxiv.org/abs/1512.02479"""
+    """Party copied from paper supplementary pseudocode:
+    http://arxiv.org/abs/1512.02479
+    Partly adapted for propagating multiple trials at once"""
     assert rule in ['w_sqr', 'z_plus', 'z_b']
     # weights are features x output_units => input_units x output_units
-    # in_activations are input_units
+    # in_activations are trials x input_units
     if rule == 'w_sqr':
         W_adapted = weights * weights
         Z = T.sum(W_adapted, axis=0, keepdims=True)
         # prevent division by 0...
         Z += T.eq(Z, 0) * 1
         N = W_adapted / Z
-        return T.dot(N, out_relevances)
+        return T.dot(N, out_relevances.T).T
     elif rule == 'z_plus':
-        V = weights * T.gt(weights, 0)
-        Z = T.dot(V.T, in_activations)
-        # prevent division by 0...
-        Z += T.eq(Z, 0) * 1
-        return in_activations * T.dot(V, (out_relevances / Z))
+        weights_plus = weights * T.gt(weights, 0)
+        norms_for_relevances = T.dot(in_activations, weights_plus)
+        # prevent division by zero
+        norms_for_relevances += T.eq(norms_for_relevances, 0) * 1
+        normed_relevances = out_relevances / norms_for_relevances
+        in_relevances = T.dot(normed_relevances, weights_plus.T)
+        in_relevances = in_relevances * in_activations
+        return in_relevances
     elif rule == 'z_b':
         assert min_in is not None
         assert max_in is not None
         assert min_in <= 0
         assert max_in >= 0
+        
+        weights_plus = weights * T.gt(weights, 0)
+        weights_minus = weights * T.lt(weights, 0)
+        Z_I_J = weights.dimshuffle('x',0,1) * in_activations.dimshuffle(
+            0,1,'x')
+        Z_I_J -= weights_plus.dimshuffle('x',0,1) * min_in
+        Z_I_J -= weights_minus.dimshuffle('x',0,1) * max_in
+        Z_I_J = Z_I_J / T.sum(Z_I_J, axis=1, keepdims=True)
+        in_relevances = Z_I_J * out_relevances.dimshuffle(0,'x',1)
+        in_relevances = T.sum(in_relevances, axis=2)
+        return in_relevances
+        
+        
+        
         U = weights * T.lt(weights, 0)
         V = weights * T.gt(weights, 0)
         R_Norm = T.dot(weights.T, in_activations)
@@ -262,7 +370,8 @@ def relevance_dense(out_relevances, in_activations, weights, rule,
         return in_relevances
 
 def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
-    pool_ones_shape = [out_relevances.shape[0], out_relevances.shape[0],
+    # channels x channels x pool_0 x pool_1
+    pool_ones_shape = [out_relevances.shape[1], out_relevances.shape[1],
         pool_size[0], pool_size[1]]
     # modification: make inputs positive
     inputs = T.abs_(inputs)
@@ -270,11 +379,12 @@ def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
     # only within a channel spread values of that channel...
     # therefore set all values of indices like
     # filt_i, channel_j with j!=i to zero!
-    pool_ones = pool_ones * T.eye(out_relevances.shape[0],
-                              out_relevances.shape[0]).dimshuffle(0,1,'x','x')
-    norms_for_relevances = conv2d(inputs.dimshuffle('x',0,1,2), 
+    pool_ones = pool_ones * T.eye(out_relevances.shape[1],
+                              out_relevances.shape[1]).dimshuffle(
+                                 0,1,'x','x')
+    norms_for_relevances = conv2d(inputs, 
                            pool_ones, subsample=pool_stride, 
-                           border_mode='valid')[0]
+                           border_mode='valid')
     # prevent division by 0...
     # the relevance which had norm zero will not be redistributed anyways..
     # so it doesnt matter which normalization factor you choose here,
@@ -285,22 +395,30 @@ def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
     normed_relevances = out_relevances / norms_for_relevances
     # stride has to be taken into account, see 
     # http://stackoverflow.com/a/28752057/1469195
-    upsampled_relevances = T.zeros((normed_relevances.shape[0], 
-        normed_relevances.shape[1] * pool_stride[0] - pool_stride[0] + 1, 
-        normed_relevances.shape[2] * pool_stride[1] - pool_stride[1] + 1, 
+    upsampled_relevances = T.zeros((normed_relevances.shape[0],
+        normed_relevances.shape[1], 
+        normed_relevances.shape[2] * pool_stride[0] - pool_stride[0] + 1, 
+        normed_relevances.shape[3] * pool_stride[1] - pool_stride[1] + 1, 
         ), dtype=np.float32)
     upsampled_relevances = T.set_subtensor(
-        upsampled_relevances[:, ::pool_stride[0], ::pool_stride[1]], 
+        upsampled_relevances[:, :, :pool_stride[0], ::pool_stride[1]], 
         normed_relevances)
     
-    in_relevances = conv2d(upsampled_relevances.dimshuffle('x',0,1,2), 
+    in_relevances = conv2d(upsampled_relevances,
                            pool_ones, subsample=(1,1),
-                           border_mode='full')[0]
+                           border_mode='full')
     in_relevances = in_relevances * inputs
     return in_relevances
 
+def relevance_back_by_grad(out_relevances, in_activations, layer):
+    out = lasagne.layers.get_output(layer, deterministic=True,
+        inputs={layer.input_layer: in_activations})
+    in_relevance = T.grad(None, in_activations,
+        known_grads={out:out_relevances})
+    return in_relevance
+
 def create_back_conv_w_sqr_fn():
-    out_relevances = T.ftensor3()
+    out_relevances = T.ftensor4()
     weights = T.ftensor4()
     in_relevances = relevance_conv_w_sqr(out_relevances, weights)
     back_relevance_conv_fn = theano.function([out_relevances, weights],
@@ -308,18 +426,18 @@ def create_back_conv_w_sqr_fn():
     return back_relevance_conv_fn
 
 def create_back_conv_z_plus_fn():
-    inputs = T.ftensor3()
+    inputs = T.ftensor4()
     weights = T.ftensor4()
-    out_relevances = T.ftensor3()
+    out_relevances = T.ftensor4()
     in_relevances = relevance_conv_z_plus(out_relevances, inputs, weights)
     back_relevance_conv_fn = theano.function([out_relevances, inputs, weights],
                                          in_relevances)
     return back_relevance_conv_fn
 
 def create_back_conv_z_b_fn(min_in, max_in):
-    inputs = T.ftensor3()
+    inputs = T.ftensor4()
     weights = T.ftensor4()
-    out_relevances = T.ftensor3()
+    out_relevances = T.ftensor4()
     in_relevances = relevance_conv_z_b(out_relevances, inputs, weights,
         min_in, max_in)
     back_relevance_conv_fn = theano.function([out_relevances, inputs, weights],
@@ -327,9 +445,9 @@ def create_back_conv_z_b_fn(min_in, max_in):
     return back_relevance_conv_fn
 
 def create_back_dense_fn(rule, min_in=None, max_in=None):
-    inputs = T.vector()
+    inputs = T.fmatrix()
     weights = T.fmatrix()
-    out_relevances = T.fvector()
+    out_relevances = T.fmatrix()
     in_relevances = relevance_dense(out_relevances, inputs, weights,
         rule, min_in, max_in)
     if rule == 'w_sqr':
@@ -339,116 +457,6 @@ def create_back_dense_fn(rule, min_in=None, max_in=None):
         back_relevance_dense_fn = theano.function([out_relevances, inputs,
             weights], in_relevances)
     return back_relevance_dense_fn
-
-def back_relevance_dense_layer(out_relevances, in_activations, weights, rule):
-    assert rule in ['w_sqr', 'z_plus']
-    # for tests where i put int numbers
-    weights = np.array(weights, dtype=np.float32)
-    out_relevances = np.array(out_relevances, dtype=np.float32)
-    in_activations = np.array(in_activations, dtype=np.float32)
-    # weights are features x output_units => input_units x output_units
-    # in_activations are input_units
-    if rule == 'w_sqr':
-        W_adapted = weights * weights
-    if rule == 'z_plus':
-        if in_activations.ndim > 1:
-            in_activations = in_activations.flatten()
-        W_plus = weights * (weights > 0)
-        W_adapted = W_plus * in_activations[:, np.newaxis]
-    W_scaled = W_adapted / np.sum(W_adapted, axis=0)
-    W_scaled[:,np.sum(W_adapted, axis=0) == 0] = 1.0 / W_adapted.shape[0]
-    input_relevances = W_scaled * out_relevances
-    input_relevances = np.sum(input_relevances, axis=1)
-    return input_relevances
-
-
-def back_relevance_dense_layer_as_in_paper(out_relevances, in_activations, weights, rule):
-    """Just for reference.. leads to same results (except not checking for NaNs yet)..."""
-    assert rule in ['w_sqr', 'z_plus']
-    # for tests where i put int numbers
-    weights = np.array(weights, dtype=np.float32)
-    out_relevances = np.array(out_relevances, dtype=np.float32)
-    in_activations = np.array(in_activations, dtype=np.float32)
-    # weights are features x output_units => input_units x output_units
-    # in_activations are input_units
-    if rule == 'w_sqr':
-        W_adapted = weights * weights
-        N = W_adapted / np.sum(W_adapted, axis=0)
-        return np.dot(N, out_relevances)
-    if rule == 'z_plus':
-        V = weights * (weights > 0)
-        Z = np.dot(V.T, in_activations)
-        return in_activations * np.dot(V, (out_relevances / Z))
-
-def back_relevance_conv(out_relevances, in_activations, conv_weights, rule,
-        min_in=None, max_in=None):
-    assert rule in ['w_sqr', 'z_plus', 'z_b']
-    if rule == 'z_b':
-        assert min_in is not None
-        assert max_in is not None
-        assert min_in <= 0
-        assert max_in >= 0
-    # for tests if you want to use int numbers
-    conv_weights = np.array(conv_weights, dtype=np.float32)
-    out_relevances = np.array(out_relevances, dtype=np.float32)
-    in_activations = np.array(in_activations, dtype=np.float32)
-    kernel_size = conv_weights.shape[2:]
-    in_relevances = np.zeros(in_activations.shape)
-    for out_filt in xrange(out_relevances.shape[0]):
-        relevant_weights = conv_weights[out_filt, :,::-1,::-1] # reverse filter
-        if rule == 'w_sqr':
-            adapted_weights = relevant_weights * relevant_weights
-        for out_x in xrange(out_relevances.shape[1]):
-            for out_y in xrange(out_relevances.shape[2]):
-                if rule == 'z_plus':
-                    adapted_weights = relevant_weights * (relevant_weights > 0)
-                    relevant_input = in_activations[:,out_x:out_x+kernel_size[0],
-                              out_y:out_y+kernel_size[1]]
-                    adapted_weights = adapted_weights * relevant_input
-                if rule == 'z_b':
-                    relevant_input = in_activations[:,out_x:out_x+kernel_size[0],
-                              out_y:out_y+kernel_size[1]]
-                    adapted_weights = relevant_weights * relevant_input
-                    # will be positive as min in is negative....
-                    offset_negative_in = (-relevant_weights *
-                        (relevant_weights > 0) * min_in)
-                    # will be positive as max in is positive....
-                    offset_positive_in = (-relevant_weights *
-                        (relevant_weights < 0) * max_in)
-                    adapted_weights += offset_negative_in + offset_positive_in
-                scaled_weights = adapted_weights / float(np.sum(adapted_weights))
-                if np.sum(adapted_weights) == 0:
-                    scaled_weights[:] = 1 / float(np.prod(scaled_weights.shape))
-                relevance_to_add = scaled_weights * out_relevances[out_filt, out_x, out_y] 
-                in_relevances[:,out_x:out_x+kernel_size[0],
-                              out_y:out_y+kernel_size[1]] += relevance_to_add
-    return in_relevances
-
-def back_relevance_pool(out_relevances, in_activations, pool_size,
-        pool_stride):
-    # for tests if you want to use int numbers
-    out_relevances = np.array(out_relevances, dtype=np.float32)
-    in_activations = np.array(in_activations, dtype=np.float32)
-    assert in_activations.shape[0] == out_relevances.shape[0]
-
-    in_relevances = np.zeros(in_activations.shape, dtype=np.float32)
-    for out_filt in xrange(out_relevances.shape[0]):
-        for out_x in xrange(out_relevances.shape[1]):
-            for out_y in xrange(out_relevances.shape[2]):
-                in_x = out_x * pool_stride[0]
-                in_y = out_y * pool_stride[1]
-                in_x_stop = in_x+pool_size[0]
-                in_y_stop = in_y+pool_size[1]
-                relevant_inputs = in_activations[out_filt, in_x:in_x_stop,
-                    in_y:in_y_stop]
-                scaled_inputs = relevant_inputs / np.sum(relevant_inputs)
-                if np.sum(relevant_inputs) == 0:
-                    scaled_inputs = relevant_inputs + 1/relevant_inputs.size
-                scaled_relevance = scaled_inputs * out_relevances[out_filt,
-                    out_x, out_y]
-                in_relevances[out_filt, in_x:in_x_stop, 
-                    in_y:in_y_stop] += scaled_relevance
-    return in_relevances
 
 def compute_all_epo_relevances(dataset, pred_fn, heatmap_fn,n_classes):
     topo = dataset.get_topological_view()

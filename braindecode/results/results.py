@@ -9,6 +9,7 @@ import itertools
 import logging
 from collections import Counter, OrderedDict
 from braindecode.util import dict_equal, dict_is_subset
+import shutil
 log = logging.getLogger(__name__)
 
 class Result:
@@ -469,6 +470,33 @@ def mark_duplicate_results(result_folder, tag_dict):
         result = np.load(result_file_name)
         result.parameters.update(tag_dict)
         pickle.dump(result, open(result_file_name, 'w'))
+    
+def move_results(source_folder, target_folder, params):
+    # Load results to determine filenames
+    res_pool = ResultPool()
+    res_pool.load_results(source_folder, params=params)
+    
+    # Determine largest number of existing result to determine new
+    # filenames
+    existing_result_files = glob(os.path.join(target_folder, "*[0-9].result.pkl"))
+    existing_result_nrs = [int(file_name.split('/')[-1][:-len('.result.pkl')])\
+        for file_name in existing_result_files]
+    existing_lock_files = glob(os.path.join(target_folder, "*[0-9].lock.pkl"))
+    existing_lock_nrs = [int(file_name.split('/')[-1][:-len('.lock.pkl')])\
+        for file_name in existing_lock_files]
+    lower_offset = max([0] + existing_lock_nrs + existing_result_nrs)
+
+    # Do actual copying for all possible existing files
+    for i_res, res_file_name in enumerate(res_pool.result_file_names()):
+        for extension in ('.result.pkl', '.yaml', '.pkl', '.npy'):
+            existing_file_name = res_file_name.replace('.result.pkl', extension)
+            if os.path.exists(existing_file_name):
+                new_file_name = os.path.join(target_folder, 
+                    str(i_res + lower_offset + 1) + extension)
+                assert not os.path.exists(new_file_name)
+                log.info("Moving {:s} to {:s}".format(existing_file_name, 
+                    new_file_name))
+                shutil.move(existing_file_name, new_file_name)
     
 def extract_combined_results(folder, params, folder_2, params_2):
     res = extract_single_group_result_sorted(folder, params=params)

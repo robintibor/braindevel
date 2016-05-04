@@ -20,7 +20,9 @@ class ResNet(object):
             final_nonlin,
             survival_prob,
             split_first_layer,
-            add_after_nonlin):
+            add_after_nonlin,
+            reduction_method,
+            reduction_pool_mode):
         assert survival_prob <= 1 and survival_prob >= 0
         self.__dict__.update(locals())
         del self.self
@@ -37,7 +39,9 @@ class ResNet(object):
                 nonlinearity=self.nonlinearity,
                 projection=self.projection,
                 survival_prob=self.survival_prob,
-                add_after_nonlin=self.add_after_nonlin)
+                add_after_nonlin=self.add_after_nonlin,
+                reduction_method=self.reduction_method,
+                reduction_pool_mode=self.reduction_pool_mode)
 
         model = InputLayer([None, self.in_chans, self.input_time_length, 1])
         

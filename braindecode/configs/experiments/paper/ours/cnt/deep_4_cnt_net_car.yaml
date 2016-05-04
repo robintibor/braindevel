@@ -1,0 +1,63 @@
+{
+    extends: [
+    'configs/experiments/paper/ours/cnt/deep_4_cnt_net_modifications.yaml']
+    ,
+    templates: {
+        all_EEG_sensors: ['Fp1', 'Fp2', 'Fpz', 'F7', 'F3', 'Fz', 'F4', 'F8',
+            'FC5', 'FC1', 'FC2', 'FC6', 'M1', 'T7', 'C3', 'Cz', 'C4', 'T8', 'M2',
+            'CP5', 'CP1', 'CP2', 'CP6', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1',
+            'Oz', 'O2', 'AF7', 'AF3', 'AF4', 'AF8', 'F5', 'F1', 'F2', 'F6', 'FC3',
+            'FCz', 'FC4', 'C5', 'C1', 'C2', 'C6', 'CP3', 'CPz', 'CP4', 'P5', 'P1',
+            'P2', 'P6', 'PO5', 'PO3', 'PO4', 'PO6', 'FT7', 'FT8', 'TP7', 'TP8',
+            'PO7', 'PO8', 'FT9', 'FT10', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9',
+            'P10', 'AFF1', 'AFz', 'AFF2', 'FFC5h', 'FFC3h', 'FFC4h', 'FFC6h', 'FCC5h',
+            'FCC3h', 'FCC4h', 'FCC6h', 'CCP5h', 'CCP3h', 'CCP4h', 'CCP6h', 'CPP5h',
+            'CPP3h', 'CPP4h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'AFp3h',
+            'AFp4h', 'AFF5h', 'AFF6h', 'FFT7h', 'FFC1h', 'FFC2h', 'FFT8h', 'FTT9h',
+            'FTT7h', 'FCC1h', 'FCC2h', 'FTT8h', 'FTT10h', 'TTP7h', 'CCP1h', 'CCP2h',
+            'TTP8h', 'TPP7h', 'CPP1h', 'CPP2h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h',
+            'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'],
+    },
+    
+    variants: [[{
+        save_path: ['data/models/paper/ours/cnt/deep4/car/'],
+        cnt_preprocessors: [$resample_car_highpass_standardize],
+        low_cut_off_hz: ["null"], 
+        layers: [$deep_5],
+
+        drop_prob: [0.5],
+        batch_norm: [true],
+        
+        final_dense_length: [2],
+        input_time_length: [1000],
+        n_sample_preds : [500], # will be overwritten anyways
+        train_cleaner: [$no_cleaner],
+        test_cleaner: [$no_cleaner],
+
+        filter_time_length: [10],
+        filter_length_2: [10],
+        filter_length_3: [10],
+        filter_length_4: [10],
+        double_time_convs: [false],
+        split_first_layer: [true],
+        first_nonlin: ['$elu'],
+        first_pool_mode: ['max'],
+        first_pool_nonlin: [$identity],
+        later_nonlin: ['$elu'],
+        later_pool_mode: ['max'],
+        later_pool_nonlin: [$identity],
+        loss_expression: [$tied_neighbours],
+        
+        sensor_names: [$all_EEG_sensors],
+        layer_names_to_norms: [$layer_names_to_norms],
+#        variants: [[{
+#            dataset_filename: ['data/BBCI-without-last-runs/BhNoMoSc1S001R01_ds10_1-12.BBCI.mat'],
+#            test_filename: ['data/BBCI-only-last-runs/BhNoMoSc1S001R13_ds10_1-2BBCI.mat'],
+#        },
+#        {
+#            dataset_filename: ['data/BBCI-without-last-runs/LuFiMoSc3S001R01_ds10_1-11.BBCI.mat'],
+#            test_filename: ['data/BBCI-only-last-runs/LuFiMoSc3S001R12_ds10_1-2BBCI.mat'],
+#        }]]
+       }
+    ]]
+}

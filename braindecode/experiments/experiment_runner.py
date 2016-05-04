@@ -141,21 +141,16 @@ class ExperimentsRunner:
         # earlier I did this by using result files
         # now I use lock files to prevent experiments that are started
         # while old experiment is running from overwriting new experiment
-        lower_offset = 0
         existing_result_files = glob(folder_path + "*[0-9].result.pkl")
-        if (len(existing_result_files) > 0):
-            # model nrs are last part of file name before .pkl
-            existing_result_nrs = [int(file_name.split('/')[-1][:-len('.result.pkl')])\
-                for file_name in existing_result_files]
-            highest_result_nr = max(existing_result_nrs)
-            lower_offset = max(lower_offset, highest_result_nr)
+        # model nrs are last part of file name before .pkl
+        existing_result_nrs = [int(file_name.split('/')[-1][:-len('.result.pkl')])\
+            for file_name in existing_result_files]
         existing_lock_files = glob(folder_path + "*[0-9].lock.pkl")
-        if (len(existing_lock_files) > 0):
-            # model nrs are last part of file name before .pkl
-            existing_lock_nrs = [int(file_name.split('/')[-1][:-len('.lock.pkl')])\
-                for file_name in existing_lock_files]
-            highest_lock_nr = max(existing_lock_nrs)
-            lower_offset = max(lower_offset, highest_lock_nr)
+        # model nrs are last part of file name before .pkl
+        existing_lock_nrs = [int(file_name.split('/')[-1][:-len('.lock.pkl')])\
+            for file_name in existing_lock_files]
+        # add 0 element in case both lists are empty (fresh directory)
+        lower_offset = max([0] + existing_lock_nrs + existing_result_nrs)
         result_nr = lower_offset + 1
         return os.path.join(folder_path, str(result_nr))
     

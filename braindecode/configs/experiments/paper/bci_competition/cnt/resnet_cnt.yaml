@@ -7,10 +7,11 @@
         'configs/experiments/paper/res_net.yaml',
         ],
     templates: {
-        tied_neighbours_decay: !obj:braindecode.util.FuncAndArgs {
+        safe_tied_neighbours_decay: !obj:braindecode.util.FuncAndArgs {
             func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
-            loss_expressions: [$categorical_crossentropy,
-                !!python/name:braindecode.veganlasagne.objectives.tied_neighbours_cnt_model ,
+            loss_expressions: [
+                !!python/name:braindecode.veganlasagne.objectives.categorical_crossentropy_logdomain ,
+                !!python/name:braindecode.veganlasagne.objectives.tied_neighbours_cnt_model_logdomain ,
                 !obj:braindecode.util.FuncAndArgs {
                     func: !!python/name:braindecode.veganlasagne.objectives.weight_decay ,
                     factor: $l2_factor
@@ -26,25 +27,26 @@
         n_sample_preds : [500], # will be overwritten anyways
         train_cleaner: [$no_cleaner],
         test_cleaner: [$no_cleaner],
-        loss_expression: [$tied_neighbours_decay],
+        loss_expression: [$safe_tied_neighbours_decay],
         l2_factor: [1e-4],
-        n_first_filters: [48],#24
+        n_first_filters: [48],
         first_filter_length: [3],
-        final_pool_length: [10],#10
-        projection: [False],#$relu, 
+        final_pool_length: [10],
+        projection: [False],
         nonlinearity: [$elu],
         max_epochs: [500],
-        n_layers_per_block: [2],#,3
-#        dataset_filename: ['data/bci-competition-iv/2a/A03T.mat'],
-#        test_filename: ['data/bci-competition-iv/2a/A03E.mat'],
+        n_layers_per_block: [2],
         final_aggregator: ['pool'],
         drop_before_pool: [False],
-        final_nonlin: [$safe_softmax],
+        final_nonlin: [$log_softmax],
         survival_prob: [1],
-        split_first_layer: [False],
+        split_first_layer: [True],
         add_after_nonlin: [False],
+        reduction_method: ['conv'],
+        reduction_pool_mode: ['null'],
         variants: [[{
-            add_after_nonlin: [True],
+            reduction_method: ['pool'],
+            reduction_pool_mode: ['average_exc_pad', 'max'],
         }]],
 
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
