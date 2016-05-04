@@ -38,6 +38,7 @@ def create_heatmap(out_relevances, input_trials, all_layers,
     # First make all rules correct in case just rule for first layer
     # and remaining layers given
     
+    
     if len(all_rules) == 2 and (not len(all_layers) == 2):
         # then expect that there is rule for layers until first weights
         # and after
@@ -129,7 +130,7 @@ def relevance_conv(out_relevances, inputs, weights, rule, min_in=None,
         return relevance_conv_z_b(out_relevances, inputs, weights,
             min_in, max_in)
 
-def relevance_conv_w_sqr(out_relevances, weights, biases=None):
+def relevance_conv_w_sqr(out_relevances, weights):
     weights_sqr = weights * weights
     weights_norm = T.sum(weights_sqr, axis=(1,2,3), keepdims=True)
     # prevent division by zero
@@ -201,6 +202,114 @@ def relevance_conv_z_b(out_relevances, inputs, weights, min_in, max_in):
                            border_mode='full')
     in_relevances = in_relevances_data + in_relevances_b
     return in_relevances
+
+
+def _forward_positive_z(inputs, weights, bias=None):
+    inputs_plus = inputs * T.gt(inputs, 0)
+    weights_plus = weights * T.gt(weights, 0)
+    inputs_minus = inputs * T.lt(inputs, 0)
+    weights_minus = weights * T.lt(weights, 0)
+    plus_part_a = conv2d(inputs_plus, weights_plus)
+    plus_part_b = conv2d(inputs_minus, weights_minus)
+
+    together = plus_part_a + plus_part_b
+    if bias is not None:
+        bias_plus = bias * T.gt(bias, 0)
+        together +=  bias_plus.dimshuffle('x',0,'x','x')
+    
+    return together
+    
+def _forward_negative_z(inputs, weights, bias=None):
+    inputs_plus = inputs * T.gt(inputs, 0)
+    weights_plus = weights * T.gt(weights, 0)
+    inputs_minus = inputs * T.lt(inputs, 0)
+    weights_minus = weights * T.lt(weights, 0)
+    negative_part_a = conv2d(inputs_plus, weights_minus)
+    negative_part_b = conv2d(inputs_minus, weights_plus)
+
+    together = negative_part_a + negative_part_b
+    if bias is not None:
+        bias_negative = bias * T.lt(bias, 0)
+        together +=  bias_negative.dimshuffle('x',0,'x','x')
+    
+    return together
+
+def _backward_positive_z(inputs, weights, normed_relevances, bias=None):
+    inputs_plus = inputs * T.gt(inputs, 0)
+    weights_plus = weights * T.gt(weights, 0)
+    inputs_minus = inputs * T.lt(inputs, 0)
+    weights_minus = weights * T.lt(weights, 0)
+    # Compute weights+ * inputs+ and weights- * inputs-
+    positive_part_a = conv2d(normed_relevances, 
+          weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    positive_part_a *= inputs_plus
+    positive_part_b = conv2d(normed_relevances, 
+          weights_minus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    positive_part_b *= inputs_minus
+    
+    together = positive_part_a + positive_part_b
+    if bias is not None:
+        bias_plus = bias * T.gt(bias, 0)
+        bias_relevance = bias_plus.dimshuffle('x',0,'x','x') * normed_relevances
+        # Divide bias by weight size before convolving back
+        # mean across channel, 0, 1 dims (hope this is correct?)
+        fraction_bias = bias_relevance / T.prod(weights.shape[1:]).astype(
+            theano.config.floatX)
+        bias_rel_in = conv2d(fraction_bias, 
+          T.ones_like(weights).dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full') 
+        together +=  bias_rel_in
+    return together
+    
+def _backward_negative_z(inputs, weights, normed_relevances, bias=None):
+    inputs_plus = inputs * T.gt(inputs, 0)
+    weights_plus = weights * T.gt(weights, 0)
+    inputs_minus = inputs * T.lt(inputs, 0)
+    weights_minus = weights * T.lt(weights, 0)
+    # Compute weights+ * inputs- and weights+ * inputs+
+    negative_part_a = conv2d(normed_relevances, 
+          weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    negative_part_a *= inputs_minus
+    negative_part_b = conv2d(normed_relevances, 
+          weights_minus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    negative_part_b *= inputs_plus
+    
+    together = negative_part_a + negative_part_b
+    if bias is not None:
+        bias_negative = bias * T.lt(bias, 0)
+        bias_relevance = bias_negative.dimshuffle('x',0,'x','x') * normed_relevances
+        # Divide bias by weight size before convolving back
+        # mean across channel, 0, 1 dims (hope this is correct?)
+        fraction_bias = bias_relevance / T.prod(weights.shape[1:]).astype(
+            theano.config.floatX)
+        bias_rel_in = conv2d(fraction_bias, 
+          T.ones_like(weights).dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full') 
+        together +=  bias_rel_in
+    return together
+    
+    
+def relevance_conv_stable_sign(inputs, weights, out_relevances, bias=None):
+    negative_norm = _forward_negative_z(inputs, weights, bias)
+    positive_norm = _forward_positive_z(inputs, weights, bias)
+    
+    # Set zeros to 1 to prevent division by 0
+    positive_norm_nonzero = positive_norm + T.eq(positive_norm, 0)
+    pos_minus_neg_nonzero = (positive_norm - negative_norm)
+    pos_minus_neg_nonzero +=  T.eq(pos_minus_neg_nonzero, 0)
+    positive_factor = (positive_norm - 2 * negative_norm) / (
+        positive_norm_nonzero * pos_minus_neg_nonzero)
+    
+    positive_rel_normed = out_relevances * positive_factor
+    negative_rel_normed = out_relevances / pos_minus_neg_nonzero
+    
+    in_rel_from_pos = _backward_positive_z(inputs, weights, positive_rel_normed, bias=bias)
+    in_rel_from_neg = _backward_negative_z(inputs, weights, negative_rel_normed, bias=bias)
+    return in_rel_from_pos + in_rel_from_neg
 
 def relevance_dense(out_relevances, in_activations, weights, rule,
     min_in=None, max_in=None):
