@@ -3,7 +3,7 @@ from numpy.random import RandomState
 from braindecode.datahandling.batch_modifier import BandpowerMeaner
 
 def test_phase_equal_after_bandpower_mean():
-    rng = RandomState(30984093284)
+    rng = RandomState(3098284)
     inputs = rng.randn(50,20,1001,1)
     targets = rng.choice(4, size=50)
     target_arr = np.zeros((50,4))

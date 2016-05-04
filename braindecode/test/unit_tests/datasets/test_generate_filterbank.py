@@ -23,7 +23,7 @@ def test_generate_filterbank_failure():
             high_width=10, high_overlap=6)
     assert ("max freq needs to be exactly the center "
             "of a filter band  "
-            "Nearest center: 20") == excinfo.value.message  
+            "Close center: 20") == excinfo.value.message  
     
     with pytest.raises(AssertionError) as excinfo:
         generate_filterbank(min_freq=2, max_freq=20,
@@ -31,4 +31,4 @@ def test_generate_filterbank_failure():
             high_width=10, high_overlap=6)
     assert ("last low freq "
         "needs to be exactly the center of a low_width filter band.  "
-        "Nearest center: 8") == excinfo.value.message 
+        "Close center: 8") == excinfo.value.message 
