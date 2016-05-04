@@ -34,8 +34,22 @@ def create_topo_env_corrs(base_name):
     topo_corrs = compute_topo_corrs(trial_env, trial_acts)
     return topo_corrs
     
+def setup_logging():
+    """ Set up a root logger so that other modules can use logging
+    Adapted from scripts/train.py from pylearn"""
+
+    from pylearn2.utils.logger import (CustomStreamHandler, CustomFormatter)
+
+    root_logger = logging.getLogger()
+    prefix = '%(asctime)s '
+    formatter = CustomFormatter(prefix=prefix)
+    handler = CustomStreamHandler(formatter=formatter)
+    root_logger.handlers  = []
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.INFO)
+    
 if __name__ == "__main__":
-    logging.basicConfig(level='DEBUG')
+    setup_logging()
     create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
             params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
                         low_cut_off_hz="null"))
