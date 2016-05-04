@@ -13,12 +13,12 @@ def create_env_corrs(folder_name, params):
         for name in res_file_names]
     for base_name in all_base_names:
         topo_corrs = create_topo_env_corrs(base_name)
-        np.save(topo_corrs, base_name + 'env_corrs.npy')
+        np.save(topo_corrs, base_name + '.env_corrs.npy')
     
 def create_topo_env_corrs(base_name):
     exp, model = load_exp_and_model(base_name)
     exp.dataset.load()
-    # Hackhack since i know this is correct layer atm
+    # Hackhack since I know this is correct layer atm
     i_layer = 26
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
@@ -26,7 +26,10 @@ def create_topo_env_corrs(base_name):
         i_layer, train_set, n_inputs_per_trial=2)
     trial_acts = compute_trial_acts(model, i_layer, exp.iterator, train_set)
     topo_corrs = compute_topo_corrs(trial_env, trial_acts)
-    
+    return topo_corrs
     
 if __name__ == "__main__":
+    create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
+            params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
+                        low_cut_off_hz="null"))
     
