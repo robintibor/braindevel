@@ -19,7 +19,6 @@ from braindecode.veganlasagne.layer_util import get_receptive_field_size
 from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
 from braindecode.veganlasagne.layers import get_n_sample_preds
 import logging
-from braindecode.datahandling import batch_modifier
 log = logging.getLogger(__name__)
 
 
