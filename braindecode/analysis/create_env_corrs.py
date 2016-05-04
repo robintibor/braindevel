@@ -32,6 +32,7 @@ def create_topo_env_corrs(base_name):
     return topo_corrs
     
 if __name__ == "__main__":
+    logging.basicConfig(level='DEBUG')
     create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
             params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
                         low_cut_off_hz="null"))
