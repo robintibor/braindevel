@@ -12,8 +12,7 @@ def create_env_corrs(folder_name, params):
     res_pool.load_results(folder_name, params=params)
     res_file_names = res_pool.result_file_names()
     all_base_names = [name.replace('.result.pkl', '')
-        for name in res_file_names]#
-	
+        for name in res_file_names]
     for i_file, base_name in enumerate(all_base_names):
         assert os.path.isfile(base_name + ".env.npy") 
     for i_file, base_name in enumerate(all_base_names):
