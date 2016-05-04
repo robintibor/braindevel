@@ -1,4 +1,5 @@
 import numpy as np
+import os.path
 from braindecode.results.results import ResultPool
 from braindecode.experiments.load import load_exp_and_model
 from braindecode.analysis.envelopes import load_trial_env, compute_topo_corrs
@@ -12,6 +13,8 @@ def create_env_corrs(folder_name, params):
     res_file_names = res_pool.result_file_names()[1:]
     all_base_names = [name.replace('.result.pkl', '')
         for name in res_file_names]
+    for i_file, base_name in enumerate(all_base_names):
+        assert os.path.isfile(base_name + ".env.npy") 
     for i_file, base_name in enumerate(all_base_names):
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file+1, len(all_base_names)))
