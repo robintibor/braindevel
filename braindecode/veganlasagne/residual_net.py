@@ -7,11 +7,13 @@ from lasagne.layers.shape import PadLayer
 from braindecode.veganlasagne.layers import StrideReshapeLayer
 from braindecode.veganlasagne.random_switch import RandomSwitchLayer
 import theano.tensor as T
+from lasagne.layers.pool import Pool2DLayer
 
 
 # create a residual learning building block with two stacked 3x3 convlayers as in paper
 def residual_block(l, batch_norm_alpha, batch_norm_epsilon,
     nonlinearity, survival_prob, add_after_nonlin,
+    reduction_method, reduction_pool_mode,
     increase_units_factor=None, half_time=False, projection=False,
     ):
     assert survival_prob <= 1 and survival_prob >= 0
@@ -23,11 +25,26 @@ def residual_block(l, batch_norm_alpha, batch_norm_epsilon,
     else:
         out_num_filters = input_num_filters
 
-    stack_1 = batch_norm(Conv2DLayer(l, num_filters=out_num_filters, filter_size=(3,3), 
+    if (not half_time) or (reduction_method == 'conv'):
+        stack_1 = batch_norm(Conv2DLayer(l, num_filters=out_num_filters, filter_size=(3,3), 
                                    stride=(1,1), nonlinearity=nonlinearity, pad='same', 
                                    W=lasagne.init.HeNormal(gain='relu')),
                                    epsilon=batch_norm_epsilon,
                                    alpha=batch_norm_alpha)
+    else:
+        assert half_time and reduction_method == 'pool'
+        stack_1 = Pool2DLayer(l, pool_size=(3,1), stride=(1,1), pad=(1,0), 
+            mode=reduction_pool_mode)
+        # 1x1 conv here, therefore can do stride later without problems
+        # otherwise would have to do stride here before
+        # and make extra if condition later (only reshape with stride
+        # in case of reduction method conv)...
+        stack_1 = batch_norm(Conv2DLayer(stack_1, num_filters=out_num_filters, filter_size=(1,1), 
+                                   stride=(1,1), nonlinearity=nonlinearity, pad='same', 
+                                   W=lasagne.init.HeNormal(gain='relu')),
+                                   epsilon=batch_norm_epsilon,
+                                   alpha=batch_norm_alpha)
+        
     if half_time:
         stack_1 = StrideReshapeLayer(stack_1,n_stride=2)
     stack_2 = batch_norm(Conv2DLayer(stack_1, num_filters=out_num_filters, filter_size=(3,3), 

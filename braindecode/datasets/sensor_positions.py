@@ -20,6 +20,28 @@ cap_positions = \
     [[],[],[],[],[],[],[],[],[],'OI1h',[],'OI2h',[],[],[],[],[],[],[],[],[]],\
     ['EMG_LH',[],'EMG_LF',[],[],[],[],[],'I1',[],'Iz',[],'I2',[],[],[],[],[],'EMG_RF',[],'EMG_RH']]
 
+tight_cap_positions = [
+    [[], [], [], [], 'Fp1', 'FPz', 'Fp2', [], [], [], []],
+    [[], [], [], 'AFp3h', [], [], [], 'Afp4h', [], [], []],
+    [[], 'AF7', [], 'AF3', [], 'AFz', [], 'AF4', [], 'AF8', []],
+    [[], [], 'AFF5h', [], 'AFF1', [], 'AFF2', [], 'AFF6h', [], []],
+    [[], 'F7', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', []],
+    ['FFT9h', 'FFT7h', 'FFC5h', 'FFC3h', 'FFC1h', [], 'FFC2h', 'FFC4h', 'FFC6h', 'FFT8h', 'FFT10h'],
+    ['FT9', 'FT7', 'FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'FT10'],
+    ['FTT9h', 'FTT7h', 'FCC5h', 'FCC3h', 'FCC1h', [], 'FCC2h', 'FCC4h', 'FCC6h', 'FTT8h', 'FTT10h'],
+    ['M1', 'T7', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'T8', 'M2'],
+    [[], 'TTP7h', 'CCP5h', 'CCP3h', 'CCP1h', [], 'CCP2h', 'CCP4h', 'CCP6h', 'TTP8h', []],
+    [[], 'TP7', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 'TP8', []],
+    ['TPP9h', 'TPP7h', 'CPP5h', 'CPP3h', 'CPP1h', [], 'CPP2h', 'CPP4h', 'CPP6h', 'TPP8h', 'TPP10h'],
+    ['P9', 'P7', 'P5', 'P3', 'P1', 'Pz', 'P2', 'P4', 'P6', 'P8', 'P10'],
+    ['PPO9h', [], 'PPO5h', [], 'PPO1', [], 'PPO2', [], 'PPO6h', [], 'PPO10h'],
+    ['PO9', 'PO7', 'PO5', 'PO3', [], 'POz', [], 'PO4', 'PO6', 'PO8', 'PO10'],
+    ['POO9h', [], [], 'POO3h', [], [], [], 'POO4h', [], [], 'POO10h'],
+    [[], [], [], [], 'O1', 'Oz', 'O2', [], [], [], []],
+    [[], [], [], [], 'OI1h', [], 'OI2h', [], [], [], []],
+    [[], [], [], [], 'I1', 'Iz', 'I2', [], [], [], []]]
+
+
 tight_C_positions = [
     ['FFC5h','FFC3h','FFC1h',[],'FFC2h','FFC4h','FFC6h'],
     ['FC5','FC3','FC1','FCz','FC2','FC4','FC6'],
