@@ -329,7 +329,7 @@ def relevance_dense(out_relevances, in_activations, weights, rule,
     """Party copied from paper supplementary pseudocode:
     http://arxiv.org/abs/1512.02479
     Partly adapted for propagating multiple trials at once"""
-    assert rule in ['w_sqr', 'z_plus', 'z_b']
+    assert rule in ['w_sqr', 'z_plus', 'z_b', 'adapt_z_b']
     # weights are features x output_units => input_units x output_units
     # in_activations are trials x input_units
     if rule == 'w_sqr':
@@ -364,23 +364,25 @@ def relevance_dense(out_relevances, in_activations, weights, rule,
         in_relevances = Z_I_J * out_relevances.dimshuffle(0,'x',1)
         in_relevances = T.sum(in_relevances, axis=2)
         return in_relevances
+    elif rule == 'adapt_z_b':
+        # clip to zero both min and max to prevent mistakes...
+        min_in = T.min(in_activations)
+        min_in = T.minimum(0, min_in)
+        max_in = T.max(in_activations)
+        max_in = T.maximum(0, max_in)
         
-        
-        
-        U = weights * T.lt(weights, 0)
-        V = weights * T.gt(weights, 0)
-        R_Norm = T.dot(weights.T, in_activations)
-        # we only expect two global min in and max in values
-        # therefore no need to do dot product here just multiply and um
-        R_Norm -= T.sum(V * min_in, axis=0)
-        R_Norm -= T.sum(U * max_in, axis=0)
-        # prevent division by 0...
-        R_Norm += T.eq(R_Norm, 0) * 1
-        N = out_relevances / R_Norm
-        in_relevances = in_activations * (T.dot(weights, N))
-        in_relevances -= min_in * (T.dot(V, N))
-        in_relevances -= max_in * (T.dot(U, N))
+        weights_plus = weights * T.gt(weights, 0)
+        weights_minus = weights * T.lt(weights, 0)
+        Z_I_J = weights.dimshuffle('x',0,1) * in_activations.dimshuffle(
+            0,1,'x')
+        Z_I_J -= weights_plus.dimshuffle('x',0,1) * min_in
+        Z_I_J -= weights_minus.dimshuffle('x',0,1) * max_in
+        Z_I_J = Z_I_J / T.sum(Z_I_J, axis=1, keepdims=True)
+        in_relevances = Z_I_J * out_relevances.dimshuffle(0,'x',1)
+        in_relevances = T.sum(in_relevances, axis=2)
         return in_relevances
+        
+        
 
 def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
     # channels x channels x pool_0 x pool_1
@@ -395,12 +397,11 @@ def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
     pool_ones = pool_ones * T.eye(out_relevances.shape[1],
                               out_relevances.shape[1]).dimshuffle(
                                  0,1,'x','x')
-    norms_for_relevances = conv2d(inputs, 
-                           pool_ones, subsample=pool_stride, 
-                           border_mode='valid')
+    norms_for_relevances = conv2d(inputs,
+        pool_ones, subsample=pool_stride, border_mode='valid')
     # prevent division by 0...
     # the relevance which had norm zero will not be redistributed anyways..
-    # so it doesnt matter which normalization factor you choose here,
+    # so it doesn't matter which normalization factor you choose here,
     # only thing is to prevent NaNs...
     # however this means heatmapping is no longer completely preserving
     # 
@@ -409,14 +410,13 @@ def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
     # stride has to be taken into account, see 
     # http://stackoverflow.com/a/28752057/1469195
     upsampled_relevances = T.zeros((normed_relevances.shape[0],
-        normed_relevances.shape[1], 
+        normed_relevances.shape[1],
         normed_relevances.shape[2] * pool_stride[0] - pool_stride[0] + 1, 
         normed_relevances.shape[3] * pool_stride[1] - pool_stride[1] + 1, 
         ), dtype=np.float32)
     upsampled_relevances = T.set_subtensor(
-        upsampled_relevances[:, :, :pool_stride[0], ::pool_stride[1]], 
+        upsampled_relevances[:, :, ::pool_stride[0], ::pool_stride[1]], 
         normed_relevances)
-    
     in_relevances = conv2d(upsampled_relevances,
                            pool_ones, subsample=(1,1),
                            border_mode='full')

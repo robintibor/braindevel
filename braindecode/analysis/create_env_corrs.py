@@ -19,7 +19,7 @@ def create_env_corrs(folder_name, params):
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file+1, len(all_base_names)))
         topo_corrs = create_topo_env_corrs(base_name)
-        np.save(topo_corrs, base_name + '.env_corrs.npy')
+        np.save(base_name + '.env_corrs.npy', topo_corrs)
     
 def create_topo_env_corrs(base_name):
     exp, model = load_exp_and_model(base_name)
