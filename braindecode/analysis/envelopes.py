@@ -109,15 +109,18 @@ def get_meaned_trial_env(env, field_size, n_trials, n_inputs_per_trial,
     log.info("Done...")
     return all_trial_envs
 
-def create_envelopes(folder_name, params):
+def create_envelopes(folder_name, params, start, stop):
     res_pool = ResultPool()
     res_pool.load_results(folder_name, params=params)
     res_file_names = res_pool.result_file_names()
     yaml_file_names = [name.replace('.result.pkl', '.yaml')
         for name in res_file_names]
-    for i_file, file_name in enumerate(yaml_file_names):
+    stop = stop or len(yaml_file_names)
+    i_file = start
+    for i_file in xrange(start, stop):
+        file_name = yaml_file_names[i_file]
         log.info("Running {:s} ({:d} of {:d})".format(
-            file_name, i_file+1, len(yaml_file_names)))
+            file_name, i_file+1, stop))
         create_envelopes_for_experiment(file_name)
 
 
@@ -180,6 +183,10 @@ def parse_command_line_arguments():
     parser.add_argument('--params', nargs='*', default=[],
                         help='''Parameters to override default values/other values given in experiment file.
                         Supply it in the form parameter1=value1 parameters2=value2, ...''')
+    parser.add_argument('--start', default=1, type=int,
+                        help='''Start with this envelope file index (1-based, after selection of results)''')
+    parser.add_argument('--stop', default=None, type=int, 
+                        help='''Stop at this envelope file index (1-based, after selection ofresults)''')
     args = parser.parse_args()
 
     # dictionary values are given with = inbetween, parse them here by hand
@@ -187,17 +194,20 @@ def parse_command_line_arguments():
         yaml.load(param_and_value.split('=')[1]))
                         for param_and_value in args.params]
     param_dict =  dict(params_and_values)
+
     
     args.params = param_dict
-    
+    # Correct for 1 based index, transform to 0-based
+    args.start = args.start - 1    
     return args
 
 if __name__ == "__main__":
     logging.basicConfig(level='DEBUG')
     args = parse_command_line_arguments()
     if args.folder is None:
-        create_envelopes('data/models/paper/ours/cnt/deep4/car/',
-            params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null"))
+        create_envelopes('data/models-backup/paper/ours/cnt/deep4/car/',
+            params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
+                        low_cut_off_hz="null"), start=args.start, stop=args.stop)
         """
         create_envelopes('data/models/paper/ours/cnt/deep4/',
             params=dict(layers='$cnt_4l',
@@ -214,5 +224,5 @@ if __name__ == "__main__":
     else:
         print args.experiments_folder
         print args.params
-        create_envelopes(args.folder, args.params)
+        create_envelopes(args.folder, args.params, start=args.start, stop=args.stop)
         
