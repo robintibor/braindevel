@@ -176,8 +176,21 @@ def relevance_conv_z_plus(out_relevances, inputs, weights):
     
     return in_relevances_proper
 
-def relevance_conv_a_b(out_relevances, inputs, weights):
-    return "TODO"
+def relevance_conv_a_b(inputs, weights, out_relevances, a,b, bias=None):
+    positive_norm = _forward_positive_z(inputs, weights, bias)
+    negative_norm = _forward_negative_z(inputs, weights, bias)
+    # set 0s to 1
+    positive_norm_nonzero = positive_norm + T.eq(positive_norm, 0)
+    # set 0s to -1
+    negative_norm_nonzero = negative_norm - T.eq(negative_norm, 0)
+    
+    positive_rel_normed = out_relevances / positive_norm_nonzero
+    # relevances now already negative :))
+    negative_rel_normed = out_relevances / negative_norm_nonzero
+    
+    in_rel_from_pos = _backward_positive_z(inputs, weights, positive_rel_normed, bias=bias)
+    in_rel_from_neg = _backward_negative_z(inputs, weights, negative_rel_normed, bias=bias)
+    return a * in_rel_from_pos - b * in_rel_from_neg
 
 def relevance_conv_z_b(out_relevances, inputs, weights, min_in, max_in):
     #assert min_in <= 0

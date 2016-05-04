@@ -3,7 +3,7 @@ import theano
 import theano.tensor as T
 from braindecode.analysis.heatmap import (relevance_pool,
     create_back_conv_z_b_fn, create_back_conv_w_sqr_fn, create_back_dense_fn,
-    create_back_conv_z_plus_fn, relevance_conv_stable_sign)
+    create_back_conv_z_plus_fn, relevance_conv_stable_sign, relevance_conv_a_b)
     
 def test_conv_w_sqr_theano():
     conv_w_sqr_fun = create_back_conv_w_sqr_fn()
@@ -114,6 +114,22 @@ def test_conv_stable_sign():
                np.array([-2], dtype=np.float32))
     
     assert np.allclose([[[[-8/5.0, 32/5.0 - 4/5.0 - 6/7.0, -8/7.0]]]], in_relevance)
+
+def test_conv_a_b():
+    inputs = T.ftensor4()
+    weights = T.ftensor4()
+    relevances = T.ftensor4()
+    bias = T.fvector()
+    in_rel = relevance_conv_a_b(inputs, weights, 
+        relevances, a=2, b=1, bias=bias)
+    in_rel_fn = theano.function([inputs, weights, relevances, bias], 
+        in_rel)
+    in_relevance = in_rel_fn(np.array([[[[-1,-2,3]]]], dtype=np.float32), 
+               np.array([[[[1,-1]]]], dtype=np.float32)[:,:,::-1,::-1],
+               np.array([[[[4,2]]]], dtype=np.float32),
+               np.array([0], dtype=np.float32))
+    assert np.allclose([[[[-4, 2*4 - 4/5.0,-6/5.0]]]], in_relevance)
+
 
 def test_dense_w_sqr_theano():
     back_dense_fn = create_back_dense_fn('w_sqr')
