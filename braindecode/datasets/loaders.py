@@ -91,6 +91,12 @@ class BBCIDataset(object):
                 for obj_ref in class_name_set]
             if all_class_names == ['Right Hand', 'Left Hand', 'Rest', 'Feet']:
                 pass
+            elif ((all_class_names == ['1', '10', '11', '111', '12', '13', '150',
+                '2', '20', '22', '3', '30', '33', '4', '40', '44', '99']) or 
+                  (all_class_names == ['1', '10', '11', '12', '13', '150', 
+                       '2', '20', '22', '3', '30', '33', '4', '40', '44', '99']) or
+                  (all_class_names == ['1', '2', '3', '4'])):
+                pass # Semantic classes
             elif  all_class_names == ['Rest', 'Feet', 'Left Hand', 'Right Hand']:
                 # Have to swap from
                 # ['Rest', 'Feet', 'Left Hand', 'Right Hand']
