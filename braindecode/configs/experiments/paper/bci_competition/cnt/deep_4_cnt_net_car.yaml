@@ -6,7 +6,7 @@
     variants: [[{
         save_path: ['data/models/paper/bci-competition/cnt/deep4/car/'],
         cnt_preprocessors: [$resample_car_highpass_standardize],
-        low_cut_off_hz: ["null", 4], 
+        low_cut_off_hz: ["null"], 
         layers: [$deep_5],
 
         drop_prob: [0.5],
@@ -27,9 +27,18 @@
         first_nonlin: ['$elu'],
         first_pool_mode: ['max'],
         first_pool_nonlin: [$identity],
+        later_nonlin: ['$elu'],
+        later_pool_mode: ['max'],
+        later_pool_nonlin: [$identity],
         loss_expression: [$tied_neighbours],
         
+        sensor_names: [$all_EEG_sensors],
         layer_names_to_norms: [$layer_names_to_norms],
+        
+        variants: [[{
+            first_nonlin: ['$relu'],
+            later_nonlin: ['$relu'],
+        }]]
        }
     ]]
 }

@@ -50,14 +50,11 @@
         
         sensor_names: [$all_EEG_sensors],
         layer_names_to_norms: [$layer_names_to_norms],
-#        variants: [[{
-#            dataset_filename: ['data/BBCI-without-last-runs/BhNoMoSc1S001R01_ds10_1-12.BBCI.mat'],
-#            test_filename: ['data/BBCI-only-last-runs/BhNoMoSc1S001R13_ds10_1-2BBCI.mat'],
-#        },
-#        {
-#            dataset_filename: ['data/BBCI-without-last-runs/LuFiMoSc3S001R01_ds10_1-11.BBCI.mat'],
-#            test_filename: ['data/BBCI-only-last-runs/LuFiMoSc3S001R12_ds10_1-2BBCI.mat'],
-#        }]]
+
+        variants: [[{
+            first_nonlin: ['$relu'],
+            later_nonlin: ['$relu'],
+        }]]
        }
     ]]
 }
