@@ -125,7 +125,7 @@ def create_envelopes(folder_name, params, start, stop):
 
 def create_envelopes_for_experiment(experiment_file_name):
     iterator, train_set = _load_experiment(experiment_file_name)
-    filterbands = generate_filterbank(min_freq=1, max_freq=114,
+    filterbands = generate_filterbank(min_freq=1, max_freq=113,
         last_low_freq=31, low_width=6, low_overlap=3,
         high_width=8, high_overlap=4)
     env_per_filterband = create_envelops_per_filterband(iterator,
