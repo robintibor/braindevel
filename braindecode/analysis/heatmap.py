@@ -66,7 +66,7 @@ def create_heatmap(out_relevances, input_trials, all_layers,
         
     for rule in all_rules:
         assert rule in ['w_sqr', 'z_plus', 'z_b', 'adapt_z_b', 'sign_stable', 
-            'a_b','z', 'a_b_sign_switch', 'a_b_abs', None]
+            'a_b','z', 'a_b_sign_switch', 'a_b_abs', 'a_b_in_plus', None]
     assert len(all_rules) == len(all_layers), ("number of rules "
         "{:d} number layers {:d}".format(len(all_rules), len(all_layers)))
     
@@ -135,7 +135,7 @@ def create_heatmap(out_relevances, input_trials, all_layers,
 def relevance_conv(out_relevances, inputs, weights, rule, bias=None, min_in=None,
         max_in=None, a=None, b=None):
     assert rule in ['w_sqr', 'z', 'z_plus', 'z_b', 'adapt_z_b', 'sign_stable',
-        'a_b', 'a_b_sign_switch', 'a_b_abs']
+        'a_b', 'a_b_sign_switch', 'a_b_abs', 'a_b_in_plus']
     if rule == 'w_sqr':
         return relevance_conv_w_sqr(out_relevances, weights, bias=bias)
     elif rule == 'z_plus':
@@ -170,6 +170,9 @@ def relevance_conv(out_relevances, inputs, weights, rule, bias=None, min_in=None
     elif rule == 'a_b_abs':
         return relevance_conv_a_b_abs(inputs, weights, out_relevances, 
             a=a,b=b, bias=bias)
+    elif rule == 'a_b_in_plus':
+        return relevance_conv_a_b_in_plus(inputs, weights, out_relevances,
+            a, b, bias)
         
 
 def relevance_conv_w_sqr(out_relevances, weights, bias=None):
@@ -493,12 +496,24 @@ def relevance_conv_a_b_abs(inputs, weights, out_relevances, a,b, bias=None):
     in_relevance = a * in_rel_plus - b * in_rel_neg
     return in_relevance
 
+
+def relevance_conv_a_b_in_plus(inputs, weights, out_relevances, a,b, bias=None):
+    assert a is not None
+    assert b is not None
+    assert a - b == 1
+    inputs = inputs * T.gt(inputs, 0)
+    #if bias is not None:
+    #    # make all bias positive
+    #    bias = bias * T.gt(bias, 0)
+    return relevance_conv_a_b(inputs, weights, out_relevances, a, b, bias)
+
+
 def relevance_dense(out_relevances, in_activations, weights, rule,
     min_in=None, max_in=None, a=None, b=None, bias=None):
     """Party copied from paper supplementary pseudocode:
     http://arxiv.org/abs/1512.02479"""
     assert rule in ['w_sqr', 'z', 'z_plus', 'z_b', 'adapt_z_b','sign_stable',
-        'a_b', 'a_b_sign_switch', 'a_b_abs']
+        'a_b', 'a_b_sign_switch', 'a_b_abs', 'a_b_in_plus']
     # weights are features x output_units => input_units x output_units
     # in_activations are trials x input_units
     if rule == 'w_sqr':
@@ -691,7 +706,36 @@ def relevance_dense(out_relevances, in_activations, weights, rule,
         in_relevances = a * in_plus - b * in_neg
         in_relevances = T.sum(in_relevances, axis=2)
         return in_relevances
+    elif rule == 'a_b_in_plus':
+        assert a is not None
+        assert b is not None
+        assert a - b == 1
+        in_activations = in_activations * T.gt(in_activations, 0)
+        #if bias is not None:
+        #    # make all bias positive
+        #    bias = bias * T.gt(bias, 0)
+        Z_I_J = weights.dimshuffle('x',0,1) * in_activations.dimshuffle(
+            0,1,'x')
+        Z_I_J_plus = Z_I_J * T.gt(Z_I_J,0)
+        Z_I_J_neg = Z_I_J * T.lt(Z_I_J,0)
+        if bias is not None:
+            bias = bias.dimshuffle('x','x', 0)
+            # redistribute bias proportionally across all inputs
+            Z_I_J_plus += (bias * T.gt(bias,0)) / weights.shape[0]
+            Z_I_J_neg += (bias * T.lt(bias,0)) / weights.shape[0]
+        plus_sum = Z_I_J_plus.sum(axis=1, keepdims=True)
+        neg_sum = Z_I_J_neg.sum(axis=1, keepdims=True)
+        # Set 0s to 1 to avoid division by 0
+        plus_sum = plus_sum + T.eq(0,plus_sum)
+        neg_sum = neg_sum + T.eq(0,neg_sum)
         
+        Z_I_J_plus_normed = Z_I_J_plus / plus_sum
+        # Now already positive again (negative divided negative)
+        Z_I_J_neg_normed = Z_I_J_neg / neg_sum
+        Z_I_J_normed = (a * Z_I_J_plus_normed - b * Z_I_J_neg_normed)
+        in_relevances = out_relevances.dimshuffle(0,'x',1) * Z_I_J_normed
+        in_relevances = T.sum(in_relevances, axis=2)
+        return in_relevances
 
 def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
     # channels x channels x pool_0 x pool_1
