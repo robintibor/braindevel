@@ -231,6 +231,8 @@ def load_layers_from_dict(train_dict):
 
 def create_experiment(yaml_filename):
     """Utility function to create experiment from yaml file"""
+    # for reproducibility for layer weights
+    lasagne.random.set_rng(RandomState(9859295))
     train_dict = yaml_parse.load(open(yaml_filename, 'r'))
     layers = load_layers_from_dict(train_dict)
     final_layer = layers[-1]
