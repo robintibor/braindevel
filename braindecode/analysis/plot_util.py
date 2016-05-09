@@ -610,8 +610,10 @@ def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
                 interpolation='nearest', cmap=cm.PuRd, origin='lower',
                 vmin=0, vmax=vmax)
         ax.set_xticks([])
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(yticklabels)
+        if yticks is not None:
+            ax.set_yticks(yticks)
+        if yticklabels is not None:
+            ax.set_yticklabels(yticklabels)
         ax.tick_params(axis='both', which='major', labelsize=6)
         ax.grid(color='k', linewidth=0.1, linestyle=':')
     return figure

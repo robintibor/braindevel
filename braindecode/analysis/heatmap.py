@@ -3,10 +3,12 @@ import numpy as np
 import theano
 import lasagne
 from theano.tensor.nnet import conv2d
+import sklearn.preprocessing
+import matplotlib.pyplot as plt
+from numpy.random import RandomState
 from braindecode.veganlasagne.layers import get_input_shape, \
     StrideReshapeLayer
 from braindecode.veganlasagne.batch_norm import BatchNormLayer
-import sklearn.preprocessing
 import logging
 log = logging.getLogger(__name__)
 
@@ -64,7 +66,7 @@ def create_heatmap(out_relevances, input_trials, all_layers,
         
     for rule in all_rules:
         assert rule in ['w_sqr', 'z_plus', 'z_b', 'adapt_z_b', 'sign_stable', 
-            'a_b', None]
+            'a_b','z', 'a_b_sign_switch', 'a_b_abs', None]
     assert len(all_rules) == len(all_layers), ("number of rules "
         "{:d} number layers {:d}".format(len(all_rules), len(all_layers)))
     
@@ -81,12 +83,7 @@ def create_heatmap(out_relevances, input_trials, all_layers,
         layer = all_layers[i_layer]
         in_activations = activations_per_layer[i_layer-1]
         rule = all_rules[i_layer]
-        # from 1 to i_layer to ignore 0th layer which
-        # will not be backpropagated through
-        weighted_layers_before = any([hasattr(l, 'W') 
-            for l in all_layers[1:i_layer]])
         if isinstance(layer, lasagne.layers.DenseLayer):
-            sign_by_weights = weighted_layers_before
             if in_activations.ndim > 2:
                 in_act_flat = in_activations.flatten(2)
             else:
@@ -96,7 +93,7 @@ def create_heatmap(out_relevances, input_trials, all_layers,
                 bias = layer.b
             out_relevances = relevance_dense(out_relevances,
                  in_act_flat, layer.W, rule, min_in, max_in, a=a,b=b,
-                 bias=bias, sign_by_weights=sign_by_weights)
+                 bias=bias)
         elif hasattr(layer, 'pool_size'):
             if pool_by_grad:
                 out_relevances = relevance_back_by_grad(out_relevances,
@@ -106,13 +103,12 @@ def create_heatmap(out_relevances, input_trials, all_layers,
                     pool_size=layer.pool_size, pool_stride=layer.stride)
         elif hasattr(layer, 'filter_size'):
             
-            sign_by_weights = weighted_layers_before
             bias = None
             if biases == True:
                 bias = layer.b
             out_relevances = relevance_conv(out_relevances, in_activations,
                 layer.W, rule=rule, min_in=min_in, max_in=max_in,
-                a=a,b=b,bias=bias, sign_by_weights=sign_by_weights)
+                a=a,b=b,bias=bias)
         elif isinstance(layer, StrideReshapeLayer):
             out_relevances = relevance_back_by_grad(out_relevances,
                 in_activations, layer)
@@ -137,8 +133,9 @@ def create_heatmap(out_relevances, input_trials, all_layers,
         return all_heatmaps[-1]
 
 def relevance_conv(out_relevances, inputs, weights, rule, bias=None, min_in=None,
-        max_in=None, a=None, b=None, sign_by_weights=False):
-    assert rule in ['w_sqr', 'z_plus', 'z_b', 'adapt_z_b', 'sign_stable', 'a_b']
+        max_in=None, a=None, b=None):
+    assert rule in ['w_sqr', 'z', 'z_plus', 'z_b', 'adapt_z_b', 'sign_stable',
+        'a_b', 'a_b_sign_switch', 'a_b_abs']
     if rule == 'w_sqr':
         return relevance_conv_w_sqr(out_relevances, weights, bias=bias)
     elif rule == 'z_plus':
@@ -160,15 +157,22 @@ def relevance_conv(out_relevances, inputs, weights, rule, bias=None, min_in=None
             min_in, max_in, bias=bias)
     elif rule == 'sign_stable':
         return relevance_conv_stable_sign(inputs, weights, out_relevances,
-            sign_by_weights=sign_by_weights, 
             bias=bias)
     elif rule == 'a_b':
         return relevance_conv_a_b(inputs, weights, out_relevances, 
-            a=a,b=b,sign_by_weights=sign_by_weights, bias=bias)
+            a=a,b=b, bias=bias)
+    elif rule == 'z':
+        return relevance_conv_z(out_relevances, inputs, weights, 
+            bias=bias)
+    elif rule == 'a_b_sign_switch':
+        return relevance_conv_a_b_sign_switch(inputs, weights, out_relevances, 
+            a=a,b=b, bias=bias)
+    elif rule == 'a_b_abs':
+        return relevance_conv_a_b_abs(inputs, weights, out_relevances, 
+            a=a,b=b, bias=bias)
         
 
 def relevance_conv_w_sqr(out_relevances, weights, bias=None):
-    raise ValueError("w_Sqr seems to be broken, fix it first (Relevance is not preserved(!)")
     if bias is not None:
         log.warning("Bias not respected for conv w_sqr")
     weights_sqr = weights * weights
@@ -218,6 +222,39 @@ def relevance_conv_z_plus(out_relevances, inputs, weights, bias=None):
     
     return in_relevances_proper
 
+
+def relevance_conv_z(out_relevances, inputs, weights, bias=None):
+    norms_for_relevances = conv2d(inputs, weights)
+    if bias is not None:
+        norms_for_relevances +=  bias.dimshuffle('x',0,'x','x')
+    # stabilize
+    # prevent division by 0 and division by small numbers
+    eps = 1e-4
+    norms_for_relevances += (T.sgn(norms_for_relevances) * eps)
+    norms_for_relevances += (T.eq(norms_for_relevances, 0) * eps)
+    
+    normed_relevances = out_relevances / norms_for_relevances
+    # upconv
+    in_relevances = conv2d(normed_relevances, 
+                           weights.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+                           border_mode='full')
+   
+    in_relevances_proper = in_relevances * inputs
+    
+    if bias is not None:
+        bias_relevance = bias.dimshuffle('x',0,'x','x') * normed_relevances
+        # Divide bias by weight size before convolving back
+        # mean across channel, 0, 1 dims (hope this is correct?)
+        fraction_bias = bias_relevance / T.prod(weights.shape[1:]).astype(
+            theano.config.floatX)
+        bias_rel_in = conv2d(fraction_bias, 
+          T.ones_like(weights).dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+        in_relevances_proper +=  bias_rel_in
+    
+    return in_relevances_proper
+
+
 def relevance_conv_z_b(out_relevances, inputs, weights, min_in, max_in, bias=None):
     # min in /max in can be symbolic or number, so no way to check
     # any assertions here  
@@ -245,63 +282,50 @@ def relevance_conv_z_b(out_relevances, inputs, weights, min_in, max_in, bias=Non
     return in_relevances
 
 
-def _forward_positive_z(inputs, weights, sign_by_weights, bias=None):
+def _forward_positive_z(inputs, weights, bias=None):
     inputs_plus = inputs * T.gt(inputs, 0)
     weights_plus = weights * T.gt(weights, 0)
     inputs_minus = inputs * T.lt(inputs, 0)
     weights_minus = weights * T.lt(weights, 0)
     
-    if sign_by_weights:
-        together = conv2d(T.abs_(inputs), weights_plus)
-    else:
-        plus_part_a = conv2d(inputs_plus, weights_plus)
-        plus_part_b = conv2d(inputs_minus, weights_minus)
-        together = plus_part_a + plus_part_b
+    plus_part_a = conv2d(inputs_plus, weights_plus)
+    plus_part_b = conv2d(inputs_minus, weights_minus)
+    together = plus_part_a + plus_part_b
     if bias is not None:
         bias_plus = bias * T.gt(bias, 0)
         together +=  bias_plus.dimshuffle('x',0,'x','x')
     
     return together
     
-def _forward_negative_z(inputs, weights, sign_by_weights, bias=None):
+def _forward_negative_z(inputs, weights, bias=None):
     inputs_plus = inputs * T.gt(inputs, 0)
     weights_plus = weights * T.gt(weights, 0)
     inputs_minus = inputs * T.lt(inputs, 0)
     weights_minus = weights * T.lt(weights, 0)
-    if sign_by_weights:
-        together = conv2d(T.abs_(inputs), weights_minus)
-    else:
-        negative_part_a = conv2d(inputs_plus, weights_minus)
-        negative_part_b = conv2d(inputs_minus, weights_plus)
-        together = negative_part_a + negative_part_b
+    negative_part_a = conv2d(inputs_plus, weights_minus)
+    negative_part_b = conv2d(inputs_minus, weights_plus)
+    together = negative_part_a + negative_part_b
     if bias is not None:
         bias_negative = bias * T.lt(bias, 0)
         together +=  bias_negative.dimshuffle('x',0,'x','x')
     
     return together
 
-def _backward_positive_z(inputs, weights, normed_relevances, sign_by_weights,
-        bias=None):
+def _backward_positive_z(inputs, weights, normed_relevances, bias=None):
     inputs_plus = inputs * T.gt(inputs, 0)
     weights_plus = weights * T.gt(weights, 0)
     inputs_minus = inputs * T.lt(inputs, 0)
     weights_minus = weights * T.lt(weights, 0)
-    if sign_by_weights:
-        together = conv2d(normed_relevances, 
-              weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
-              border_mode='full')
-        together *= T.abs_(inputs)
-    else:
-        # Compute weights+ * inputs+ and weights- * inputs-
-        positive_part_a = conv2d(normed_relevances, 
-              weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
-              border_mode='full')
-        positive_part_a *= inputs_plus
-        positive_part_b = conv2d(normed_relevances, 
-              weights_minus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
-              border_mode='full')
-        positive_part_b *= inputs_minus
-        together = positive_part_a + positive_part_b
+    # Compute weights+ * inputs+ and weights- * inputs-
+    positive_part_a = conv2d(normed_relevances, 
+          weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    positive_part_a *= inputs_plus
+    positive_part_b = conv2d(normed_relevances, 
+          weights_minus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    positive_part_b *= inputs_minus
+    together = positive_part_a + positive_part_b
     if bias is not None:
         bias_plus = bias * T.gt(bias, 0)
         bias_relevance = bias_plus.dimshuffle('x',0,'x','x') * normed_relevances
@@ -315,29 +339,22 @@ def _backward_positive_z(inputs, weights, normed_relevances, sign_by_weights,
         together +=  bias_rel_in
     return together
     
-def _backward_negative_z(inputs, weights, normed_relevances, sign_by_weights,
-        bias=None):
+def _backward_negative_z(inputs, weights, normed_relevances, bias=None):
     inputs_plus = inputs * T.gt(inputs, 0)
     weights_plus = weights * T.gt(weights, 0)
     inputs_minus = inputs * T.lt(inputs, 0)
     weights_minus = weights * T.lt(weights, 0)
-    if sign_by_weights:
-        together = conv2d(normed_relevances, 
-              weights_minus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
-              border_mode='full')
-        together *= T.abs_(inputs)
-    else:
-        # Compute weights+ * inputs- and weights- * inputs+
-        negative_part_a = conv2d(normed_relevances, 
-              weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
-              border_mode='full')
-        negative_part_a *= inputs_minus
-        negative_part_b = conv2d(normed_relevances, 
-              weights_minus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
-              border_mode='full')
-        negative_part_b *= inputs_plus
+    # Compute weights+ * inputs- and weights- * inputs+
+    negative_part_a = conv2d(normed_relevances, 
+          weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    negative_part_a *= inputs_minus
+    negative_part_b = conv2d(normed_relevances, 
+          weights_minus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    negative_part_b *= inputs_plus
         
-        together = negative_part_a + negative_part_b
+    together = negative_part_a + negative_part_b
     if bias is not None:
         bias_negative = bias * T.lt(bias, 0)
         bias_relevance = bias_negative.dimshuffle('x',0,'x','x') * normed_relevances
@@ -352,16 +369,9 @@ def _backward_negative_z(inputs, weights, normed_relevances, sign_by_weights,
     return together
     
     
-def relevance_conv_stable_sign(inputs, weights, out_relevances, 
-    sign_by_weights, bias=None):
-    ## HACKHACK: make everything positive by subtracting minimum
-    #if sign_by_weights:
-    #    inputs -= T.minimum(0, T.min(inputs))
-        #inputs += 1
-    negative_norm = _forward_negative_z(inputs, weights, 
-        sign_by_weights=sign_by_weights, bias=bias)
-    positive_norm = _forward_positive_z(inputs, weights, 
-        sign_by_weights=sign_by_weights, bias=bias)
+def relevance_conv_stable_sign(inputs, weights, out_relevances, bias=None):
+    negative_norm = _forward_negative_z(inputs, weights, bias=bias)
+    positive_norm = _forward_positive_z(inputs, weights, bias=bias)
     
     # Set zeros to 1 to prevent division by 0
     positive_norm_nonzero = positive_norm + T.eq(positive_norm, 0)
@@ -374,23 +384,17 @@ def relevance_conv_stable_sign(inputs, weights, out_relevances,
     negative_rel_normed = out_relevances / pos_minus_neg_nonzero
     
     in_rel_from_pos = _backward_positive_z(inputs, weights,
-        positive_rel_normed, sign_by_weights=sign_by_weights, bias=bias)
-    in_rel_from_neg = _backward_negative_z(inputs, weights, negative_rel_normed,
-        sign_by_weights=sign_by_weights, bias=bias)
+        positive_rel_normed, bias=bias)
+    in_rel_from_neg = _backward_negative_z(inputs, weights, 
+        negative_rel_normed, bias=bias)
     return in_rel_from_pos + in_rel_from_neg
 
-def relevance_conv_a_b(inputs, weights, out_relevances, a,b, 
-        sign_by_weights, bias=None):
+def relevance_conv_a_b(inputs, weights, out_relevances, a,b, bias=None):
     assert a is not None
     assert b is not None
     assert a - b == 1
-    ## HACKHACK: make everything positive by subtracting minimum
-    #if sign_by_weights:
-    #    inputs -= T.minimum(0, T.min(inputs))
-    positive_norm = _forward_positive_z(inputs, weights, 
-        sign_by_weights=sign_by_weights, bias=bias)
-    negative_norm = _forward_negative_z(inputs, weights, 
-        sign_by_weights=sign_by_weights, bias=bias)
+    positive_norm = _forward_positive_z(inputs, weights, bias=bias)
+    negative_norm = _forward_negative_z(inputs, weights, bias=bias)
     # set 0s to 1
     positive_norm_nonzero = positive_norm + T.eq(positive_norm, 0)
     # set 0s to -1
@@ -400,31 +404,128 @@ def relevance_conv_a_b(inputs, weights, out_relevances, a,b,
     # relevances now already negative :))
     negative_rel_normed = out_relevances / negative_norm_nonzero
     
-    in_rel_from_pos = _backward_positive_z(inputs, weights, positive_rel_normed, 
-        sign_by_weights=sign_by_weights, bias=bias)
-    in_rel_from_neg = _backward_negative_z(inputs, weights, negative_rel_normed, 
-        sign_by_weights=sign_by_weights, bias=bias)
+    in_rel_from_pos = _backward_positive_z(inputs, weights, 
+        positive_rel_normed, bias=bias)
+    in_rel_from_neg = _backward_negative_z(inputs, weights,
+        negative_rel_normed, bias=bias)
     return a * in_rel_from_pos - b * in_rel_from_neg
 
+
+def relevance_conv_a_b_sign_switch(inputs, weights, out_relevances, a,b, bias=None):
+    assert a is not None
+    assert b is not None
+    assert a - b == 1
+    # For each input, determine what 
+    outputs = conv2d(inputs, weights)
+    if bias is not None:
+        outputs += bias.dimshuffle('x',0,'x','x')
+        # do not use bias further, only to determine direction of outputs
+        bias = None
+    # stabilize
+    # prevent division by 0 and division by small numbers
+    eps = 1e-4
+    outputs += (T.sgn(outputs) * eps)
+    outputs += (T.eq(outputs, 0) * eps)
+    positive_forward = _forward_positive_z(inputs, weights, bias)
+    negative_forward = _forward_negative_z(inputs, weights, bias)
+    rel_for_positive_outputs = out_relevances * T.gt(outputs, 0)
+    rel_for_negative_outputs = out_relevances * T.lt(outputs, 0)
+    
+    positive_norm_with_trend = positive_forward * T.gt(outputs, 0)
+    negative_norm_with_trend = negative_forward * T.lt(outputs, 0)
+    # minus to make overall norm positive
+    norm_with_trend = positive_norm_with_trend - negative_norm_with_trend
+    # stabilize also 
+    norm_with_trend += (T.eq(norm_with_trend, 0) * eps)
+    
+    in_positive_with_trend = _backward_positive_z(inputs, weights, 
+        rel_for_positive_outputs  / norm_with_trend, bias)
+    in_negative_with_trend = _backward_negative_z(inputs, weights, 
+        rel_for_negative_outputs  / norm_with_trend, bias)
+    
+    # Minus in_negative since in_with_trend should not switch signs
+    in_with_trend = in_positive_with_trend - in_negative_with_trend
+    
+    positive_norm_against_trend = positive_forward * T.lt(outputs, 0)
+    negative_norm_against_trend = negative_forward * T.gt(outputs, 0)
+    # minus to make overall norm positive
+    norm_against_trend = positive_norm_against_trend - negative_norm_against_trend
+    # stabilize also 
+    norm_against_trend += (T.eq(norm_against_trend, 0) * eps)
+    
+    in_positive_against_trend = _backward_positive_z(inputs, weights, 
+        rel_for_negative_outputs  / norm_against_trend, bias)
+    in_negative_against_trend = _backward_negative_z(inputs, weights, 
+        rel_for_positive_outputs  / norm_against_trend, bias)
+    # Minus in_negative since switching signs is done below
+    in_against_trend = in_positive_against_trend - in_negative_against_trend
+    
+    in_relevances = a * in_with_trend - b * in_against_trend
+    return in_relevances
+
+def relevance_conv_a_b_abs(inputs, weights, out_relevances, a,b, bias=None):
+    assert a is not None
+    assert b is not None
+    assert a - b == 1
+    weights_plus = weights * T.gt(weights, 0)
+    weights_neg = weights * T.lt(weights, 0)
+    
+    plus_norm = conv2d(T.abs_(inputs), weights_plus)
+    # stabilize, prevent division by 0
+    eps=1e-4
+    plus_norm += (T.eq(plus_norm,0) * eps)
+    plus_rel_normed = out_relevances / plus_norm
+    in_rel_plus = conv2d(plus_rel_normed, 
+          weights_plus.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    in_rel_plus *= T.abs_(inputs)
+    
+    # minuses to get positive outputs, since will be subtracted
+    # at end of function
+    neg_norm = -conv2d(T.abs_(inputs), weights_neg)
+    neg_norm += (T.eq(neg_norm,0) * eps)
+    neg_rel_normed = out_relevances / neg_norm
+    in_rel_neg = -conv2d(neg_rel_normed, 
+          weights_neg.dimshuffle(1,0,2,3)[:,:,::-1,::-1], 
+          border_mode='full')
+    in_rel_neg *= T.abs_(inputs)
+
+    in_relevance = a * in_rel_plus - b * in_rel_neg
+    return in_relevance
+
 def relevance_dense(out_relevances, in_activations, weights, rule,
-    min_in=None, max_in=None, a=None, b=None, bias=None,
-    sign_by_weights=False):
+    min_in=None, max_in=None, a=None, b=None, bias=None):
     """Party copied from paper supplementary pseudocode:
-    http://arxiv.org/abs/1512.02479
-    Partly adapted for propagating multiple trials at once"""
-    assert rule in ['w_sqr', 'z_plus', 'z_b', 'adapt_z_b','sign_stable', 'a_b']
+    http://arxiv.org/abs/1512.02479"""
+    assert rule in ['w_sqr', 'z', 'z_plus', 'z_b', 'adapt_z_b','sign_stable',
+        'a_b', 'a_b_sign_switch', 'a_b_abs']
     # weights are features x output_units => input_units x output_units
     # in_activations are trials x input_units
     if rule == 'w_sqr':
-        raise ValueError("w_Sqr seems to be broken, fix it first (Relevance is not preserved(!)")
         if bias is not None:
             log.warning("Bias not respected for dense w_sqr")
-        W_adapted = weights * weights
-        Z = T.sum(W_adapted, axis=0, keepdims=True)
+        W_sqr = weights * weights
+        Z = T.sum(W_sqr, axis=0, keepdims=True)
         # prevent division by 0...
         Z += T.eq(Z, 0) * 1
-        N = W_adapted / Z
+        N = W_sqr / Z
         return T.dot(N, out_relevances.T).T
+    elif rule == 'z':
+        Z_I_J = weights.dimshuffle('x',0,1) * in_activations.dimshuffle(
+            0,1,'x')
+        if bias is not None:
+            bias = bias.dimshuffle('x','x', 0)
+            # redistribute bias proportionally across all inputs
+            Z_I_J += (bias / weights.shape[0])
+        norms_for_relevances = T.sum(Z_I_J, axis=1, keepdims=True)
+        # stabilize, prevent division by 0 and small values
+        eps = 1e-3
+        norms_for_relevances += (T.sgn(norms_for_relevances) * eps)
+        norms_for_relevances += (T.eq(norms_for_relevances, 0) * eps)
+        Z_I_J = Z_I_J / norms_for_relevances
+        in_relevances = Z_I_J * out_relevances.dimshuffle(0,'x',1)
+        in_relevances = T.sum(in_relevances, axis=2)
+        return in_relevances
     elif rule == 'z_plus':
         if bias is not None:
             log.warning("Bias not respected for dense z_plus")
@@ -477,22 +578,15 @@ def relevance_dense(out_relevances, in_activations, weights, rule,
         in_relevances = T.sum(in_relevances, axis=2)
         return in_relevances
     elif rule == 'sign_stable':
-        if sign_by_weights:
-            weights_plus = weights * T.gt(weights, 0)
-            weights_minus = weights * T.lt(weights, 0)
-            Z_I_J_plus = (weights_plus.dimshuffle('x',0,1) * 
-                T.abs_(in_activations.dimshuffle(0,1,'x')))
-            Z_I_J_neg = (weights_minus.dimshuffle('x',0,1) * 
-                T.abs_(in_activations.dimshuffle(0,1,'x')))
-        else:
-            Z_I_J = weights.dimshuffle('x',0,1) * in_activations.dimshuffle(
-                0,1,'x')
-            Z_I_J_plus = Z_I_J * T.gt(Z_I_J,0)
-            Z_I_J_neg = Z_I_J * T.lt(Z_I_J,0)
+        Z_I_J = weights.dimshuffle('x',0,1) * in_activations.dimshuffle(
+            0,1,'x')
+        Z_I_J_plus = Z_I_J * T.gt(Z_I_J,0)
+        Z_I_J_neg = Z_I_J * T.lt(Z_I_J,0)
         if bias is not None:
             bias = bias.dimshuffle('x','x', 0)
-            Z_I_J_plus += bias * T.gt(bias,0)
-            Z_I_J_neg += bias * T.lt(bias,0)
+            # redistribute bias proportionally across all inputs
+            Z_I_J_plus += (bias * T.gt(bias,0)) / weights.shape[0]
+            Z_I_J_neg += (bias * T.lt(bias,0)) / weights.shape[0]
         plus_sum = Z_I_J_plus.sum(axis=1, keepdims=True)
         neg_sum = Z_I_J_neg.sum(axis=1, keepdims=True)
         plus_minus_neg_sum = plus_sum - neg_sum
@@ -512,22 +606,15 @@ def relevance_dense(out_relevances, in_activations, weights, rule,
         assert a is not None
         assert b is not None
         assert a - b == 1
-        if sign_by_weights:
-            weights_plus = weights * T.gt(weights, 0)
-            weights_minus = weights * T.lt(weights, 0)
-            Z_I_J_plus = (weights_plus.dimshuffle('x',0,1) * 
-                T.abs_(in_activations.dimshuffle(0,1,'x')))
-            Z_I_J_neg = (weights_minus.dimshuffle('x',0,1) * 
-                T.abs_(in_activations.dimshuffle(0,1,'x')))
-        else:
-            Z_I_J = weights.dimshuffle('x',0,1) * in_activations.dimshuffle(
-                0,1,'x')
-            Z_I_J_plus = Z_I_J * T.gt(Z_I_J,0)
-            Z_I_J_neg = Z_I_J * T.lt(Z_I_J,0)
+        Z_I_J = weights.dimshuffle('x',0,1) * in_activations.dimshuffle(
+            0,1,'x')
+        Z_I_J_plus = Z_I_J * T.gt(Z_I_J,0)
+        Z_I_J_neg = Z_I_J * T.lt(Z_I_J,0)
         if bias is not None:
             bias = bias.dimshuffle('x','x', 0)
-            Z_I_J_plus += bias * T.gt(bias,0)
-            Z_I_J_neg += bias * T.lt(bias,0)
+            # redistribute bias proportionally across all inputs
+            Z_I_J_plus += (bias * T.gt(bias,0)) / weights.shape[0]
+            Z_I_J_neg += (bias * T.lt(bias,0)) / weights.shape[0]
         plus_sum = Z_I_J_plus.sum(axis=1, keepdims=True)
         neg_sum = Z_I_J_neg.sum(axis=1, keepdims=True)
         # Set 0s to 1 to avoid division by 0
@@ -541,6 +628,70 @@ def relevance_dense(out_relevances, in_activations, weights, rule,
         in_relevances = out_relevances.dimshuffle(0,'x',1) * Z_I_J_normed
         in_relevances = T.sum(in_relevances, axis=2)
         return in_relevances
+    elif rule == 'a_b_sign_switch':
+        assert a is not None
+        assert b is not None
+        assert a - b == 1
+        Z_I_J = weights.dimshuffle('x',0,1) * in_activations.dimshuffle(
+            0,1,'x')
+        outputs = T.sum(Z_I_J, axis=1, keepdims=True)
+        if bias is not None:
+            # only add bias to outputs...
+            bias = bias.dimshuffle('x', 0)
+            outputs += bias
+        # stabilize, prevent comparison to exactly 0
+        eps = 1e-3
+        outputs += (T.sgn(outputs) * eps)
+        outputs += (T.eq(outputs, 0) * eps)
+        Z_I_J_with_trend = T.abs_(Z_I_J) * (T.eq(T.sgn(outputs), T.sgn(Z_I_J)))
+        norm_with_trend = T.sum(T.abs_(Z_I_J_with_trend), axis=1, 
+            keepdims=True)
+        # stabilize
+        norm_with_trend += T.eq(norm_with_trend, 0)
+        Z_I_J_with_trend_normed = Z_I_J_with_trend / norm_with_trend
+        in_with_trend = (out_relevances.dimshuffle(0,'x', 1) * 
+            Z_I_J_with_trend_normed)
+        
+        
+        Z_I_J_against_trend = T.abs_(Z_I_J) * (T.neq(T.sgn(outputs), T.sgn(Z_I_J)))
+        norm_against_trend = T.sum(T.abs_(Z_I_J_against_trend), axis=1, 
+            keepdims=True)
+        # stabilize
+        norm_against_trend += T.eq(norm_against_trend, 0)
+        Z_I_J_against_trend_normed = Z_I_J_against_trend / norm_against_trend
+        in_against_trend = (out_relevances.dimshuffle(0,'x', 1) * 
+            Z_I_J_against_trend_normed)
+        
+        in_relevances = a * in_with_trend - b * in_against_trend
+        in_relevances = T.sum(in_relevances, axis=2)
+        return in_relevances
+    elif rule == 'a_b_abs':
+        assert a is not None
+        assert b is not None
+        assert a - b == 1
+        weights_plus = weights * T.gt(weights, 0)
+        abs_inputs = T.abs_(in_activations).dimshuffle(0,1,'x')
+        Z_I_J_plus = weights_plus.dimshuffle('x', 0,1) * abs_inputs
+        plus_norm = T.sum(Z_I_J_plus, axis=1, keepdims=True)
+        # stabilize
+        plus_norm += T.eq(plus_norm, 0)
+        Z_I_J_plus_normed = Z_I_J_plus / plus_norm
+        in_plus = out_relevances.dimshuffle(0,'x', 1) * Z_I_J_plus_normed
+        
+        
+        weights_neg = weights * T.lt(weights, 0)
+        Z_I_J_neg = weights_neg.dimshuffle('x', 0,1) * abs_inputs
+        # minus to get positive norms
+        neg_norm = -T.sum(Z_I_J_neg, axis=1, keepdims=True)
+        # stabilize
+        neg_norm += T.eq(neg_norm, 0)
+        # minus to get positive output, will be subtracted below
+        Z_I_J_neg_normed = -Z_I_J_neg / neg_norm
+        in_neg = out_relevances.dimshuffle(0,'x', 1) * Z_I_J_neg_normed
+        in_relevances = a * in_plus - b * in_neg
+        in_relevances = T.sum(in_relevances, axis=2)
+        return in_relevances
+        
 
 def relevance_pool(out_relevances, inputs, pool_size, pool_stride):
     # channels x channels x pool_0 x pool_1
@@ -649,3 +800,63 @@ def compute_all_epo_relevances(dataset, pred_fn, heatmap_fn,n_classes):
         all_relevances.append(trial_relevances)
     all_relevances = np.array(all_relevances)
     return all_relevances
+
+
+def show_heatmap_accuracy(heatmap_fn, pred_fn, X_train_flat_both,
+                      y_train_both, n_trials=100, 
+                         n_pixels=500):
+    all_preds = pred_fn(X_train_flat_both)
+    preds_for_correct_class = np.array([all_preds[i, y_train_both[i]] for i in xrange(len(X_train_flat_both))])
+
+    wanted_trials = np.flatnonzero(preds_for_correct_class > 0.95)[:n_trials]
+    input_trials = X_train_flat_both[wanted_trials]
+    y_wanted_trials = y_train_both[wanted_trials]
+    all_heatmaps = heatmap_fn(input_trials)
+
+
+    n_pixels = 700
+    # Pixels sorted by strength.. this proved better than randomly selecting
+    # from positive pixels
+    i_largest_pixels = np.argsort(input_trials, axis=-1)[:,::-1]
+    """# shuffle individually for each trial, now put positive pixels in first
+    rng = RandomState(39847834)
+    for pixels in i_largest_pixels:
+        first_part = pixels[:150]
+        rng.shuffle(first_part)
+        pixels[:150] = first_part"""
+    random_acc_positive_pixels = []
+    fake_input = input_trials.copy()
+    for i_pixel in xrange(n_pixels):
+        for i_trial, trial in enumerate(fake_input):
+            rand_i = i_largest_pixels[i_trial, i_pixel]
+            trial[rand_i] = 1 - trial[rand_i]
+        wanted_preds = pred_fn(fake_input)
+        preds_for_correct_class = np.array([wanted_preds[i, y_wanted_trials[i]]
+                                            for i in xrange(len(wanted_preds))])
+        random_acc_positive_pixels.append(np.mean(preds_for_correct_class))
+
+    
+        
+    fake_input = input_trials.copy()
+    all_heatmaps_flat = all_heatmaps.reshape(all_heatmaps.shape[0],-1)
+    heatmap_vals = np.argsort(all_heatmaps_flat, axis=1)[:,::-1]
+    heatmap_accuracy = []
+    for i_pixel in xrange(n_pixels):
+        for i_trial, trial in enumerate(fake_input):
+            most_relevant_pixel = heatmap_vals[i_trial, i_pixel]
+            trial[most_relevant_pixel] = 1 - trial[most_relevant_pixel]
+        wanted_preds = pred_fn(fake_input)
+        preds_for_correct_class = np.array([wanted_preds[i, y_wanted_trials[i]] 
+            for i in xrange(len(wanted_preds))])
+        heatmap_accuracy.append(np.mean(preds_for_correct_class))
+
+        
+    plt.figure()
+    plt.plot(random_acc_positive_pixels)
+    plt.plot(heatmap_accuracy)
+    print("Mean difference first 100 positive pixels {:.2f}".format(
+        np.mean(np.array(random_acc_positive_pixels[:100]) -
+            np.array(heatmap_accuracy[:100]))))
+    print("Mean difference first 250 positive pixels {:.2f}".format(
+        np.mean(np.array(random_acc_positive_pixels[:250]) -
+            np.array(heatmap_accuracy[:250]))))

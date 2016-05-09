@@ -38,8 +38,11 @@ def perm_mean_diffs_sampled(a,b, n_diffs=None):
         # *2 makes values between 2 and 0, then -1 to make 
         # values between 1 and -1
         mask = (np.bitwise_and(i_mask, all_bit_masks) > 0) * 2 - 1
-        diff = np.mean((mask * a)  -mask * b)
+        # mean later by dividing by n_exp
+        # seems to be a little bit faster that way
+        diff = np.sum((mask * a)  -mask * b)
         all_diffs[i_diff] = diff
+    all_diffs = all_diffs / float(n_exps)
     return all_diffs
 
 def perm_mean_diffs(a,b):
@@ -65,6 +68,8 @@ def perm_mean_diffs(a,b):
     -----
     http://www.stat.ncsu.edu/people/lu/courses/ST505/Ch4.pdf#page=10
     http://stats.stackexchange.com/a/64215/56289
+    http://www.jarrodmillman.com/publications/millman2015thesis.pdf ->
+    https://github.com/statlab/permute python package 
     (probably, didnt read: http://finzi.psych.upenn.edu/R/library/EnvStats/html/twoSamplePermutationTestLocation.html)
     """
     a = np.array(a)
@@ -173,3 +178,77 @@ def show_stats_for_combined_results(folder, params, folder_2,  params_2,
 def show_stats_for_result(folder, params, combined_csp_results, n_diffs=2**18):
     res = extract_single_group_result_sorted(folder, params=params)
     print_stats(res, combined_csp_results,  n_diffs=n_diffs)
+
+def count_signrank(k,n):
+    """k is the test statistic, n is the number of samples."""
+    # ported from here:
+    # https://github.com/wch/r-source/blob/e5b21d0397c607883ff25cca379687b86933d730/src/nmath/signrank.c#L84
+    u = n * (n + 1) / 2
+    c = (u / 2)
+    w = np.zeros(c+1)
+    if (k < 0 and k > u):
+        return 0
+    if (k > c):
+        k = u - k
+    if (n == 1):
+        return 1.
+    if (w[0] == 1.):
+        return w[k]
+    w[0] = w[1] = 1.
+    for j in range(2,n+1):
+        end = min(j*(j+1)//2, c)
+        for i in range(end, j-1,-1):
+            w[i] += w[i-j]
+    return w[k]
+
+def wilcoxon_signed_rank(a,b):
+    """ See http://www.jstor.org/stable/pdf/3001968.pdf?_=1462738643716
+    https://en.wikipedia.org/wiki/Wilcoxon_signed-rank_test
+    Has been validated against R wilcox.test exact variant (with no ties 
+    atleast), e.g.:
+      wilcox.test(c(0,0,0,0,0,0,0,0,0,0,0), 
+            c(1,2,3,-4,5,6,7,8,-9,10,11), 
+            paired=TRUE,
+           exact=TRUE)
+    Ties are handled by using average rank
+    Zeros are handled by assigning half of ranksum to 
+    positive and half to negative
+    ->
+    p-value = 0.08301"""
+    a = np.array(a)
+    b = np.array(b)
+    assert len(a) == len(b)
+    n_samples = len(a)
+
+    diff = a - b
+    ranks = scipy.stats.rankdata(np.abs(diff), method='average')
+    signs = np.sign(diff)
+
+    negative_rank_sum = np.sum(ranks * (signs < 0))
+    positive_rank_sum = np.sum(ranks * (signs > 0))
+    equal_rank_sum = np.sum(ranks * (signs == 0))
+
+    test_statistic = min(negative_rank_sum, positive_rank_sum)
+    # add equals half to both sides... so just add half now
+    test_statistic += equal_rank_sum / 2.0
+    # make it more conservative by taking the ceil
+    test_statistic = int(np.ceil(test_statistic))
+    
+    n_as_extreme_sums = 1
+    for other_sum in range(1,test_statistic+1):
+        n_as_extreme_sums += count_signrank(other_sum,n_samples)
+
+    p_val = (2 * n_as_extreme_sums) / (2**float(n_samples))
+    return p_val
+
+def sign_test(a,b): 
+    # Should be same as https://onlinecourses.science.psu.edu/stat464/node/49
+    
+    a = np.array(a)
+    b = np.array(b)
+    assert len(a) == len(b)
+    n_samples = len(a)
+    diffs = a - b
+    n_positive = np.sum(diffs > 0)
+    n_equal = np.sum(diffs == 0)
+    return scipy.stats.binom_test(n_positive + n_equal, n_samples, p=0.5)

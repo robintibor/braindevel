@@ -125,7 +125,7 @@ def create_envelopes(folder_name, params, start, stop):
 
 def create_envelopes_for_experiment(experiment_file_name):
     iterator, train_set = _load_experiment(experiment_file_name)
-    filterbands = generate_filterbank(min_freq=1, max_freq=99,
+    filterbands = generate_filterbank(min_freq=1, max_freq=114,
         last_low_freq=31, low_width=6, low_overlap=3,
         high_width=8, high_overlap=4)
     env_per_filterband = create_envelops_per_filterband(iterator,
@@ -206,20 +206,8 @@ if __name__ == "__main__":
     if args.folder is None:
         create_envelopes('data/models-backup/paper/ours/cnt/deep4/car/',
             params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                        low_cut_off_hz="null"), start=args.start, stop=args.stop)
-        """
-        create_envelopes('data/models/paper/ours/cnt/deep4/',
-            params=dict(layers='$cnt_4l',
-                       pool_mode='max',
-                       num_filters_4=200,
-                       filter_time_length=10,
-                       low_cut_off_hz="null"))
-        create_envelopes('data/models/paper/bci-competition/cnt/deep4/',
-            params=dict(layers='$cnt_4l',
-                       pool_mode='max',
-                       num_filters_4=200,
-                       filter_time_length=10,
-                       low_cut_off_hz="null"))"""
+                        low_cut_off_hz="null", first_nonlin="$elu"),
+                        start=args.start, stop=args.stop)
     else:
         print args.experiments_folder
         print args.params

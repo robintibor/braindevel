@@ -5,6 +5,7 @@ from braindecode.experiments.load import load_exp_and_model
 from braindecode.analysis.envelopes import load_trial_env, compute_topo_corrs
 from braindecode.veganlasagne.layer_util import compute_trial_acts
 import logging
+from braindecode.experiments.experiment import create_experiment
 log = logging.getLogger(__name__)
 
 def create_env_corrs(folder_name, params):
@@ -18,8 +19,9 @@ def create_env_corrs(folder_name, params):
     for i_file, base_name in enumerate(all_base_names):
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file+1, len(all_base_names)))
-        topo_corrs = create_topo_env_corrs(base_name)
+        topo_corrs, rand_topo_corrs = create_topo_env_corrs(base_name)
         np.save(base_name + '.env_corrs.npy', topo_corrs)
+        np.save(base_name + '.env_rand_corrs.npy', rand_topo_corrs)
     
 def create_topo_env_corrs(base_name):
     exp, model = load_exp_and_model(base_name)
@@ -30,7 +32,18 @@ def create_topo_env_corrs(base_name):
         exp.dataset)['train']
     trial_env = load_trial_env(base_name, model, 
         i_layer, train_set, n_inputs_per_trial=2)
-    trial_acts = compute_trial_acts(model, i_layer, exp.iterator, train_set)
+    topo_corrs = compute_trial_topo_corrs(model, i_layer, train_set, 
+        exp.iterator, trial_env)
+    
+    
+    rand_model = create_experiment(base_name + '.yaml').final_layer
+    rand_topo_corrs = compute_trial_topo_corrs(rand_model, i_layer, train_set, 
+        exp.iterator, trial_env)
+    
+    return topo_corrs, rand_topo_corrs
+
+def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
+    trial_acts = compute_trial_acts(model, i_layer, iterator, train_set)
     topo_corrs = compute_topo_corrs(trial_env, trial_acts)
     return topo_corrs
     
@@ -52,5 +65,5 @@ if __name__ == "__main__":
     setup_logging()
     create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
             params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                        low_cut_off_hz="null"))
+                        low_cut_off_hz="null", first_nonlin="$elu"))
     

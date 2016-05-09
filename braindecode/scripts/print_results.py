@@ -191,7 +191,7 @@ class ResultPrinter:
                 filename = varying_params_this_result_obj[filenamekey]
                 # remove unnecessary details of filename
                 filename = re.sub(r"(./)?data/[^/]*/", '', str(filename))
-                filename = re.sub(r"MoSc[0-9]*S[0-9]*R[0-9]*_ds10_", '',
+                filename = re.sub(r"MoS[Cc][0-9]*S[0-9]*R[0-9]*_ds10_", '',
                     filename)
                 filename = re.sub(r"_autoclean_.*", '', filename)
                 filename = re.sub(".BBCI.mat", '', filename)
@@ -202,10 +202,10 @@ class ResultPrinter:
                 # TODELAY: remove again this if
                 if param_key == 'test_filename':
                     param_value = re.sub(r"(./)?data/[^/]*/", '', str(param_value))
-                    param_value = re.sub(r"MoSc[0-9]*S[0-9]*R[0-9]*_ds10_", '',
+                    param_value = re.sub(r"MoS[Cc][0-9]*S[0-9]*R[0-9]*_ds10_", '',
                         param_value)
                     param_value = re.sub(r"_autoclean_.*", '', param_value)
-                    param_value = re.sub(".BBCI.mat", '', param_value)
+                    param_value = re.sub("BBCI.mat", '', param_value)
                 param_row.append(param_value)
             param_rows.append(param_row)
         return param_headers, param_rows
