@@ -14,8 +14,8 @@ def create_env_corrs(folder_name, params):
     res_file_names = res_pool.result_file_names()
     all_base_names = [name.replace('.result.pkl', '')
         for name in res_file_names]
-    for i_file, base_name in enumerate(all_base_names):
-        assert os.path.isfile(base_name + ".env.npy") 
+    #for i_file, base_name in enumerate(all_base_names):
+    #    assert os.path.isfile(base_name + ".env.npy") 
     for i_file, base_name in enumerate(all_base_names):
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file+1, len(all_base_names)))
@@ -27,7 +27,7 @@ def create_topo_env_corrs(base_name):
     exp, model = load_exp_and_model(base_name)
     exp.dataset.load()
     # Hackhack since I know this is correct layer atm
-    i_layer = 26
+    i_layer = 7
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
         
@@ -55,7 +55,7 @@ def dataset_to_env_file_dict():
     """ FOr any dataset filename, give envelope filename
     These experiments are, where envelopes were calculated from originally"""
     res_pool= ResultPool()
-    res_pool.load_results('data/models/paper/ours/cnt/deep4/car/',
+    res_pool.load_results('data/models-backup/paper/ours/cnt/deep4/car/',
                               params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
                             low_cut_off_hz="null", first_nonlin="$elu"))
 
@@ -65,7 +65,6 @@ def dataset_to_env_file_dict():
         
         dataset_file_name = result.parameters['dataset_filename']
         envelope_file_name = res_file_name.replace('.result.pkl', '.env.npy')
-        print envelope_file_name
         assert os.path.isfile(envelope_file_name)
         dataset_to_env_file_name[dataset_file_name] = envelope_file_name
     return dataset_to_env_file_name
@@ -89,6 +88,6 @@ if __name__ == "__main__":
 #     create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
 #             params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
 #                         low_cut_off_hz="null", first_nonlin="$elu"))
-    create_env_corrs('data/models/paper/ours/cnt/shallow/car/',
-        params=dict())
+    create_env_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
+        params=None)
     
