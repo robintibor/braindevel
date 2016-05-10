@@ -30,7 +30,11 @@ def create_topo_env_corrs(base_name):
     i_layer = 26
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
-    trial_env = load_trial_env(base_name, model, 
+        
+    result = np.load(base_name + '.result.pkl')
+    env_file_name = dataset_to_env_file_dict()[result.parameters['dataset_filename']]
+        
+    trial_env = load_trial_env(env_file_name, model, 
         i_layer, train_set, n_inputs_per_trial=2)
     topo_corrs = compute_trial_topo_corrs(model, i_layer, train_set, 
         exp.iterator, trial_env)
@@ -46,6 +50,25 @@ def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
     trial_acts = compute_trial_acts(model, i_layer, iterator, train_set)
     topo_corrs = compute_topo_corrs(trial_env, trial_acts)
     return topo_corrs
+    
+def dataset_to_env_file_dict():
+    """ FOr any dataset filename, give envelope filename
+    These experiments are, where envelopes were calculated from originally"""
+    res_pool= ResultPool()
+    res_pool.load_results('data/models/paper/ours/cnt/deep4/car/',
+                              params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
+                            low_cut_off_hz="null", first_nonlin="$elu"))
+
+    dataset_to_env_file_name = dict()
+    
+    for result, res_file_name in zip(res_pool.result_objects(), res_pool.result_file_names()):
+        
+        dataset_file_name = result.parameters['dataset_filename']
+        envelope_file_name = res_file_name.replace('.result.pkl', '.env.npy')
+        print envelope_file_name
+        assert os.path.isfile(envelope_file_name)
+        dataset_to_env_file_name[dataset_file_name] = envelope_file_name
+    return dataset_to_env_file_name
     
 def setup_logging():
     """ Set up a root logger so that other modules can use logging

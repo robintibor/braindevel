@@ -23,9 +23,9 @@ log = logging.getLogger(__name__)
 
 
 
-def load_trial_env(basename, model, i_layer, train_set, n_inputs_per_trial):
+def load_trial_env(env_file_name, model, i_layer, train_set, n_inputs_per_trial):
     log.info("Loading envelope...")
-    env = np.load(basename + '.env.npy')
+    env = np.load(env_file_name)
     env = [e for e in env] # transform that outer part is list so you can freely delete parts inside next function
     log.info("Transforming to trial envelope...")
     trial_env = transform_to_trial_env(env, model, i_layer, train_set, n_inputs_per_trial)
