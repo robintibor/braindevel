@@ -86,7 +86,8 @@ def setup_logging():
     
 if __name__ == "__main__":
     setup_logging()
-    create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
-            params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                        low_cut_off_hz="null", first_nonlin="$elu"))
+#     create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
+#             params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
+#                         low_cut_off_hz="null", first_nonlin="$elu"))
+    create_env_corrs('data/models/paper/ours/cnt/shallow/car/')
     
