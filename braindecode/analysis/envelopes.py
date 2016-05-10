@@ -112,6 +112,7 @@ def create_envelopes(folder_name, params, start, stop):
     res_pool = ResultPool()
     res_pool.load_results(folder_name, params=params)
     res_file_names = res_pool.result_file_names()
+    log.info("{:d} files found.".format(len(res_file_names)))
     yaml_file_names = [name.replace('.result.pkl', '.yaml')
         for name in res_file_names]
     stop = stop or len(yaml_file_names)
