@@ -1,7 +1,7 @@
 {
     extends: [
-    'configs/experiments/paper/ours/cnt/deep_4_cnt_net_modifications.yaml']
-    ,
+    'configs/experiments/paper/ours/cnt/shallow_cnt_net_modifications.yaml'
+        ],
     templates: {
         all_EEG_sensors: ['Fp1', 'Fpz', 'Fp2', 'AFp3h', 'AFp4h', 'AF7', 'AF3',
         'AFz', 'AF4', 'AF8', 'AFF5h', 'AFF1', 'AFF2', 'AFF6h', 'F7', 'F5',
@@ -19,39 +19,24 @@
         'POO3h', 'POO4h', 'POO10h', 'O1', 'Oz', 'O2', 'OI1h', 'OI2h',
         'I1', 'Iz', 'I2']
     },
-    
     variants: [[{
-        save_path: ['data/models/paper/ours/cnt/deep4/car/'],
+        save_path: ['data/models/paper/ours/cnt/shallow/car/'],
         cnt_preprocessors: [$resample_car_highpass_standardize],
+        sensor_names: [$all_EEG_sensors],
         low_cut_off_hz: ["null"], 
-        layers: [$deep_5],
-
-        drop_prob: [0.5],
-        batch_norm: [true],
-        
-        final_dense_length: [2],
+        final_dense_length: [30],
         input_time_length: [1000],
         n_sample_preds : [500], # will be overwritten anyways
-        train_cleaner: [$no_cleaner],
-        test_cleaner: [$no_cleaner],
-
-        filter_time_length: [10],
-        filter_length_2: [10],
-        filter_length_3: [10],
-        filter_length_4: [10],
-        double_time_convs: [false],
-        split_first_layer: [true],
-        first_nonlin: ['$elu'],
-        first_pool_mode: ['max'],
-        first_pool_nonlin: [$identity],
-        later_nonlin: ['$elu'],
-        later_pool_mode: ['max'],
-        later_pool_nonlin: [$identity],
-        loss_expression: [$tied_neighbours],
-        
-        sensor_names: [$all_EEG_sensors],
+        first_nonlin: [$square],
+        post_pool_nonlin: [$safe_log],
+        pool_mode: ['average_exc_pad'],
+        layers: [$cnt_shallow_square],
+        drop_p: [0.5],
+        layers: [$cnt_shallow_square],
         layer_names_to_norms: [$layer_names_to_norms],
-
-       }
-    ]]
+        loss_expression: [$tied_neighbours],
+        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
+        'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
+        'misclass_monitor', 'rejection_blink_ival', 'whisker_percent',]]
+    }]],
 }
