@@ -6,6 +6,7 @@ import theano.tensor as T
 import argparse
 import yaml
 import theano
+import gc
 from braindecode.experiments.experiment import create_experiment
 from braindecode.datasets.generate_filterbank import generate_filterbank
 from braindecode.analysis.util import (lowpass_topo,
@@ -23,7 +24,8 @@ log = logging.getLogger(__name__)
 
 
 
-def load_trial_env(env_file_name, model, i_layer, train_set, n_inputs_per_trial):
+def load_trial_env(env_file_name, model, i_layer, train_set, 
+        n_inputs_per_trial):
     log.info("Loading envelope...")
     env = np.load(env_file_name)
     env = [e for e in env] # transform that outer part is list so you can freely delete parts inside next function
@@ -31,7 +33,8 @@ def load_trial_env(env_file_name, model, i_layer, train_set, n_inputs_per_trial)
     trial_env = transform_to_trial_env(env, model, i_layer, train_set, n_inputs_per_trial)
     return trial_env
 
-def transform_to_trial_env(env, model, i_layer, train_set, n_inputs_per_trial):
+def transform_to_trial_env(env, model, i_layer, train_set, 
+        n_inputs_per_trial):
     all_layers = lasagne.layers.get_all_layers(model)
     layer = all_layers[i_layer]
     field_size = get_receptive_field_size(layer)
@@ -42,10 +45,11 @@ def transform_to_trial_env(env, model, i_layer, train_set, n_inputs_per_trial):
     n_trial_len = np.unique(trial_ends - trial_starts)[0]
     # Afterwards env is list empty lists(!!)
     n_sample_preds = get_n_sample_preds(model)
-    trial_env = get_meaned_trial_env(env, field_size=field_size, n_trials=n_trials,
-                                     n_inputs_per_trial=n_inputs_per_trial,
-                                n_trial_len=n_trial_len, 
-                                n_sample_preds=n_sample_preds)
+    trial_env = get_meaned_trial_env(env, field_size=field_size, 
+        n_trials=n_trials,
+        n_inputs_per_trial=n_inputs_per_trial,
+        n_trial_len=n_trial_len, 
+        n_sample_preds=n_sample_preds)
     return trial_env
 
 def compute_topo_corrs(trial_env, trial_acts):
@@ -86,19 +90,18 @@ def get_meaned_trial_env(env, field_size, n_trials, n_inputs_per_trial,
     assert env[0].shape[0] == n_trials * n_inputs_per_trial
     expected_mean_env_shape =  ((len(env),) + env[0].shape[0:2] + 
         (env[0].shape[2] - field_size + 1,1))
-    #meaned_env = np.float32(np.ones(env.shape[0:3] + (env.shape[3] - field_size + 1,1)) * np.nan)
     for i_fb in xrange(len(env)):
-        #meaned_env[i_fb] = pool_fn(env[i_fb])
         meaned_env.append(pool_fn(env[i_fb]))
         # In order to save memory, delete env contents...
         env[i_fb] = []
+        gc.collect()
     meaned_env = np.array(meaned_env)
     assert meaned_env.shape == expected_mean_env_shape
     log.info("Transforming to per trial...")
     all_trial_envs = []
     for fb_env in meaned_env:
-        fb_envs_per_trial = fb_env.reshape(n_trials,n_inputs_per_trial,fb_env.shape[1],
-            fb_env.shape[2], fb_env.shape[3])
+        fb_envs_per_trial = fb_env.reshape(n_trials,n_inputs_per_trial,
+            fb_env.shape[1], fb_env.shape[2], fb_env.shape[3])
         trial_env = transform_to_trial_acts(fb_envs_per_trial, [n_inputs_per_trial] * n_trials,
                                             n_sample_preds=n_sample_preds,
                                             n_trial_len=n_trial_len)
