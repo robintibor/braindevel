@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 def check_shallow_env_corrs():
     i_layer = 7
     for i_exp in xrange(20):
-        file_base_name = 'data/models/paper/ours/cnt/shallow//car/{:d}'.format(
+        file_base_name = 'data/models-backup/paper/ours/cnt/shallow//car/{:d}'.format(
             i_exp)
         result = np.load(file_base_name + '.result.pkl')
         log.info("Running {:d} of {:d}:\n{:s}".format(i_exp, 20,
@@ -55,7 +55,7 @@ def dataset_to_env_file(wanted_dataset_filename):
     
     for file_part, i_file in dataset_to_exp_nr.iteritems():
         if file_part in wanted_dataset_filename:
-            return 'data/models/paper/ours/cnt/deep4/car/{:d}.env.npy'.format(
+            return 'data/models-backup/paper/ours/cnt/deep4/car/{:d}.env.npy'.format(
                 i_file)
     raise ValueError("No envelope found for {:s}".format(wanted_dataset_filename))
 
