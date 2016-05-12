@@ -32,7 +32,7 @@ def create_topo_env_corrs(base_name):
         exp.dataset)['train']
         
     result = np.load(base_name + '.result.pkl')
-    env_file_name = dataset_to_env_file_dict()[result.parameters['dataset_filename']]
+    env_file_name = dataset_to_env_file(result.parameters['dataset_filename'])
         
     trial_env = load_trial_env(env_file_name, model, 
         i_layer, train_set, n_inputs_per_trial=2)
@@ -51,7 +51,7 @@ def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
     topo_corrs = compute_topo_corrs(trial_env, trial_acts)
     return topo_corrs
     
-def dataset_to_env_file_dict():
+def dataset_to_env_file(wanted_dataset_filename):
     """ FOr any dataset filename, give envelope filename
     These experiments are, where envelopes were calculated from originally"""
     res_pool= ResultPool()
@@ -67,7 +67,7 @@ def dataset_to_env_file_dict():
         envelope_file_name = res_file_name.replace('.result.pkl', '.env.npy')
         assert os.path.isfile(envelope_file_name)
         dataset_to_env_file_name[dataset_file_name] = envelope_file_name
-    return dataset_to_env_file_name
+    return dataset_to_env_file_name[wanted_dataset_filename]
     
 def setup_logging():
     """ Set up a root logger so that other modules can use logging
