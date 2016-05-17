@@ -30,6 +30,7 @@
     
     variants: [[{
         csp_train_obj: ['*csp_train_two_files'],
+        save_model: [false],
         load_sensor_names: ["null"],
         resample_fs: ["null"],
         filt_order: [4],

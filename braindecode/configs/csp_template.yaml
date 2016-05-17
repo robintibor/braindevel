@@ -1,6 +1,7 @@
  {
         original_params: $original_params,
         save_path: $save_path,
+        save_model: $save_model,
         csp_train_single_file: &csp_train_single_file !obj:braindecode.csp.experiment.CSPExperiment {
             set_loader: !obj:braindecode.datasets.loaders.$loader_type {
                 filename: $dataset_filename,

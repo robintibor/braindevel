@@ -7,6 +7,28 @@
         final_dense_length: [61],
         input_time_length: [2000], # will be overwritten by actual net size...
         save_path: ['data/models/paper/bci-competition/epo/shallow/'],
-        tag: ['repl'],
+        
+        first_nonlin: [$square],
+        post_pool_nonlin: [$safe_log],
+        pool_mode: ['average_exc_pad'],
+        
+        drop_p: [0.5],
+        layers: [$cnt_shallow_square],
+        
+        variants: [[{
+        
+                layers: [$cnt_shallow_square_no_bnorm],
+                drop_p: [0.],
+                ignore_unused: [[
+                    'batch_norm_alpha',
+                    'max_min', 'whisker_length', 'i_test_fold',
+                    'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
+                    'rejection_blink_ival', 'whisker_percent',
+                ]]
+        }]],
+        
+        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
+        'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
+        'rejection_blink_ival', 'whisker_percent']]
     }]],
 }

@@ -60,6 +60,16 @@
             drop_prob: [0.],
         },
         {
+            batch_norm: [false],
+            drop_prob: [0.],
+            first_nonlin: [$relu],
+            first_pool_mode: ['max'],
+            first_pool_nonlin: [$identity],
+            later_nonlin: [$relu],
+            later_pool_mode: ['max'],
+            later_pool_nonlin: [$identity],
+        },
+        {
             loss_expression: [$categorical_crossentropy],
         },
         {
