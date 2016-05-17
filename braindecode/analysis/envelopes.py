@@ -23,7 +23,6 @@ import logging
 log = logging.getLogger(__name__)
 
 
-
 def load_trial_env(env_file_name, model, i_layer, train_set, 
         n_inputs_per_trial):
     log.info("Loading envelope...")
