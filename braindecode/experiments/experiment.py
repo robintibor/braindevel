@@ -63,7 +63,10 @@ def create_default_experiment(final_layer, dataset, num_epochs=100):
         updates_expression=lasagne.updates.adam,
         updates_modifier=None,
         monitors=monitors, 
-        stop_criterion=stop_criterion)
+        stop_criterion=stop_criterion,
+        remember_best_chan='valid_misclass',
+        run_after_early_stop=True,
+        batch_modifier=None)
     return exp
     
 class Experiment(object):
