@@ -52,9 +52,18 @@ def generate_cluster_job(job_args):
     return job_filepath
 
 if __name__ == "__main__":
-    job_args = sys.argv[1:]
+    if sys.argv[1].startswith("metaex"):
+        hostname = sys.argv[1]
+        job_args = sys.argv[2:]
+    else:
+        hostname = None
+        job_args = sys.argv[1:]
     job_filepath = generate_cluster_job(job_args)
-    command = "qsub -q meta_core.q {:s}".format(job_filepath)
+    if hostname is not None:
+        command = "qsub -q meta_core.q -l hostname={:s} {:s}".format(
+            hostname, job_filepath)
+    else:
+        command = "qsub -q meta_core.q {:s}".format(job_filepath)
     print("Running:\n" + command)
     subprocess.call([command],shell=True)
     

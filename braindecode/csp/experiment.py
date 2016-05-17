@@ -154,10 +154,6 @@ class CSPExperiment(object):
             self.cleaner = NoCleaner(segment_ival=self.segment_ival,
                 marker_def=self.marker_def)
 
-    def get_trainer(self):
-        """ just for later saving"""
-        return self
-
     def run(self):
         log.info("Loading set...")
         self.load_bbci_set()
@@ -267,10 +263,6 @@ class CSPRetrain():
         self.backward_steps = backward_steps
         self.stop_when_no_improvement = stop_when_no_improvement
 
-    def get_trainer(self):
-        """ just for later saving"""
-        return self.trainer
-        
     def run(self):
         log.info("Loading trainer...")
         self.trainer = serial.load(self.trainer_filename)

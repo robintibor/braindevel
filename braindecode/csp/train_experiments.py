@@ -15,7 +15,7 @@ from braindecode.experiments.experiment_runner import (
     ExperimentsRunner)
 from braindecode.experiments.parse import (
     create_experiment_yaml_strings_from_files)
-from braindecode.csp.results import CSPResult
+from braindecode.csp.results import CSPResult, CSPModel
 from braindecode.csp.print_results import CSPResultPrinter
 from pprint import pprint
 log = logging.getLogger(__name__)
@@ -52,6 +52,11 @@ class CSPExperimentsRunner(ExperimentsRunner):
             result_file_name = self._get_result_save_path(experiment_index)
             with open(result_file_name, 'w') as resultfile:
                 pickle.dump(result, resultfile)
+            
+            if train_dict['save_model']:
+                model = CSPModel(csp_train)
+                model_save_path = self._get_model_save_path(experiment_index)
+                model.save(model_save_path)
 
     def _print_results(self):
         valid_folder_paths = [p for p in self._folder_paths 
@@ -140,6 +145,6 @@ if __name__ == "__main__":
         filter_params=args.filters)
     exp_runner = CSPExperimentsRunner(quiet=args.quiet, start_id=args.startid,
         stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle,
-        skip_existing=args.skipexisting)
+        skip_existing=args.skipexisting, dry_run=args.dryrun)
     exp_runner.run(all_train_strs)
 

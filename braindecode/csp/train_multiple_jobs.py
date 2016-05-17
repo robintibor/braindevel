@@ -20,10 +20,13 @@ if __name__ == "__main__":
         step = int(sys.argv[4])
     if len(sys.argv) > 5:
         waittime = int(sys.argv[5])
-    if len(sys.argv) > 6:
-        train_arg_string = " ".join(sys.argv[6:])
+    hostname = None
+    if len(sys.argv) > 6 and sys.argv[6].startswith("metaex"):
+        hostname = sys.argv[6]
+        train_arg_string = " ".join(sys.argv[7:])
     else:
-        train_arg_string = ""
+        train_arg_string = " ".join(sys.argv[6:])
+    
 
     train_script_file = "./csp/train_on_cluster.py"
 
@@ -33,8 +36,14 @@ if __name__ == "__main__":
                 waittime))
             time.sleep(waittime)
         i_stop = min(i_start + step - 1, stop)
-        command = "{:s} {:s} --start {:d} --stop {:d} {:s}".format(
-            train_script_file, config_filename, i_start, i_stop, 
-            train_arg_string)
+        if hostname is not None:
+            command = "{:s} {:s} {:s} --start {:d} --stop {:d} {:s}".format(
+                train_script_file, hostname, config_filename, i_start, i_stop, 
+                train_arg_string)
+        else:
+            command = "{:s} {:s} --start {:d} --stop {:d} {:s}".format(
+                train_script_file, config_filename, i_start, i_stop, 
+                train_arg_string)
+            
         subprocess.call([command],shell=True)
         #print command

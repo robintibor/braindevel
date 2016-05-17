@@ -37,14 +37,15 @@ class CSPResult(object):
 TrainCSPResult = CSPResult # backwards compatibility, printing earlier results   
 
 class CSPModel(object):
-    # TODO: check if it even works/is needed?
     """ For storing a model. Warning can be quite big"""
-    def __init__(self, csp_trainer):
-        self.csp_trainer = csp_trainer
+    def __init__(self, experiment):
+        self.experiment = experiment
     
     def save(self, filename):
-        if (hasattr(self.csp_trainer.binary_csp, 'cnt')):
-            del self.csp_trainer.binary_csp.cnt
-        del self.csp_trainer.bbci_set
-        del self.csp_trainer.cnt
-        serial.save(filename, self.csp_trainer)
+        # Delete data sets
+        if (hasattr(self.experiment.binary_csp, 'cnt')):
+            del self.experiment.binary_csp.cnt
+        if hasattr(self.experiment, 'test_cnt'):
+            del self.experiment.test_cnt
+        del self.experiment.cnt
+        serial.save(filename, self.experiment)
