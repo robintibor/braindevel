@@ -1,4 +1,4 @@
-from wyrm.processing import lfilter, filtfilt, select_ival
+from wyrm.processing import lfilter, filtfilt, select_ival, select_epochs
 import numpy as np
 from copy import deepcopy
 from braindecode.datahandling.preprocessing import (exponential_running_mean, 
@@ -13,7 +13,128 @@ from copy import copy
 import scipy.signal
 import logging
 from braindecode.datasets.generate_filterbank import filter_is_stable
+import scipy as sp
 log = logging.getLogger(__name__)
+def calculate_csp(epo, classes=None):
+    """Calculate the Common Spatial Pattern (CSP) for two classes.
+    Now with pattern computation as in matlab bbci toolbox
+    https://github.com/bbci/bbci_public/blob/c7201e4e42f873cced2e068c6cbb3780a8f8e9ec/processing/proc_csp.m#L112
+    
+    This method calculates the CSP and the corresponding filters. Use
+    the columns of the patterns and filters.
+    Examples
+    --------
+    Calculate the CSP for the first two classes::
+    >>> w, a, d = calculate_csp(epo)
+    >>> # Apply the first two and the last two columns of the sorted
+    >>> # filter to the data
+    >>> filtered = apply_spatial_filter(epo, w[:, [0, 1, -2, -1]])
+    >>> # You'll probably want to get the log-variance along the time
+    >>> # axis, this should result in four numbers (one for each
+    >>> # channel)
+    >>> filtered = np.log(np.var(filtered, 0))
+    Select two classes manually::
+    >>> w, a, d = calculate_csp(epo, [2, 5])
+    Parameters
+    ----------
+    epo : epoched Data object
+        this method relies on the ``epo`` to have three dimensions in
+        the following order: class, time, channel
+    classes : list of two ints, optional
+        If ``None`` the first two different class indices found in
+        ``epo.axes[0]`` are chosen automatically otherwise the class
+        indices can be manually chosen by setting ``classes``
+    Returns
+    -------
+    v : 2d array
+        the sorted spacial filters
+    a : 2d array
+        the sorted spacial patterns. Column i of a represents the
+        pattern of the filter in column i of v.
+    d : 1d array
+        the variances of the components
+    Raises
+    ------
+    AssertionError :
+        If:
+          * ``classes`` is not ``None`` and has less than two elements
+          * ``classes`` is not ``None`` and the first two elements are
+            not found in the ``epo``
+          * ``classes`` is ``None`` but there are less than two
+            different classes in the ``epo``
+    See Also
+    --------
+    :func:`apply_spatial_filter`, :func:`apply_csp`, :func:`calculate_spoc`
+    References
+    ----------
+    http://en.wikipedia.org/wiki/Common_spatial_pattern
+    """
+    n_channels = epo.data.shape[-1]
+    if classes is None:
+        # automagically find the first two different classidx
+        # we don't use uniq, since it sorts the classidx first
+        # first check if we have a least two diffeent idxs:
+        assert len(np.unique(epo.axes[0])) >= 2
+        cidx1 = epo.axes[0][0]
+        cidx2 = epo.axes[0][epo.axes[0] != cidx1][0]
+    else:
+        assert (len(classes) >= 2 and
+            classes[0] in epo.axes[0] and
+            classes[1] in epo.axes[0])
+        cidx1 = classes[0]
+        cidx2 = classes[1]
+    epoc1 = select_epochs(epo, np.nonzero(epo.axes[0] == cidx1)[0], classaxis=0)
+    epoc2 = select_epochs(epo, np.nonzero(epo.axes[0] == cidx2)[0], classaxis=0)
+    # we need a matrix of the form (observations, channels) so we stack trials
+    # and time per channel together
+    x1 = epoc1.data.reshape(-1, n_channels)
+    x2 = epoc2.data.reshape(-1, n_channels)
+    # compute covariance matrices of the two classes
+    c1 = np.cov(x1.transpose())
+    c2 = np.cov(x2.transpose())
+    # solution of csp objective via generalized eigenvalue problem
+    # in matlab the signature is v, d = eig(a, b)
+    d, v = sp.linalg.eig(c1-c2, c1+c2)
+    d = d.real
+    # make sure the eigenvalues and -vectors are correctly sorted
+    indx = np.argsort(d)
+    # reverse
+    indx = indx[::-1]
+    d = d.take(indx)
+    v = v.take(indx, axis=1)
+    #old pattern computation
+    #a = sp.linalg.inv(v).transpose()
+    c_avg = (c1 + c2) / 2.0
+    
+    # compare 
+    # https://github.com/bbci/bbci_public/blob/c7201e4e42f873cced2e068c6cbb3780a8f8e9ec/processing/proc_csp.m#L112
+    # with W := v
+    v_with_cov = np.dot(c_avg, v)
+    source_cov = np.dot(np.dot(v.T, c_avg), v)
+    # matlab-python comparison
+    """
+    v_with_cov = np.array([[1,2,-2],
+             [3,-2,4],
+             [5,1,0.3]])
+
+    source_cov = np.array([[1,2,0.5],
+                  [2,0.6,4],
+                  [0.5,4,2]])
+    
+    sp.linalg.solve(source_cov.T, v_with_cov.T).T
+    # for matlab
+    v_with_cov = [[1,2,-2],
+                 [3,-2,4],
+                 [5,1,0.3]]
+    
+    source_cov = [[1,2,0.5],
+                  [2,0.6,4],
+                  [0.5,4,2]]
+    v_with_cov / source_cov"""
+
+    a = sp.linalg.solve(source_cov.T, v_with_cov.T).T
+    return v, a, d
+
 
 def select_marker_classes_epoch_range(cnt, classes, start,stop,copy_data=False):
     cnt = select_marker_classes(cnt, classes, copy_data)

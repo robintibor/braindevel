@@ -5,7 +5,7 @@ import subprocess
 import time
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or len(sys.argv) > 4:
+    if len(sys.argv) < 2 or (sys.argv[1] in ['-h', '--help']):
         print("Usage: ./csp/train_multiple_jobs.py configfilename [start] [stop] [step] [waittime] [train_flags]")
     config_filename = sys.argv[1]
     start = 1

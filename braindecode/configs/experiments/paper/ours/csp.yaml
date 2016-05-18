@@ -34,7 +34,7 @@
             'whisker_percent']],
         variants: [[
         {
-            save_path: ['data/models/paper/ours/csp/car/'],
+            save_path: ['data/models/paper/ours/csp/car5/'],
             save_model: [True],
             common_average_reference: [True],
             sensor_names: [$all_EEG_sensors], #,"null"

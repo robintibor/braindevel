@@ -1,7 +1,8 @@
-from wyrm.processing import (calculate_csp, select_epochs, select_classes,
+from wyrm.processing import (select_epochs, select_classes,
     lda_apply, append_epo, select_ival)
 from braindecode.mywyrm.processing import ( 
-    lda_train_scaled, segment_dat_fast, apply_csp_var_log, bandpass_cnt)
+    lda_train_scaled, segment_dat_fast, apply_csp_var_log, bandpass_cnt,
+    calculate_csp)
 import numpy as np
 from braindecode.csp.feature_selection import select_features
 from copy import deepcopy
