@@ -43,10 +43,8 @@ def compute_trial_acts(model, i_layer, iterator, train_set):
           for batch in iterator.get_batches(train_set, False)]
     batch_sizes = [len(batch[0]) for batch in iterator.get_batches(train_set, False)]
     all_outs_per_batch = np.array(all_outs_per_batch)
-    trial_starts, trial_ends = compute_trial_start_end_samples(train_set.y)
-    assert len(np.unique(trial_ends - trial_starts)) == 1
-    n_trials = len(trial_starts)
-    n_trial_len = np.unique(trial_ends - trial_starts)[0]
+    n_trials = len(i_trial_starts)
+    n_trial_len = np.unique(i_trial_ends - i_trial_starts)[0]
     log.info("Transform to trial activations...")
     trial_acts = get_trial_acts(all_outs_per_batch,
                                   batch_sizes, n_trials=n_trials, 
