@@ -27,15 +27,6 @@ def multiply_blackmann_harris_window(inputs, axis=1):
             w = np.expand_dims(w, i_axis)
     return w * inputs
 
-def median_absolute_deviation(arr, axis=None):
-    """ Median Absolute Deviation: a "Robust" version of standard deviation.
-        Indices variability of the sample.
-        https://en.wikipedia.org/wiki/Median_absolute_deviation 
-        http://stackoverflow.com/a/23535934/1469195
-    """
-    med = np.median(arr, axis=axis, keepdims=True)
-    return np.median(np.abs(arr - med), axis=axis)
-
 
 def lowpass_topo(topo, high_cut_hz, sampling_rate, axis=0, filt_order=4):
     nyq_freq = 0.5 * sampling_rate

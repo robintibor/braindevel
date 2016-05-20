@@ -10,8 +10,8 @@ import gc
 from braindecode.experiments.experiment import create_experiment
 from braindecode.datasets.generate_filterbank import generate_filterbank
 from braindecode.analysis.util import (lowpass_topo,
-                                       highpass_topo,
                                        bandpass_topo)
+from braindecode.analysis.stats import corr
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 from braindecode.results.results import ResultPool
 from braindecode.analysis.kaggle import  transform_to_trial_acts
@@ -67,17 +67,6 @@ def compute_topo_corrs(trial_env, trial_acts):
         trial_acts.shape[1])
     return topo_corrs
 
-def corr(x,y):
-    # computing "unbiased" corr
-    demeaned_x = x - np.mean(x, axis=1, keepdims=True)
-    demeaned_y = y - np.mean(y, axis=1, keepdims=True)
-    #ddof=1 for unbiased..
-    divisor = np.outer(np.sqrt(np.var(x, axis=1, ddof=1)), 
-        np.sqrt(np.var(y, axis=1, ddof=1)))
-    
-    cov = np.dot(demeaned_x,demeaned_y.T) / (y.shape[1] -1)
-    return cov / divisor
-
 def get_meaned_trial_env(env, field_size, n_trials, n_inputs_per_trial,
                         n_trial_len, n_sample_preds):
     inputs = T.ftensor4()
@@ -125,7 +114,6 @@ def create_envelopes(folder_name, params, start, stop):
             file_name, i_file+1, stop))
         create_envelopes_for_experiment(file_name)
 
-
 def create_envelopes_for_experiment(experiment_file_name):
     iterator, train_set = _load_experiment(experiment_file_name)
     filterbands = generate_filterbank(min_freq=1, max_freq=115,
@@ -139,7 +127,7 @@ def create_envelopes_for_experiment(experiment_file_name):
     np.save(experiment_file_name.replace('.yaml', '.filt_bands.npy'),
         filterbands)
     log.info("Done.")
-    
+
 def _load_experiment(experiment_file_name):
     exp = create_experiment(experiment_file_name)
     exp.dataset.load()
@@ -214,5 +202,5 @@ if __name__ == "__main__":
     else:
         print args.experiments_folder
         print args.params
-        create_envelopes(args.folder, args.params, start=args.start, stop=args.stop)
-        
+        create_envelopes(args.folder, args.params, start=args.start,
+            stop=args.stop)

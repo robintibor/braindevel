@@ -1,4 +1,5 @@
 import numpy as np
+from braindecode.datasets.fft import amplitude_phase_to_complex
 
 class BandpowerMeaner(object):
     def process(self, inputs, targets):
@@ -15,14 +16,16 @@ class BandpowerMeaner(object):
                 i_mix = i_relevant_blocks[:n_mix]
                 inputs_to_modify = inputs[i_mix]
                 fft_to_modify = np.fft.rfft(inputs_to_modify, axis=2)
-                # Add real part of other blocks
-                # also add imaginary part of same block
-                # so that later division by 2 will result in a mean
-                fft_to_modify[:n_mix/2] += (np.abs(fft_to_modify[n_mix/2:]) + 
-                    1j * np.imag(fft_to_modify[:n_mix/2]))
-                fft_to_modify[n_mix/2:] += (np.abs(fft_to_modify[:n_mix/2]) +
-                    1j * np.imag(fft_to_modify[n_mix/2:]))
-                fft_to_modify /= 2
+                # Compute mean of amplitudes
+                # of both mixed halfs
+                amp_to_modify = np.abs(fft_to_modify)
+                amp_to_modify[:n_mix/2] += amp_to_modify[n_mix/2:]
+                amp_to_modify[n_mix/2:] += amp_to_modify[:n_mix/2]
+                amp_to_modify /= 2
+                phase = np.angle(fft_to_modify)
+                fft_to_modify = amplitude_phase_to_complex(amp_to_modify,
+                    phase)
+                
                 modified_input = np.fft.irfft(fft_to_modify, 
                     n=inputs.shape[2], axis=2)
                 inputs[i_mix] = modified_input

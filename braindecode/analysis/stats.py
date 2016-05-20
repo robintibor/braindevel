@@ -252,3 +252,24 @@ def sign_test(a,b):
     n_positive = np.sum(diffs > 0)
     n_equal = np.sum(diffs == 0)
     return scipy.stats.binom_test(n_positive + n_equal, n_samples, p=0.5)
+
+
+def median_absolute_deviation(arr, axis=None, keepdims=False):
+    """ Median Absolute Deviation: a "Robust" version of standard deviation.
+        Indices variability of the sample.
+        https://en.wikipedia.org/wiki/Median_absolute_deviation 
+        http://stackoverflow.com/a/23535934/1469195
+    """
+    med = np.median(arr, axis=axis, keepdims=True)
+    return np.median(np.abs(arr - med), axis=axis, keepdims=keepdims)
+
+def corr(x,y):
+    # computing "unbiased" corr
+    demeaned_x = x - np.mean(x, axis=1, keepdims=True)
+    demeaned_y = y - np.mean(y, axis=1, keepdims=True)
+    #ddof=1 for unbiased..
+    divisor = np.outer(np.sqrt(np.var(x, axis=1, ddof=1)), 
+        np.sqrt(np.var(y, axis=1, ddof=1)))
+    
+    cov = np.dot(demeaned_x,demeaned_y.T) / (y.shape[1] -1)
+    return cov / divisor

@@ -169,3 +169,6 @@ def compute_short_time_fourier_transform(trials, window_length, window_stride):
         fft_trial = np.fft.rfft(trials_for_fft, axis=2)
         fft_trials[:,:,time_bin, :] = fft_trial
     return fft_trials
+
+def amplitude_phase_to_complex(amplitude, phase):
+    return amplitude * np.cos(phase) + amplitude * np.sin(phase) * 1j
