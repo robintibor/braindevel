@@ -14,37 +14,36 @@ def create_env_corrs(folder_name, params):
     res_file_names = res_pool.result_file_names()
     all_base_names = [name.replace('.result.pkl', '')
         for name in res_file_names]
-    #for i_file, base_name in enumerate(all_base_names):
-    #    assert os.path.isfile(base_name + ".env.npy") 
+    
+    # Hackhack since I know this is correct layers atm
+    i_all_layers = [28] #for shallow [3, 4, 5, 7]
     for i_file, base_name in enumerate(all_base_names):
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file+1, len(all_base_names)))
-        topo_corrs, rand_topo_corrs = create_topo_env_corrs(base_name)
-        np.save(base_name + '.env_corrs.npy', topo_corrs)
-        np.save(base_name + '.env_rand_corrs.npy', rand_topo_corrs)
-    
-def create_topo_env_corrs(base_name):
+        create_topo_env_corrs_files(base_name, i_all_layers)
+ 
+def create_topo_env_corrs_files(base_name, i_all_layers):
     exp, model = load_exp_and_model(base_name)
     exp.dataset.load()
-    # Hackhack since I know this is correct layer atm
-    i_layer = 7
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
         
     result = np.load(base_name + '.result.pkl')
     env_file_name = dataset_to_env_file(result.parameters['dataset_filename'])
+    for i_layer in i_all_layers:
+        log.info("Layer {:d}".format(i_layer))
+        trial_env = load_trial_env(env_file_name, model, 
+            i_layer, train_set, n_inputs_per_trial=2)
+        topo_corrs = compute_trial_topo_corrs(model, i_layer, train_set, 
+            exp.iterator, trial_env)
         
-    trial_env = load_trial_env(env_file_name, model, 
-        i_layer, train_set, n_inputs_per_trial=2)
-    topo_corrs = compute_trial_topo_corrs(model, i_layer, train_set, 
-        exp.iterator, trial_env)
-    
-    
-    rand_model = create_experiment(base_name + '.yaml').final_layer
-    rand_topo_corrs = compute_trial_topo_corrs(rand_model, i_layer, train_set, 
-        exp.iterator, trial_env)
-    
-    return topo_corrs, rand_topo_corrs
+        rand_model = create_experiment(base_name + '.yaml').final_layer
+        rand_topo_corrs = compute_trial_topo_corrs(rand_model, i_layer, train_set, 
+            exp.iterator, trial_env)
+ 
+        np.save('{:s}.env_corrs.{:d}.npy'.format(base_name, i_layer), topo_corrs)
+        np.save('{:s}.env_rand_corrs.{:d}.npy'.format(base_name, i_layer), rand_topo_corrs)
+    return
 
 def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
     trial_acts = compute_trial_acts(model, i_layer, iterator, train_set)
@@ -52,7 +51,7 @@ def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
     return topo_corrs
     
 def dataset_to_env_file(wanted_dataset_filename):
-    """ FOr any dataset filename, give envelope filename
+    """ For any dataset filename, give envelope filename
     These experiments are, where envelopes were calculated from originally"""
     res_pool= ResultPool()
     res_pool.load_results('data/models-backup/paper/ours/cnt/deep4/car/',
@@ -85,9 +84,9 @@ def setup_logging():
     
 if __name__ == "__main__":
     setup_logging()
-#     create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
-#             params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-#                         low_cut_off_hz="null", first_nonlin="$elu"))
-    create_env_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
-        params=None)
+    create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
+             params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
+                         low_cut_off_hz="null", first_nonlin="$elu"))
+#    create_env_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
+#        params=None)
     
