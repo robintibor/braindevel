@@ -7,7 +7,7 @@ from braindecode.analysis.create_env_corrs import setup_logging
 log = logging.getLogger(__name__)
 
 def check_shallow_env_corrs():
-    i_layer = 7
+    i_layer = 5
     for i_exp in xrange(1,21):
         file_base_name = 'data/models-backup/paper/ours/cnt/shallow//car/{:d}'.format(
             i_exp)
@@ -24,7 +24,7 @@ def check_shallow_env_corrs():
             exp_shallow.iterator, exp_shallow.dataset.train_set)
         log.info("Compute topo corrs")
         topo_corrs = compute_topo_corrs(trial_env, trial_acts)
-        topo_corrs_old = np.load(file_base_name  + '.env_corrs.npy')
+        topo_corrs_old = np.load(file_base_name  + '5.env_corrs.npy')
         diff = np.mean(np.abs(topo_corrs - topo_corrs_old))
         log.info("Diff ok {:f}".format(diff))
         assert diff < 1e-3, (
