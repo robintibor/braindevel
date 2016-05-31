@@ -1,6 +1,7 @@
 import numpy as np
 from braindecode.datasets.raw import CleanSignalMatrix
 from scipy.signal.windows import blackmanharris
+from braindecode.mywyrm.processing import segment_dat_fast
 
 class FFTPreprocessor(object):
     def __init__(self, window_length, window_stride,
@@ -172,3 +173,100 @@ def compute_short_time_fourier_transform(trials, window_length, window_stride):
 
 def amplitude_phase_to_complex(amplitude, phase):
     return amplitude * np.cos(phase) + amplitude * np.sin(phase) * 1j
+
+
+def compute_amps_baseline_before(cnt, fs):
+    assert fs  == 500
+    marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
+    epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
+    win_length = 250
+    win_stride = 250
+    amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),
+        window_length=win_length, window_stride=win_stride,
+        divide_win_length=False,square_amplitude=False)
+    baseline_epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[-500,0])
+    
+    baseline_amps = compute_power_spectra(baseline_epo.data.transpose(0,2,1),
+        window_length=win_length, window_stride=win_stride,
+        divide_win_length=False,square_amplitude=False)
+    
+    # median across trials
+    median_baseline_amp = np.median(baseline_amps, axis=(0))
+    assert median_baseline_amp.shape[1] == 1, "should only have one timebin"
+    corrected_amps = amplitudes / median_baseline_amp[None,:]
+    all_class_amps = []
+    for i_class in xrange(4):
+        this_class_amps = corrected_amps[epo.axes[0] == i_class]
+        class_amp = np.log(np.median(this_class_amps, axis=(0,2)))
+        all_class_amps.append(class_amp)
+    
+    all_class_amps = np.array(all_class_amps)
+    return all_class_amps
+    
+def compute_amps_relative(cnt, fs):
+    assert fs  == 500
+    marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
+    epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
+    # now with baseline as average over classes
+    
+    amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),window_length=1750,
+                                       window_stride=1750,
+                     divide_win_length=False,square_amplitude=False)
+    assert amplitudes.shape[2] == 1, "should only have one timebin"
+    median_baseline_amp = np.median(amplitudes, axis=(0,))
+    corrected_amps = amplitudes / median_baseline_amp[None,:]
+    all_class_amps = []
+    for i_class in xrange(4):
+        this_class_amps = corrected_amps[epo.axes[0] == i_class]
+        class_amp = np.log(np.median(this_class_amps, axis=(0,2)))
+        all_class_amps.append(class_amp)
+    
+    all_class_amps = np.array(all_class_amps)
+    return all_class_amps
+
+
+def compute_amps_to_rest(cnt, fs):
+    assert fs  == 500
+    marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
+    epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
+    # now with baseline as average over classes
+    
+    amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),window_length=1750,
+                                       window_stride=1750,
+                     divide_win_length=False,square_amplitude=False)
+    assert amplitudes.shape[2] == 1, "should only have one timebin"
+    # to rest class
+    median_baseline_amp = np.median(amplitudes[epo.axes[0] == 2],
+        axis=(0,))
+    corrected_amps = amplitudes / median_baseline_amp[None]
+    all_class_amps = []
+    for i_class in xrange(4):
+        this_class_amps = corrected_amps[epo.axes[0] == i_class]
+        class_amp = np.log(np.median(this_class_amps, axis=(0,2)))
+        all_class_amps.append(class_amp)
+    
+    all_class_amps = np.array(all_class_amps)
+    return all_class_amps
+
+def compute_amps_to_others(cnt, fs):
+    assert fs  == 500
+    marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
+    epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
+    # now with baseline as average over classes
+    
+    amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),window_length=1750,
+                                       window_stride=1750,
+                     divide_win_length=False,square_amplitude=False)
+    assert amplitudes.shape[2] == 1, "should only have one timebin"
+    all_class_amps = []
+    for i_class in xrange(4):
+        this_class_amps = amplitudes[epo.axes[0] == i_class]
+        other_class_amps = amplitudes[epo.axes[0] != i_class]
+        median_other_amp = np.median(other_class_amps, axis=(0,))
+        median_other_amp = median_other_amp[None]
+        class_amp = np.log(np.median(this_class_amps / median_other_amp, 
+            axis=(0,2)))
+        all_class_amps.append(class_amp)
+    
+    all_class_amps = np.array(all_class_amps)
+    return all_class_amps

@@ -253,15 +253,25 @@ def sign_test(a,b):
     n_equal = np.sum(diffs == 0)
     return scipy.stats.binom_test(n_positive + n_equal, n_samples, p=0.5)
 
-
+def median(a, axis=None, keepdims=False):
+    """
+    Just since I use old numpy version on one cluster which doesn't
+    have keepdims
+    """
+    out = np.median(axis)
+    if keepdims:
+        for ax in axis:
+            out = np.expand_dims(out, ax)
+    return out
+    
 def median_absolute_deviation(arr, axis=None, keepdims=False):
     """ Median Absolute Deviation: a "Robust" version of standard deviation.
         Indices variability of the sample.
         https://en.wikipedia.org/wiki/Median_absolute_deviation 
         http://stackoverflow.com/a/23535934/1469195
     """
-    med = np.median(arr, axis=axis, keepdims=True)
-    return np.median(np.abs(arr - med), axis=axis, keepdims=keepdims)
+    med = median(arr, axis=axis, keepdims=True)
+    return median(np.abs(arr - med), axis=axis, keepdims=keepdims)
 
 def corr(x,y):
     # computing "unbiased" corr

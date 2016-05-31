@@ -22,13 +22,15 @@ def load_data_frame(folder, params=None, shorten_headers=True):
     result_objs = res_pool.result_objects()
     varying_params = res_pool.varying_params()
     constant_params = res_pool.constant_params()
-    data_frame = to_data_frame(result_objs, varying_params, constant_params,
-        shorten_headers=shorten_headers)
+    file_names = res_pool.result_file_names()
+    data_frame = to_data_frame(file_names, result_objs, varying_params,
+        constant_params, shorten_headers=shorten_headers)
     return data_frame
 
-def to_data_frame(result_objs, varying_params, constant_params,
+def to_data_frame(file_names, result_objs, varying_params, constant_params,
     shorten_headers=True):
     all_params = [merge_dicts(var, constant_params) for var in varying_params]
+    file_numbers = [int(f.split('/')[-1].split('.')[0]) for f in file_names]
     
     # remove dollars
     for param_dict in all_params:
@@ -48,7 +50,7 @@ def to_data_frame(result_objs, varying_params, constant_params,
         axis=1)
     if shorten_headers:
         param_keys = [prettify_word(key) for key in param_keys]
-    data_frame = pd.DataFrame(vals_and_misclasses, 
+    data_frame = pd.DataFrame(vals_and_misclasses, index=file_numbers, 
         columns=param_keys + ['time', 'test', 'train'])
     data_frame = to_numeric_where_possible(data_frame)
     data_frame.time = pd.to_timedelta(np.round(data_frame.time), unit='s')

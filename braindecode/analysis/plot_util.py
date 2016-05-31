@@ -516,21 +516,10 @@ def plot_class_probs(probs, value_minmax=None):
     fig.axes[0].get_xaxis().set_ticks([0.5, 1.5, 2.5])
 
 def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
-    figsize=(8, 4.5), yticks=None, yticklabels=None,
+    figsize=(8, 4.5), yticks=(), yticklabels=(),
     correctness_matrices=None, colormap=cm.coolwarm,
     sensor_map=cap_positions, vmax=None, vmin=None):
     """ figsize ignored if figure given """
-    # for now hack it here... giving freq labels with 2 hz width if likely
-    # that this is correct ind of input
-    # TODELAY: do this properly
-    if yticks == None and yticklabels == None and matrices.shape[2] > 1:
-        freq_bins = np.fft.rfftfreq(n=250, d=1 / 500.0)
-        wanted_ticks = 5
-        step_size = matrices.shape[2] // wanted_ticks
-        freq_bins = freq_bins[:matrices.shape[2]:step_size]
-        yticks = freq_bins / 2
-        yticklabels = freq_bins
-    
     assert len(matrices) == len(sensor_names), "need sensor names for all sensor matrices"
     if figure is None:
         figure = plt.figure(figsize=figsize)
@@ -610,10 +599,8 @@ def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
                 interpolation='nearest', cmap=cm.PuRd, origin='lower',
                 vmin=0, vmax=vmax)
         ax.set_xticks([])
-        if yticks is not None:
-            ax.set_yticks(yticks)
-        if yticklabels is not None:
-            ax.set_yticklabels(yticklabels)
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(yticklabels)
         ax.tick_params(axis='both', which='major', labelsize=6)
         ax.grid(color='k', linewidth=0.1, linestyle=':')
     return figure

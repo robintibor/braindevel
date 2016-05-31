@@ -9,7 +9,6 @@ from braindecode.datahandling.batch_iteration import (
 import logging
 log = logging.getLogger(__name__)
 
-
 def create_env_class_corrs(folder, params,start,stop):
     res_pool = ResultPool()
     res_pool.load_results(folder, params=params)
