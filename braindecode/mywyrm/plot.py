@@ -4,7 +4,7 @@ import numpy as np
 from scipy import interpolate
 from matplotlib import patches
 from matplotlib.path import Path
-from braindecode.datasets.sensor_positions import CHANNEL_10_20
+from braindecode.datasets.sensor_positions import CHANNEL_10_20_APPROX
 
 def get_channelpos(channame, chan_pos_list):
     
@@ -20,7 +20,7 @@ def get_channelpos(channame, chan_pos_list):
         raise ValueError("Unknown first element "
             "{:s} (should be type of positions)".format(chan_pos_list[0]))
 
-def get_channelpos_from_angle(channame, chan_pos_list=CHANNEL_10_20):
+def get_channelpos_from_angle(channame, chan_pos_list=CHANNEL_10_20_APPROX):
     """Return the x/y position of a channel.
 
     This method calculates the stereographic projection of a channel
@@ -81,9 +81,9 @@ def get_channelpos_from_angle(channame, chan_pos_list=CHANNEL_10_20):
 
 def ax_scalp(v, channels, 
     ax=None, annotate=False, vmin=None, vmax=None, colormap=None,
-    scalp_line_width=2,
+    scalp_line_width=1,
     scalp_line_style='solid',
-    chan_pos_list=CHANNEL_10_20, ):
+    chan_pos_list=CHANNEL_10_20_APPROX, ):
     """Draw a scalp plot.
 
     Draws a scalp plot on an existing axes. The method takes an array of
@@ -139,44 +139,42 @@ def ax_scalp(v, channels,
     # calculate the interpolation
     x = [i[0] for i in points]
     y = [i[1] for i in points]
-    # interplolate the in-between values
+    # interpolate the in-between values
     xx = np.linspace(min(x), max(x), 500)
     yy = np.linspace(min(y), max(y), 500)
     xx, yy = np.meshgrid(xx, yy)
     f = interpolate.LinearNDInterpolator(list(zip(x, y)), z)
     zz = f(xx, yy)
-    # draw the contour map
-    contour = ax.contourf(xx, yy, zz, 20, vmin=vmin, vmax=vmax, cmap=colormap)
-    contour.set_clim(vmin, vmax)
-    # try also removing contour maybe...
-    #ax.contour(xx, yy, zz, 5, colors="k", vmin=vmin, vmax=vmax, linewidths=.1)
+    # plot map
+    image = ax.imshow(zz, vmin=vmin, vmax=vmax, cmap=colormap,
+        extent=[min(x),max(x),min(y),max(y)], origin='lower',
+        interpolation='bilinear')
+    #image = ax.contourf(xx, yy, zz, 100, vmin=vmin, vmax=vmax,
+    #    cmap=colormap)
     # paint the head
     ax.add_artist(plt.Circle((0, 0), 1, linestyle=scalp_line_style,
         linewidth=scalp_line_width, fill=False))
     # add a nose
     ax.plot([-0.1, 0, 0.1], [1, 1.1, 1], color='black', 
         linewidth=scalp_line_width, linestyle=scalp_line_style,)
-    
+    # add ears
     add_ears(ax, scalp_line_width, scalp_line_style)
     # add markers at channels positions
-    #ax.plot(x, y, 'k+')
     # set the axes limits, so the figure is centered on the scalp
     ax.set_ylim([-1.05, 1.15])
     ax.set_xlim([-1.15, 1.15])
     
-    # hide the frame and axes
-    # hiding the axes might be too much, as this will also hide the x/y
-    # labels :/ .. 
+    # hide the frame and ticks
     ax.set_frame_on(False)
     ax.set_xticks([])
     ax.set_yticks([])
     # draw the channel names
     if annotate:
         for i in zip(channels, list(zip(x, y))):
-            ax.annotate(" " + i[0], i[1],horizontalalignment="center")
+            ax.annotate(" " + i[0], i[1],horizontalalignment="center",
+                verticalalignment='center')
     ax.set_aspect(1)
-    #plt.sci(ctr) #TODELAY: find out why this is necessary?
-    return contour
+    return image
 
 def add_ears(ax, linewidth, linestyle):
     start_x = np.cos(10* np.pi/180.0)
