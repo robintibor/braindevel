@@ -102,5 +102,7 @@ yv=xy(:,2); % y-Koordinaten der Elektroden
 
 fileId = fopen('sensor-pos-laura.txt', 'w');
 for iSensor = 1:size(xy,1)
-    fprintf(fileId, '(%.3f, %.3f),\n', xy(iSensor,1), xy(iSensor,2));
+    fprintf(fileId, '(''%s'', (%.3f, %.3f)),\n', Kanalnamenchar{iSensor}, ...
+        xy(iSensor,1), xy(iSensor,2));
 end
+fclose(fileId);
