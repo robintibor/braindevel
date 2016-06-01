@@ -248,7 +248,7 @@ def compute_amps_to_rest(cnt, fs):
     all_class_amps = np.array(all_class_amps)
     return all_class_amps
 
-def compute_amps_to_others(cnt, fs):
+def compute_amps_to_others(cnt, fs, square):
     assert fs  == 500
     marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
     epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
@@ -256,7 +256,7 @@ def compute_amps_to_others(cnt, fs):
     
     amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),window_length=1750,
                                        window_stride=1750,
-                     divide_win_length=False,square_amplitude=False)
+                     divide_win_length=False,square_amplitude=square)
     assert amplitudes.shape[2] == 1, "should only have one timebin"
     all_class_amps = []
     for i_class in xrange(4):
