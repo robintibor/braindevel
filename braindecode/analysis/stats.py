@@ -277,13 +277,13 @@ def corr(x,y):
     # Difference to numpy:
     # Correlation only between terms of x and y
     # not between x and x or y and y
-    cov = cov(x,y)
+    this_cov = cov(x,y)
     # computing "unbiased" corr
     # ddof=1 for unbiased..
     divisor = np.outer(np.sqrt(np.var(x, axis=1, ddof=1)), 
         np.sqrt(np.var(y, axis=1, ddof=1)))
     
-    return cov / divisor
+    return this_cov / divisor
 
 def cov(x,y):
     # Difference to numpy:
@@ -291,7 +291,7 @@ def cov(x,y):
     # not between x and x or y and y
     demeaned_x = x - np.mean(x, axis=1, keepdims=True)
     demeaned_y = y - np.mean(y, axis=1, keepdims=True)
-    cov = np.dot(demeaned_x,demeaned_y.T) / (y.shape[1] -1)
-    return cov
+    this_cov = np.dot(demeaned_x,demeaned_y.T) / (y.shape[1] -1)
+    return this_cov
     
     
