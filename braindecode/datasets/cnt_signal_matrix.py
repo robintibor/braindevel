@@ -3,9 +3,7 @@ from wyrm.processing import select_channels
 from braindecode.datasets.sensor_positions import sort_topologically
 import numpy as np
 import logging
-from braindecode.mywyrm.processing import select_marker_classes,\
-    get_event_samples_and_classes, create_cnt_y, create_cnt_y_start_end_marker
-from braindecode.datasets import signal_processor
+from braindecode.mywyrm.processing import create_cnt_y, create_cnt_y_start_end_marker
 log = logging.getLogger(__name__)
 
 class CntSignalMatrix(DenseDesignMatrix):

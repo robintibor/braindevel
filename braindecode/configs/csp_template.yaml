@@ -10,6 +10,7 @@
             sensor_names: $sensor_names,
             cleaner: $cleaner,
             resample_fs: $resample_fs,
+            standardize_cnt: $standardize_cnt,
             min_freq: $min_freq,
             max_freq: $max_freq,
             low_width: $low_width,
@@ -18,8 +19,9 @@
             high_overlap: $high_overlap,
             last_low_freq: $last_low_freq,
             filt_order: $filt_order,
+            standardize_filt_cnt: $standardize_filt_cnt,
             segment_ival: [$trial_start, $trial_stop],
-            standardize: $standardize,
+            standardize_epo: $standardize_epo,
             n_folds: $n_folds,
             n_top_bottom_csp_filters: $n_top_bottom_csp_filters,
             n_selected_filterbands: $n_selected_filterbands,
@@ -31,6 +33,7 @@
             common_average_reference: $common_average_reference,
             ival_optimizer: $ival_optimizer,
             marker_def: $marker_def,
+            set_cz_to_zero: $set_cz_to_zero
         },
         csp_train_two_files: &csp_train_two_files !obj:braindecode.csp.experiment.TwoFileCSPExperiment {
             train_set_loader: !obj:braindecode.datasets.loaders.$loader_type {
@@ -45,6 +48,7 @@
             train_cleaner: $cleaner,
             test_cleaner: $test_cleaner,
             resample_fs: $resample_fs,
+            standardize_cnt: $standardize_cnt,
             min_freq: $min_freq,
             max_freq: $max_freq,
             low_width: $low_width,
@@ -53,8 +57,9 @@
             high_overlap: $high_overlap,
             last_low_freq: $last_low_freq,
             filt_order: $filt_order,
+            standardize_filt_cnt: $standardize_filt_cnt,
             segment_ival: [$trial_start, $trial_stop],
-            standardize: $standardize,
+            standardize_epo: $standardize_epo,
             n_folds: $n_folds,
             n_top_bottom_csp_filters: $n_top_bottom_csp_filters,
             n_selected_filterbands: $n_selected_filterbands,
@@ -66,6 +71,7 @@
             common_average_reference: $common_average_reference,
             ival_optimizer: $ival_optimizer,
             marker_def: $marker_def,
+            set_cz_to_zero: $set_cz_to_zero,
         },
         csp_train: $csp_train_obj,
 }

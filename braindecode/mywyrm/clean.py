@@ -89,7 +89,7 @@ class NoCleaner():
         return clean_result
         
 
-class SetCleaner():
+class SetCleaner(object):
     """ Determines rejected trials and channels """
     def __init__(self, eog_set, rejection_var_ival=[0,4000], 
             rejection_blink_ival=[-500,4000],
@@ -142,6 +142,48 @@ class SetCleaner():
         
         return clean_result
 
+class MaxAbsRemoveCzCleaner(object):
+    def __init__(self, max_abs_cleaner):
+        self.max_abs_cleaner = max_abs_cleaner
+        self.marker_def = self.max_abs_cleaner.marker_def
+        
+    def clean(self, cnt, ignore_chans=False):
+        clean_result = self.max_abs_cleaner.clean(cnt, ignore_chans)
+        assert len(clean_result.rejected_chan_names) == 0
+        if not ignore_chans:
+            clean_result.rejected_chan_names.append('Cz')
+        return clean_result
+
+class MaxAbsCleaner(object):
+    def __init__(self, threshold, segment_ival=None, marker_def=None):
+        self.threshold = threshold
+        self.marker_def = marker_def
+        if self.marker_def is None:
+            self.marker_def = {'1 - Right Hand': [1], '2 - Left Hand': [2], 
+                    '3 - Rest': [3], '4 - Feet': [4]}
+        self.segment_ival = segment_ival
+        if self.segment_ival is None:
+            self.segment_ival = [0, 4000]
+
+    def clean(self, cnt, ignore_chans=False):
+        # Segment into trials and take all! :)
+        # Segment just to select markers and kick out out of bounds
+        # trials
+        # chans ignored always anyways... so ignore_chans parameter does not
+        # matter
+        epo = segment_dat_fast(cnt, marker_def=self.marker_def, 
+           ival=self.segment_ival)
+        # max abs over samples and channels
+        trial_max = np.max(np.abs(epo.data), axis=(1,2))
+        all_trials = range(epo.data.shape[0])
+        rejected_trials = np.flatnonzero(trial_max > self.threshold)
+        clean_trials = np.sort(np.setdiff1d(all_trials, rejected_trials))
+        clean_result = CleanResult(rejected_chan_names=[],
+            rejected_trials=rejected_trials,
+            clean_trials=clean_trials,
+            rejected_max_min=rejected_trials, # lets just put it under maxmin
+            rejected_var=[])
+        return clean_result
 
 
 class Cleaner(object):

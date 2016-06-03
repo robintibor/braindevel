@@ -15,6 +15,14 @@ import logging
 from braindecode.datasets.generate_filterbank import filter_is_stable
 import scipy as sp
 log = logging.getLogger(__name__)
+
+def set_channel_to_zero(cnt, chan_name):
+    assert chan_name in cnt.axes[1]
+    data = cnt.data.copy()
+    i_chan = cnt.axes[1].tolist().index(chan_name)
+    data[:,i_chan] = 0
+    return cnt.copy(data=data)
+
 def calculate_csp(epo, classes=None):
     """Calculate the Common Spatial Pattern (CSP) for two classes.
     Now with pattern computation as in matlab bbci toolbox
@@ -303,6 +311,9 @@ def exponential_demean_cnt(cnt, init_block_size=1000, factor_new=1e-3):
     return cnt.copy(data=demeaned_data)
 
 def online_standardize_epo(epo_train, epo_test):
+    # standard dim inds are trials and samples
+    # so compute means/vars for channels
+    # (epo data is #trialsx#samplesx#channels)
     standard_dim_inds=(0,1)
     std_eps = 1e-4
     train_mean = np.mean(epo_train.data, axis=standard_dim_inds, keepdims=True)

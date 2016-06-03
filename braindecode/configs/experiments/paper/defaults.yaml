@@ -41,9 +41,15 @@
         markers_4_class: {'1': [1], '2': [2], '3': [3], '4': [4]},
         bp_meaner: !obj:braindecode.datahandling.batch_modifier.BandpowerMeaner { },
         
+        max_abs_cleaner: !obj:braindecode.mywyrm.clean.MaxAbsCleaner { 
+            segment_ival: $rejection_max_abs_ival,
+            threshold: $max_abs_threshold,
+            marker_def: $marker_def,
+        },
         
     },
     variants: [[{
+        max_abs_threshold: [800],
         dataset: [$cleaned_combined_set],
         marker_def: [$markers_4_class],
         dataset_splitter: [$several_sets_splitter],
@@ -54,8 +60,10 @@
         max_min: [600],
         whisker_percent: [10], 
         whisker_length: [3],
-        train_cleaner: [$no_cleaner],
-        test_cleaner: [$no_cleaner],
+        train_cleaner: [$max_abs_cleaner],
+        test_cleaner: [$max_abs_cleaner],
+        rejection_max_abs_ival: [[0,4000]],
+        max_abs_threshold: [800],
         use_test_as_valid: [False],
     }]]
 }

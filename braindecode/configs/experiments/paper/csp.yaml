@@ -25,6 +25,18 @@
             whisker_length: $whisker_length,
             marker_def: $marker_def,
         },
+        max_abs_remove_cz_cleaner: !obj:braindecode.mywyrm.clean.MaxAbsRemoveCzCleaner {
+            max_abs_cleaner: !obj:braindecode.mywyrm.clean.MaxAbsCleaner { 
+                segment_ival: $rejection_max_abs_ival,
+                threshold: $max_abs_threshold,
+                marker_def: $marker_def,
+            },
+       },
+        max_abs_cleaner: !obj:braindecode.mywyrm.clean.MaxAbsCleaner { 
+            segment_ival: $rejection_max_abs_ival,
+            threshold: $max_abs_threshold,
+            marker_def: $marker_def,
+        },
         markers_4_classes: {'1': [1], '2': [2], '3': [3], '4': [4]},
     },
     
@@ -36,7 +48,9 @@
         filt_order: [4],
         trial_start: [500],
         trial_stop: [4000],
-        standardize: [false],
+        standardize_epo: [false],
+        standardize_cnt: [false],
+        standardize_filt_cnt: [false],
         n_folds: ["null"],
         n_top_bottom_csp_filters: [5],
         n_selected_filterbands: ["null"],
@@ -52,5 +66,7 @@
         max_min: [100],
         whisker_percent: [10],
         whisker_length: [3],
+        rejection_max_abs_ival: [[0,4000]],
+        max_abs_threshold: [800],
     }]]
 }

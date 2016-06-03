@@ -2,7 +2,7 @@ from wyrm.processing import (select_epochs, select_classes,
     lda_apply, append_epo, select_ival)
 from braindecode.mywyrm.processing import ( 
     lda_train_scaled, segment_dat_fast, apply_csp_var_log, bandpass_cnt,
-    calculate_csp)
+    calculate_csp, exponential_standardize_cnt)
 import numpy as np
 from braindecode.csp.feature_selection import select_features
 from copy import deepcopy
@@ -14,7 +14,8 @@ log = logging.getLogger(__name__)
 class BinaryCSP(object):
     def __init__(self, cnt, filterbands, filt_order, folds,
             class_pairs, segment_ival, n_filters,
-            ival_optimizer, standardize, marker_def=None):
+            ival_optimizer, standardize_filt_cnt,
+            standardize_epo, marker_def=None):
         self.__dict__.update(locals())
         del self.self
         # Default marker def is form our EEG 3-4 sec motor imagery dataset
@@ -31,6 +32,8 @@ class BinaryCSP(object):
             self.print_filter(bp_nr)
             bandpassed_cnt = bandpass_cnt(self.cnt, filt_band[0], filt_band[1],
                 filt_order=self.filt_order)
+            if self.standardize_filt_cnt:
+                bandpassed_cnt = exponential_standardize_cnt(bandpassed_cnt)
             epo = segment_dat_fast(bandpassed_cnt, 
                 marker_def=self.marker_def, 
                 ival=self.segment_ival)
@@ -45,7 +48,7 @@ class BinaryCSP(object):
         test_ind = train_test['test']
         epo_train = select_epochs(epo, train_ind)
         epo_test = select_epochs(epo, test_ind)
-        if self.standardize:
+        if self.standardize_epo:
             epo_train, epo_test = online_standardize_epo(epo_train, epo_test)
         # TODELAY: also integrate into init and store results
         self.train_labels_full_fold[fold_nr] = epo_train.axes[0]

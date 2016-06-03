@@ -80,10 +80,12 @@ def get_channelpos_from_angle(channame, chan_pos_list=CHANNEL_10_20_APPROX):
     return None
 
 def ax_scalp(v, channels, 
-    ax=None, annotate=False, vmin=None, vmax=None, colormap=None,
+    ax=None, annotate=False,
+    vmin=None, vmax=None, colormap=None,
     scalp_line_width=1,
     scalp_line_style='solid',
-    chan_pos_list=CHANNEL_10_20_APPROX, ):
+    chan_pos_list=CHANNEL_10_20_APPROX,
+    interpolation='bilinear'):
     """Draw a scalp plot.
 
     Draws a scalp plot on an existing axes. The method takes an array of
@@ -126,6 +128,7 @@ def ax_scalp(v, channels,
     if ax is None:
         ax = plt.gca()
     assert len(v) == len(channels), "Should be as many values as channels"
+    assert interpolation=='bilinear' or interpolation=='nearest'
     if vmin is None:
         # added by me (robintibor@gmail.com)
         assert vmax is None
@@ -142,13 +145,27 @@ def ax_scalp(v, channels,
     # interpolate the in-between values
     xx = np.linspace(min(x), max(x), 500)
     yy = np.linspace(min(y), max(y), 500)
-    xx, yy = np.meshgrid(xx, yy)
-    f = interpolate.LinearNDInterpolator(list(zip(x, y)), z)
-    zz = f(xx, yy)
+    if  interpolation == 'bilinear':
+        xx_grid, yy_grid = np.meshgrid(xx, yy)
+        f = interpolate.LinearNDInterpolator(list(zip(x, y)), z)
+        zz = f(xx_grid, yy_grid)
+    else:
+        assert interpolation == 'nearest'
+        f = interpolate.NearestNDInterpolator(list(zip(x, y)), z)
+        assert len(xx) == len(yy)
+        zz = np.ones((len(xx), len(yy)))
+        for i_x in xrange(len(xx)):
+            for i_y in xrange(len(yy)):
+                zz[i_x,i_y] = f(xx[i_x], yy[i_y])
+        assert not np.any(np.isnan(zz))
+
+        
+            
+    
     # plot map
     image = ax.imshow(zz, vmin=vmin, vmax=vmax, cmap=colormap,
         extent=[min(x),max(x),min(y),max(y)], origin='lower',
-        interpolation='bilinear')
+        interpolation=interpolation)
     #image = ax.contourf(xx, yy, zz, 100, vmin=vmin, vmax=vmax,
     #    cmap=colormap)
     # paint the head

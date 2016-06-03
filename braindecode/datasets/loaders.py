@@ -29,14 +29,18 @@ class BBCIDataset(object):
         with h5py.File(self.filename, 'r') as h5file:
             samples = int(h5file['nfo']['T'][0,0])
             cnt_signal_shape = (samples, len(wanted_chan_inds))
-            continuous_signal = np.empty(cnt_signal_shape, dtype=np.float32)
+            continuous_signal = np.ones(cnt_signal_shape, dtype=np.float32) * np.nan
             for chan_ind_arr, chan_ind_set  in enumerate(wanted_chan_inds):
+                # + 1 because matlab/this hdf5-naming logic
+                # has 1-based indexing
+                # i.e ch1,ch2,....
                 chan_set_name = 'ch' + str(chan_ind_set + 1)
                 # first 0 to unpack into vector, before it is 1xN matrix
                 chan_signal = h5file[chan_set_name][0,:] # already load into memory
                 continuous_signal[:, chan_ind_arr] = chan_signal
             samplenumbers = np.array(range(continuous_signal.shape[0]))
             timesteps_in_ms = samplenumbers * 1000.0 / fs
+            assert not np.any(np.isnan(continuous_signal)), "No NaNs expected in signal"
         cnt = wyrm.types.Data(continuous_signal, 
             [timesteps_in_ms, wanted_sensor_names],
             ['time', 'channel'], 

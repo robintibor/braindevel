@@ -1,6 +1,7 @@
 from wyrm.processing import select_channels, append_cnt
 from braindecode.mywyrm.processing import (
-    resample_cnt, common_average_reference_cnt)
+    resample_cnt, common_average_reference_cnt, exponential_standardize_cnt,
+    set_channel_to_zero)
 from braindecode.mywyrm.clean import (NoCleaner, clean_train_test_cnt)
 import itertools
 from sklearn.cross_validation import KFold
@@ -9,12 +10,22 @@ from braindecode.csp.pipeline import (BinaryCSP, FilterbankCSP,
 import numpy as np
 from copy import deepcopy
 from pylearn2.utils import serial
-from braindecode.datasets.sensor_positions import sort_topologically
+from pylearn2.config import yaml_parse
 from numpy.random import RandomState
+from braindecode.datasets.sensor_positions import sort_topologically
 from braindecode.datasets.generate_filterbank import generate_filterbank,\
     filterbank_is_stable
 import logging
 log = logging.getLogger(__name__)
+
+def create_csp_experiment(yaml_filename):
+    """Utility function to create csp experiment from yaml file"""
+    # used to be called standardize, now called standardize_epo
+    content = open(yaml_filename, 'r').read()
+    content = content.replace('standardize:', 'standardize_epo:')
+
+    train_dict = yaml_parse.load(content)
+    return train_dict['csp_train']
 
 class CSPExperiment(object):
     """
@@ -53,7 +64,7 @@ class CSPExperiment(object):
             The filter order of the butterworth filter which computes the filterbands.
         segment_ival : sequence of 2 floats
             The start and end of the trial in milliseconds with respect to the markers.
-        standardize : bool
+        standardize_epo : bool
             Whether to standardize the features of the filterbank before training.
             Will do online standardization, i.e., will compute means and standard
             deviations on the training fold and then compute running means and
@@ -111,6 +122,7 @@ class CSPExperiment(object):
             cleaner=None,
             sensor_names=None,
             resample_fs=None,
+            standardize_cnt=False,
             min_freq=0,
             max_freq=48,
             last_low_freq=48,
@@ -119,8 +131,9 @@ class CSPExperiment(object):
             high_width=4,
             high_overlap=0,
             filt_order=3,
+            standardize_filt_cnt=False,
             segment_ival=[0,4000], 
-            standardize=True,
+            standardize_epo=True,
             n_folds=5,
             n_top_bottom_csp_filters=None,
             n_selected_filterbands=None,
@@ -133,7 +146,8 @@ class CSPExperiment(object):
             common_average_reference=False,
             ival_optimizer=None,
             shuffle=False,
-            marker_def=None):
+            marker_def=None,
+            set_cz_to_zero=False):
         local_vars = locals()
         del local_vars['self']
         self.__dict__.update(local_vars)
@@ -183,13 +197,19 @@ class CSPExperiment(object):
         self.cnt = select_channels(self.cnt, self.rejected_chan_names,
             invert=True)
         if self.sensor_names is not None:
-            self.sensor_names = sort_topologically(self.sensor_names)
+            # Note this does not respect order of sensor names,
+            # it selects chans form given sensor names
+            # but keeps original order
             self.cnt = select_channels(self.cnt, self.sensor_names)
 
+        if self.set_cz_to_zero is True:
+            self.cnt = set_channel_to_zero(self.cnt, 'Cz')
         if self.resample_fs is not None:
             self.cnt = resample_cnt(self.cnt, newfs=self.resample_fs)
         if self.common_average_reference is True:
             self.cnt = common_average_reference_cnt(self.cnt)
+        if self.standardize_cnt is True:
+            self.cnt = exponential_standardize_cnt(self.cnt)
 
     def remember_sensor_names(self):
         """ Just to be certain have correct sensor names, take them
@@ -230,7 +250,8 @@ class CSPExperiment(object):
         self.binary_csp = BinaryCSP(self.cnt, self.filterbands, 
             self.filt_order, self.folds, self.class_pairs, 
             self.segment_ival, self.n_top_bottom_csp_filters, 
-            standardize=self.standardize,
+            standardize_filt_cnt=self.standardize_filt_cnt,
+            standardize_epo=self.standardize_epo,
             ival_optimizer=self.ival_optimizer,
             marker_def=self.marker_def)
         self.binary_csp.run()
@@ -291,6 +312,7 @@ class TwoFileCSPExperiment(CSPExperiment):
             test_cleaner, 
             sensor_names=None,
             resample_fs=None,
+            standardize_cnt=False,
             min_freq=0,
             max_freq=48,
             last_low_freq=48,
@@ -299,8 +321,9 @@ class TwoFileCSPExperiment(CSPExperiment):
             high_width=4,
             high_overlap=0,
             filt_order=3,
+            standardize_filt_cnt=False,
             segment_ival=[0,4000], 
-            standardize=True,
+            standardize_epo=True,
             n_folds=5,
             n_top_bottom_csp_filters=None,
             n_selected_filterbands=None,
@@ -313,16 +336,19 @@ class TwoFileCSPExperiment(CSPExperiment):
             common_average_reference=False,
             ival_optimizer=None,
             shuffle=False,
-            marker_def=None):
+            marker_def=None,
+            set_cz_to_zero=False):
         self.test_set_loader = test_set_loader
         self.test_cleaner = test_cleaner
         super(TwoFileCSPExperiment, self).__init__(train_set_loader, 
             cleaner=train_cleaner,sensor_names=sensor_names,
-            resample_fs=resample_fs,min_freq=min_freq,max_freq=max_freq,
+            resample_fs=resample_fs, standardize_cnt=standardize_cnt,
+            min_freq=min_freq,max_freq=max_freq,
             last_low_freq=last_low_freq,low_width=low_width,
             low_overlap=low_overlap,high_width=high_width,
             high_overlap=high_overlap,filt_order=filt_order,
-            segment_ival=segment_ival,standardize=standardize,
+            standardize_filt_cnt=standardize_filt_cnt,
+            segment_ival=segment_ival, standardize_epo=standardize_epo,
             n_folds=n_folds,n_top_bottom_csp_filters=n_top_bottom_csp_filters,
             n_selected_filterbands=n_selected_filterbands,
             n_selected_features=n_selected_features,
@@ -331,7 +357,8 @@ class TwoFileCSPExperiment(CSPExperiment):
             only_last_fold=only_last_fold,restricted_n_trials=restricted_n_trials,
             common_average_reference=common_average_reference,
             ival_optimizer=ival_optimizer,shuffle=shuffle,
-            marker_def=marker_def)
+            marker_def=marker_def,
+            set_cz_to_zero=set_cz_to_zero)
 
     def run(self):
         log.info("Loading train set...")
@@ -368,10 +395,14 @@ class TwoFileCSPExperiment(CSPExperiment):
         if self.sensor_names is not None:
             self.sensor_names = sort_topologically(self.sensor_names)
             self.test_cnt = select_channels(self.test_cnt, self.sensor_names)
+        if self.set_cz_to_zero is True:
+            self.test_cnt = set_channel_to_zero(self.test_cnt, 'Cz')
         if self.resample_fs is not None:
             self.test_cnt = resample_cnt(self.test_cnt, newfs=self.resample_fs)
         if self.common_average_reference is True:
             self.test_cnt = common_average_reference_cnt(self.test_cnt)
+        if self.standardize_cnt is True:
+            self.test_cnt = exponential_standardize_cnt(self.test_cnt)
 
     def init_training_vars(self):
         assert self.n_folds is None, "Cannot use folds on train test split"

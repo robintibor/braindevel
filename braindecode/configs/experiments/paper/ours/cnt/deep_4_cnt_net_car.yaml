@@ -32,8 +32,6 @@
         final_dense_length: [2],
         input_time_length: [1000],
         n_sample_preds : [500], # will be overwritten anyways
-        train_cleaner: [$no_cleaner],
-        test_cleaner: [$no_cleaner],
 
         filter_time_length: [10],
         filter_length_2: [10],

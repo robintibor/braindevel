@@ -274,12 +274,24 @@ def median_absolute_deviation(arr, axis=None, keepdims=False):
     return median(np.abs(arr - med), axis=axis, keepdims=keepdims)
 
 def corr(x,y):
+    # Difference to numpy:
+    # Correlation only between terms of x and y
+    # not between x and x or y and y
+    cov = cov(x,y)
     # computing "unbiased" corr
-    demeaned_x = x - np.mean(x, axis=1, keepdims=True)
-    demeaned_y = y - np.mean(y, axis=1, keepdims=True)
-    #ddof=1 for unbiased..
+    # ddof=1 for unbiased..
     divisor = np.outer(np.sqrt(np.var(x, axis=1, ddof=1)), 
         np.sqrt(np.var(y, axis=1, ddof=1)))
     
-    cov = np.dot(demeaned_x,demeaned_y.T) / (y.shape[1] -1)
     return cov / divisor
+
+def cov(x,y):
+    # Difference to numpy:
+    # Covariance only between terms of x and y
+    # not between x and x or y and y
+    demeaned_x = x - np.mean(x, axis=1, keepdims=True)
+    demeaned_y = y - np.mean(y, axis=1, keepdims=True)
+    cov = np.dot(demeaned_x,demeaned_y.T) / (y.shape[1] -1)
+    return cov
+    
+    
