@@ -15,21 +15,23 @@ def create_env_corrs(folder_name, params):
     all_base_names = [name.replace('.result.pkl', '')
         for name in res_file_names]
     
-    # Hackhack since I know this is correct layers atm
-    i_all_layers = [28] #for shallow [3, 4, 5, 7]
+    # Hackhack hardcoded layers, since I know this is correct layers atm
+    i_all_layers = [8,14,20,26,28] #for shallow [3, 4, 5, 7]
     for i_file, base_name in enumerate(all_base_names):
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file+1, len(all_base_names)))
         create_topo_env_corrs_files(base_name, i_all_layers)
  
 def create_topo_env_corrs_files(base_name, i_all_layers):
+    # Load env first to make sure env is actually there.
+    result = np.load(base_name + '.result.pkl')
+    print base_name
+    env_file_name = dataset_to_env_file(result.parameters['dataset_filename'])
     exp, model = load_exp_and_model(base_name)
     exp.dataset.load()
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
         
-    result = np.load(base_name + '.result.pkl')
-    env_file_name = dataset_to_env_file(result.parameters['dataset_filename'])
     for i_layer in i_all_layers:
         log.info("Layer {:d}".format(i_layer))
         trial_env = load_trial_env(env_file_name, model, 
@@ -64,7 +66,10 @@ def dataset_to_env_file(wanted_dataset_filename):
         
         dataset_file_name = result.parameters['dataset_filename']
         envelope_file_name = res_file_name.replace('.result.pkl', '.env.npy')
-        assert os.path.isfile(envelope_file_name)
+        if not  os.path.isfile(envelope_file_name):
+            log.warn("Env does not exist, {:s}".format(envelope_file_name))
+            continue
+        #assert os.path.isfile(envelope_file_name) TODOREENABLE
         dataset_to_env_file_name[dataset_file_name] = envelope_file_name
     return dataset_to_env_file_name[wanted_dataset_filename]
     
