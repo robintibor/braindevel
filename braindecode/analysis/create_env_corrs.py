@@ -66,10 +66,7 @@ def dataset_to_env_file(wanted_dataset_filename):
         
         dataset_file_name = result.parameters['dataset_filename']
         envelope_file_name = res_file_name.replace('.result.pkl', '.env.npy')
-        if not  os.path.isfile(envelope_file_name):
-            log.warn("Env does not exist, {:s}".format(envelope_file_name))
-            continue
-        #assert os.path.isfile(envelope_file_name) TODOREENABLE
+        assert os.path.isfile(envelope_file_name)
         dataset_to_env_file_name[dataset_file_name] = envelope_file_name
     return dataset_to_env_file_name[wanted_dataset_filename]
     
