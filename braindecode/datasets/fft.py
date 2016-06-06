@@ -175,7 +175,7 @@ def amplitude_phase_to_complex(amplitude, phase):
     return amplitude * np.cos(phase) + amplitude * np.sin(phase) * 1j
 
 
-def compute_amps_baseline_before(cnt, fs):
+def compute_amps_baseline_before(cnt, fs, square, divide_win_length):
     assert fs  == 500
     marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
     epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
@@ -183,12 +183,14 @@ def compute_amps_baseline_before(cnt, fs):
     win_stride = 250
     amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),
         window_length=win_length, window_stride=win_stride,
-        divide_win_length=False,square_amplitude=False)
-    baseline_epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[-500,0])
+        divide_win_length=divide_win_length,square_amplitude=square)
+    baseline_epo = segment_dat_fast(cnt,marker_def=marker_def, 
+        ival=[-500,0])
     
-    baseline_amps = compute_power_spectra(baseline_epo.data.transpose(0,2,1),
+    baseline_amps = compute_power_spectra(
+        baseline_epo.data.transpose(0,2,1),
         window_length=win_length, window_stride=win_stride,
-        divide_win_length=False,square_amplitude=False)
+        divide_win_length=divide_win_length,square_amplitude=square)
     
     # median across trials
     median_baseline_amp = np.median(baseline_amps, axis=(0))
@@ -203,15 +205,15 @@ def compute_amps_baseline_before(cnt, fs):
     all_class_amps = np.array(all_class_amps)
     return all_class_amps
     
-def compute_amps_relative(cnt, fs):
+def compute_amps_relative(cnt, fs, square, divide_win_length):
     assert fs  == 500
     marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
     epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
     # now with baseline as average over classes
     
-    amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),window_length=1750,
-                                       window_stride=1750,
-                     divide_win_length=False,square_amplitude=False)
+    amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),
+        window_length=1750, window_stride=1750,
+        divide_win_length=divide_win_length, square_amplitude=square)
     assert amplitudes.shape[2] == 1, "should only have one timebin"
     median_baseline_amp = np.median(amplitudes, axis=(0,))
     corrected_amps = amplitudes / median_baseline_amp[None,:]
@@ -225,15 +227,15 @@ def compute_amps_relative(cnt, fs):
     return all_class_amps
 
 
-def compute_amps_to_rest(cnt, fs):
+def compute_amps_to_rest(cnt, fs, square, divide_win_length):
     assert fs  == 500
     marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
     epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
     # now with baseline as average over classes
     
-    amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),window_length=1750,
-                                       window_stride=1750,
-                     divide_win_length=False,square_amplitude=False)
+    amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),
+        window_length=1750, window_stride=1750,
+        divide_win_length=divide_win_length, square_amplitude=square)
     assert amplitudes.shape[2] == 1, "should only have one timebin"
     # to rest class
     median_baseline_amp = np.median(amplitudes[epo.axes[0] == 2],
@@ -254,9 +256,9 @@ def compute_amps_to_others(cnt, fs, square, divide_win_length):
     epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
     # now with baseline as average over classes
     
-    amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),window_length=1750,
-                                       window_stride=1750,
-                     divide_win_length=divide_win_length, square_amplitude=square)
+    amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),
+        window_length=1750, window_stride=1750,
+        divide_win_length=divide_win_length, square_amplitude=square)
     assert amplitudes.shape[2] == 1, "should only have one timebin"
     all_class_amps = []
     for i_class in xrange(4):
