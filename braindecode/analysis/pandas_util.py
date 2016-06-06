@@ -152,8 +152,6 @@ def dataset_averaged_frame(data_frame):
         avg_frame = grouped.agg(OrderedDict([('time', [len, tmean, tstd]), 
               ('test', [np.mean, np.std]),
                ('train', [np.mean, np.std]),]))
-        avg_frame = avg_frame.sort_values(by=('test', 'mean'),
-            ascending=False)
     else:
         # Recreate group result manually for just one group
         avg_frame = pd.DataFrame(columns=pd.MultiIndex(
