@@ -10,6 +10,7 @@ from pylearn2.utils import serial
 import os.path
 from matplotlib import gridspec
 import seaborn
+from sklearn.metrics.metrics import confusion_matrix
 
 def show_misclass_scatter_plot(first_misclasses, second_misclasses, figsize=(4,4)):
     fig = plt.figure(figsize=figsize)
@@ -20,7 +21,7 @@ def show_misclass_scatter_plot(first_misclasses, second_misclasses, figsize=(4,4
     plt.ylim(20,100)
     plt.xlim(20,100)
     return fig
-    
+
 def plot_heatmap(trial, relevances, sensor_names, sensor_map, figsize=(14, 10)):
     fig = plot_head_signals_tight(trial,
                                   sensor_names,
@@ -384,7 +385,8 @@ def plot_confusion_matrix_for_result(result_folder, result_nr):
     plot_confusion_matrix(confusion_mat)    
 
 
-def plot_confusion_matrix(confusion_mat, class_names=None, figsize=None, colormap=cm.bwr):
+def plot_confusion_matrix(confusion_mat, class_names=None, figsize=None, colormap=cm.bwr,
+        textcolor='black', vmin=None, vmax=None):
     # TODELAY: split into several functions
     # transpose to get confusion matrix same way as matlab
     confusion_mat = confusion_mat.T
@@ -393,8 +395,10 @@ def plot_confusion_matrix(confusion_mat, class_names=None, figsize=None, colorma
         class_names = [str(i_class + 1) for i_class in xrange(n_classes)]
         
     # norm by number of targets (targets are columns after transpose!)
-    normed_conf_mat = confusion_mat / np.sum(confusion_mat,
-        axis=0).astype(float)
+    #normed_conf_mat = confusion_mat / np.sum(confusion_mat,
+    #    axis=0).astype(float)
+    # norm by all targets
+    normed_conf_mat = confusion_mat / float(np.sum(confusion_mat))
     augmented_conf_mat = deepcopy(normed_conf_mat)
     augmented_conf_mat = np.vstack([augmented_conf_mat, [np.nan] * n_classes])
     augmented_conf_mat = np.hstack([augmented_conf_mat, [[np.nan]] * (n_classes + 1)])
@@ -403,8 +407,12 @@ def plot_confusion_matrix(confusion_mat, class_names=None, figsize=None, colorma
     plt.clf()
     ax = fig.add_subplot(111)
     ax.set_aspect(1)
+    if vmin is None:
+        vmin = 0
+    if vmax is None:
+        vmax = np.max(normed_conf_mat)
     ax.imshow(np.array(augmented_conf_mat), cmap=colormap,
-        interpolation='nearest', alpha=0.6)
+        interpolation='nearest', alpha=0.6,vmin=vmin, vmax=vmax)
     width = len(confusion_mat)
     height = len(confusion_mat[0])
     for x in xrange(width):
@@ -413,7 +421,7 @@ def plot_confusion_matrix(confusion_mat, class_names=None, figsize=None, colorma
                         xy=(y, x),
                         horizontalalignment='center',
                         verticalalignment='center', fontsize=12,
-                        color='white',
+                        color=textcolor,
                         fontweight='bold')
             
             ax.annotate("\n\n{:4.1f}%".format(
@@ -421,7 +429,7 @@ def plot_confusion_matrix(confusion_mat, class_names=None, figsize=None, colorma
                         xy=(y, x),
                         horizontalalignment='center',
                         verticalalignment='center', fontsize=10,
-                        color='white',
+                        color=textcolor,
                         fontweight='bold')
     
     # Add values for target correctness etc.
@@ -461,7 +469,7 @@ def plot_confusion_matrix(confusion_mat, class_names=None, figsize=None, colorma
                     verticalalignment='center', fontsize=8)
     
     plt.xticks(range(width), class_names, fontsize=12)
-    plt.yticks(range(height), class_names, fontsize=12)
+    plt.yticks(range(height), class_names, fontsize=12, rotation=90)
     plt.grid(False)
     plt.ylabel('Predictions', fontsize=15)
     plt.xlabel('Targets', fontsize=15)
@@ -518,7 +526,8 @@ def plot_class_probs(probs, value_minmax=None):
 def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
     figsize=(8, 4.5), yticks=(), yticklabels=(),
     correctness_matrices=None, colormap=cm.coolwarm,
-    sensor_map=cap_positions, vmax=None, vmin=None):
+    sensor_map=cap_positions, vmax=None, vmin=None,
+    share_y_axes=True):
     """ figsize ignored if figure given """
     assert len(matrices) == len(sensor_names), "need sensor names for all sensor matrices"
     if figure is None:
@@ -553,10 +562,10 @@ def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
             vmin = -2 * mean_abs_weight
         if vmax is None:
             vmax = 2 * mean_abs_weight
-        if first_ax is None:
+        if first_ax is None or not share_y_axes:
             ax = figure.add_subplot(rows, cols, subplot_ind)
             first_ax = ax
-        else:
+        elif share_y_axes:
             ax = figure.add_subplot(rows, cols, subplot_ind, sharey=first_ax)
             
         chan_matrix = matrices[i]

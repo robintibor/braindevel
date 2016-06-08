@@ -10,6 +10,17 @@ import logging
 from braindecode.util import merge_dicts
 log = logging.getLogger(__name__)
 
+class MetaDataFrame(pd.DataFrame):
+    # from https://github.com/pydata/pandas/issues/2485#issuecomment-174577149
+    _metadata = ['attrs']
+
+    @property
+    def _constructor(self):
+        return MetaDataFrame
+
+    def _combine_const(self, other, *args, **kwargs):
+        return super(MetaDataFrame, self)._combine_const(other, *args, **kwargs).__finalize__(self)
+
 def remove_dollar(param_val):
     if isinstance(param_val, str) and param_val[0] == '$':
         return param_val[1:]
@@ -25,6 +36,7 @@ def load_data_frame(folder, params=None, shorten_headers=True):
     file_names = res_pool.result_file_names()
     data_frame = to_data_frame(file_names, result_objs, varying_params,
         constant_params, shorten_headers=shorten_headers)
+    data_frame.attrs = {'folder': folder, 'params': params}
     return data_frame
 
 def to_data_frame(file_names, result_objs, varying_params, constant_params,
@@ -50,7 +62,7 @@ def to_data_frame(file_names, result_objs, varying_params, constant_params,
         axis=1)
     if shorten_headers:
         param_keys = [prettify_word(key) for key in param_keys]
-    data_frame = pd.DataFrame(vals_and_misclasses, index=file_numbers, 
+    data_frame = MetaDataFrame(vals_and_misclasses, index=file_numbers, 
         columns=param_keys + ['time', 'test', 'train'])
     data_frame = to_numeric_where_possible(data_frame)
     data_frame.time = pd.to_timedelta(np.round(data_frame.time), unit='s')
@@ -206,4 +218,24 @@ def remove_columns_with_same_value(df, exclude=('train',)):
     cols_multiple_vals = np.array([len(set(df[c])) > 1 for c in df.columns])
     excluded_cols = np.array([c in exclude for c in df.columns])
     df = df.iloc[:,(cols_multiple_vals | excluded_cols)]
+    return df
+
+def restrict(df, **params):
+    for key, val in params.iteritems():
+        df = df[df[key] == val]
+    return df
+
+def restrict_or_unset(df, **params):
+    for key, val in params.iteritems():
+        if key in df.columns:
+            if '-' in np.array(df[key]):
+                df = df[((df[key]) == val) | (df[key] == '-')]
+            else:
+                df = df[((df[key]) == val)]
+    return df
+
+def restrict_or_missing_col(df, **params):
+    for key, val in params.iteritems():
+        if key in df.columns:
+            df = df[((df[key]) == val)]
     return df

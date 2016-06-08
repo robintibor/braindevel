@@ -264,6 +264,16 @@ class CntTrialMisclassMonitor(Monitor):
             all_batch_sizes, all_targets, dataset):
         """Assuming one hot encoding for now"""
         assert self.input_time_length is not None, "Need to know input time length..."
+        all_pred_labels, all_target_labels = self.compute_pred_and_target_labels(
+            dataset, all_preds, all_batch_sizes) 
+        
+        misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
+            float(len(all_target_labels)))
+        monitor_key = "{:s}_misclass".format(setname)
+        monitor_chans[monitor_key].append(float(misclass))
+        return
+    
+    def compute_pred_and_target_labels(self, dataset, all_preds, all_batch_sizes):
         all_pred_labels = []
         all_target_labels = []
         
@@ -311,10 +321,5 @@ class CntTrialMisclassMonitor(Monitor):
         
         all_pred_labels = np.array(all_pred_labels)
         all_target_labels = np.array(all_target_labels)
-        
-        misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
-            float(len(all_target_labels)))
-        monitor_key = "{:s}_misclass".format(setname)
-        monitor_chans[monitor_key].append(float(misclass))
-        return
+        return all_pred_labels, all_target_labels
         
