@@ -31,7 +31,7 @@ def create_topo_env_corrs_files(base_name, i_all_layers):
     exp.dataset.load()
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
-        
+
     for i_layer in i_all_layers:
         log.info("Layer {:d}".format(i_layer))
         trial_env = load_trial_env(env_file_name, model, 

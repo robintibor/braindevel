@@ -9,7 +9,10 @@ from braindecode.datahandling.batch_iteration import (
 import logging
 from braindecode.experiments.experiment import create_experiment
 from braindecode.analysis.create_env_corrs import compute_trial_topo_corrs
+from braindecode.veganlasagne.layers import create_pred_fn
+from braindecode.veganlasagne.monitors import compute_preds_per_trial
 log = logging.getLogger(__name__)
+
 
 def create_env_class_corrs(folder, params,start,stop):
     res_pool = ResultPool()
@@ -29,24 +32,25 @@ def create_env_class_corrs(folder, params,start,stop):
         exp, model = load_exp_and_model(base_name)
         exp.dataset.load()
         trial_env = load_trial_env(base_name + '.env.npy',
-               model, i_layer=26,
+               model, i_layer=26, # 26 is last max-pool i think 
                train_set=exp.dataset.train_set,
               n_inputs_per_trial=2)
         topo_corr = compute_env_class_corr(exp, trial_env)
-        
         rand_model = create_experiment(base_name + '.yaml').final_layer
-        i_layer = -1
-        rand_topo_corrs = compute_trial_topo_corrs(rand_model, i_layer, 
-            exp.train_set, exp.iterator, trial_env)
+
+        rand_topo_corrs = compute_rand_preds_topo_corr(exp, rand_model, 
+            trial_env)
         np.save('{:s}.env_corrs.class.npy'.format(base_name), topo_corr)
         np.save('{:s}.env_rand_corrs.class.npy'.format(base_name), 
             rand_topo_corrs)
 
 
-
 def compute_env_class_corr(exp, trial_env):
+    train_set = exp.dataset_provider.get_train_merged_valid_test(
+        exp.dataset)['train']
+
     i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
-        exp.dataset.train_set.y,
+        train_set.y,
         check_trial_lengths_equal=True,
         input_time_length=exp.iterator.input_time_length)
     assert len(i_trial_ends) == trial_env.shape[1]
@@ -56,6 +60,19 @@ def compute_env_class_corr(exp, trial_env):
     assert y_signal.shape[2] == trial_env.shape[3]
     topo_corrs = compute_topo_corrs(trial_env, y_signal)
     return topo_corrs
+
+def compute_rand_preds_topo_corr(exp, rand_model, trial_env):
+    pred_fn = create_pred_fn(rand_model)
+    train_set = exp.dataset_provider.get_train_merged_valid_test(exp.dataset)['train']
+    batches = [b[0] for b in exp.iterator.get_batches(train_set, shuffle=False)]
+    all_batch_sizes = [len(b) for b in batches]
+    
+    all_preds = [pred_fn(b) for b in batches]
+    preds_per_trial = compute_preds_per_trial(train_set.y, all_preds, all_batch_sizes,
+        exp.iterator.input_time_length)
+    preds_per_trial = np.array(preds_per_trial)
+    rand_topo_corrs = compute_topo_corrs(trial_env, preds_per_trial)
+    return rand_topo_corrs
 
 def setup_logging():
     """ Set up a root logger so that other modules can use logging
