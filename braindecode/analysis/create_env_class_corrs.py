@@ -71,7 +71,10 @@ def compute_rand_preds_topo_corr(exp, rand_model, trial_env):
     preds_per_trial = compute_preds_per_trial(train_set.y, all_preds, all_batch_sizes,
         exp.iterator.input_time_length)
     preds_per_trial = np.array(preds_per_trial)
-    rand_topo_corrs = compute_topo_corrs(trial_env, preds_per_trial)
+    # transpose from trialxsamplesxclasses to trialsxclassesxsamples
+    # as compute topo corr expects like this
+    rand_topo_corrs = compute_topo_corrs(trial_env, 
+        preds_per_trial.transpose(0,2,1)) 
     return rand_topo_corrs
 
 def setup_logging():
