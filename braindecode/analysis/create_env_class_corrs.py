@@ -7,6 +7,8 @@ from braindecode.results.results import ResultPool
 from braindecode.datahandling.batch_iteration import (
     compute_trial_start_end_samples) 
 import logging
+from braindecode.experiments.experiment import create_experiment
+from braindecode.analysis.create_env_corrs import compute_trial_topo_corrs
 log = logging.getLogger(__name__)
 
 def create_env_class_corrs(folder, params,start,stop):
@@ -18,20 +20,31 @@ def create_env_class_corrs(folder, params,start,stop):
             for name in res_file_names]
     start = start or 0
     stop = stop or len(all_base_names)
+    
+    
+    
     for i_exp, base_name in enumerate(all_base_names[start:stop]):
         log.info("Running {:s} ({:d} of {:d})".format(base_name,
             i_exp + start + 1, stop))
-        topo_corr = compute_env_class_corr(base_name)
-        np.save(base_name + '.env_corrs.class.npy', topo_corr)
+        exp, model = load_exp_and_model(base_name)
+        exp.dataset.load()
+        trial_env = load_trial_env(base_name + '.env.npy',
+               model, i_layer=26,
+               train_set=exp.dataset.train_set,
+              n_inputs_per_trial=2)
+        topo_corr = compute_env_class_corr(exp, trial_env)
+        
+        rand_model = create_experiment(base_name + '.yaml').final_layer
+        i_layer = -1
+        rand_topo_corrs = compute_trial_topo_corrs(rand_model, i_layer, 
+            exp.train_set, exp.iterator, trial_env)
+        np.save('{:s}.env_corrs.class.npy'.format(base_name), topo_corr)
+        np.save('{:s}.env_rand_corrs.class.npy'.format(base_name), 
+            rand_topo_corrs)
 
 
-def compute_env_class_corr(base_name):
-    exp, model = load_exp_and_model(base_name)
-    exp.dataset.load()
-    trial_env = load_trial_env(base_name + '.env.npy',
-                           model, i_layer=26,train_set=exp.dataset.train_set,
-          n_inputs_per_trial=2)
-    
+
+def compute_env_class_corr(exp, trial_env):
     i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
         exp.dataset.train_set.y,
         check_trial_lengths_equal=True,

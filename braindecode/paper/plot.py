@@ -43,7 +43,10 @@ def plot_scalp_grid(data, sensor_names, scale_per_row=False,
                 scalp_line_width = 1
             else:
                 scalp_line_width=0
-            ax = axes[i_row][i_col]
+            if n_rows > 1:
+                ax = axes[i_row][i_col]
+            else:
+                ax = axes[i_col]
             ax_scalp(this_data,sensor_names, colormap=colormap,ax=ax,
                     scalp_line_width=scalp_line_width, scalp_line_style=scalp_line_style,
                     vmin=vmin, vmax=vmax)
@@ -54,8 +57,10 @@ def plot_scalp_grid(data, sensor_names, scale_per_row=False,
     fig.subplots_adjust(hspace=-0.3,wspace=0.)
     return fig, axes
 
-def add_colorbar_to_scalp_grid(fig, axes, label, min_max_ticks=True, ):
-    cbar = fig.colorbar(fig.axes[2].images[0], ax=axes.ravel().tolist(), shrink=0.9)
+def add_colorbar_to_scalp_grid(fig, axes, label, min_max_ticks=True, shrink=0.9,
+        **colorbar_args):
+    cbar = fig.colorbar(fig.axes[2].images[0], ax=axes.ravel().tolist(),
+        shrink=shrink, **colorbar_args)
     if min_max_ticks:
         clim =cbar.get_clim()
         cbar.set_ticks((clim[0],0,clim[1]))

@@ -1,4 +1,10 @@
+import numpy as np
 from braindecode.analysis.pandas_util import restrict, restrict_or_unset
+from braindecode.paper import unclean_sets
+def clean_datasets(df):
+    for name in unclean_sets:
+        df = df[np.logical_not(df.dataset_filename.str.contains(name))]
+    return df
 
 ## Main comparison
 def elu_deep_5(df):

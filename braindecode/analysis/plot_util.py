@@ -10,7 +10,6 @@ from pylearn2.utils import serial
 import os.path
 from matplotlib import gridspec
 import seaborn
-from sklearn.metrics.metrics import confusion_matrix
 
 def show_misclass_scatter_plot(first_misclasses, second_misclasses, figsize=(4,4)):
     fig = plt.figure(figsize=figsize)
