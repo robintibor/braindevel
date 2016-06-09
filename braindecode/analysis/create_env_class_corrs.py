@@ -30,10 +30,12 @@ def create_env_class_corrs(folder, params,start,stop):
         log.info("Running {:s} ({:d} of {:d})".format(base_name,
             i_exp + start + 1, stop))
         exp, model = load_exp_and_model(base_name)
-        exp.dataset.load()
+        exp.dataset.load()    
+        train_set = exp.dataset_provider.get_train_merged_valid_test(exp.dataset)['train']
+
         trial_env = load_trial_env(base_name + '.env.npy',
                model, i_layer=26, # 26 is last max-pool i think 
-               train_set=exp.dataset.train_set,
+               train_set=train_set,
               n_inputs_per_trial=2)
         topo_corr = compute_env_class_corr(exp, trial_env)
         rand_model = create_experiment(base_name + '.yaml').final_layer
@@ -54,7 +56,8 @@ def compute_env_class_corr(exp, trial_env):
         check_trial_lengths_equal=True,
         input_time_length=exp.iterator.input_time_length)
     assert len(i_trial_ends) == trial_env.shape[1]
-    y_signal = [exp.dataset.train_set.y[i_start:i_end]
+    # +1 as i_end is inclusive
+    y_signal = [exp.dataset.train_set.y[i_start:i_end+1]
         for i_start, i_end in zip(i_trial_starts, i_trial_ends)]
     y_signal = np.array(y_signal).transpose(0,2,1)
     assert y_signal.shape[2] == trial_env.shape[3]

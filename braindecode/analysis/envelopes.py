@@ -41,7 +41,8 @@ def transform_to_trial_env(env, model, i_layer, train_set,
     trial_starts, trial_ends = compute_trial_start_end_samples(train_set.y)
     assert len(np.unique(trial_ends - trial_starts)) == 1
     n_trials = len(trial_starts)
-    n_trial_len = np.unique(trial_ends - trial_starts)[0]
+    # +1 as trial end is inclusive
+    n_trial_len = np.unique(trial_ends - trial_starts)[0] + 1
     # Afterwards env is list empty lists(!!)
     n_sample_preds = get_n_sample_preds(model)
     trial_env = get_meaned_trial_env(env, field_size=field_size, 
@@ -90,7 +91,8 @@ def get_meaned_trial_env(env, field_size, n_trials, n_inputs_per_trial,
     for fb_env in meaned_env:
         fb_envs_per_trial = fb_env.reshape(n_trials,n_inputs_per_trial,
             fb_env.shape[1], fb_env.shape[2], fb_env.shape[3])
-        trial_env = transform_to_trial_acts(fb_envs_per_trial, [n_inputs_per_trial] * n_trials,
+        trial_env = transform_to_trial_acts(fb_envs_per_trial,
+            [n_inputs_per_trial] * n_trials,
                                             n_sample_preds=n_sample_preds,
                                             n_trial_len=n_trial_len)
         all_trial_envs.append(trial_env)
