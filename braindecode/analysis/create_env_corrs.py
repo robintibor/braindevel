@@ -1,5 +1,6 @@
 import numpy as np
 import os.path
+import sys
 from braindecode.results.results import ResultPool
 from braindecode.experiments.load import load_exp_and_model
 from braindecode.analysis.envelopes import load_trial_env, compute_topo_corrs
@@ -8,18 +9,19 @@ import logging
 from braindecode.experiments.experiment import create_experiment
 log = logging.getLogger(__name__)
 
-def create_env_corrs(folder_name, params):
+def create_env_corrs(folder_name, params, start, stop):
     res_pool = ResultPool()
     res_pool.load_results(folder_name, params=params)
     res_file_names = res_pool.result_file_names()
     all_base_names = [name.replace('.result.pkl', '')
         for name in res_file_names]
-    
+    start = start or 0
+    stop = stop or len(all_base_names) 
     # Hackhack hardcoded layers, since I know this is correct layers atm
     i_all_layers = [8,14,20,26,28] #for shallow [3, 4, 5, 7]
-    for i_file, base_name in enumerate(all_base_names):
+    for i_file, base_name in enumerate(all_base_names[start:stop]):
         log.info("Running {:s} ({:d} of {:d})".format(
-            base_name, i_file+1, len(all_base_names)))
+            base_name, i_file+start+1, stop))
         create_topo_env_corrs_files(base_name, i_all_layers)
  
 def create_topo_env_corrs_files(base_name, i_all_layers):
@@ -31,20 +33,22 @@ def create_topo_env_corrs_files(base_name, i_all_layers):
     exp.dataset.load()
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
-
+    with_square = True
     for i_layer in i_all_layers:
         log.info("Layer {:d}".format(i_layer))
         trial_env = load_trial_env(env_file_name, model, 
-            i_layer, train_set, n_inputs_per_trial=2)
+            i_layer, train_set, n_inputs_per_trial=2, square_before_mean=with_square)
         topo_corrs = compute_trial_topo_corrs(model, i_layer, train_set, 
             exp.iterator, trial_env)
         
         rand_model = create_experiment(base_name + '.yaml').final_layer
         rand_topo_corrs = compute_trial_topo_corrs(rand_model, i_layer, train_set, 
             exp.iterator, trial_env)
- 
-        np.save('{:s}.env_corrs.{:d}.npy'.format(base_name, i_layer), topo_corrs)
-        np.save('{:s}.env_rand_corrs.{:d}.npy'.format(base_name, i_layer), rand_topo_corrs)
+        file_name_end = '{:d}.npy'.format(i_layer)
+        if with_square:
+            file_name_end = 'square.' + file_name_end
+        np.save('{:s}.env_corrs.{:s}'.format(base_name, file_name_end), topo_corrs)
+        np.save('{:s}.env_rand_corrs.{:s}'.format(base_name, file_name_end), rand_topo_corrs)
     return
 
 def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
@@ -86,9 +90,16 @@ def setup_logging():
     
 if __name__ == "__main__":
     setup_logging()
+    start = None
+    stop = None
+    if len(sys.argv) > 1:
+        start = int(sys.argv[1]) - 1 #1-based to 0-based
+    if len(sys.argv) > 2:
+        stop = int(sys.argv[2])
     create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
              params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                         low_cut_off_hz="null", first_nonlin="$elu"))
+                         low_cut_off_hz="null", first_nonlin="$elu"),
+             start=start, stop=stop)
 #    create_env_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
 #        params=None)
     
