@@ -7,10 +7,10 @@ from braindecode.analysis.envelopes import load_trial_env, compute_topo_corrs
 from braindecode.veganlasagne.layer_util import compute_trial_acts
 import logging
 from braindecode.experiments.experiment import create_experiment
-from braindecode.analysis.create_env_class_corrs import create_env_class_corr_file
 log = logging.getLogger(__name__)
 
 def create_env_corrs(folder_name, params, start, stop):
+    from braindecode.analysis.create_env_class_corrs import create_env_class_corr_file
     res_pool = ResultPool()
     res_pool.load_results(folder_name, params=params)
     res_file_names = res_pool.result_file_names()

@@ -8,7 +8,6 @@ from braindecode.datahandling.batch_iteration import (
     compute_trial_start_end_samples) 
 import logging
 from braindecode.experiments.experiment import create_experiment
-from braindecode.analysis.create_env_corrs import compute_trial_topo_corrs
 from braindecode.veganlasagne.layers import create_pred_fn
 from braindecode.veganlasagne.monitors import compute_preds_per_trial
 log = logging.getLogger(__name__)
