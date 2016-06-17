@@ -7,6 +7,7 @@ from braindecode.analysis.envelopes import load_trial_env, compute_topo_corrs
 from braindecode.veganlasagne.layer_util import compute_trial_acts
 import logging
 from braindecode.experiments.experiment import create_experiment
+from braindecode.analysis.create_env_class_corrs import create_env_class_corr_file
 log = logging.getLogger(__name__)
 
 def create_env_corrs(folder_name, params, start, stop):
@@ -20,11 +21,13 @@ def create_env_corrs(folder_name, params, start, stop):
     # Hackhack hardcoded layers, since I know this is correct layers atm
     i_all_layers = [8,14,20,26,28] #for shallow [3, 4, 5, 7]
     for i_file, base_name in enumerate(all_base_names[start:stop]):
+        with_square = True
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file+start+1, stop))
-        create_topo_env_corrs_files(base_name, i_all_layers)
+        create_topo_env_corrs_files(base_name, i_all_layers,with_square)
+        create_env_class_corr_file(base_name, with_square)
  
-def create_topo_env_corrs_files(base_name, i_all_layers):
+def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
     # Load env first to make sure env is actually there.
     result = np.load(base_name + '.result.pkl')
     print base_name
@@ -33,7 +36,6 @@ def create_topo_env_corrs_files(base_name, i_all_layers):
     exp.dataset.load()
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
-    with_square = True
     for i_layer in i_all_layers:
         log.info("Layer {:d}".format(i_layer))
         trial_env = load_trial_env(env_file_name, model, 

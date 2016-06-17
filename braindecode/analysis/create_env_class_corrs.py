@@ -29,25 +29,28 @@ def create_env_class_corrs(folder, params,start,stop):
     for i_exp, base_name in enumerate(all_base_names[start:stop]):
         log.info("Running {:s} ({:d} of {:d})".format(base_name,
             i_exp + start + 1, stop))
-        exp, model = load_exp_and_model(base_name)
-        exp.dataset.load()    
-        train_set = exp.dataset_provider.get_train_merged_valid_test(exp.dataset)['train']
+        create_env_class_corr_file(base_name, with_square)
 
-        trial_env = load_trial_env(base_name + '.env.npy',
-               model, i_layer=26, # 26 is last max-pool i think 
-               train_set=train_set,
-              n_inputs_per_trial=2,
-              square_before_mean=with_square)
-        topo_corr = compute_env_class_corr(exp, trial_env)
-        rand_model = create_experiment(base_name + '.yaml').final_layer
+def create_env_class_corr_file(base_name, with_square):
+    exp, model = load_exp_and_model(base_name)
+    exp.dataset.load()    
+    train_set = exp.dataset_provider.get_train_merged_valid_test(exp.dataset)['train']
 
-        rand_topo_corrs = compute_rand_preds_topo_corr(exp, rand_model, 
-            trial_env)
-        file_name_end = 'class.npy'
-        if with_square:
-            file_name_end = 'square.' + file_name_end
-        np.save('{:s}.env_corrs.{:s}'.format(base_name, file_name_end), topo_corrs)
-        np.save('{:s}.env_rand_corrs.{:s}'.format(base_name, file_name_end), rand_topo_corrs)
+    trial_env = load_trial_env(base_name + '.env.npy',
+           model, i_layer=26, # 26 is last max-pool i think 
+           train_set=train_set,
+          n_inputs_per_trial=2,
+          square_before_mean=with_square)
+    topo_corrs = compute_env_class_corr(exp, trial_env)
+    rand_model = create_experiment(base_name + '.yaml').final_layer
+
+    rand_topo_corrs = compute_rand_preds_topo_corr(exp, rand_model, 
+        trial_env)
+    file_name_end = 'class.npy'
+    if with_square:
+        file_name_end = 'square.' + file_name_end
+    np.save('{:s}.env_corrs.{:s}'.format(base_name, file_name_end), topo_corrs)
+    np.save('{:s}.env_rand_corrs.{:s}'.format(base_name, file_name_end), rand_topo_corrs)
 
 def compute_env_class_corr(exp, trial_env):
     train_set = exp.dataset_provider.get_train_merged_valid_test(
