@@ -70,22 +70,8 @@ def compute_topo_corrs(trial_env, trial_acts):
 
 def get_meaned_trial_env(env, field_size, n_trials, n_inputs_per_trial,
                         n_trial_len, n_sample_preds):
-    inputs = T.ftensor4()
-    pooled = downsample.max_pool_2d(inputs, ds=(field_size ,1), st=(1,1), 
-                                    ignore_border=True, mode='average_exc_pad')
-    pool_fn = theano.function([inputs], pooled)
-    log.info("Computing meaned envelope...")
-    meaned_env = []
     assert env[0].shape[0] == n_trials * n_inputs_per_trial
-    expected_mean_env_shape =  ((len(env),) + env[0].shape[0:2] + 
-        (env[0].shape[2] - field_size + 1,1))
-    for i_fb in xrange(len(env)):
-        meaned_env.append(pool_fn(env[i_fb]))
-        # In order to save memory, delete env contents...
-        env[i_fb] = []
-        gc.collect()
-    meaned_env = np.array(meaned_env)
-    assert meaned_env.shape == expected_mean_env_shape
+    meaned_env = get_meaned_batch_env(env, field_size)
     log.info("Transforming to per trial...")
     all_trial_envs = []
     for fb_env in meaned_env:
@@ -100,6 +86,23 @@ def get_meaned_trial_env(env, field_size, n_trials, n_inputs_per_trial,
     all_trial_envs = np.array(all_trial_envs, dtype=np.float32)
     log.info("Done...")
     return all_trial_envs
+
+def get_meaned_batch_env(env, field_size):
+    log.info("Computing meaned envelope...")
+    inputs = T.ftensor4()
+    pooled = downsample.max_pool_2d(inputs, ds=(field_size, 1), st=(1, 1), ignore_border=True, mode='average_exc_pad')
+    pool_fn = theano.function([inputs], pooled)
+    meaned_env = []
+    expected_mean_env_shape = (len(env), ) + env[0].shape[0:2] + (env[0].shape[2] - field_size + 1, 1)
+    for i_fb in xrange(len(env)):
+        meaned_env.append(pool_fn(env[i_fb]))
+        # In order to save memory, delete env contents...
+        env[i_fb] = []
+        gc.collect()
+    
+    meaned_env = np.array(meaned_env)
+    assert meaned_env.shape == expected_mean_env_shape
+    return meaned_env
 
 def create_envelopes(folder_name, params, start, stop):
     res_pool = ResultPool()
