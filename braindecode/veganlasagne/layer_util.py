@@ -32,8 +32,8 @@ def compute_trial_acts(model, i_layer, iterator, train_set):
                 train_set.y, check_trial_lengths_equal=True,
                 input_time_length=iterator.input_time_length)
     # +1 since trial ends is inclusive
-    trial_len = i_trial_ends[0] - i_trial_starts[0] + 1
-    n_inputs_per_trial = int(np.ceil(trial_len / float(iterator.n_sample_preds)))
+    n_trial_len = i_trial_ends[0] - i_trial_starts[0] + 1
+    n_inputs_per_trial = int(np.ceil(n_trial_len / float(iterator.n_sample_preds)))
     log.info("Create theano function...")
     all_layers = lasagne.layers.get_all_layers(model)
     all_out_fn = create_pred_fn(all_layers[i_layer])
@@ -45,7 +45,6 @@ def compute_trial_acts(model, i_layer, iterator, train_set):
     batch_sizes = [len(batch[0]) for batch in iterator.get_batches(train_set, False)]
     all_outs_per_batch = np.array(all_outs_per_batch)
     n_trials = len(i_trial_starts)
-    n_trial_len = np.unique(i_trial_ends - i_trial_starts)[0]
     log.info("Transform to trial activations...")
     trial_acts = get_trial_acts(all_outs_per_batch,
                                   batch_sizes, n_trials=n_trials, 

@@ -49,8 +49,8 @@ def create_amplitude_perturbation_corrs(basename, n_samples=30):
                 pass
         rng = RandomState(49587489)
         log.info("Create perturbed preds for {:s}...".format(name))
-        amp_diffs, perturbed_preds = create_perturbed_preds(amplitudes, phases, pred_fn, perturb_fn, rng,
-                                                           n_samples=n_samples)
+        amp_diffs, perturbed_preds = create_perturbed_preds(amplitudes, 
+            phases, pred_fn, perturb_fn, rng, n_samples=n_samples)
         
         log.info("Compute correlations...")
         class_amp_sensor_coeffs = compute_class_amp_sensor_coeffs(all_preds,
