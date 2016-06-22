@@ -18,7 +18,18 @@
         cnt_preprocessors: [$resample_highpass_standardize],
         low_cut_off_hz: ["null"], 
         
-        
+        include_phase: [False],
+        square_amplitude: [False],
+        layer_names_to_norms: [$deep_fft_names_to_norms],
+        layers: [$deep_fft_net_spat_time_freq],
+        filter_time_length: [3],
+        filter_length_2: [3],
+        filter_length_3: [3],
+        pad_time: [1],
+        ignore_unused: [['max_min', 'whisker_length', 'filter_length_4',
+        'i_test_fold', 'eog_sensors', 'rejection_var_ival', 'num_split_folds',
+        'final_nonlin', 'rejection_blink_ival', 'whisker_percent',
+        'layer_modifier']],
         variants: [[ 
         {
             frequency_start: [0],
@@ -28,26 +39,8 @@
             frequency_start: ['null'],
             frequency_end: ['null'],
         },
-        ],
-        [
-            {
-                layer_names_to_norms: [$deep_fft_names_to_norms],
-                layers: [$deep_fft_net_spat_time_freq],
-                filter_time_length: [3],
-                filter_length_2: [3],
-                filter_length_3: [3],
-                pad_time: [1],
-                ignore_unused: [['max_min', 'whisker_length', 'filter_length_4',
-                'i_test_fold', 'eog_sensors', 'rejection_var_ival', 'num_split_folds',
-                'final_nonlin', 'rejection_blink_ival', 'whisker_percent',
-                'layer_modifier']],
-                variants: [[{
-                    include_phase: [True, False],
-                    square_amplitude: [True, False],
-                    
-                },
-                ]]
-            },
+#        ],
+#        [
 #            {
 #                layer_names_to_norms: [$seperated_linear_names_to_norms],
 #                layers: [$seperated_linear],

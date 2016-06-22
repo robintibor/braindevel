@@ -15,16 +15,19 @@
         'eog_sensors', 'rejection_var_ival', 'num_split_folds',
         'rejection_blink_ival', 'whisker_percent']],
         
-        variants: [[{
-            batch_norm: [false],
-            drop_prob: [0.],
-            first_nonlin: [$relu],
-            first_pool_mode: ['max'],
-            first_pool_nonlin: [$identity],
-            later_nonlin: [$relu],
-            later_pool_mode: ['max'],
-            later_pool_nonlin: [$identity],
-        }]]
+        variants: [[
+            {},
+            {
+                batch_norm: [false],
+                drop_prob: [0.],
+                first_nonlin: [$relu],
+                first_pool_mode: ['max'],
+                first_pool_nonlin: [$identity],
+                later_nonlin: [$relu],
+                later_pool_mode: ['max'],
+                later_pool_nonlin: [$identity],
+            }
+        ]]
     }
     ]]
 }

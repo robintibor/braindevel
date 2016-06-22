@@ -28,6 +28,11 @@
 
         variants: [[
         {
+            max_increasing_epochs: [160],
+            max_epochs: [1600],
+            loss_expression: [$tied_neighbours],
+        },
+        {
         },
         {
             first_nonlin: [$relu],

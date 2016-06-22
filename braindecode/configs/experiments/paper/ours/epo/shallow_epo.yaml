@@ -15,8 +15,9 @@
         drop_p: [0.5],
         layers: [$cnt_shallow_square],
         
-        variants: [[{
-        
+        variants: [[
+        {}, # same as before
+        {
                 layers: [$cnt_shallow_square_no_bnorm],
                 drop_p: [0.],
                 ignore_unused: [[

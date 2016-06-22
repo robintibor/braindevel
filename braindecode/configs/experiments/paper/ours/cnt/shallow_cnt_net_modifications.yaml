@@ -17,6 +17,11 @@
         
         variants: [[
             {
+                max_increasing_epochs: [160],
+                max_epochs: [1600],
+                loss_expression: [$tied_neighbours],
+            },
+            {
             },
             {
                 post_pool_nonlin: [$safe_sqrt],

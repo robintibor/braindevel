@@ -16,6 +16,11 @@
         layers: [$cnt_shallow_square],
         variants: [[
             {
+                max_increasing_epochs: [160],
+                max_epochs: [1600],
+                loss_expression: [$tied_neighbours],
+            },
+            {
                 cnt_preprocessors: [$resample_highpass_standardize],
                 low_cut_off_hz: ["null"],
                 save_path: ['data/models/paper/bci-competition/cnt/shallow/traintime/'],
