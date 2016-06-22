@@ -3,7 +3,7 @@ import os.path
 from braindecode.results.results import ResultPool
 from braindecode.paper import unclean_sets
 
-def load_amp_corrs():
+def load_amp_corrs(with_square):
     res_pool = ResultPool()
     res_pool.load_results('data/models/paper/ours/cnt/deep4/car/',
         params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
@@ -29,7 +29,10 @@ def load_amp_corrs():
         else:
             clean_mask.append(True)
         for perturb_name in ('rand_mad', 'rand_std', 'shuffle'):
-            file_name = base_name + '.{:s}.amp_corrs.npy'.format(perturb_name)
+            file_name_end =  '.{:s}.amp_corrs.npy'.format(perturb_name)
+            if with_square:
+                file_name_end = '.square' + file_name_end
+            file_name = base_name + file_name_end
             assert os.path.isfile(file_name)
             this_arr = all_corrs.pop(perturb_name, [])
             this_arr.append(np.load(file_name))

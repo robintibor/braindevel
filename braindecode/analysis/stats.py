@@ -6,7 +6,7 @@ from braindecode.results.results import (extract_combined_results,
     get_training_times, extract_single_group_result_sorted)
 import datetime
 
-def perm_mean_diffs_sampled(a,b, n_diffs=None):
+def perm_mean_diffs_sampled(a, b, n_diffs=None):
     """Compute differences between all permutations of  labels.
     Version that samples.
     Parameters
@@ -89,6 +89,8 @@ def perm_mean_diff_test(a,b, n_diffs=None):
     
     actual_diff = np.mean(a - b)
     n_samples_as_large_diff = np.sum(np.abs(diffs) >= np.abs(actual_diff))
+    #if n_diffs is not None:
+    #    p_val = n_samples_as_large_diff + 1 /
     return n_samples_as_large_diff / float(len(diffs))
 
 

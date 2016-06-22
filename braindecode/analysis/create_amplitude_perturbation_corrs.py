@@ -12,7 +12,7 @@ import logging
 log = logging.getLogger(__name__)
 
 def create_all_amplitude_perturbation_corrs(folder_name, params,
-        start, stop):
+        start, stop, with_square):
     res_pool = ResultPool()
     res_pool.load_results(folder_name, params=params)
     res_file_names = res_pool.result_file_names()
@@ -23,9 +23,10 @@ def create_all_amplitude_perturbation_corrs(folder_name, params,
     for i_file, base_name in enumerate(all_base_names[start:stop]):
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file + start + 1, stop))
-        create_amplitude_perturbation_corrs(base_name, n_samples=30)
+        create_amplitude_perturbation_corrs(base_name, 
+            with_square=with_square, n_samples=30)
 
-def create_amplitude_perturbation_corrs(basename, n_samples=30):
+def create_amplitude_perturbation_corrs(basename, with_square, n_samples=30):
     exp, pred_fn = load_exp_pred_fn(basename)
     log.info("Create fft trials...")
     trials, amplitudes, phases = create_trials_and_do_fft(exp)
@@ -36,7 +37,10 @@ def create_amplitude_perturbation_corrs(basename, n_samples=30):
                                           deviation_func=median_absolute_deviation)),
                               ('rand_std', FuncAndArgs(rand_diff, deviation_func=np.std)),
                              ('shuffle', shuffle_per_freq_block)):
-        save_filename = basename + '.{:s}.amp_corrs.npy'.format(name)
+        file_name_end = '.{:s}.amp_corrs.npy'.format(name)
+        if with_square:
+            file_name_end = ".square" + file_name_end
+        save_filename = basename + file_name_end
         # check if file already exists, skip if it does and is loadable
         if os.path.isfile(save_filename):
             try:
@@ -50,7 +54,8 @@ def create_amplitude_perturbation_corrs(basename, n_samples=30):
         rng = RandomState(49587489)
         log.info("Create perturbed preds for {:s}...".format(name))
         amp_diffs, perturbed_preds = create_perturbed_preds(amplitudes, 
-            phases, pred_fn, perturb_fn, rng, n_samples=n_samples)
+            phases, pred_fn, perturb_fn, rng, with_square=with_square,
+            n_samples=n_samples)
         
         log.info("Compute correlations...")
         class_amp_sensor_coeffs = compute_class_amp_sensor_coeffs(all_preds,
@@ -78,8 +83,11 @@ def create_trials_and_do_fft(exp):
     phases = np.angle(ffted)
     return trials, amplitudes, phases
 
-def create_perturbed_preds(amplitudes, phases, pred_fn, perturb_fn, rng, n_samples=10):
+def create_perturbed_preds(amplitudes, phases, pred_fn, perturb_fn, rng,
+        with_square, n_samples=30):
     rng = RandomState(3874638746)
+    if with_square:
+        amplitudes = np.square(amplitudes)
     dummy_diff_amp = perturb_fn(amplitudes, RandomState(34534))
     all_amp_diffs = np.ones([n_samples] + list(dummy_diff_amp.shape),
         dtype=np.float32) * np.nan
@@ -88,7 +96,12 @@ def create_perturbed_preds(amplitudes, phases, pred_fn, perturb_fn, rng, n_sampl
     for i_sample in xrange(n_samples):
         log.info("Sample {:d} of {:d}".format(i_sample+1, n_samples))
         diff_amp = perturb_fn(amplitudes, rng)
-        new_amp = amplitudes + diff_amp
+        if with_square:
+            # invert square...
+            # clip for unlikely case diff is below 0
+            new_amp = np.sqrt(np.maximum(amplitudes + diff_amp,0))
+        else:
+            new_amp = amplitudes + diff_amp
         new_fft = amplitude_phase_to_complex(new_amp, phases)
         new_trials = np.fft.irfft(new_fft, axis=3).astype(np.float32)
         new_preds = np.array([pred_fn(t) for t in new_trials] )
@@ -165,7 +178,9 @@ if __name__ == "__main__":
     folder = 'data/models/paper/ours/cnt/deep4/car/'
     params = dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
                          low_cut_off_hz="null", first_nonlin="$elu")
+    with_square = True
     create_all_amplitude_perturbation_corrs(folder,
-             params=params, start=start,stop=stop)
+             params=params, start=start,stop=stop,
+             with_square=with_square)
 #     create_all_amplitude_perturbation_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
 #         params=None)
