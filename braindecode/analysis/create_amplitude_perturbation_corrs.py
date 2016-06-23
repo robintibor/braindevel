@@ -12,7 +12,8 @@ import logging
 log = logging.getLogger(__name__)
 
 def create_all_amplitude_perturbation_corrs(folder_name, params,
-        start, stop, with_square):
+        start, stop, with_square, with_square_corr):
+    assert not (with_square and with_square_corr)
     res_pool = ResultPool()
     res_pool.load_results(folder_name, params=params)
     res_file_names = res_pool.result_file_names()
@@ -24,9 +25,12 @@ def create_all_amplitude_perturbation_corrs(folder_name, params,
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file + start + 1, stop))
         create_amplitude_perturbation_corrs(base_name, 
-            with_square=with_square, n_samples=30)
+            with_square=with_square, with_square_corr=with_square_corr,
+            n_samples=30)
 
-def create_amplitude_perturbation_corrs(basename, with_square, n_samples=30):
+def create_amplitude_perturbation_corrs(basename, with_square, with_square_corr,
+        n_samples=30):
+    assert not (with_square and with_square_corr)
     exp, pred_fn = load_exp_pred_fn(basename)
     log.info("Create fft trials...")
     trials, amplitudes, phases = create_trials_and_do_fft(exp)
@@ -40,6 +44,9 @@ def create_amplitude_perturbation_corrs(basename, with_square, n_samples=30):
         file_name_end = '.{:s}.amp_corrs.npy'.format(name)
         if with_square:
             file_name_end = ".square" + file_name_end
+        if with_square_corr:
+            file_name_end = ".corrtosquare" + file_name_end
+            
         save_filename = basename + file_name_end
         # check if file already exists, skip if it does and is loadable
         if os.path.isfile(save_filename):
@@ -55,6 +62,7 @@ def create_amplitude_perturbation_corrs(basename, with_square, n_samples=30):
         log.info("Create perturbed preds for {:s}...".format(name))
         amp_diffs, perturbed_preds = create_perturbed_preds(amplitudes, 
             phases, pred_fn, perturb_fn, rng, with_square=with_square,
+            with_square_corr=with_square_corr,
             n_samples=n_samples)
         
         log.info("Compute correlations...")
@@ -84,7 +92,8 @@ def create_trials_and_do_fft(exp):
     return trials, amplitudes, phases
 
 def create_perturbed_preds(amplitudes, phases, pred_fn, perturb_fn, rng,
-        with_square, n_samples=30):
+        with_square, with_square_corr, n_samples=30):
+    assert not (with_square and with_square_corr)
     rng = RandomState(3874638746)
     if with_square:
         amplitudes = np.square(amplitudes)
@@ -105,7 +114,15 @@ def create_perturbed_preds(amplitudes, phases, pred_fn, perturb_fn, rng,
         new_fft = amplitude_phase_to_complex(new_amp, phases)
         new_trials = np.fft.irfft(new_fft, axis=3).astype(np.float32)
         new_preds = np.array([pred_fn(t) for t in new_trials] )
-        all_amp_diffs[i_sample] = diff_amp
+        if not with_square_corr:
+            all_amp_diffs[i_sample] = diff_amp
+        else:
+            assert with_square_corr
+            # done here already, not outside funciton,
+            # since i assume outside funciton might create
+            # memory problems due to copies...
+            # but never tested this
+            all_amp_diffs[i_sample] = np.square(diff_amp) * np.sign(diff_amp)
         all_new_preds.append(new_preds)
     assert not np.any(np.isnan(all_amp_diffs))
     log.info("Make into array...")
@@ -178,9 +195,10 @@ if __name__ == "__main__":
     folder = 'data/models/paper/ours/cnt/deep4/car/'
     params = dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
                          low_cut_off_hz="null", first_nonlin="$elu")
-    with_square = True
+    with_square = False
+    with_square_corr = True
     create_all_amplitude_perturbation_corrs(folder,
              params=params, start=start,stop=stop,
-             with_square=with_square)
+             with_square=with_square, with_square_corr=with_square_corr)
 #     create_all_amplitude_perturbation_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
 #         params=None)

@@ -28,7 +28,15 @@ def perm_mean_diffs_sampled(a, b, n_diffs=None):
         i_all_masks = xrange(n_diffs)
     else:
         random.seed(39483948)
-        i_all_masks = random.sample(xrange(2**n_exps), n_diffs)
+        # take samples of all masks, always add identity mask
+        i_all_masks = random.sample(xrange(0,2**n_exps-1), n_diffs - 1)
+        i_all_masks = i_all_masks + [(2**n_exps)-1]
+        # verification this is actually identity mask for code below:
+        test_i_mask = i_all_masks[-1]
+        test_mask = (np.bitwise_and(test_i_mask, all_bit_masks) > 0) * 2 - 1
+        assert np.array_equal(a - b, (test_mask * a)  -test_mask * b)
+
+        
     all_diffs = np.float32(np.ones(n_diffs) * np.nan)
     for i_diff, i_mask in enumerate(i_all_masks):
         # masks has -1s and 1s,

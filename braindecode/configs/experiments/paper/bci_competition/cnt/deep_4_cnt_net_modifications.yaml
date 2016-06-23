@@ -28,17 +28,17 @@
         'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
         'misclass_monitor', 'rejection_blink_ival', 'whisker_percent']],
         
-        variants: [[
-        {
-            max_increasing_epochs: [160],
-            max_epochs: [1600],
-            loss_expression: [$tied_neighbours],
-        },
-        {
-            cnt_preprocessors: [$resample_highpass_standardize],
-            low_cut_off_hz: ["null"],
-            save_path: ['data/models/paper/bci-competition/cnt/deep4/traintime/'],
-        },
+#        variants: [[
+#        {
+#            max_increasing_epochs: [160],
+#            max_epochs: [1600],
+#            loss_expression: [$tied_neighbours],
+#        },
+#        {
+#            cnt_preprocessors: [$resample_highpass_standardize],
+#            low_cut_off_hz: ["null"],
+#            save_path: ['data/models/paper/bci-competition/cnt/deep4/traintime/'],
+#        },
 #        {
 #            first_nonlin: [$relu],
 #            first_pool_mode: ['max'],
@@ -91,7 +91,7 @@
 #            filter_length_3: [6],
 #            filter_length_4: [6],
 #        }
-        ]],
+#        ]],
     }
     ]]
 }
