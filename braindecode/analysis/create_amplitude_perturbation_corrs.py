@@ -3,7 +3,7 @@ import os.path
 import numpy as np
 from numpy.random import RandomState
 from braindecode.util import FuncAndArgs
-from braindecode.analysis.stats import median_absolute_deviation, corr
+from braindecode.analysis.stats import median_absolute_deviation, corr, cov
 from braindecode.experiments.load import load_exp_and_model
 from braindecode.veganlasagne.layers import create_pred_fn
 from braindecode.datasets.fft import amplitude_phase_to_complex
@@ -12,8 +12,8 @@ import logging
 log = logging.getLogger(__name__)
 
 def create_all_amplitude_perturbation_corrs(folder_name, params,
-        start, stop, with_square, with_square_corr):
-    assert not (with_square and with_square_corr)
+        start, stop, with_blocks, with_square, with_square_cov, n_samples):
+    assert not (with_square and with_square_cov)
     res_pool = ResultPool()
     res_pool.load_results(folder_name, params=params)
     res_file_names = res_pool.result_file_names()
@@ -25,27 +25,32 @@ def create_all_amplitude_perturbation_corrs(folder_name, params,
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file + start + 1, stop))
         create_amplitude_perturbation_corrs(base_name, 
-            with_square=with_square, with_square_corr=with_square_corr,
-            n_samples=30)
+            with_blocks=with_blocks,
+            with_square=with_square, with_square_cov=with_square_cov,
+            n_samples=n_samples)
 
-def create_amplitude_perturbation_corrs(basename, with_square, with_square_corr,
+def create_amplitude_perturbation_corrs(basename, with_blocks,
+        with_square, with_square_cov,
         n_samples=30):
-    assert not (with_square and with_square_corr)
+    assert not (with_square and with_square_cov)
     exp, pred_fn = load_exp_pred_fn(basename)
     log.info("Create fft trials...")
     trials, amplitudes, phases = create_trials_and_do_fft(exp)
     log.info("Create all predictions...")
     all_preds = np.array([pred_fn(t) for t in trials] )
     for name, perturb_fn in (('rand_mad',
-                              FuncAndArgs(rand_diff, 
-                                          deviation_func=median_absolute_deviation)),
-                              ('rand_std', FuncAndArgs(rand_diff, deviation_func=np.std)),
+                              FuncAndArgs(rand_diff,
+                                  with_blocks=with_blocks,
+                                  deviation_func=median_absolute_deviation)),
+                              ('rand_std', FuncAndArgs(rand_diff,
+                                  with_blocks=with_blocks, 
+                                  deviation_func=np.std)),
                              ('shuffle', shuffle_per_freq_block)):
-        file_name_end = '.{:s}.amp_corrs.npy'.format(name)
+        file_name_end = '.{:s}.amp_covs.npy'.format(name)
         if with_square:
             file_name_end = ".square" + file_name_end
-        if with_square_corr:
-            file_name_end = ".corrtosquare" + file_name_end
+        if with_square_cov:
+            file_name_end = ".covtosquare" + file_name_end
             
         save_filename = basename + file_name_end
         # check if file already exists, skip if it does and is loadable
@@ -59,17 +64,14 @@ def create_amplitude_perturbation_corrs(basename, with_square, with_square_corr,
             except:
                 pass
         rng = RandomState(49587489)
-        log.info("Create perturbed preds for {:s}...".format(name))
-        amp_diffs, perturbed_preds = create_perturbed_preds(amplitudes, 
-            phases, pred_fn, perturb_fn, rng, with_square=with_square,
-            with_square_corr=with_square_corr,
+        log.info("Create perturbed preds covs for {:s}...".format(name))
+        all_covs = create_perturbed_preds_covs(amplitudes, 
+            phases, all_preds, pred_fn, perturb_fn, rng, with_square=with_square,
+            with_square_cov=with_square_cov,
             n_samples=n_samples)
         
-        log.info("Compute correlations...")
-        class_amp_sensor_coeffs = compute_class_amp_sensor_coeffs(all_preds,
-            amp_diffs, perturbed_preds)
         log.info("Saving...")
-        np.save(save_filename,  class_amp_sensor_coeffs)
+        np.save(save_filename,  all_covs)
         log.info("Done.")
     
 def load_exp_pred_fn(basename):
@@ -91,16 +93,15 @@ def create_trials_and_do_fft(exp):
     phases = np.angle(ffted)
     return trials, amplitudes, phases
 
-def create_perturbed_preds(amplitudes, phases, pred_fn, perturb_fn, rng,
-        with_square, with_square_corr, n_samples=30):
-    assert not (with_square and with_square_corr)
+def create_perturbed_preds_covs(amplitudes, phases, all_preds, 
+        pred_fn, perturb_fn, rng,
+        with_square, with_square_cov, n_samples=30):
+    assert not (with_square and with_square_cov)
     rng = RandomState(3874638746)
     if with_square:
         amplitudes = np.square(amplitudes)
     dummy_diff_amp = perturb_fn(amplitudes, RandomState(34534))
-    all_amp_diffs = np.ones([n_samples] + list(dummy_diff_amp.shape),
-        dtype=np.float32) * np.nan
-    all_new_preds = []
+    all_covs = []
     
     for i_sample in xrange(n_samples):
         log.info("Sample {:d} of {:d}".format(i_sample+1, n_samples))
@@ -114,44 +115,51 @@ def create_perturbed_preds(amplitudes, phases, pred_fn, perturb_fn, rng,
         new_fft = amplitude_phase_to_complex(new_amp, phases)
         new_trials = np.fft.irfft(new_fft, axis=3).astype(np.float32)
         new_preds = np.array([pred_fn(t) for t in new_trials] )
-        if not with_square_corr:
-            all_amp_diffs[i_sample] = diff_amp
-        else:
-            assert with_square_corr
+        if with_square_cov:
             # done here already, not outside funciton,
             # since i assume outside funciton might create
             # memory problems due to copies...
             # but never tested this
-            all_amp_diffs[i_sample] = np.square(diff_amp) * np.sign(diff_amp)
-        all_new_preds.append(new_preds)
-    assert not np.any(np.isnan(all_amp_diffs))
+            diff_amp = np.square(diff_amp) * np.sign(diff_amp)
+        pred_diffs = all_preds - new_preds
+        # probably not necessary to put in brackets, but unchecked...
+        pred_diff_amp_cov = compute_class_amp_sensor_covs(
+            np.array([pred_diffs]), 
+            np.array([diff_amp]))
+        all_covs.append(pred_diff_amp_cov)
     log.info("Make into array...")
-    all_new_preds = np.array(all_new_preds,dtype=np.float32)
+    all_covs = np.array(all_covs,dtype=np.float32)
     log.info("Done.")
-    return all_amp_diffs, all_new_preds
+    return all_covs
 
-def compute_class_amp_sensor_coeffs(all_preds, amp_diffs, perturbed_preds):
-    pred_diffs = perturbed_preds - all_preds[np.newaxis]
+def compute_class_amp_sensor_covs(pred_diffs, amp_diffs):
     amp_diffs = amp_diffs.squeeze()
     amp_for_cov = amp_diffs.T.reshape(amp_diffs.shape[-2] * amp_diffs.shape[-1], -1)
     pred_diff_for_cov = np.mean(pred_diffs.T, axis=1).reshape(4,-1)
-    wanted_coeffs = corr(pred_diff_for_cov.astype(np.float32),
+    wanted_coeffs = cov(pred_diff_for_cov.astype(np.float32),
         amp_for_cov.astype(np.float32))
-    wanted_coeffs = wanted_coeffs.reshape(-1,amp_diffs.T.shape[0], amp_diffs.T.shape[1])[:,:-1,:]
+    wanted_coeffs = wanted_coeffs.reshape(-1,amp_diffs.T.shape[0], amp_diffs.T.shape[1])
     return wanted_coeffs
 
-def rand_diff(amplitudes, rng, deviation_func=median_absolute_deviation):
+def rand_diff(amplitudes, rng, with_blocks, deviation_func=median_absolute_deviation):
     all_diff_amp = np.zeros((amplitudes.shape[0],
                             1,
                             amplitudes.shape[2],
                             amplitudes.shape[3],
                             1), dtype=np.float32)
-    diff_amp = rng.randn(amplitudes.shape[0],
-                         amplitudes.shape[2],
-                         amplitudes.shape[3] // 20)
-    diff_amp = np.repeat(diff_amp, 20, axis=2)
-    assert diff_amp.shape[2] == all_diff_amp.shape[3] - 1
-    all_diff_amp[:,:,:,:diff_amp.shape[2],:] = diff_amp[:,None,:,:,None]
+    if with_blocks:
+        diff_amp = rng.randn(amplitudes.shape[0],
+                             amplitudes.shape[2],
+                             amplitudes.shape[3] // 20)
+        diff_amp = np.repeat(diff_amp, 20, axis=2)
+        assert diff_amp.shape[2] == all_diff_amp.shape[3] - 1
+        all_diff_amp[:,:,:,:diff_amp.shape[2],:] = diff_amp[:,None,:,:,None]
+    else:
+        diff_amp = rng.randn(amplitudes.shape[0],
+                             amplitudes.shape[2],
+                             amplitudes.shape[3])
+        all_diff_amp[:,:,:,:,:] = diff_amp[:,None,:,:,None]
+        
     all_diff_amp = all_diff_amp * deviation_func(amplitudes, axis=(0,1,4),
         keepdims=True)
     return all_diff_amp
@@ -196,9 +204,13 @@ if __name__ == "__main__":
     params = dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
                          low_cut_off_hz="null", first_nonlin="$elu")
     with_square = False
-    with_square_corr = True
+    with_square_cov = False
+    with_blocks=False
+    n_samples = 400
     create_all_amplitude_perturbation_corrs(folder,
              params=params, start=start,stop=stop,
-             with_square=with_square, with_square_corr=with_square_corr)
+             with_blocks=with_blocks,
+             with_square=with_square, with_square_cov=with_square_cov,
+             n_samples=n_samples)
 #     create_all_amplitude_perturbation_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
 #         params=None)
