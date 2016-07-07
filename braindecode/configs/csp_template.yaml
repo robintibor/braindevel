@@ -33,7 +33,8 @@
             common_average_reference: $common_average_reference,
             ival_optimizer: $ival_optimizer,
             marker_def: $marker_def,
-            set_cz_to_zero: $set_cz_to_zero
+            set_cz_to_zero: $set_cz_to_zero,
+            low_bound: low_bound,
         },
         csp_train_two_files: &csp_train_two_files !obj:braindecode.csp.experiment.TwoFileCSPExperiment {
             train_set_loader: !obj:braindecode.datasets.loaders.$loader_type {
@@ -72,7 +73,7 @@
             ival_optimizer: $ival_optimizer,
             marker_def: $marker_def,
             set_cz_to_zero: $set_cz_to_zero,
+            low_bound: $low_bound,
         },
         csp_train: $csp_train_obj,
 }
-

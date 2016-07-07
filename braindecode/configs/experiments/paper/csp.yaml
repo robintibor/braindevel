@@ -68,5 +68,6 @@
         whisker_length: [3],
         rejection_max_abs_ival: [[0,4000]],
         max_abs_threshold: [800],
+        low_bound: [0.],
     }]]
 }

@@ -1,7 +1,40 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from braindecode.mywyrm.plot import ax_scalp
+from braindecode.paper import map_i_class_pair
+
+def plot_csp_patterns(wanted_patterns, sensor_names, i_fb=3):
+    """Expects filterband x classpair  x sensor x 2 (pattern)"""
+    original_class_names = ('Hand (R)', 'Hand (L)', 'Rest', 'Feet')
+    fig = plt.figure(figsize=(12,2))
+    for i_class_pair in range(6):
+        i_wanted_class_pair, wanted_class_pair, reverse_filters = map_i_class_pair(i_class_pair)
+        pair_patterns = wanted_patterns[i_fb,i_wanted_class_pair]
+        if reverse_filters:
+            pair_patterns = pair_patterns[:,::-1]
+        for i_sub_pattern in range(2):
+            pattern = pair_patterns[:,i_sub_pattern]
+            ax = plt.subplot(2,6, i_class_pair+(i_sub_pattern * 6)+1)
+            if i_sub_pattern == 0 and i_class_pair == 0:
+                scalp_line_width = 1
+                #ax.set_ylabel(u"{:.0f}—{:.0f} Hz".format(*filterbands[i_fb]))
+            else:
+                scalp_line_width = 0
+
+            ax_scalp(pattern,sensor_names, colormap=cm.PRGn, ax=ax,
+                    vmin=-np.max(np.abs(pattern)), vmax=np.max(np.abs(pattern)),
+                    scalp_line_width=scalp_line_width)
+            if i_sub_pattern == 0:
+                # reversefilters is 0 if not to be reversed and 1 if to be revrsed
+                ax.set_title(original_class_names[wanted_class_pair[reverse_filters]])
+            else:
+                ax.set_xlabel(original_class_names[wanted_class_pair[1-reverse_filters]])
+    fig.subplots_adjust(wspace=-0.7,hspace=-0)
+    add_colorbar_to_scalp_grid(fig,np.array(fig.axes),'', shrink=1)
+    plt.text(0.27,0.5,u"7–13 Hz", transform=fig.transFigure, fontsize=14, rotation=90, va='center')
+    None
 
 def plot_scalp_grid(data, sensor_names, scale_per_row=False,
                          scale_per_column=False, 
@@ -10,6 +43,10 @@ def plot_scalp_grid(data, sensor_names, scale_per_row=False,
                          vmin=None, vmax=None,
                         colormap=cm.coolwarm,
                         add_colorbar=True):
+    """
+    data: 3darray
+        freqs x classes x sensors
+    """
     assert np.sum([scale_per_row, scale_per_column, scale_individually]) < 2, (
                "Can have only one way of scaling...")
     if vmin is None:

@@ -288,11 +288,17 @@ def corr(x,y):
     # Correlation only between terms of x and y
     # not between x and x or y and y
     this_cov = cov(x,y)
+    return cov_to_corr(this_cov,x,y)
+
+def cov_to_corr(this_cov,x,y):
     # computing "unbiased" corr
     # ddof=1 for unbiased..
-    divisor = np.outer(np.sqrt(np.var(x, axis=1, ddof=1)), 
-        np.sqrt(np.var(y, axis=1, ddof=1)))
+    var_x = np.var(x, axis=1, ddof=1)
+    var_y = np.var(y, axis=1, ddof=1)
+    return cov_and_var_to_corr(this_cov, var_x, var_y)
     
+def cov_and_var_to_corr(this_cov, var_x, var_y):
+    divisor = np.outer(np.sqrt(var_x), np.sqrt(var_y))
     return this_cov / divisor
 
 def cov(x,y):

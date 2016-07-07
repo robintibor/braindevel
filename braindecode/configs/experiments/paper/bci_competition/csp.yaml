@@ -14,10 +14,11 @@
         standardize_cnt: [True,False],
         standardize_epo: [True, False],
         standardize_filt_cnt: [True, False],
-        
+        set_cz_to_zero: [False],
         ignore_unused: [['max_min', 'whisker_length', 'eog_sensors',
             'rejection_var_ival', 'n_classes', 'rejection_blink_ival',
-            'whisker_percent']],
+            'whisker_percent', 'rejection_max_abs_ival',
+            'max_abs_threshold']],
         
         variants: [[
         {

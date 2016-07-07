@@ -147,7 +147,8 @@ class CSPExperiment(object):
             ival_optimizer=None,
             shuffle=False,
             marker_def=None,
-            set_cz_to_zero=False):
+            set_cz_to_zero=False,
+            low_bound=0.2):
         local_vars = locals()
         del local_vars['self']
         self.__dict__.update(local_vars)
@@ -220,7 +221,8 @@ class CSPExperiment(object):
         self.filterbands = generate_filterbank(min_freq=self.min_freq,
             max_freq=self.max_freq, last_low_freq=self.last_low_freq, 
             low_width=self.low_width, low_overlap=self.low_overlap,
-            high_width=self.high_width, high_overlap=self.high_overlap)
+            high_width=self.high_width, high_overlap=self.high_overlap,
+            low_bound=self.low_bound)
         assert filterbank_is_stable(self.filterbands, self.filt_order, 
             self.cnt.fs), (
                 "Expect filter bank to be stable given filter order.")
@@ -337,7 +339,8 @@ class TwoFileCSPExperiment(CSPExperiment):
             ival_optimizer=None,
             shuffle=False,
             marker_def=None,
-            set_cz_to_zero=False):
+            set_cz_to_zero=False,
+            low_bound=0.2):
         self.test_set_loader = test_set_loader
         self.test_cleaner = test_cleaner
         super(TwoFileCSPExperiment, self).__init__(train_set_loader, 
@@ -358,7 +361,8 @@ class TwoFileCSPExperiment(CSPExperiment):
             common_average_reference=common_average_reference,
             ival_optimizer=ival_optimizer,shuffle=shuffle,
             marker_def=marker_def,
-            set_cz_to_zero=set_cz_to_zero)
+            set_cz_to_zero=set_cz_to_zero,
+            low_bound=low_bound)
 
     def run(self):
         log.info("Loading train set...")
@@ -410,7 +414,8 @@ class TwoFileCSPExperiment(CSPExperiment):
         self.filterbands = generate_filterbank(min_freq=self.min_freq,
             max_freq=self.max_freq, last_low_freq=self.last_low_freq, 
             low_width=self.low_width, low_overlap=self.low_overlap,
-            high_width=self.high_width, high_overlap=self.high_overlap)
+            high_width=self.high_width, high_overlap=self.high_overlap,
+            low_bound=self.low_bound)
         assert filterbank_is_stable(self.filterbands, self.filt_order, 
             self.cnt.fs), (
                 "Expect filter bank to be stable given filter order.")
