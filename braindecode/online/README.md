@@ -55,9 +55,10 @@ Out[1]: True
 ```
 
 ### Copy over PyQt5
+```
 cp -r /usr/local/lib/python2.7/dist-packages/PyQt5/ ../venv/local/lib/python2.7/site-packages/
 cp -r /usr/lib/python2.7/dist-packages/sip* ../venv/local/lib/python2.7/site-packages/
-
+```
 
 ### Add links to robin's data folder
 ```
