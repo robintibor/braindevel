@@ -6,7 +6,7 @@ from braindecode.results.results import (extract_combined_results,
     get_training_times, extract_single_group_result_sorted)
 import datetime
 
-def perm_mean_diffs_sampled(a,b, n_diffs=None):
+def perm_mean_diffs_sampled(a, b, n_diffs=None):
     """Compute differences between all permutations of  labels.
     Version that samples.
     Parameters
@@ -28,7 +28,15 @@ def perm_mean_diffs_sampled(a,b, n_diffs=None):
         i_all_masks = xrange(n_diffs)
     else:
         random.seed(39483948)
-        i_all_masks = random.sample(xrange(2**n_exps), n_diffs)
+        # take samples of all masks, always add identity mask
+        i_all_masks = random.sample(xrange(0,2**n_exps-1), n_diffs - 1)
+        i_all_masks = i_all_masks + [(2**n_exps)-1]
+        # verification this is actually identity mask for code below:
+        test_i_mask = i_all_masks[-1]
+        test_mask = (np.bitwise_and(test_i_mask, all_bit_masks) > 0) * 2 - 1
+        assert np.array_equal(a - b, (test_mask * a)  -test_mask * b)
+
+        
     all_diffs = np.float32(np.ones(n_diffs) * np.nan)
     for i_diff, i_mask in enumerate(i_all_masks):
         # masks has -1s and 1s,
@@ -89,6 +97,8 @@ def perm_mean_diff_test(a,b, n_diffs=None):
     
     actual_diff = np.mean(a - b)
     n_samples_as_large_diff = np.sum(np.abs(diffs) >= np.abs(actual_diff))
+    #if n_diffs is not None:
+    #    p_val = n_samples_as_large_diff + 1 /
     return n_samples_as_large_diff / float(len(diffs))
 
 
@@ -278,11 +288,17 @@ def corr(x,y):
     # Correlation only between terms of x and y
     # not between x and x or y and y
     this_cov = cov(x,y)
+    return cov_to_corr(this_cov,x,y)
+
+def cov_to_corr(this_cov,x,y):
     # computing "unbiased" corr
     # ddof=1 for unbiased..
-    divisor = np.outer(np.sqrt(np.var(x, axis=1, ddof=1)), 
-        np.sqrt(np.var(y, axis=1, ddof=1)))
+    var_x = np.var(x, axis=1, ddof=1)
+    var_y = np.var(y, axis=1, ddof=1)
+    return cov_and_var_to_corr(this_cov, var_x, var_y)
     
+def cov_and_var_to_corr(this_cov, var_x, var_y):
+    divisor = np.outer(np.sqrt(var_x), np.sqrt(var_y))
     return this_cov / divisor
 
 def cov(x,y):

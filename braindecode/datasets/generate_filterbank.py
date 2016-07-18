@@ -2,7 +2,7 @@ import numpy as np
 import scipy.signal
 
 def generate_filterbank(min_freq, max_freq, last_low_freq,
-        low_width, low_overlap, high_width, high_overlap):
+        low_width, low_overlap, high_width, high_overlap, low_bound):
     # int checks probably not necessary?
     # since we are using np.arange now below, not range
     #assert isinstance(min_freq, int) or min_freq.is_integer()
@@ -30,7 +30,9 @@ def generate_filterbank(min_freq, max_freq, last_low_freq,
     
     low_band = np.array([np.array(low_centers) - low_width/2.0, 
                          np.array(low_centers) + low_width/2.0]).T
-    low_band = np.maximum(0.2, low_band)
+    #low_band = np.maximum(0.2, low_band)
+    # try since tonio wanted it with 0
+    low_band = np.maximum(low_bound, low_band)
     high_band = np.array([np.array(high_centers) - high_width/2.0, 
                          np.array(high_centers) + high_width/2.0]).T
     filterbank = np.concatenate((low_band, high_band))
@@ -45,7 +47,10 @@ def filterbank_is_stable(filterbank, filt_order, sampling_rate):
     for low_cut_hz, high_cut_hz in filterbank:
         low = low_cut_hz / nyq_freq
         high = high_cut_hz / nyq_freq
-        b, a = scipy.signal.butter(filt_order, [low, high], btype='bandpass')
+        if low == 0:
+            b,a = scipy.signal.butter(filt_order, high, btype='lowpass')
+        else: # low!=0
+            b, a = scipy.signal.butter(filt_order, [low, high], btype='bandpass')
         if not filter_is_stable(a):
             return False
     return True

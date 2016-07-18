@@ -15,52 +15,57 @@
         drop_p: [0.5],
         layers: [$cnt_shallow_square],
         
-        variants: [[
-            {
-            },
-            {
-                post_pool_nonlin: [$safe_sqrt],
-            },
-            {
-                first_nonlin: [$elu],
-                pool_mode: ['max'],
-                post_pool_nonlin: [$identity],
-            },
-            {
-                first_nonlin: [$elu],
-                pool_mode: ['average_exc_pad'],
-                post_pool_nonlin: [$identity],
-            },
-            {
-                drop_p: [0.],
-            },
-            {
-                layers: [$cnt_shallow_square_no_bnorm],
-                ignore_unused: [[
-                    'batch_norm_alpha',
-                    'max_min', 'whisker_length', 'i_test_fold',
-                    'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
-                    'misclass_monitor', 'rejection_blink_ival', 'whisker_percent',
-                ]]
-            },
-            {
-                layers: [$cnt_shallow_square_no_bnorm],
-                drop_p: [0.],
-                ignore_unused: [[
-                    'batch_norm_alpha',
-                    'max_min', 'whisker_length', 'i_test_fold',
-                    'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
-                    'misclass_monitor', 'rejection_blink_ival', 'whisker_percent',
-                ]]
-            },
-            {
-                layers: [$cnt_shallow_merged],
-                layer_names_to_norms: [$merged_layer_names_to_norms],
-            },
-            {
-                loss_expression: [$categorical_crossentropy],
-            },
-        ]],
+#        variants: [[
+#            {
+#                max_increasing_epochs: [160],
+#                max_epochs: [1600],
+#                loss_expression: [$tied_neighbours],
+#            },
+#            {
+#            },
+#            {
+#                post_pool_nonlin: [$safe_sqrt],
+#            },
+#            {
+#                first_nonlin: [$elu],
+#                pool_mode: ['max'],
+#                post_pool_nonlin: [$identity],
+#            },
+#            {
+#                first_nonlin: [$elu],
+#                pool_mode: ['average_exc_pad'],
+#                post_pool_nonlin: [$identity],
+#            },
+#            {
+#                drop_p: [0.],
+#            },
+#            {
+#                layers: [$cnt_shallow_square_no_bnorm],
+#                ignore_unused: [[
+#                    'batch_norm_alpha',
+#                    'max_min', 'whisker_length', 'i_test_fold',
+#                    'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
+#                    'misclass_monitor', 'rejection_blink_ival', 'whisker_percent',
+#                ]]
+#            },
+#            {
+#                layers: [$cnt_shallow_square_no_bnorm],
+#                drop_p: [0.],
+#                ignore_unused: [[
+#                    'batch_norm_alpha',
+#                    'max_min', 'whisker_length', 'i_test_fold',
+#                    'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
+#                    'misclass_monitor', 'rejection_blink_ival', 'whisker_percent',
+#                ]]
+#            },
+#            {
+#                layers: [$cnt_shallow_merged],
+#                layer_names_to_norms: [$merged_layer_names_to_norms],
+#            },
+#            {
+#                loss_expression: [$categorical_crossentropy],
+#            },
+#        ]],
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
         'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
         'misclass_monitor', 'rejection_blink_ival', 'whisker_percent']]

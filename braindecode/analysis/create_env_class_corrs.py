@@ -33,6 +33,10 @@ def create_env_class_corrs(folder, params,start,stop):
 def create_env_class_corr_file(base_name, with_square):
     exp, model = load_exp_and_model(base_name)
     exp.dataset.load()    
+    create_env_class_corr_files_after_load(base_name, with_square,
+        exp, model)
+
+def create_env_class_corr_files_after_load(base_name, with_square, exp, model):
     train_set = exp.dataset_provider.get_train_merged_valid_test(exp.dataset)['train']
 
     trial_env = load_trial_env(base_name + '.env.npy',
@@ -50,7 +54,9 @@ def create_env_class_corr_file(base_name, with_square):
         file_name_end = 'square.' + file_name_end
     np.save('{:s}.env_corrs.{:s}'.format(base_name, file_name_end), topo_corrs)
     np.save('{:s}.env_rand_corrs.{:s}'.format(base_name, file_name_end), rand_topo_corrs)
-
+    
+    
+    
 def compute_env_class_corr(exp, trial_env):
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']

@@ -3,7 +3,7 @@ import os.path
 from braindecode.results.results import ResultPool
 from braindecode.paper import unclean_sets
 
-def load_topo_corrs(folder, params, i_layer):
+def load_topo_corrs(folder, params, i_layer, with_square):
     result_pool = ResultPool()
     result_pool.load_results(folder, params=params)
     result_file_names = result_pool.result_file_names()
@@ -18,8 +18,13 @@ def load_topo_corrs(folder, params, i_layer):
     rand_corrs_per_person = []
     clean_mask = []
     for file_name, result in zip(result_file_names, results):
-        env_corr_filename = file_name.replace('.result.pkl', '.env_corrs.{:d}.npy'.format(i_layer))
-        rand_corr_filename = file_name.replace('.result.pkl', '.env_rand_corrs.{:d}.npy'.format(i_layer))
+        file_name_end = '{:d}.npy'.format(i_layer)
+        if with_square:
+            file_name_end = 'square.' + file_name_end
+        env_corr_filename = file_name.replace('.result.pkl',
+            '.env_corrs.{:s}'.format(file_name_end))
+        rand_corr_filename = file_name.replace('.result.pkl',
+            '.env_rand_corrs.{:s}'.format(file_name_end))
 
         assert os.path.isfile(env_corr_filename)
         topo_corrs = np.load(env_corr_filename)
@@ -37,7 +42,7 @@ def load_topo_corrs(folder, params, i_layer):
     clean_mask = np.array(clean_mask)
     return topo_corrs_per_person, rand_corrs_per_person, clean_mask
 
-def load_topo_class_corrs(folder, params):
+def load_topo_class_corrs(folder, params, with_square):
     result_pool = ResultPool()
     result_pool.load_results(folder, params=params)
     result_file_names = result_pool.result_file_names()
@@ -52,8 +57,14 @@ def load_topo_class_corrs(folder, params):
     rand_corrs_per_person = []
     clean_mask = []
     for file_name, result in zip(result_file_names, results):
-        env_corr_filename = file_name.replace('.result.pkl', '.env_corrs.class.npy')
-        env_rand_corr_filename = file_name.replace('.result.pkl', '.env_rand_corrs.class.npy')
+        
+        file_name_end = 'class.npy'
+        if with_square:
+            file_name_end = 'square.' + file_name_end
+        env_corr_filename = file_name.replace('.result.pkl', 
+            '.env_corrs.' + file_name_end)
+        env_rand_corr_filename = file_name.replace('.result.pkl', 
+            '.env_rand_corrs.' + file_name_end)
 
         assert os.path.isfile(env_corr_filename)
         assert os.path.isfile(env_rand_corr_filename)
@@ -70,12 +81,13 @@ def load_topo_class_corrs(folder, params):
     clean_mask = np.array(clean_mask)
     return topo_corrs_per_person, rand_corrs_per_person, clean_mask
 
-def load_topo_corrs_for_layers(folder, params, i_all_layers):
+def load_topo_corrs_for_layers(folder, params, i_all_layers,
+        with_square):
     topo_corrs_by_layer = []
     rand_corrs_by_layer= []
     for i_layer in i_all_layers:
         topo_corrs, rand_corrs, clean_mask = load_topo_corrs(folder,
-                   params, i_layer)
+                   params, i_layer, with_square)
         topo_corrs_by_layer.append(topo_corrs)
         rand_corrs_by_layer.append(rand_corrs)
     return topo_corrs_by_layer, rand_corrs_by_layer, clean_mask

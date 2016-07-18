@@ -34,8 +34,6 @@
         save_path: ['data/models/paper/ours/cnt/resnet/'],
         input_time_length: [1000],
         n_sample_preds : [500], # will be overwritten anyways
-        train_cleaner: [$no_cleaner],
-        test_cleaner: [$no_cleaner],
         loss_expression: [$safe_tied_neighbours_decay],
         l2_factor: [1e-4],
         n_first_filters: [48],
@@ -53,10 +51,6 @@
         add_after_nonlin: [False],
         reduction_method: ['conv'],
         reduction_pool_mode: ['null'],
-        variants: [[{
-            reduction_method: ['pool'],
-            reduction_pool_mode: ['average_exc_pad', 'max'],
-        }]],
 
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
         'eog_sensors', 'rejection_var_ival', 'n_classes',

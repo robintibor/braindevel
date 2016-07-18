@@ -83,8 +83,9 @@ def shallow_main_comp(df):
     return df
 
 def main_comp_csp(df):
-    return restrict_or_unset(df, standardize=False, standardize_filt_cnt=False,
-                  standardize_epo=False, standardize_cnt=False)
+    return restrict(restrict_or_unset(df, standardize=False, standardize_filt_cnt=False,
+                  standardize_epo=False, standardize_cnt=False),
+                  low_bound=0)
     
 ## Without advances experiment
 def past(df):

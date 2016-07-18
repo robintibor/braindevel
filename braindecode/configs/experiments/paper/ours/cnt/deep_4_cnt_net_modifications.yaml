@@ -26,62 +26,67 @@
         'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
         'misclass_monitor', 'rejection_blink_ival', 'whisker_percent']],
 
-        variants: [[
-        {
-        },
-        {
-            first_nonlin: [$relu],
-            first_pool_mode: ['max'],
-            first_pool_nonlin: [$identity],
-            later_nonlin: [$relu],
-            later_pool_mode: ['max'],
-            later_pool_nonlin: [$identity],
-        },
-        {
-            first_nonlin: ['$square'],
-            first_pool_mode: ['average_exc_pad'],
-            first_pool_nonlin: [$safe_log],
-        },
-        {
-            first_nonlin: ['$square'],
-            first_pool_mode: ['max'],
-            first_pool_nonlin: [$safe_log],
-        },
-        {
-            drop_prob: [0.],
-        },
-        {
-            batch_norm: [false],
-        },
-        {
-            batch_norm: [false],
-            drop_prob: [0.],
-        },
-        {
-            batch_norm: [false],
-            drop_prob: [0.],
-            first_nonlin: [$relu],
-            first_pool_mode: ['max'],
-            first_pool_nonlin: [$identity],
-            later_nonlin: [$relu],
-            later_pool_mode: ['max'],
-            later_pool_nonlin: [$identity],
-        },
-        {
-            loss_expression: [$categorical_crossentropy],
-        },
-        {
-            split_first_layer: [false],
-            layer_names_to_norms: [$layer_norms_no_spat],
-        },
-        {
-            double_time_convs: [true],
-            filter_time_length: [6],
-            filter_length_2: [6],
-            filter_length_3: [6],
-            filter_length_4: [6],
-        }
-        ]],
+#        variants: [[
+#        {
+#            max_increasing_epochs: [160],
+#            max_epochs: [1600],
+#            loss_expression: [$tied_neighbours],
+#        },
+#        {
+#        },
+#        {
+#            first_nonlin: [$relu],
+#            first_pool_mode: ['max'],
+#            first_pool_nonlin: [$identity],
+#            later_nonlin: [$relu],
+#            later_pool_mode: ['max'],
+#            later_pool_nonlin: [$identity],
+#        },
+#        {
+#            first_nonlin: ['$square'],
+#            first_pool_mode: ['average_exc_pad'],
+#            first_pool_nonlin: [$safe_log],
+#        },
+#        {
+#            first_nonlin: ['$square'],
+#            first_pool_mode: ['max'],
+#            first_pool_nonlin: [$safe_log],
+#        },
+#        {
+#            drop_prob: [0.],
+#        },
+#        {
+#            batch_norm: [false],
+#        },
+#        {
+#            batch_norm: [false],
+#            drop_prob: [0.],
+#        },
+#        {
+#            batch_norm: [false],
+#            drop_prob: [0.],
+#            first_nonlin: [$relu],
+#            first_pool_mode: ['max'],
+#            first_pool_nonlin: [$identity],
+#            later_nonlin: [$relu],
+#            later_pool_mode: ['max'],
+#            later_pool_nonlin: [$identity],
+#        },
+#        {
+#            loss_expression: [$categorical_crossentropy],
+#        },
+#        {
+#            split_first_layer: [false],
+#            layer_names_to_norms: [$layer_norms_no_spat],
+#        },
+#        {
+#            double_time_convs: [true],
+#            filter_time_length: [6],
+#            filter_length_2: [6],
+#            filter_length_3: [6],
+#            filter_length_4: [6],
+#        }
+#        ]],
     }
     ]]
 }

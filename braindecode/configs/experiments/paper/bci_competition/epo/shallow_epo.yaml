@@ -15,8 +15,9 @@
         drop_p: [0.5],
         layers: [$cnt_shallow_square],
         
-        variants: [[{
-        
+        variants: [[
+            {}, # same as before
+            {
                 layers: [$cnt_shallow_square_no_bnorm],
                 drop_p: [0.],
                 ignore_unused: [[
@@ -26,7 +27,6 @@
                     'rejection_blink_ival', 'whisker_percent',
                 ]]
         }]],
-        
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
         'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
         'rejection_blink_ival', 'whisker_percent']]

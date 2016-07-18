@@ -845,8 +845,8 @@ def highpass_cnt(cnt, low_cut_off_hz, filt_order=3):
 def lowpass_cnt(cnt, high_cut_off_hz, filt_order=3):
     b,a = scipy.signal.butter(filt_order, high_cut_off_hz/(cnt.fs/2.0),btype='lowpass')
     assert filter_is_stable(a)
-    cnt_highpassed = lfilter(cnt,b,a)
-    return cnt_highpassed
+    cnt_lowpassed = lfilter(cnt,b,a)
+    return cnt_lowpassed
 
 
 def highpass_filt_filt_cnt(cnt, low_cut_off_hz, filt_order=3):
@@ -874,6 +874,11 @@ def running_standardize_epo(epo, factor_new=0.9, init_block_size=50):
     return epo.copy(data=standardized_epo_data)
 
 def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
+    """Bandpass cnt signal using butterworth filter.
+    Uses lowpass in case low cut hz is exactly zero."""
+    if low_cut_hz == 0:
+        log.info("Using lowpass filter since low cut hz is 0")
+        return lowpass_cnt(cnt, high_cut_hz, filt_order=filt_order)
     nyq_freq = 0.5 * cnt.fs
     low = low_cut_hz / nyq_freq
     high = high_cut_hz / nyq_freq
