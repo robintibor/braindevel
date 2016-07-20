@@ -19,8 +19,8 @@ with user `fakelukas` on zugspitze
 ###Setting up repository
 ```
 git clone https://github.com/robintibor/braindecode.git
-git checkout devel
 cd braindecode
+git checkout devel
 ```
 
 ###Installing dependencies
