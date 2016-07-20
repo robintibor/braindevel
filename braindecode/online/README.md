@@ -1,16 +1,49 @@
 # Run experiment
 
 Typically run like this:
+
+1. Remote desktop to gschasi
+  1. Start two matlab 2014a instances
+  2. Change to E:\WCBI\ in both matlabs
+2. SSH to Zugspitze
+  1. Go to braindecode folder
+  2. source venv
+
+3. Check sensor correctness
 ```
-# Check sensors correctness
+# auf zugspitze
 python online/server.py --model data/models/online/cnt/shallow-uneven-trials/15
-# stop again and run
+```
+```
+# in matlab 1
+run TestTCP.m
+# in matlab 2
+# (only when sensor started message is there from python!)
+run sendFromBBCIFile.m
+```
+Cancel everything by CTRL+C once sensors checked
+
+4.Real experiments
+```
+# auf zugspitze
 python online/server.py --model data/models/online/cnt/shallow-uneven-trials/15 --noplot
-# press enter when finished, it will save adapted parameters with current timestamp
-# you can use them for next run like this (change modelfile and corresponding timestamp):
+```
+```
+# in matlab 1
+run TestTCP.m
+# in matlab 2
+# (only when sensor started message is there from python!)
+run sendFromBBCIFile.m
+```
+
+when wanting to finish, press enter iun python server terminal
+
+later use newer params like this
+```
 python online/server.py --model data/models/online/cnt/shallow-uneven-trials/15 --noplot --params data/models/online/cnt/shallow-uneven-trials/15.2016-04-05_15-49-58.adapted.npy
 ```
-You can of courrse change model etc.
+
+You can of course change model etc.
 
 ## Installation Log
 
