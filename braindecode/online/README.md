@@ -26,7 +26,16 @@ git checkout devel
 ###Installing dependencies
 ```
 make scikits-samplerate
+```
 
+
+ignore this error in this step:
+```
+/sbin/ldconfig.real: Can't create temporary cache file /etc/ld.so.cache~: Permission denied
+make: *** [scikits-samplerate] Error 1
+```
+
+```
 virtualenv venv
 source venv/bin/activate
 ```
