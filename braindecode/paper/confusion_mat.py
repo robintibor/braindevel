@@ -29,12 +29,14 @@ def add_labels_to_cnt_exps_from_dataframe(df):
     folder = df.attrs['folder']
     for exp_id in df.index:
         exp_base_name = os.path.join(folder, str(exp_id))
-        exp, model = load_exp_and_model(exp_base_name)
-        pred_labels, target_labels = compute_pred_target_labels_for_cnt_exp(
-            exp, model)
-        # add targets
-        result_file_name = exp_base_name + '.result.pkl'
-        result = np.load(result_file_name)
-        result.predictions = pred_labels
-        result.targets = target_labels
-        pickle.dump(result, open(result_file_name, 'w'))
+        add_labels_to_cnt_exp_result(exp_base_name)
+
+def add_labels_to_cnt_exp_result(basename):
+    exp, model = load_exp_and_model(basename)
+    pred_labels, target_labels = compute_pred_target_labels_for_cnt_exp(exp, model)
+    # add targets
+    result_file_name = basename + '.result.pkl'
+    result = np.load(result_file_name)
+    result.predictions = pred_labels
+    result.targets = target_labels
+    pickle.dump(result, open(result_file_name, 'w'))

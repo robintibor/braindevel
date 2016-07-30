@@ -35,5 +35,7 @@
         cleaner: [$no_cleaner],
         layer_modifier: [TransformToNormalNet],
         load_sensor_names: ['null'],
+        max_increasing_epochs: [160],
+        max_epochs: [1600],
     }]]
 }

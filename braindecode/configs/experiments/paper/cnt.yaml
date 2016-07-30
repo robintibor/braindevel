@@ -45,8 +45,7 @@
         },
     },
     variants: [[{
-        trial_start: [1500],
-        variants: [[{trial_start: [2000]}]],
+        trial_start: [1500, 2000, 2500],
         monitors: [$sample_trial_monitors],
         iterator: [$cnt_iterator],
         layer_modifier: [JustReturn],

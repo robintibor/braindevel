@@ -63,7 +63,6 @@
         train_cleaner: [$max_abs_cleaner],
         test_cleaner: [$max_abs_cleaner],
         rejection_max_abs_ival: [[0,4000]],
-        max_abs_threshold: [800],
         use_test_as_valid: [False],
     }]]
 }

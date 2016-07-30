@@ -54,3 +54,8 @@ def filterbank_is_stable(filterbank, filt_order, sampling_rate):
         if not filter_is_stable(a):
             return False
     return True
+
+def get_freq_inds(filterbands, low_freq, high_freq):
+    i_low = np.where(filterbands[:,0] == low_freq)[0][0]
+    i_high = np.where(filterbands[:,1] == high_freq)[0][0]
+    return i_low, i_high

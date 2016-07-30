@@ -95,6 +95,9 @@ class Experiment(object):
         self.print_layer_sizes()
         log.info("Create theano functions...")
         self.create_theano_functions(target_var)
+        # reset remember best extension in case you rerun some experiment
+        self.remember_extension = RememberBest(
+            self.remember_extension.chan_name)
         log.info("Done.")
 
     def print_layer_sizes(self):

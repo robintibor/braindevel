@@ -876,9 +876,18 @@ def running_standardize_epo(epo, factor_new=0.9, init_block_size=50):
 def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     """Bandpass cnt signal using butterworth filter.
     Uses lowpass in case low cut hz is exactly zero."""
-    if low_cut_hz == 0:
-        log.info("Using lowpass filter since low cut hz is 0")
+    if (low_cut_hz == 0 or low_cut_hz == None) and (
+        high_cut_hz == None):
+        log.info("Not doing any bandpass, since low 0 or None and "
+            "high None")
+        return cnt.copy()
+    if low_cut_hz == 0 or low_cut_hz == None:
+        log.info("Using lowpass filter since low cut hz is 0 or None")
         return lowpass_cnt(cnt, high_cut_hz, filt_order=filt_order)
+    if high_cut_hz == None:
+        log.info("Using highpass filter since high cut hz is None")
+        return highpass_cnt(cnt, low_cut_hz, filt_order=filt_order)
+        
     nyq_freq = 0.5 * cnt.fs
     low = low_cut_hz / nyq_freq
     high = high_cut_hz / nyq_freq

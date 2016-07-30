@@ -133,7 +133,7 @@ def model_structure_equal(final_layer_1, final_layer_2):
         return False
     for l1,l2 in zip(all_layers_1, all_layers_2):
         ignore_keys = ['yaml_src', 'input_var', 'input_layer', '_srng', 'b', 'W', 'params',
-                      'std', 'beta', 'mean', 'gamma']
+                      'std', 'beta', 'mean', 'gamma', 'input_layers']
         if l1.__class__.__name__ != l2.__class__.__name__:
             log.warn("Different classnames {:s} and {:s}".format(
                 l1.__class__.__name__, l2.__class__.__name__))

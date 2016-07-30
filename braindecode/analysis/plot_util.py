@@ -310,19 +310,23 @@ def plot_misclasses_for_file(result_file_path):
     assert result_file_path.endswith('result.pkl')
     result = serial.load(result_file_path)
     fig = plot_misclasses_for_result(result)
-    fig.suptitle("Misclass: " + result_file_path)
+    fig.suptitle("Misclass: " + result_file_path, fontsize=14)
     return fig
 
 def plot_misclasses_loss_for_file(result_file_path):
     assert result_file_path.endswith('result.pkl')
-    fig = plt.figure()
+   
     result = serial.load(result_file_path)
-    plot_misclasses_for_result(result, fig)
-    plot_loss_for_result(result, fig)
+    fig = plot_misclass_loss_for_result(result)
     
     fig.suptitle("Misclass/Loss: " + result_file_path)
     return fig
 
+def plot_misclass_loss_for_result(result):
+    fig = plt.figure()
+    plot_misclasses_for_result(result, fig)
+    plot_loss_for_result(result, fig)
+    return fig
 
 def plot_loss_for_file(result_file_path, figure=None, start=None, stop=None):
     assert result_file_path.endswith('result.pkl')

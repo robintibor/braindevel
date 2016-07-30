@@ -24,7 +24,7 @@ def create_env_corrs(folder_name, params, start, stop):
         with_square = True
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file+start+1, stop))
-        create_topo_env_corrs_files(base_name, i_all_layers,with_square)
+        create_topo_env_corrs_files(base_name, i_all_layers, with_square)
         create_env_class_corr_file(base_name, with_square)
  
 def create_topo_env_corrs_files(base_name, i_all_layers, with_square):

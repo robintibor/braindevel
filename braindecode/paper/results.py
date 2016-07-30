@@ -1,6 +1,10 @@
 import numpy as np
-from braindecode.analysis.pandas_util import restrict, restrict_or_unset
+import pandas as pd
+from braindecode.analysis.pandas_util import restrict, restrict_or_unset,\
+    round_numeric_columns
 from braindecode.paper import unclean_sets
+from braindecode.analysis.stats import perm_mean_diff_test, wilcoxon_signed_rank,\
+    sign_test
 def clean_datasets(df):
     for name in unclean_sets:
         df = df[np.logical_not(df.dataset_filename.str.contains(name))]
@@ -207,3 +211,49 @@ def elu_nonlins(df):
 
 def split_first_layer(df):
     return df[df.split_first_layer == True]
+
+def compare_csp_net(df_net, df_csp, name,freq, dataset, with_csp_acc=False, with_std=False, with_std_error=False):
+    assert len(df_net) == len(df_csp), (
+        "Net ({:d}) and csp ({:d}) should have same length".format(
+            len(df_net), len(df_csp)))
+    df_merged = df_net.merge(df_csp, on='dataset_filename', suffixes=('_net','_csp'))
+    # not really necessary to sort, just to make sure 
+    df_merged = df_merged.sort_values(by='dataset_filename')
+
+    test_acc_net = np.array(df_merged['test_net'])
+    test_acc_csp = np.array(df_merged['test_csp'])
+    if len(test_acc_net) > 20:
+        p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=2**20)
+    else:
+        p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=None)
+    p_val_wilc = wilcoxon_signed_rank(test_acc_net, test_acc_csp)
+    p_val_sign = sign_test(test_acc_net, test_acc_csp)
+    diff_std = np.std(test_acc_net - test_acc_csp)
+
+    df_out = pd.DataFrame()
+
+    df_out['name'] = [name]
+    df_out['freq'] = [freq]
+    df_out['dataset'] = [dataset]
+    if with_csp_acc:
+        df_out['test_csp'] = [np.mean(test_acc_csp)]
+        
+    df_out['test_net'] = [np.mean(test_acc_net)]
+    df_out['diff'] = [np.mean(test_acc_net) - np.mean(test_acc_csp)]
+    if with_std:
+        df_out['std'] = [diff_std]
+    if with_std_error:
+        df_out['stderr'] = [diff_std / np.sqrt(len(test_acc_net))]
+    df_out = round_numeric_columns(df_out,1)
+        
+    
+        
+    df_out['rand'] = [p_val]
+    df_out['wilc'] = [p_val_wilc]
+    df_out['sign'] = [p_val_sign]
+    df_out['time_net'] = [pd.Timedelta.round(np.mean(df_net.time), 's')]
+
+    assert len(df_merged) == len(df_csp), (
+        "Merged ({:d}) and csp ({:d}) should have same length".format(
+            len(df_merged), len(df_csp)))
+    return df_out
