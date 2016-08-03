@@ -280,7 +280,7 @@ def parse_command_line_arguments():
         Example: online/server.py --host 172.30.2.129 --port 30000"""
     )
     parser.add_argument('--host', action='store',
-        default='172.30.0.117', help='Hostname/IP of the UI server')
+        default='172.30.0.117', help='Hostname/IP of the UI server (default gschasi ip)')
     parser.add_argument('--port', action='store',
         default=30000, help='Port of the UI server')
     parser.add_argument('--modelfile', action='store',
