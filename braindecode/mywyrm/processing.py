@@ -892,7 +892,7 @@ def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     low = low_cut_hz / nyq_freq
     high = high_cut_hz / nyq_freq
     b, a = scipy.signal.butter(filt_order, [low, high], btype='bandpass')
-    assert filter_is_stable(a)
+    assert filter_is_stable(a), "Filter should be stable..."
     cnt_bandpassed = lfilter(cnt,b,a)
     return cnt_bandpassed
 

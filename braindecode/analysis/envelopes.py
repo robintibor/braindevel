@@ -203,8 +203,7 @@ if __name__ == "__main__":
     args = parse_command_line_arguments()
     if args.folder is None:
         create_envelopes('data/models-backup/paper/ours/cnt/deep4/car/',
-            params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                        low_cut_off_hz="null", first_nonlin="$elu"),
+            params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"),
                         start=args.start, stop=args.stop)
     else:
         print args.experiments_folder

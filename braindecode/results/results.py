@@ -464,7 +464,7 @@ def mark_duplicate_results(result_folder, tag_dict):
         else:
             unique_var_params.append(params)
 
-    # Delete result/experiment/model files    
+    # Update parameters
     for i_exp in duplicate_ids:
         result_file_name = all_result_file_names[i_exp]
         result = np.load(result_file_name)

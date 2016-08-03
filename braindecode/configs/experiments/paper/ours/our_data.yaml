@@ -4,33 +4,26 @@
         'configs/experiments/4sec_movements/C_sensors.yaml'],
     templates: {
     
-        resample_bandpass_standardize: 
-        [[
-                !!python/name:wyrm.processing.select_channels , 
-                {
-                    invert: true, 
-                    regexp_list: ['Cz']
-                },
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
-                {'newfs': $resample_fs},
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.lowpass_cnt , 
-                {
-                'low_cut_hz': $low_cut_hz,
-                'high_cut_hz': $high_cut_hz}
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
-                { }
-        ]],
     },
     variants: [[{
         resample_fs: [250],
         eog_sensors: [['EOGv', 'EOGh']],
         sensor_names: [$C_sensors],
         n_classes: [4],
+        
+        variants: [[
+            {
+                low_cut_hz: [0],
+                high_cut_hz: [4],
+            },
+            {
+                low_cut_hz: [0],
+                high_cut_hz: ['null'],
+            },
+            {
+                low_cut_hz: [4],
+                high_cut_hz: ['null'],
+            },
+        ]]
     }]]
 }

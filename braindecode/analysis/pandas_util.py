@@ -168,7 +168,8 @@ def tstd(series):
 
 def dataset_averaged_frame(data_frame):
     param_keys = [k for k in data_frame.keys() if k not in ['test',
-        'dataset_filename', 'test_filename', 'time', 'train', 'filename']]
+        'dataset_filename', 'test_filename', 'time', 'train', 'filename',
+        'test_sample', 'train_sample']]
     if len(param_keys) > 0:
         grouped = data_frame.groupby(param_keys)
         # Check for dup

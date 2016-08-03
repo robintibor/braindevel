@@ -1,7 +1,6 @@
 {
     extends: [
-        'configs/experiments/paper/ours/shallow.yaml',
-        'configs/experiments/paper/epo.yaml',
+        'configs/experiments/paper/ours/our_data.yaml',
         'configs/experiments/paper/shallow_epo.yaml',
         ],
     variants: [[{

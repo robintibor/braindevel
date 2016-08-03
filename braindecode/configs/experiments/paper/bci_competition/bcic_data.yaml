@@ -49,6 +49,21 @@ variants: [[{
             dataset_filename: ['data/bci-competition-iv/2a/A09T.mat'],
             test_filename: ['data/bci-competition-iv/2a/A09E.mat'],
         },
-    ]]
+    ],
+    [
+            {
+                low_cut_hz: [0],
+                high_cut_hz: [4],
+            },
+            {
+                low_cut_hz: [0],
+                high_cut_hz: [38],
+            },
+            {
+                low_cut_hz: [4],
+                high_cut_hz: [38],
+            },
+        ]
+        ]
 }]]
 }

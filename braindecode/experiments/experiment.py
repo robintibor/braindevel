@@ -51,14 +51,16 @@ class ExperimentCrossValidation():
             self.all_layers.append(deepcopy(exp.final_layer))
             self.all_monitor_chans.append(deepcopy(exp.monitor_chans))
 
-def create_default_experiment(final_layer, dataset, num_epochs=100):
+def create_default_experiment(final_layer, dataset, n_epochs=100,
+        **overwrite_args):
     n_trials = len(dataset.X)
     splitter = FixedTrialSplitter(n_train_trials=n_trials // 2, 
         valid_set_fraction=0.2)
     monitors = [MisclassMonitor(), LossMonitor(),RuntimeMonitor()]
-    stop_criterion = MaxEpochs(num_epochs)
-    exp = Experiment(final_layer, dataset, splitter, preprocessor=None,
-        iterator=BalancedBatchIterator(batch_size=45),
+    stop_criterion = MaxEpochs(n_epochs)
+    
+    exp_args = dict(splitter=splitter,
+        preprocessor=None, iterator=BalancedBatchIterator(batch_size=45),
         loss_expression=lasagne.objectives.categorical_crossentropy,
         updates_expression=lasagne.updates.adam,
         updates_modifier=None,
@@ -67,6 +69,10 @@ def create_default_experiment(final_layer, dataset, num_epochs=100):
         remember_best_chan='valid_misclass',
         run_after_early_stop=True,
         batch_modifier=None)
+    exp_args.update(**overwrite_args)
+    
+    
+    exp = Experiment(final_layer, dataset, **exp_args)
     return exp
     
 class Experiment(object):

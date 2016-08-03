@@ -11,14 +11,15 @@
         trial_stop: [4000],#2500,
         filt_order: [3],
         
-        standardize_cnt: [True,False],
-        standardize_epo: [True, False],
-        standardize_filt_cnt: [True, False],
+        standardize_cnt: [False],
+        standardize_epo: [False],
+        standardize_filt_cnt: [False],
         set_cz_to_zero: [False],
+        resample_fs: [250],
         ignore_unused: [['max_min', 'whisker_length', 'eog_sensors',
             'rejection_var_ival', 'n_classes', 'rejection_blink_ival',
             'whisker_percent', 'rejection_max_abs_ival',
-            'max_abs_threshold']],
+            'max_abs_threshold', 'high_cut_hz', 'low_cut_hz']],
         
         variants: [[
         {
@@ -31,7 +32,6 @@
             low_overlap: [3],
         },
         {
-            trial_stop: [2500,4000],
             min_freq: [7],
             max_freq: [34],
             low_width: [6],
@@ -39,6 +39,13 @@
             high_overlap: [4],
             last_low_freq: [10],
             low_overlap: [3],
+            variants: [[
+            {
+            },
+            { 
+                trial_start: [500],
+                trial_stop: [2500],
+            }]],
         },
         {
             resample_fs: [100],

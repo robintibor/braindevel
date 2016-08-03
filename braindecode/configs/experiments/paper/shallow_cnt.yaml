@@ -1,0 +1,11 @@
+{
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/cnt.yaml',
+        'configs/experiments/paper/shallow.yaml',
+        ],
+    variants: [[ {
+        final_dense_length: [30],
+    }
+]]
+}

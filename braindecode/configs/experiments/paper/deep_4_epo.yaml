@@ -1,10 +1,11 @@
  {
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/epo.yaml',
+        'configs/experiments/paper/deep_4.yaml',
+        ],
     variants: [[
     {
-        input_time_length: [2000], # will be overwritten by actual net size...
-        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
-        'eog_sensors', 'rejection_var_ival', 'num_split_folds',
-        'rejection_blink_ival', 'whisker_percent']],
         
         variants: [
         [
@@ -13,29 +14,17 @@
             trial_stop: [3856],
             final_dense_length: [9],
         },
-        {
-            trial_start: [0],
-            trial_stop: [4032],
-            final_dense_length: [8],
-        },
-        {
-            trial_start: [500],
-            trial_stop: [3884],
-            final_dense_length: [6],
-        },
-        ],
-        [
-            {}, # as before
-            { # without recent advances
-                batch_norm: [false],
-                drop_prob: [0.],
-                first_nonlin: [$relu],
-                first_pool_mode: ['max'],
-                first_pool_nonlin: [$identity],
-                later_nonlin: [$relu],
-                later_pool_mode: ['max'],
-                later_pool_nonlin: [$identity],
-            }
+#        {
+#            trial_start: [0],
+#            trial_stop: [4032],
+#            final_dense_length: [8],
+#        },
+#        {
+#            trial_start: [500],
+#            trial_stop: [3884],
+#            final_dense_length: [6],
+#        },
+
         ]]
     }
     ]]

@@ -3,7 +3,7 @@ import os.path
 import numpy as np
 from numpy.random import RandomState
 from braindecode.util import FuncAndArgs
-from braindecode.analysis.stats import median_absolute_deviation, corr, cov
+from braindecode.analysis.stats import median_absolute_deviation, cov
 from braindecode.experiments.load import load_exp_and_model
 from braindecode.veganlasagne.layers import create_pred_fn, get_n_sample_preds
 from braindecode.datasets.fft import amplitude_phase_to_complex
@@ -78,11 +78,13 @@ def create_amplitude_perturbation_corrs(basename, with_blocks,
     
 def load_exp_pred_fn(basename):
     exp, model = load_exp_and_model(basename)
+    # replace softmax by identity to get better correlations
+    assert (model.nonlinearity.func_name == 'softmax' or
+        model.nonlinearity.func_name == 'safe_softmax')
+    model.nonlinearity = identity
+    # load dataset
     exp.dataset.load()
     log.info("Create prediction function...")
-    # replace softmax by identity to get better correlations
-    assert model.nonlinearity.func_name == 'softmax'
-    model.nonlinearity = identity
     pred_fn = create_pred_fn(model)
     log.info("Done.")
     return exp, pred_fn
@@ -231,8 +233,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         stop = int(sys.argv[2])
     folder = 'data/models/paper/ours/cnt/deep4/car/'
-    params = dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                         low_cut_off_hz="null", first_nonlin="$elu")
+    params = dict(cnt_preprocessors="$cz_zero_resample_car_demean")
     with_square = False
     with_square_cov = False
     with_blocks=False

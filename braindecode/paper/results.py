@@ -21,27 +21,29 @@ def square_shallow(df):
         (df.pool_mode == 'average_exc_pad')]
 
 def above_0(df):
-    df = df[(df.cnt_preprocessors == 'resample_highpass_standardize') &
-         (df.low_cut_off_hz == 'null')]
+    if 38 in df.high_cut_hz.values:
+        df = df[(df.high_cut_hz == 38) & (df.low_cut_hz == 0)]
+    else:
+        df = df[(df.high_cut_hz == 'null') & (df.low_cut_hz == 0)]
     return df
 
 def above_4(df):
-    return df[df.low_cut_off_hz == 4]
+    return df[df.low_cut_hz == 4]
 
 def from_0_to_4(df):
     return df[(df.high_cut_hz == 4) & 
-             (df.low_cut_off_hz == "null") |  (df.low_cut_off_hz == '-')]
+             (df.low_cut_hz == 0)]
     
 def deep_5_default(df):
     return df[(df.num_filters_4 == 200) & (df.filter_time_length == 10)]
 
 def csp_above_0(df):
-    return df[(df.min_freq == 1) & ((df.max_freq == 34) | (df.max_freq == 86))]
+    return df[(df.min_freq == 1) & ((df.max_freq == 34) | (df.max_freq == 118))]
 
 def csp_above_4(df):
     df = df[df.min_freq == 7]
     if 'trial_stop' in df.columns and 'max_freq' in df.columns:
-        df = df[(df.trial_stop == 4000) & ((df.max_freq == 34) | (df.max_freq == 86))]
+        df = df[(df.trial_stop == 4000) & ((df.max_freq == 34) | (df.max_freq == 118))]
     return df
 
 def csp_0_to_4(df):
@@ -77,7 +79,7 @@ def deep5_main_comp(df):
     
 def shallow_cnt_main_comp(df):
     df = shallow_main_comp(df)
-    df = restrict(df, loss_expression='tied_neighbours', final_dense_length=30)
+    df = restrict(df, loss_expression='tied_neighbours')
     return df
 
 def shallow_main_comp(df):
