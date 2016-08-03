@@ -1,8 +1,15 @@
 #!/usr/bin/env python
+import matplotlib
+import logging
+log = logging.getLogger(__name__)
+try:
+    matplotlib.use('Qt5Agg')
+except:
+    log.warn("Could not use Qt5 backend for matplotlib")
+    
 import gevent.server
 import signal
 import numpy as np
-import logging
 import lasagne
 from pylearn2.config import yaml_parse
 from braindecode.online.coordinator import OnlineCoordinator
@@ -20,7 +27,6 @@ from braindecode.experiments.experiment import create_experiment
 from braindecode.veganlasagne.layers import transform_to_normal_net
 from braindecode.online.trainer import BatchWiseCntTrainer, NoTrainer
 from pylearn2.utils.logger import (CustomStreamHandler, CustomFormatter)
-log = logging.getLogger(__name__)
 
 class PredictionServer(gevent.server.StreamServer):
     def __init__(self, listener, coordinator, ui_hostname, ui_port, 
@@ -53,11 +59,12 @@ class PredictionServer(gevent.server.StreamServer):
         n_bytes = n_numbers * 4 # float32
         log.info("Numbers in total:  {:d}".format(n_numbers))
         
-        
+        log.info("Before checking plot")
         # Possibly plot
         if self.plot_sensors:
             self.plot_sensors_until_enter_press(chan_names, in_socket, n_bytes,
             n_rows, n_cols)
+        log.info("After checking plot")
         
 
         self.make_predictions_and_save_data(chan_names, n_rows, n_cols, n_bytes,
@@ -128,11 +135,13 @@ class PredictionServer(gevent.server.StreamServer):
 
     def plot_sensors_until_enter_press(self, chan_names, in_socket, n_bytes,
             n_rows, n_cols):
-        from  braindecode.online.live_plot import LivePlot
-        live_plot = LivePlot(plot_freq=150)
-        live_plot.initPlots(chan_names)
-
         log.info("Starting Plot for plot")
+        from  braindecode.online.live_plot import LivePlot
+        log.info("Import")
+        live_plot = LivePlot(plot_freq=150)
+        log.info("Liveplot created")
+        live_plot.initPlots(chan_names)
+        log.info("Initialized")
         enter_pressed = False
         while not enter_pressed:
             array = ''

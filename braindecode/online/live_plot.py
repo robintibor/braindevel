@@ -1,6 +1,3 @@
-
-import matplotlib
-matplotlib.use('Qt5Agg')
 from braindecode.online.ring_buffer import RingBuffer
 from matplotlib import pyplot as plt
 import sys
