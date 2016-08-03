@@ -144,7 +144,7 @@ def compute_power_and_phase(trials, window_length, window_stride,
 
 def compute_power_spectra(trials, window_length, window_stride, 
         divide_win_length, square_amplitude):
-    """Expects trials #trialsx#channelsx#samples order"""
+    """Expects #trialsx#channelsx#samples order"""
     fft_trials = compute_short_time_fourier_transform(trials, 
         window_length=window_length, window_stride=window_stride)
     # Todelay: Not sure if division by window length is necessary/correct?
@@ -176,11 +176,13 @@ def amplitude_phase_to_complex(amplitude, phase):
 
 
 def compute_amps_baseline_before(cnt, fs, square, divide_win_length):
-    assert fs  == 500
+    trial_start = 0
+    trial_stop = 4000
+    win_length_ms = 500
+    win_length = win_length_ms * fs / 1000.0
+    win_stride = win_length_ms * fs / 1000.0
     marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
-    epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
-    win_length = 250
-    win_stride = 250
+    epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[trial_start,trial_stop])
     amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),
         window_length=win_length, window_stride=win_stride,
         divide_win_length=divide_win_length,square_amplitude=square)
@@ -195,7 +197,7 @@ def compute_amps_baseline_before(cnt, fs, square, divide_win_length):
     # median across trials
     median_baseline_amp = np.median(baseline_amps, axis=(0))
     assert median_baseline_amp.shape[1] == 1, "should only have one timebin"
-    corrected_amps = amplitudes / median_baseline_amp[None,:]
+    corrected_amps = amplitudes / median_baseline_amp[np.newaxis]
     all_class_amps = []
     for i_class in xrange(4):
         this_class_amps = corrected_amps[epo.axes[0] == i_class]
@@ -237,12 +239,17 @@ def compute_amps_to_rest(cnt, fs, square, divide_win_length):
     return all_class_amps
 
 def compute_trial_amplitudes(cnt, fs,square, divide_win_length):
-    assert fs  == 500
+    trial_start = 0
+    trial_stop = 4000
+    trial_len = trial_stop - trial_start
+    n_samples_per_trial = trial_len * fs / 1000.0
     marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
-    epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[500,4000])
+    epo = segment_dat_fast(cnt,marker_def=marker_def,
+        ival=[trial_start, trial_stop])
     
+    assert epo.data.shape[-2] == n_samples_per_trial 
     amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),
-        window_length=1750, window_stride=1750,
+        window_length=n_samples_per_trial, window_stride=n_samples_per_trial,
         divide_win_length=divide_win_length, square_amplitude=square)
     assert amplitudes.shape[2] == 1, "should only have one timebin"
     classes = epo.axes[0]

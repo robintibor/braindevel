@@ -3,12 +3,14 @@ import os.path
 import numpy as np
 from numpy.random import RandomState
 from braindecode.util import FuncAndArgs
-from braindecode.analysis.stats import median_absolute_deviation, corr, cov
+from braindecode.analysis.stats import median_absolute_deviation, cov
 from braindecode.experiments.load import load_exp_and_model
-from braindecode.veganlasagne.layers import create_pred_fn
+from braindecode.veganlasagne.layers import create_pred_fn, get_n_sample_preds
 from braindecode.datasets.fft import amplitude_phase_to_complex
 from braindecode.results.results import ResultPool
 import logging
+from lasagne.nonlinearities import identity
+from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
 log = logging.getLogger(__name__)
 
 def create_all_amplitude_perturbation_corrs(folder_name, params,
@@ -46,7 +48,7 @@ def create_amplitude_perturbation_corrs(basename, with_blocks,
                                   with_blocks=with_blocks, 
                                   deviation_func=np.std)),
                              ('shuffle', shuffle_per_freq_block)):
-        file_name_end = '.{:s}.amp_cov_vars.npy'.format(name)
+        file_name_end = '.{:s}.amp_cov_vars.npz'.format(name)
         if with_square:
             file_name_end = ".square" + file_name_end
         if with_square_cov:
@@ -71,24 +73,38 @@ def create_amplitude_perturbation_corrs(basename, with_blocks,
             n_samples=n_samples)
         
         log.info("Saving...")
-        np.save(save_filename,  all_covs_and_vars)
+        np.savez(save_filename, *all_covs_and_vars)
         log.info("Done.")
     
 def load_exp_pred_fn(basename):
     exp, model = load_exp_and_model(basename)
+    # replace softmax by identity to get better correlations
+    assert (model.nonlinearity.func_name == 'softmax' or
+        model.nonlinearity.func_name == 'safe_softmax')
+    model.nonlinearity = identity
+    # load dataset
     exp.dataset.load()
     log.info("Create prediction function...")
-    pred_fn = create_pred_fn(model.input_layer)
+    pred_fn = create_pred_fn(model)
     log.info("Done.")
     return exp, pred_fn
     
 def create_trials_and_do_fft(exp):
-    # -> hack to get one batch per trial
-    exp.iterator.batch_size = 2
-    batches = list(exp.iterator.get_batches(exp.dataset.train_set, shuffle=False))
+    train_set = exp.dataset_provider.get_train_merged_valid_test(
+        exp.dataset)['train']
+    # -> hack to get one batch per trial by setting batch size
+    # TODO. fix this properly..
+    starts, ends = compute_trial_start_end_samples(train_set.y,
+        check_trial_lengths_equal=True)
+    trial_len = ends[0] - starts[0]
+    n_sample_preds = get_n_sample_preds(exp.final_layer)
+    
+    exp.iterator.batch_size = int(np.ceil(trial_len / float(n_sample_preds)))
+    batches = list(exp.iterator.get_batches(train_set, shuffle=False))
     trials, _ = zip(*batches)
     trials = np.array(trials)
     ffted = np.fft.rfft(trials, axis=3)
+        
     amplitudes = np.abs(ffted)
     phases = np.angle(ffted)
     return trials, amplitudes, phases
@@ -123,7 +139,7 @@ def create_perturbed_preds_covs(amplitudes, phases, all_preds,
             # memory problems due to copies...
             # but never tested this
             diff_amp = np.square(diff_amp) * np.sign(diff_amp)
-        pred_diffs = all_preds - new_preds
+        pred_diffs =  new_preds - all_preds
         # probably not necessary to put in brackets, but unchecked...
         pred_diff_amp_cov, var_preds, var_amps = compute_class_amp_sensor_covs(
             pred_diffs, diff_amp)
@@ -144,11 +160,14 @@ def compute_class_amp_sensor_covs(pred_diffs, amp_diffs):
     amp_diffs = amp_diffs.squeeze()
     # -> trials x sensors x freqs
     amp_for_cov = amp_diffs.T.reshape(amp_diffs.shape[-2] * amp_diffs.shape[-1], -1)
+    # ->(freqs x sensors) x (trials)
     pred_diff_for_cov = np.mean(pred_diffs.T, axis=1).reshape(4,-1) # maybe reshape not necessary
     wanted_coeffs = cov(pred_diff_for_cov.astype(np.float32),
         amp_for_cov.astype(np.float32))
-    # wanted coeffs shape: classes x sensors x freqs
-    wanted_coeffs = wanted_coeffs.reshape(-1,amp_diffs.shape[1], amp_diffs.shape[2])
+    # wanted coeffs shape: classes x freqs x sensors
+    wanted_coeffs = wanted_coeffs.reshape(-1,amp_diffs.shape[2], amp_diffs.shape[1])
+    # -> classes x sensors x freqs
+    wanted_coeffs = wanted_coeffs.transpose(0,2,1)
     # ddof=1 for later unbiased corr
     vars_preds = np.var(pred_diff_for_cov, axis=1, ddof=1) # classes
     vars_amp = np.var(amp_diffs, axis=0, ddof=1) # sensors x freqs
@@ -214,12 +233,11 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         stop = int(sys.argv[2])
     folder = 'data/models/paper/ours/cnt/deep4/car/'
-    params = dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                         low_cut_off_hz="null", first_nonlin="$elu")
+    params = dict(cnt_preprocessors="$cz_zero_resample_car_demean")
     with_square = False
     with_square_cov = False
     with_blocks=False
-    n_samples = 30
+    n_samples = 400
     create_all_amplitude_perturbation_corrs(folder,
              params=params, start=start,stop=stop,
              with_blocks=with_blocks,

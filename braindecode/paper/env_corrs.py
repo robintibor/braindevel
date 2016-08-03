@@ -3,7 +3,18 @@ import os.path
 from braindecode.results.results import ResultPool
 from braindecode.paper import unclean_sets
 
-def load_topo_corrs(folder, params, i_layer, with_square):
+default_folder = 'data/models/paper/ours/cnt/deep4/car/'
+default_params = dict(low_cut_off_hz='null', first_nonlin='$elu',
+                                    double_time_convs=False,
+                                    sensor_names='$all_EEG_sensors')
+
+def load_default_topo_corrs(i_layer=26, with_square=True):
+    # default folder and filename
+    return load_topo_corrs(folder=default_folder, params=default_params, 
+        i_layer=i_layer,
+        with_square=with_square)
+
+def load_topo_corrs(folder, params, i_layer, with_square=True):
     result_pool = ResultPool()
     result_pool.load_results(folder, params=params)
     result_file_names = result_pool.result_file_names()
@@ -42,7 +53,8 @@ def load_topo_corrs(folder, params, i_layer, with_square):
     clean_mask = np.array(clean_mask)
     return topo_corrs_per_person, rand_corrs_per_person, clean_mask
 
-def load_topo_class_corrs(folder, params, with_square):
+def load_topo_class_corrs(folder=default_folder, params=default_params, 
+        with_square=True):
     result_pool = ResultPool()
     result_pool.load_results(folder, params=params)
     result_file_names = result_pool.result_file_names()
@@ -81,6 +93,13 @@ def load_topo_class_corrs(folder, params, with_square):
     clean_mask = np.array(clean_mask)
     return topo_corrs_per_person, rand_corrs_per_person, clean_mask
 
+def load_default_topo_corrs_for_layers(i_all_layers=(8,14,20,26),
+        with_square=True):
+    # default folder and filename
+    return load_topo_corrs_for_layers(folder=default_folder, params=default_params, 
+        i_all_layers=i_all_layers,
+        with_square=with_square)
+    
 def load_topo_corrs_for_layers(folder, params, i_all_layers,
         with_square):
     topo_corrs_by_layer = []

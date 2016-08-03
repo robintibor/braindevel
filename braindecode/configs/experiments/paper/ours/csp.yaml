@@ -30,9 +30,10 @@
         sensor_names: [$C_sensors], #,"null"
         trial_stop: [4000],#
         filt_order: [3],
+        resample_fs: [250],
         ignore_unused: [['max_min', 'whisker_length', 'eog_sensors',
             'rejection_var_ival', 'n_classes', 'rejection_blink_ival',
-            'whisker_percent']],
+            'whisker_percent', 'low_cut_hz', 'high_cut_hz']],
         variants: [[
 #        {
 #            save_path: ['data/models/paper/ours/csp/car/'],
@@ -57,7 +58,7 @@
         
         {
             min_freq: [1],
-            max_freq: [86],
+            max_freq: [118],
             low_width: [6],
             high_width: [8],
             high_overlap: [4],
@@ -66,7 +67,7 @@
         },
         {
             min_freq: [7],
-            max_freq: [86],
+            max_freq: [118],
             low_width: [6],
             high_width: [8],
             high_overlap: [4],

@@ -1,6 +1,6 @@
 {
     templates: {
-        resample_lowpass_standardize: 
+        resample_bandpass_standardize: 
         [[
                 !!python/name:wyrm.processing.select_channels , 
                 {
@@ -13,67 +13,17 @@
                 {'newfs': $resample_fs},
             ],
             [
-                !!python/name:braindecode.mywyrm.processing.lowpass_cnt , 
-                {'high_cut_off_hz': $high_cut_hz}
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
-                { }
-        ]],
-        resample_highpass_standardize: 
-        [[
-                !!python/name:wyrm.processing.select_channels , 
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
                 {
-                    invert: true, 
-                    regexp_list: ['Cz']
-                },
+                'low_cut_hz': $low_cut_hz,
+                'high_cut_hz': $high_cut_hz}
             ],
-            [
-                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
-                {'newfs': $resample_fs},
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
-                {'low_cut_off_hz': $low_cut_off_hz}
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
-                { }
-        ]],
-        resample_car_highpass_standardize: 
-        [[
-                    !!python/name:braindecode.mywyrm.processing.set_channel_to_zero , 
-                    {
-                        chan_name: 'Cz',
-                    },
-                ],
-                [
-                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
-                {'newfs': $resample_fs},
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
-                { },
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
-                {'low_cut_off_hz': $low_cut_off_hz}
-        ],
             [
                 !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
                 { }
         ]],
     },
-    
-    
-    variants: [[
-        {
-            high_cut_hz: [4],
-            cnt_preprocessors: [$resample_lowpass_standardize],
-        },
-        {
-            cnt_preprocessors: [$resample_highpass_standardize],
-            low_cut_off_hz: ["null", 4], 
-        },
-    ]]
+    variants: [[{
+        cnt_preprocessors: [$resample_bandpass_standardize]
+    }]]
 }

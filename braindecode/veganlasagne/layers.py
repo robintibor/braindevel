@@ -121,14 +121,26 @@ def transform_to_normal_net(final_layer):
     all_layers = lasagne.layers.get_all_layers(new_final_layer)
     last_stride = None
     for i_layer in xrange(len(all_layers) - 1,-1,-1):
-        if hasattr(all_layers[i_layer], 'remove_invalids'):
+        cur_layer = all_layers[i_layer]
+        if hasattr(cur_layer, 'remove_invalids'):
             # replace with final reshape with flattening layer
-            all_layers[i_layer + 1].input_layer = lasagne.layers.FlattenLayer(all_layers[i_layer - 1])
-        if hasattr(all_layers[i_layer], 'n_stride'):
+            # try to make a forward replacement in several possible layers
+            all_later_layers = all_layers[i_layer+1:]
+            for later_layer in all_later_layers:
+                if (hasattr(later_layer, 'input_layer') and 
+                        cur_layer == later_layer.input_layer):
+                    later_layer.input_layer = lasagne.layers.FlattenLayer(
+                        cur_layer.input_layer)
+                elif (hasattr(later_layer, 'input_layers') and
+                        cur_layer in later_layer.input_layers):
+                    i_cur_layer = later_layer.input_layers.index(cur_layer)
+                    later_layer.input_layers[i_cur_layer] = lasagne.layers.FlattenLayer(
+                        cur_layer.input_layer)
+        if hasattr(cur_layer, 'n_stride'):
             # just remove stride reshape layers
-            all_layers[i_layer + 1].input_layer = all_layers[i_layer - 1]
-            last_stride = all_layers[i_layer].n_stride
-        if hasattr(all_layers[i_layer], 'stride') and last_stride is not None:
+            all_layers[i_layer + 1].input_layer = cur_layer.input_layer
+            last_stride = cur_layer.n_stride
+        if hasattr(cur_layer, 'stride') and last_stride is not None:
             # should work for pool and conv layers as both use stride member variable
             # for stride
             all_layers[i_layer].stride = (last_stride, all_layers[i_layer].stride[1])
@@ -141,10 +153,15 @@ def transform_to_normal_net(final_layer):
     # 3rd dim has to be fixed other dims can remain the same
     all_layers = lasagne.layers.get_all_layers(new_final_layer)
     input_time_window = get_model_input_window(final_layer)
-    all_layers[0].shape = [None,all_layers[0].shape[1],input_time_window,all_layers[0].shape[3]]
+    all_layers[0].shape = [None,all_layers[0].shape[1], input_time_window,
+        all_layers[0].shape[3]]
     for l in all_layers[1:]:
-        l.input_shape = l.input_layer.output_shape
-    
+        if hasattr(l, 'input_layer'):
+            l.input_shape = l.input_layer.output_shape
+        else:
+            assert hasattr(l, 'input_layers')
+            l.input_shapes = [in_l.output_shape for in_l in l.input_layers]
+
     return new_final_layer
 
 def create_suitable_theano_input_var(layer):

@@ -6,7 +6,7 @@
     variants: [[{
         cleaner: [$no_cleaner],#$, , train_normal_cleaner
         test_cleaner: [$no_cleaner],
-        save_path: ['data/models/paper/bci-competition/csp/'],
+        save_path: ['data/models/paper/bci-competition/csp-like-ours/'],
         n_selected_features: [20],#10,
         trial_stop: [4000],#2500,
         filt_order: [3],
@@ -15,16 +15,15 @@
         standardize_epo: [False],
         standardize_filt_cnt: [False],
         set_cz_to_zero: [False],
-        resample_fs: [250],
         ignore_unused: [['max_min', 'whisker_length', 'eog_sensors',
             'rejection_var_ival', 'n_classes', 'rejection_blink_ival',
             'whisker_percent', 'rejection_max_abs_ival',
-            'max_abs_threshold', 'high_cut_hz', 'low_cut_hz']],
+            'max_abs_threshold']],
         
         variants: [[
         {
             min_freq: [1],
-            max_freq: [34],
+            max_freq: [86],
             low_width: [6],
             high_width: [8],
             high_overlap: [4],
@@ -32,30 +31,14 @@
             low_overlap: [3],
         },
         {
+            trial_stop: [2500,4000],
             min_freq: [7],
-            max_freq: [34],
+            max_freq: [86],
             low_width: [6],
             high_width: [8],
             high_overlap: [4],
             last_low_freq: [10],
             low_overlap: [3],
-            variants: [[
-            {
-            },
-            { 
-                trial_start: [500],
-                trial_stop: [2500],
-            }]],
-        },
-        {
-            resample_fs: [100],
-            min_freq: [0.5],
-            max_freq: [3.5],
-            low_width: [1],
-            high_width: [1], # ignored anyways
-            high_overlap: [0.5],  # ignored anyways
-            last_low_freq: [3.5],
-            low_overlap: [0.5],
-        }]]
+        },]]
     }]]
 }

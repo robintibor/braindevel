@@ -57,13 +57,31 @@ def to_data_frame(file_names, result_objs, varying_params, constant_params,
     test_accs = (1 - get_final_misclasses(result_objs, 'test')) * 100
     train_accs = (1 - get_final_misclasses(result_objs, 'train')) * 100
     training_times = get_training_times(result_objs)
-    vals_and_misclasses = np.append(param_vals, 
-        np.array([training_times, test_accs, train_accs]).T, 
-        axis=1)
+    # try adding sample accuracies, might exist, might not 
+    sample_accs_exist = (hasattr(result_objs[0], 'monitor_channels') and
+        'test_sample_misclass' in result_objs[0].monitor_channels)
+    if sample_accs_exist:
+        test_sample_accs = (1 - get_final_misclasses(result_objs, 'test_sample')) * 100
+        train_sample_accs = (1 - get_final_misclasses(result_objs, 'train_sample')) * 100
+        vals_and_misclasses =  np.append(param_vals, 
+            np.array([training_times, test_accs, test_sample_accs,
+                train_accs, train_sample_accs]).T, 
+            axis=1)
+    else:
+        vals_and_misclasses = np.append(param_vals, 
+            np.array([training_times, test_accs, train_accs]).T, 
+            axis=1)
     if shorten_headers:
         param_keys = [prettify_word(key) for key in param_keys]
+    
+    if sample_accs_exist:
+        all_keys = param_keys + ['time', 'test', 'test_sample', 'train',
+            'train_sample']
+    else:
+        all_keys = param_keys + ['time', 'test', 'train']
+        
     data_frame = MetaDataFrame(vals_and_misclasses, index=file_numbers, 
-        columns=param_keys + ['time', 'test', 'train'])
+        columns=all_keys)
     data_frame = to_numeric_where_possible(data_frame)
     data_frame.time = pd.to_timedelta(np.round(data_frame.time), unit='s')
     return data_frame
@@ -150,7 +168,8 @@ def tstd(series):
 
 def dataset_averaged_frame(data_frame):
     param_keys = [k for k in data_frame.keys() if k not in ['test',
-        'dataset_filename', 'test_filename', 'time', 'train', 'filename']]
+        'dataset_filename', 'test_filename', 'time', 'train', 'filename',
+        'test_sample', 'train_sample']]
     if len(param_keys) > 0:
         grouped = data_frame.groupby(param_keys)
         # Check for dup
@@ -215,7 +234,16 @@ def remove_indices_with_same_value(df):
     return df
 
 def remove_columns_with_same_value(df, exclude=('train',)):
-    cols_multiple_vals = np.array([len(set(df[c])) > 1 for c in df.columns])
+    cols_multiple_vals = []
+    for col in df.columns:
+        try:
+            has_multiple_vals = len(set(df[col])) > 1
+        except TypeError:
+            # transform to string in case there are lists
+            # since lists not hashable to set
+            has_multiple_vals = len(set([str(val) for val in df[col]])) > 1
+        cols_multiple_vals.append(has_multiple_vals)
+    cols_multiple_vals = np.array(cols_multiple_vals)
     excluded_cols = np.array([c in exclude for c in df.columns])
     df = df.iloc[:,(cols_multiple_vals | excluded_cols)]
     return df

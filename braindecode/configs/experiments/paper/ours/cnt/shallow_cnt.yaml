@@ -1,13 +1,9 @@
 {
     extends: [
-        'configs/experiments/paper/ours/shallow.yaml',
-        'configs/experiments/paper/cnt.yaml',
+        'configs/experiments/paper/ours/our_data.yaml',
+        'configs/experiments/paper/shallow_cnt.yaml',
         ],
     variants: [[{
         save_path: ['data/models/paper/ours/cnt/shallow/'],
-        final_dense_length: [30],
-        input_time_length: [1000],
-        n_sample_preds : [500], # will be overwritten anyways
-        tag: [repl],
     }]],
 }

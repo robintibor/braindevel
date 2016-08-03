@@ -1,0 +1,31 @@
+ {
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/epo.yaml',
+        'configs/experiments/paper/deep_4.yaml',
+        ],
+    variants: [[
+    {
+        
+        variants: [
+        [
+        {
+            trial_start: [-500],
+            trial_stop: [3856],
+            final_dense_length: [9],
+        },
+#        {
+#            trial_start: [0],
+#            trial_stop: [4032],
+#            final_dense_length: [8],
+#        },
+#        {
+#            trial_start: [500],
+#            trial_stop: [3884],
+#            final_dense_length: [6],
+#        },
+
+        ]]
+    }
+    ]]
+}

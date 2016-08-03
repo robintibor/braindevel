@@ -1,0 +1,27 @@
+{
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/epo.yaml',
+        'configs/experiments/paper/shallow.yaml',
+        ],
+variants: [
+        [
+        {
+            trial_start: [-500],
+            trial_stop: [3976],
+            final_dense_length: [69],
+        },
+#        {
+#            trial_start: [0],
+#            trial_stop: [3996],
+#            final_dense_length: [61],
+#        },
+#        {
+#            trial_start: [500],
+#            trial_stop: [4016],
+#            final_dense_length: [53],
+#        },
+],
+
+]
+}
