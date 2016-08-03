@@ -125,7 +125,7 @@ def create_envelopes_for_experiment(experiment_file_name):
     iterator, train_set = _load_experiment(experiment_file_name)
     filterbands = generate_filterbank(min_freq=1, max_freq=115,
         last_low_freq=31, low_width=6, low_overlap=3,
-        high_width=8, high_overlap=4)
+        high_width=8, high_overlap=4, low_bound=0.)
     env_per_filterband = create_envelops_per_filterband(iterator,
         train_set, filterbands)
     log.info("Saving...")
@@ -153,6 +153,9 @@ def create_envelops_per_filterband(iterator, train_set, filterbands):
         elif low_cut_hz == 0:
             filtered = lowpass_topo(train_topo, high_cut_hz, 
                                 sampling_rate=250.0, axis=0, filt_order=4)
+        else:
+            raise ValueError("Expect to be betweem 0 and 125 Hz, filtering from"
+                "{:f} to {:f} Hz.".format(low_cut_hz,high_cut_hz))
         filtered = filtered.astype(np.float32)
         filt_set = DenseDesignMatrixWrapper(topo_view=filtered,y=train_set.y,
                                             axes=train_set.view_converter.axes)
