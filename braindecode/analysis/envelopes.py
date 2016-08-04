@@ -186,7 +186,7 @@ def parse_command_line_arguments():
     parser.add_argument('--start', default=1, type=int,
                         help='''Start with this envelope file index (1-based, after selection of results)''')
     parser.add_argument('--stop', default=None, type=int, 
-                        help='''Stop at this envelope file index (1-based, after selection ofresults)''')
+                        help='''Stop at this envelope file index (1-based inclusive, after selection of results)''')
     args = parser.parse_args()
 
     # dictionary values are given with = inbetween, parse them here by hand

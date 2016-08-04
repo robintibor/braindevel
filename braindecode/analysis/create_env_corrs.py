@@ -99,8 +99,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         stop = int(sys.argv[2])
     create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
-             params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                         low_cut_off_hz="null", first_nonlin="$elu"),
+             params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"),
              start=start, stop=stop)
 #    create_env_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
 #        params=None)
