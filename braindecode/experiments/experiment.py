@@ -114,12 +114,19 @@ class Experiment(object):
     
     def create_theano_functions(self, target_var, deterministic_training=False):
         if target_var is None:
+            # for two dims assume we have int targets..
+            # maybe could remove these clauses also
+            # and just keep else clause
             if self.dataset.y.ndim == 1:
                 target_var = T.ivector('targets')
             elif self.dataset.y.ndim == 2:
                 target_var = T.imatrix('targets')
             else:
-                raise ValueError("expect y to either be a tensor or a matrix")
+                # tensor with as many dimensions as y
+                target_type = T.TensorType(
+                    dtype=self.dataset.y.dtype,
+                    broadcastable=[False]*len(self.dataset.y.shape))
+                target_var = target_type()
         
         prediction = lasagne.layers.get_output(self.final_layer,
             deterministic=deterministic_training)

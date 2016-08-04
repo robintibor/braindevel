@@ -20,9 +20,10 @@ def load_file(file_name, standardize, demean):
     clean_result = MaxAbsCleaner(threshold=800,
                                                   marker_def=marker_def,
                                                   segment_ival=[0,4000]).clean(cnt)
-    cnt = set_channel_to_zero(cnt, 'Cz')
+    
     cnt = restrict_cnt(cnt, marker_def.values(), clean_result.clean_trials, 
         clean_result.rejected_chan_names, copy_data=False)
+    cnt = set_channel_to_zero(cnt, 'Cz')
     
     
     log.info("Resampling...")
