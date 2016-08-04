@@ -63,8 +63,7 @@ def dataset_to_env_file(wanted_dataset_filename):
     These experiments are, where envelopes were calculated from originally"""
     res_pool= ResultPool()
     res_pool.load_results('data/models-backup/paper/ours/cnt/deep4/car/',
-                              params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                            low_cut_off_hz="null", first_nonlin="$elu"))
+             params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"))
 
     dataset_to_env_file_name = dict()
     
