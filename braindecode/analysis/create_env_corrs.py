@@ -56,6 +56,9 @@ def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
 def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
     trial_acts = compute_trial_acts(model, i_layer, iterator, train_set)
     topo_corrs = compute_topo_corrs(trial_env, trial_acts)
+    # TODO compute within trial corrs -> remove mean for each trial
+    # compute between trial corrs -> compute means for trial env and trial acts
+    # with keepdims=True
     return topo_corrs
     
 def dataset_to_env_file(wanted_dataset_filename):

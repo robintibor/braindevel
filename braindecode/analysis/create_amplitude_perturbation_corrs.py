@@ -14,7 +14,8 @@ from braindecode.datahandling.batch_iteration import compute_trial_start_end_sam
 log = logging.getLogger(__name__)
 
 def create_all_amplitude_perturbation_corrs(folder_name, params,
-        start, stop, with_blocks, with_square, with_square_cov, n_samples):
+        start, stop, with_blocks, with_square, with_square_cov, after_softmax,
+        n_samples):
     assert not (with_square and with_square_cov)
     res_pool = ResultPool()
     res_pool.load_results(folder_name, params=params)
@@ -29,13 +30,14 @@ def create_all_amplitude_perturbation_corrs(folder_name, params,
         create_amplitude_perturbation_corrs(base_name, 
             with_blocks=with_blocks,
             with_square=with_square, with_square_cov=with_square_cov,
+            after_softmax=after_softmax,
             n_samples=n_samples)
 
 def create_amplitude_perturbation_corrs(basename, with_blocks,
-        with_square, with_square_cov,
+        with_square, with_square_cov, after_softmax,
         n_samples=30):
     assert not (with_square and with_square_cov)
-    exp, pred_fn = load_exp_pred_fn(basename)
+    exp, pred_fn = load_exp_pred_fn(basename, after_softmax=after_softmax)
     log.info("Create fft trials...")
     trials, amplitudes, phases = create_trials_and_do_fft(exp)
     log.info("Create all predictions...")
@@ -53,6 +55,8 @@ def create_amplitude_perturbation_corrs(basename, with_blocks,
             file_name_end = ".square" + file_name_end
         if with_square_cov:
             file_name_end = ".covtosquare" + file_name_end
+        if after_softmax:
+            file_name_end = ".after_softmax" + file_name_end
             
         save_filename = basename + file_name_end
         # check if file already exists, skip if it does and is loadable
@@ -76,12 +80,13 @@ def create_amplitude_perturbation_corrs(basename, with_blocks,
         np.savez(save_filename, *all_covs_and_vars)
         log.info("Done.")
     
-def load_exp_pred_fn(basename):
+def load_exp_pred_fn(basename, after_softmax):
     exp, model = load_exp_and_model(basename)
-    # replace softmax by identity to get better correlations
-    assert (model.nonlinearity.func_name == 'softmax' or
-        model.nonlinearity.func_name == 'safe_softmax')
-    model.nonlinearity = identity
+    if not after_softmax:
+        # replace softmax by identity to get better correlations
+        assert (model.nonlinearity.func_name == 'softmax' or
+            model.nonlinearity.func_name == 'safe_softmax')
+        model.nonlinearity = identity
     # load dataset
     exp.dataset.load()
     log.info("Create prediction function...")
@@ -237,11 +242,13 @@ if __name__ == "__main__":
     with_square = False
     with_square_cov = False
     with_blocks=False
+    after_softmax = True
     n_samples = 400
     create_all_amplitude_perturbation_corrs(folder,
              params=params, start=start,stop=stop,
              with_blocks=with_blocks,
              with_square=with_square, with_square_cov=with_square_cov,
+             after_softmax=after_softmax,
              n_samples=n_samples)
 #     create_all_amplitude_perturbation_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
 #         params=None)

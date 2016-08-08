@@ -299,7 +299,7 @@ class ExperimentsRunner:
         dummy_batch_topo = batch_gen.next()[0]
         del train_set
 
-        assert 'in_sensors' in train_str
+        # not for ultrasound: assert 'in_sensors' in train_str
         # not for cnt net assert 'in_rows' in train_str
         # not for resnet: assert 'in_cols' in train_str
         

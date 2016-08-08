@@ -205,7 +205,8 @@ class Experiment(object):
         self.monitor_epoch(datasets)
         self.print_epoch()
         if remember_best:
-            self.remember_extension.remember_epoch(self.monitor_chans, self.all_params)
+            self.remember_extension.remember_epoch(self.monitor_chans,
+                self.all_params)
 
     def setup_after_stop_training(self):
         self.remember_extension.reset_to_best_model(self.monitor_chans,

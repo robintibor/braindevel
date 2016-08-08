@@ -1,0 +1,59 @@
+{
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/cnt.yaml',
+        'configs/experiments/paper/res_net.yaml',
+        ],
+    templates: {
+        safe_tied_neighbours_decay: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [
+                !!python/name:braindecode.veganlasagne.objectives.categorical_crossentropy_logdomain ,
+                !!python/name:braindecode.veganlasagne.objectives.tied_neighbours_cnt_model_logdomain ,
+                !obj:braindecode.util.FuncAndArgs {
+                    func: !!python/name:braindecode.veganlasagne.objectives.weight_decay ,
+                    factor: $l2_factor
+                },
+            ]
+        },
+        categorical_crossentropy_decay: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [$categorical_crossentropy,
+                !obj:braindecode.util.FuncAndArgs {
+                    func: !!python/name:braindecode.veganlasagne.objectives.weight_decay ,
+                    factor: $l2_factor
+                },
+            ]
+        },
+    },
+        
+    variants: [[
+    {
+        input_time_length: [1000],
+        n_sample_preds : [500], # will be overwritten anyways
+        loss_expression: [$safe_tied_neighbours_decay],
+        l2_factor: [1e-4],
+        n_first_filters: [48],
+        first_filter_length: [3],
+        final_pool_length: [10],
+        projection: [False],
+        nonlinearity: [$elu],
+        n_layers_per_block: [2],
+        final_aggregator: ['pool'],
+        drop_before_pool: [False],
+        final_nonlin: [$log_softmax],
+        survival_prob: [1],
+        split_first_layer: [True],
+        add_after_nonlin: [False],
+        reduction_method: ['conv'],
+        reduction_pool_mode: ['null'],
+
+        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
+        'eog_sensors', 'rejection_var_ival', 'n_classes',
+        'num_split_folds', 'misclass_monitor', 'rejection_blink_ival',
+        'whisker_percent', 'layer_modifier']],
+        
+        
+    }
+    ]]
+}
