@@ -268,7 +268,7 @@ def median(a, axis=None, keepdims=False):
     Just since I use old numpy version on one cluster which doesn't
     have keepdims
     """
-    out = np.median(axis)
+    out = np.median(a, axis)
     if keepdims:
         for ax in axis:
             out = np.expand_dims(out, ax)
@@ -280,6 +280,9 @@ def median_absolute_deviation(arr, axis=None, keepdims=False):
         https://en.wikipedia.org/wiki/Median_absolute_deviation 
         http://stackoverflow.com/a/23535934/1469195
     """
+    arr = np.array(arr)
+    if axis is None:
+        axis = range(arr.ndim)
     med = median(arr, axis=axis, keepdims=True)
     return median(np.abs(arr - med), axis=axis, keepdims=keepdims)
 

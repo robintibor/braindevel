@@ -34,7 +34,14 @@
         ignore_unused: [['max_min', 'whisker_length', 'eog_sensors',
             'rejection_var_ival', 'n_classes', 'rejection_blink_ival',
             'whisker_percent', 'low_cut_hz', 'high_cut_hz']],
-        variants: [[
+        variants: [
+        [
+            {
+                max_abs_threshold: [400],
+             }
+        ],
+        
+        [
 #        {
 #            save_path: ['data/models/paper/ours/csp/car/'],
 #            save_model: [True],

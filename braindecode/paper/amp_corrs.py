@@ -32,7 +32,7 @@ def load_amp_corrs(with_square, with_square_corr, cov_or_corr):
             clean_mask.append(False)
         else:
             clean_mask.append(True)
-        for perturb_name in ('rand_mad', 'rand_std', 'shuffle'):
+        for perturb_name in ('rand_mad', 'rand_std', 'no_dev'):
             file_name_end =  '.{:s}.amp_{:s}s.npy'.format(perturb_name,
                 cov_or_corr)
             if with_square:
@@ -49,7 +49,7 @@ def load_amp_corrs(with_square, with_square_corr, cov_or_corr):
     return all_corrs, clean_mask
 
 
-def create_meaned_amp_pred_corrs():
+def create_meaned_amp_pred_corrs(prefix=''):
     """This takes computed cov_vars and transforms them to corrs."""
     res_pool = ResultPool()
     res_pool.load_results('data/models/paper/ours/cnt/deep4/car/',
@@ -67,14 +67,19 @@ def create_meaned_amp_pred_corrs():
         for name in result_file_names]
     clean_mask = []
     all_corrs = dict()
+    if prefix != '':
+        prefix = '.' + prefix
     for i_file, base_name in enumerate(all_base_names):
+        # hack: remove this again
+        #log.warn("ADDING OLD AMP CORRS!!")
+        #base_name = base_name.replace("car/", "car/old-amp-corrs/")
         log.info("Loading {:s}".format(results[i_file].parameters['dataset_filename']))
         if any(s in results[i_file].parameters['dataset_filename'] for s in unclean_sets):
             clean_mask.append(False)
         else:
             clean_mask.append(True)
-        for perturb_name in ('rand_mad',):#, 'rand_std', 'shuffle'):
-            filename_end = '.{:s}.amp_cov_vars.npz'.format(perturb_name)
+        for perturb_name in ('rand_mad', 'rand_std', 'no_dev'):
+            filename_end = '{:s}.{:s}.amp_cov_vars.npz'.format(prefix, perturb_name)
             filename = base_name + filename_end
             assert os.path.isfile(filename), "File does not exist: {:s}".format(
                 filename)
@@ -87,7 +92,8 @@ def create_meaned_amp_pred_corrs():
             this_corrs = transform_to_corrs(this_covs, this_pred_vars, this_amp_vars)
             this_arr.append(np.mean(this_corrs, axis=0)) # mean over perturbation samples
             all_corrs[perturb_name] = this_arr
-            new_file_name_end = '.{:s}.amp_cov_var_corrs.npy'.format(perturb_name)
+            new_file_name_end = '{:s}.{:s}.amp_cov_var_corrs.npy'.format(prefix,
+                perturb_name)
             new_filename = base_name + new_file_name_end
             assert new_filename != filename
             log.info("Saving {:s}...".format(new_filename))
@@ -111,12 +117,14 @@ def transform_to_corrs(this_covs, this_pred_vars, this_amp_vars):
     all_corrs = np.array(all_flat_corrs).reshape(this_covs.shape)
     return all_corrs
 
-def load_meaned_amp_pred_corrs():
+def load_meaned_amp_pred_corrs(prefix=''):
     res_pool = ResultPool()
     res_pool.load_results('data/models/paper/ours/cnt/deep4/car/',
         params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"))
     result_file_names = res_pool.result_file_names()
     results = res_pool.result_objects()
+    if prefix != '':
+        prefix = '.' + prefix
     
     # sort by dataset filename
     sort_order = np.argsort([r.parameters['dataset_filename'] for r in results])
@@ -129,12 +137,16 @@ def load_meaned_amp_pred_corrs():
     clean_mask = []
     all_corrs = dict()
     for i_file, base_name in enumerate(all_base_names):
+        # hack: remove this again
+        #log.warn("ADDING OLD AMP CORRS!!")
+        #base_name = base_name.replace("car/", "car/old-amp-corrs/")
         if any(s in results[i_file].parameters['dataset_filename'] for s in unclean_sets):
             clean_mask.append(False)
         else:
             clean_mask.append(True)
-        for perturb_name in ('rand_mad',):# 'rand_std', 'shuffle'):
-            filename_end =  '.{:s}.amp_cov_var_corrs.npy'.format(perturb_name)
+        for perturb_name in ('rand_mad', 'rand_std', 'no_dev'):
+            filename_end =  '{:s}.{:s}.amp_cov_var_corrs.npy'.format(
+                prefix, perturb_name)
             filename = base_name + filename_end
             assert os.path.isfile(filename)
             this_arr = all_corrs.pop(perturb_name, [])

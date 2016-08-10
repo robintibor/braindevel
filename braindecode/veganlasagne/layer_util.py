@@ -166,9 +166,12 @@ def layers_to_str(final_layer):
         if filter_size is not None:
             filter_str = "{:d}x{:d}".format(filter_size[0],
                 filter_size[1])
-            if layer.stride != (1,1):
+            if (hasattr(layer,'stride') and layer.stride != (1,1)):
                 filter_str += " ::{:d} ::{:d}".format(layer.stride[0],
                     layer.stride[1])
+            if (hasattr(layer,'dilation') and layer.dilation != (1,1)):
+                filter_str += " ::{:d} ::{:d}".format(layer.dilation[0],
+                    layer.dilation[1])
             layer_str += "{:15s}".format(filter_str)
         # Also for stride reshape layer
         if hasattr(layer, 'n_stride'):

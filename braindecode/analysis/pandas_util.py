@@ -267,3 +267,9 @@ def restrict_or_missing_col(df, **params):
         if key in df.columns:
             df = df[((df[key]) == val)]
     return df
+
+def restrict_if_existing_and_not_unique(df, **params):
+    for key, val in params.iteritems():
+        if (key in df.columns) and (len(df[key].unique()) > 1):
+            df = df[df[key] == val]
+    return df

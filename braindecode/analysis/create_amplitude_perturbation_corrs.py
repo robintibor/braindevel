@@ -49,7 +49,9 @@ def create_amplitude_perturbation_corrs(basename, with_blocks,
                               ('rand_std', FuncAndArgs(rand_diff,
                                   with_blocks=with_blocks, 
                                   deviation_func=np.std)),
-                             ('shuffle', shuffle_per_freq_block)):
+                             ('no_dev', FuncAndArgs(rand_diff,
+                                  with_blocks=with_blocks, 
+                                  deviation_func=lambda arr,axis,keepdims: 1))):
         file_name_end = '.{:s}.amp_cov_vars.npz'.format(name)
         if with_square:
             file_name_end = ".square" + file_name_end
@@ -97,16 +99,15 @@ def load_exp_pred_fn(basename, after_softmax):
 def create_trials_and_do_fft(exp):
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
-    # -> hack to get one batch per trial by setting batch size
-    # TODO. fix this properly..
     starts, ends = compute_trial_start_end_samples(train_set.y,
         check_trial_lengths_equal=True)
     trial_len = ends[0] - starts[0]
     n_sample_preds = get_n_sample_preds(exp.final_layer)
     
+    # -> get one batch per trial by setting batch size
     exp.iterator.batch_size = int(np.ceil(trial_len / float(n_sample_preds)))
     batches = list(exp.iterator.get_batches(train_set, shuffle=False))
-    trials, _ = zip(*batches)
+    trials, _ = zip(*batches) # ignore targets
     trials = np.array(trials)
     ffted = np.fft.rfft(trials, axis=3)
         
@@ -129,21 +130,19 @@ def create_perturbed_preds_covs(amplitudes, phases, all_preds,
     for i_sample in xrange(n_samples):
         log.info("Sample {:d} of {:d}".format(i_sample+1, n_samples))
         diff_amp = perturb_fn(amplitudes, rng)
+        # clip in case diff would move amplitudes to negative region
+        # min over batches and empty dim
+        diff_amp = np.maximum(-np.min(amplitudes, axis=(1,4), keepdims=True),
+            diff_amp)
+        new_amp = amplitudes + diff_amp
         if with_square:
-            # invert square...
-            # clip for unlikely case diff is below 0
-            new_amp = np.sqrt(np.maximum(amplitudes + diff_amp,0))
-        else:
-            new_amp = amplitudes + diff_amp
+            # invert square from above...
+            new_amp = np.sqrt(new_amp)
         new_fft = amplitude_phase_to_complex(new_amp, phases)
         new_trials = np.fft.irfft(new_fft, axis=3).astype(np.float32)
         new_preds = np.array([pred_fn(t) for t in new_trials] )
         if with_square_cov:
-            # done here already, not outside function,
-            # since i assume outside funciton might create
-            # memory problems due to copies...
-            # but never tested this
-            diff_amp = np.square(diff_amp) * np.sign(diff_amp)
+            diff_amp = np.square(new_amp) - np.square(amplitudes)
         pred_diffs =  new_preds - all_preds
         # probably not necessary to put in brackets, but unchecked...
         pred_diff_amp_cov, var_preds, var_amps = compute_class_amp_sensor_covs(
@@ -166,6 +165,7 @@ def compute_class_amp_sensor_covs(pred_diffs, amp_diffs):
     # -> trials x sensors x freqs
     amp_for_cov = amp_diffs.T.reshape(amp_diffs.shape[-2] * amp_diffs.shape[-1], -1)
     # ->(freqs x sensors) x (trials)
+    # mean pred diff per trial, then reshape to classes
     pred_diff_for_cov = np.mean(pred_diffs.T, axis=1).reshape(4,-1) # maybe reshape not necessary
     wanted_coeffs = cov(pred_diff_for_cov.astype(np.float32),
         amp_for_cov.astype(np.float32))
@@ -197,6 +197,8 @@ def rand_diff(amplitudes, rng, with_blocks, deviation_func=median_absolute_devia
                              amplitudes.shape[3])
         all_diff_amp[:,:,:,:,:] = diff_amp[:,None,:,:,None]
         
+    # calculate deviation over trials, batches and fourth emptydim, keep 
+    # sensors and frequencies (one deviation value per sensor x frequency)
     all_diff_amp = all_diff_amp * deviation_func(amplitudes, axis=(0,1,4),
         keepdims=True)
     return all_diff_amp
@@ -242,7 +244,7 @@ if __name__ == "__main__":
     with_square = False
     with_square_cov = False
     with_blocks=False
-    after_softmax = True
+    after_softmax = False
     n_samples = 400
     create_all_amplitude_perturbation_corrs(folder,
              params=params, start=start,stop=stop,

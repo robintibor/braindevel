@@ -51,6 +51,10 @@
     },
     variants: [[{
         max_abs_threshold: [800],
+        variants: [[{
+            max_abs_threshold: [400],
+        }
+        ]],
         dataset: [$cleaned_combined_set],
         marker_def: [$markers_4_class],
         dataset_splitter: [$several_sets_splitter],

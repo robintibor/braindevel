@@ -214,7 +214,8 @@ def elu_nonlins(df):
 def split_first_layer(df):
     return df[df.split_first_layer == True]
 
-def compare_csp_net(df_net, df_csp, name,freq, dataset, with_csp_acc=False, with_std=False, with_std_error=False):
+def compare_csp_net(df_net, df_csp, name,freq, dataset, with_csp_acc=False, 
+        with_std=False, with_std_error=False, max_n_p_vals=20):
     assert len(df_net) == len(df_csp), (
         "Net ({:d}) and csp ({:d}) should have same length".format(
             len(df_net), len(df_csp)))
@@ -224,8 +225,8 @@ def compare_csp_net(df_net, df_csp, name,freq, dataset, with_csp_acc=False, with
 
     test_acc_net = np.array(df_merged['test_net'])
     test_acc_csp = np.array(df_merged['test_csp'])
-    if len(test_acc_net) > 20:
-        p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=2**20)
+    if len(test_acc_net) > max_n_p_vals:
+        p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=2**max_n_p_vals)
     else:
         p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=None)
     p_val_wilc = wilcoxon_signed_rank(test_acc_net, test_acc_csp)
