@@ -1,6 +1,6 @@
 import lasagne
 from braindecode.veganlasagne.layers import get_n_sample_preds
-from lasagne.objectives import categorical_crossentropy
+from lasagne.objectives import categorical_crossentropy, binary_crossentropy
 from theano.tensor.shared_randomstreams import RandomStreams
 from lasagne.random import get_rng
 import theano.tensor as T
@@ -27,6 +27,12 @@ def safe_categorical_crossentropy(predictions, targets, eps=1e-8):
     predictions = (T.gt(predictions, eps) * predictions + 
         T.le(predictions, eps) * predictions + eps)
     return categorical_crossentropy(predictions, targets)
+def safe_binary_crossentropy(predictions, targets, eps=1e-4):
+    predictions = (T.gt(predictions, eps) * predictions + 
+        T.le(predictions, eps) * predictions + eps)
+    predictions = (T.lt(predictions, 1-eps) * predictions + 
+        T.ge(predictions, 1 - eps) * predictions - eps)
+    return binary_crossentropy(predictions, targets)
     
 def sum_of_losses(preds, targets, final_layer, loss_expressions):
     all_losses = []

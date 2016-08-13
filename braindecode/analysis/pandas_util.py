@@ -130,7 +130,7 @@ def pairwise_compare_frame(df, with_p_vals=False):
                     val_1 = val_b
                     val_2 = val_a
                 if with_p_vals:
-                    if len(accuracies_1) < 19:
+                    if len(accuracies_1) <= 18:
                         diff_perm = perm_mean_diff_test(accuracies_1,
                             accuracies_2) * 100
                     else:

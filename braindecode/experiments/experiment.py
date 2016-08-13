@@ -114,17 +114,26 @@ class Experiment(object):
     
     def create_theano_functions(self, target_var, deterministic_training=False):
         if target_var is None:
+            # get a dummy batch and determine target size
+            # use test set since it is smaller
+            # maybe memory is freed quicker
+            test_set = self.dataset_provider.get_train_valid_test(self.dataset)['test']
+            batches = self.iterator.get_batches(test_set, shuffle=False)
+            dummy_batch = batches.next()
+            dummy_y = dummy_batch[1]
+            del test_set
             # for two dims assume we have int targets..
             # maybe could remove these clauses also
             # and just keep else clause
-            if self.dataset.y.ndim == 1:
+            if dummy_y.ndim == 1:
+                print("targets")
                 target_var = T.ivector('targets')
-            elif self.dataset.y.ndim == 2:
+            elif dummy_y.ndim == 2:
                 target_var = T.imatrix('targets')
             else:
                 # tensor with as many dimensions as y
                 target_type = T.TensorType(
-                    dtype=self.dataset.y.dtype,
+                    dtype=dummy_y.dtype,
                     broadcastable=[False]*len(self.dataset.y.shape))
                 target_var = target_type()
         

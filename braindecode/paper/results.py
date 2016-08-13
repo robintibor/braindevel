@@ -214,7 +214,7 @@ def elu_nonlins(df):
 def split_first_layer(df):
     return df[df.split_first_layer == True]
 
-def compare_csp_net(df_net, df_csp, name,freq, dataset, with_csp_acc=False, 
+def compare_net_csp(df_net, df_csp, name,freq, dataset, with_csp_acc=False, 
         with_std=False, with_std_error=False, max_n_p_vals=20):
     assert len(df_net) == len(df_csp), (
         "Net ({:d}) and csp ({:d}) should have same length".format(

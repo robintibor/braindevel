@@ -43,6 +43,7 @@ class CombinedCntSets(object):
                 len(self.sets)))
             dataset.load()
         # hack to have correct y dimensions
+        # TODO: remove
         self.y = self.sets[-1].y[0:1]
     
     def construct_sets(self):

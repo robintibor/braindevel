@@ -31,10 +31,10 @@ def load_trial_env(env_file_name, model, i_layer, train_set,
         env = np.square(env)
     env = [e for e in env] # transform that outer part is list so you can freely delete parts inside next function
     log.info("Transforming to trial envelope...")
-    trial_env = transform_to_trial_env(env, model, i_layer, train_set, n_inputs_per_trial)
+    trial_env = transform_to_meaned_trial_env(env, model, i_layer, train_set, n_inputs_per_trial)
     return trial_env
 
-def transform_to_trial_env(env, model, i_layer, train_set, 
+def transform_to_meaned_trial_env(env, model, i_layer, train_set, 
         n_inputs_per_trial):
     all_layers = lasagne.layers.get_all_layers(model)
     layer = all_layers[i_layer]

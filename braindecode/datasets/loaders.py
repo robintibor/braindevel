@@ -118,6 +118,10 @@ class BBCIDataset(object):
                 'Rest Start', 'Feet Start', 'Right Hand End',
                 'Left Hand End', 'Rest End', 'Feet End']:
                 pass
+            elif all_class_names == ['Right Hand', 'Left Hand', 'Rest',
+                'Feet', 'Face', 'Navigation', 'Music', 'Rotation',
+                'Subtraction', 'Words']:
+                pass # robot hall 10 class decoding
             else:
                 # add another clause here for other class names...
                 raise ValueError("Unknown class names {:s}", all_class_names)
