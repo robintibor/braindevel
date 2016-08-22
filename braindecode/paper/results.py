@@ -10,6 +10,10 @@ def clean_datasets(df):
         df = df[np.logical_not(df.dataset_filename.str.contains(name))]
     return df
 
+def merged_main_comp(df):
+    return restrict(df, batch_norm_before_merge=True,
+                     nonlin_before_merge='elu',
+                     num_filters_spat=25)
 ## Main comparison
 def elu_deep_5(df):
     return df[(df.first_nonlin == 'elu') & 

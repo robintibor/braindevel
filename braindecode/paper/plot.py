@@ -167,7 +167,10 @@ def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
                                 p_val_vs_other_net,
                                 class_names=None, figsize=None, colormap=cm.bwr,
         textcolor='black', vmin=None, vmax=None,
-                               fontweight='normal'):
+                               fontweight='normal',
+                           rotate_row_labels=90,
+                           rotate_col_labels=0,
+                           with_f1_score=False):
     # TODELAY: split into several functions
     # transpose to get confusion matrix same way as matlab
     confusion_mat = confusion_mat.T
@@ -223,19 +226,35 @@ def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
                 annotate_str += u"◊"
             annotate_str += "\n"
             ax.annotate(annotate_str.format(confusion_mat[x][y]),
-                        xy=(y, x),
-                        horizontalalignment='center',
-                        verticalalignment='center', fontsize=12,
-                        color=textcolor,
-                        fontweight=this_font_weight)
-            
-            ax.annotate("\n\n{:4.1f}%".format(
-                        (confusion_mat[x][y] / float(np.sum(confusion_mat))) * 100),
-                        xy=(y, x),
-                        horizontalalignment='center',
-                        verticalalignment='center', fontsize=10,
-                        color=textcolor,
-                        fontweight=this_font_weight)
+                    xy=(y, x),
+                    horizontalalignment='center',
+                    verticalalignment='center', fontsize=12,
+                    color=textcolor,
+                    fontweight=this_font_weight)
+            if x != y or (not with_f1_score):
+                ax.annotate("\n\n{:4.1f}%".format(
+                            (confusion_mat[x][y] / float(np.sum(confusion_mat))) * 100),
+                            xy=(y, x),
+                            horizontalalignment='center',
+                            verticalalignment='center', fontsize=10,
+                            color=textcolor,
+                            fontweight=this_font_weight)
+            else:
+                assert x == y
+                precision = confusion_mat[x][x] / float(np.sum(
+                    confusion_mat[x, :]))
+                sensitivity = confusion_mat[x][x] / float(np.sum(
+                    confusion_mat[:, y]))
+                f1_score = 2 * precision * sensitivity / (precision + sensitivity)
+                
+                ax.annotate("\n{:4.1f}%\n{:4.1f}% (F)".format(
+                            (confusion_mat[x][y] / float(np.sum(confusion_mat))) * 100,
+                            f1_score * 100),
+                            xy=(y, x+0.1),
+                            horizontalalignment='center',
+                            verticalalignment='center', fontsize=10,
+                            color=textcolor,
+                            fontweight=this_font_weight)
     
     # Add values for target correctness etc.
     for x in xrange(width):
@@ -296,8 +315,8 @@ def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
                         verticalalignment='center', fontsize=12,
                fontweight='bold')
     
-    plt.xticks(range(width), class_names, fontsize=12)
-    plt.yticks(range(height), class_names, fontsize=12, rotation=90)
+    plt.xticks(range(width), class_names, fontsize=12, rotation=rotate_col_labels)
+    plt.yticks(range(height), class_names, fontsize=12, rotation=rotate_row_labels)
     plt.grid(False)
     plt.ylabel('Predictions', fontsize=15)
     plt.xlabel('Targets', fontsize=15)
@@ -311,12 +330,23 @@ def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
     return fig
 
 def plot_conf_mat(conf_mat, p_val_vs_csp, p_val_vs_other_net, label,
-                 add_colorbar):
+        class_names=resorted_class_names,
+                 add_colorbar=True,
+                 figsize=(6,6),
+                 vmin=0,
+                 vmax=0.1,
+                 rotate_row_labels=90,
+                 rotate_col_labels=0,
+                 with_f1_score=False):
     fig = plot_confusion_matrix_paper(conf_mat, p_val_vs_csp, p_val_vs_other_net,
-                                figsize=(6,6), class_names=resorted_class_names, 
+                                figsize=figsize, 
+                                class_names=class_names, 
                                       #colormap=seaborn.cubehelix_palette(8, as_cmap=True),#, start=.5, rot=-.75),
                                       colormap=cm.OrRd,
-                           vmin=0, vmax=0.1)
+                           vmin=vmin, vmax=vmax,
+                           rotate_row_labels=rotate_row_labels,
+                           rotate_col_labels=rotate_col_labels,
+                           with_f1_score=with_f1_score)
     plt.title(label, fontsize=20,y=1.04)
     
     cbar = plt.colorbar(fig.axes[0].images[0], shrink=0.9)

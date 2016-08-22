@@ -50,7 +50,8 @@ def load_amp_corrs(with_square, with_square_corr, cov_or_corr):
 
 
 def create_meaned_amp_pred_corrs(prefix=''):
-    """This takes computed cov_vars and transforms them to corrs."""
+    """This takes computed cov_vars and transforms them to corrs 
+    and saves corrs."""
     res_pool = ResultPool()
     res_pool.load_results('data/models/paper/ours/cnt/deep4/car/',
         params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"))
@@ -91,13 +92,14 @@ def create_meaned_amp_pred_corrs(prefix=''):
             this_amp_vars = npz_file['arr_2']
             this_corrs = transform_to_corrs(this_covs, this_pred_vars, this_amp_vars)
             this_arr.append(np.mean(this_corrs, axis=0)) # mean over perturbation samples
-            all_corrs[perturb_name] = this_arr
+            
             new_file_name_end = '{:s}.{:s}.amp_cov_var_corrs.npy'.format(prefix,
                 perturb_name)
             new_filename = base_name + new_file_name_end
             assert new_filename != filename
             log.info("Saving {:s}...".format(new_filename))
             np.save(new_filename, np.mean(this_corrs, axis=0))
+            all_corrs[perturb_name] = this_arr
             
     clean_mask = np.array(clean_mask)
     return all_corrs, clean_mask

@@ -126,7 +126,6 @@ class Experiment(object):
             # maybe could remove these clauses also
             # and just keep else clause
             if dummy_y.ndim == 1:
-                print("targets")
                 target_var = T.ivector('targets')
             elif dummy_y.ndim == 2:
                 target_var = T.imatrix('targets')
@@ -183,6 +182,7 @@ class Experiment(object):
         if self.run_after_early_stop:
             log.info("Run until second stop...")
             self.run_until_second_stop()
+            self.readd_old_monitor_chans()
 
     def run_until_early_stop(self):
         log.info("Split/Preprocess datasets...")
@@ -218,6 +218,9 @@ class Experiment(object):
                 self.all_params)
 
     def setup_after_stop_training(self):
+        # also remember old monitor chans, will be put back into
+        # monitor chans after experiment finished
+        self.old_monitor_chans = deepcopy(self.monitor_chans)
         self.remember_extension.reset_to_best_model(self.monitor_chans,
                 self.all_params)
         loss_to_reach = self.monitor_chans['train_loss'][-1]
@@ -249,6 +252,11 @@ class Experiment(object):
             log.info("{:25s} {:.5f}".format(chan_name,
                 self.monitor_chans[chan_name][-1]))
         log.info("")
+    
+    def readd_old_monitor_chans(self):
+        for key in self.old_monitor_chans:
+            new_key = 'before_reset_' + key
+            self.monitor_chans[new_key] = self.old_monitor_chans[key]
 
 def load_layers_from_dict(train_dict):
     """Layers can  be a list or an object that returns a list."""

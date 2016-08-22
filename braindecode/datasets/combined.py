@@ -5,7 +5,6 @@ from braindecode.mywyrm.clean import clean_train_test_cnt
 import logging
 from braindecode.datasets.loaders import BBCIDataset
 from braindecode.datasets.signal_processor import SignalProcessor
-from braindecode.util import FuncAndArgs
 from braindecode.mywyrm.processing import select_marker_classes,\
     select_marker_epoch_range, select_ival_with_markers
 log = logging.getLogger(__name__)
@@ -29,8 +28,12 @@ class CombinedCntSets(object):
     def __init__(self, set_args, load_sensor_names,
         sensor_names, 
         cnt_preprocessors, marker_def):
+        """ Per Set, set_args should be (filename, constructor, start_stop, 
+                segment_ival, end_marker_def)"""
         self.__dict__.update(locals())
         del self.self
+        if self.load_sensor_names == 'all':
+            self.load_sensor_names = None
     
     def ensure_is_loaded(self):
         if not hasattr(self, 'sets'):
@@ -89,7 +92,9 @@ class CombinedCntSets(object):
                      dict(segment_ival=segment_ival)]
                 additional_cnt_preprocs.append(select_ival)
                 
-            this_cnt_preprocs = self.cnt_preprocessors + additional_cnt_preprocs
+            
+            this_cnt_preprocs = (list(self.cnt_preprocessors) +
+                additional_cnt_preprocs)
             signal_proc= SignalProcessor(
                 set_loader=loader,
                 segment_ival=segment_ival,

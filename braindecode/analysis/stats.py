@@ -313,4 +313,19 @@ def cov(x,y):
     this_cov = np.dot(demeaned_x,demeaned_y.T) / (y.shape[1] -1)
     return this_cov
     
+def wrap_reshape_topo(stat_fn, topo_a, topo_b, axis_a, axis_b):
+    other_axis_a = [i for i in xrange(topo_a.ndim) if i not in axis_a]
+    other_axis_b = [i for i in xrange(topo_b.ndim) if i not in axis_b]
+    transposed_topo_a = topo_a.transpose(tuple(other_axis_a) + tuple(axis_a))
+    n_stat_axis_a = [topo_a.shape[i] for i in axis_a]
+    n_other_axis_a = [topo_a.shape[i] for i in other_axis_a]
+    flat_topo_a = transposed_topo_a.reshape(np.prod(n_other_axis_a), np.prod(n_stat_axis_a))
+    transposed_topo_b = topo_b.transpose(tuple(other_axis_b) + tuple(axis_b))
+    n_stat_axis_b = [topo_b.shape[i] for i in axis_b]
+    n_other_axis_b = [topo_b.shape[i] for i in other_axis_b]
+    flat_topo_b = transposed_topo_b.reshape(np.prod(n_other_axis_b), np.prod(n_stat_axis_b))
+    assert np.array_equal(n_stat_axis_a, n_stat_axis_b)
+    stat_result = stat_fn(flat_topo_a, flat_topo_b)
+    topo_result = stat_result.reshape(tuple(n_other_axis_a) + tuple(n_other_axis_b))
+    return topo_result
     

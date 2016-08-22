@@ -6,6 +6,41 @@ from _collections import deque
 log = logging.getLogger(__name__)
 
 class MaxNormConstraint():
+    def __init__(self, layer_names_to_norms=None, default_norm=None):
+        assert (layer_names_to_norms is not None) or (default_norm is not None)
+        self.layer_names_to_norms = layer_names_to_norms
+        self.default_norm = default_norm
+
+    def modify(self, updates, final_layer):
+        all_layers = lasagne.layers.get_all_layers(final_layer)
+        
+        if self.layer_names_to_norms is None:
+            layer_names_to_norms = dict()
+        else:
+            layer_names_to_norms = deepcopy(self.layer_names_to_norms)
+        normed_layer_names = set()
+        for layer in all_layers:
+            # Either in dict or there is default norm, or nothing
+            if layer.name in layer_names_to_norms:
+                norm = layer_names_to_norms[layer.name]
+                normed_layer_names.add(layer.name)
+                log.info("Constraining {:s} to norm {:.2f}".format(
+                    layer.name, norm))
+                updates[layer.W] = lasagne.updates.norm_constraint(
+                    updates[layer.W], max_norm=norm)
+            elif hasattr(layer, 'W') and self.default_norm is not None:
+                log.info("Constraining {:s} to norm {:.2f}".format(
+                    layer.name, self.default_norm))
+                updates[layer.W] = lasagne.updates.norm_constraint(
+                    updates[layer.W], max_norm=self.default_norm)
+        assert np.array_equal(sorted(layer_names_to_norms.keys()),
+            sorted(normed_layer_names)), ("All layers specified in max "
+            "col norm should be specified, nonexisting layers", 
+            np.setdiff1d(layer_names_to_norms.keys(), normed_layer_names))
+            
+        return updates 
+ 
+class MaxNormConstraintAll2():
     def __init__(self, layer_names_to_norms):
         self.layer_names_to_norms = layer_names_to_norms
 
@@ -21,13 +56,19 @@ class MaxNormConstraint():
                     layer.name, norm))
                 updates[layer.W] = lasagne.updates.norm_constraint(
                     updates[layer.W], max_norm=norm)
+            elif hasattr(layer, 'W'):
+                norm = 2.0
+                log.info("Constraining {:s} to norm {:.2f}".format(
+                    layer.name, norm))
+                updates[layer.W] = lasagne.updates.norm_constraint(
+                    updates[layer.W], max_norm=norm)
+                
         assert np.array_equal(sorted(layer_names_to_norms.keys()),
             sorted(normed_layer_names)), ("All layers specified in max "
             "col norm should be specified, nonexisting layers", 
             np.setdiff1d(layer_names_to_norms.keys(), normed_layer_names))
             
         return updates
-    
     
 class MaxNormConstraintWithDefaults(object):
     """ Uses max norm constraint of 2.0 on all intermediate layers

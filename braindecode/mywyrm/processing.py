@@ -248,13 +248,16 @@ def create_cnt_y(cnt, segment_ival, marker_def=None, timeaxis=-2):
         "Expect only one label per class, otherwise rewrite...")
 
     classes = sorted([labels[0] for labels in marker_def.values()])
-    assert classes == range(1,n_classes+1), ("Expect class labels to be "
-        "from 1 to n_classes (due to matlab 0-based indexing)")
-    
-    cnt = select_marker_classes(cnt,
-        classes)
+    cnt = select_marker_classes(cnt, classes)
     event_samples_and_classes = get_event_samples_and_classes(cnt,
         timeaxis=timeaxis)
+    # In case classes are not from 1...n_classes
+    # lets map them to be from 1 .. n_classes
+    if classes != range(1,n_classes+1):
+        for i_marker in xrange(len(event_samples_and_classes)):
+            old_class = event_samples_and_classes[i_marker][1]
+            new_class = classes.index(old_class) + 1 #+1 for matlab-based indexing
+            event_samples_and_classes[i_marker][1] = new_class
     return get_y_signal(event_samples_and_classes,n_samples=len(cnt.data),
                        n_classes=n_classes, segment_ival=segment_ival,
                        fs=cnt.fs)
@@ -273,7 +276,8 @@ def get_event_samples_and_classes(cnt, timeaxis=-2):
 
 def get_y_signal(event_samples_and_classes, n_samples, n_classes, segment_ival, fs):
     i_samples, labels = zip(*event_samples_and_classes)
-        
+    """ Expects classes in event_samples_and_classes to be from
+    1 to n_classes (inclusive)"""
     # Create y "signal", first zero everywhere, in loop assign 
     #  1 to where a trial for the respective class happened
     # (respect segmentation interval for this)

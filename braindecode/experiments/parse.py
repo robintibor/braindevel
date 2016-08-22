@@ -7,6 +7,7 @@ import numpy as np
 import re
 from braindecode.util import add_message_to_exception, merge_dicts
 import logging
+import pprint
 log = logging.getLogger(__name__)
 
 def transform_vals_to_string_constructor(loader, node):
@@ -318,7 +319,7 @@ def process_templates(templates, parameters):
             template = templates[a_needed_template_name]
             for template_name in templates:
                 if (('$' + template_name) in template and 
-                        template_name not in needed_template_names):
+                        (template_name not in needed_template_names)):
                     needed_template_names.append(template_name)
                     new_template_found = True
     
@@ -395,15 +396,20 @@ def substitute_check_superfluous_mappings(string, params, ignore_unused=()):
     needed_patterns = get_placeholders(string)
     superfluous_params = set(params.keys()) - set(needed_patterns)
     superfluous_params = superfluous_params - set(ignore_unused)
+    # for now hack, remove this again!! in process templates have to take care of new templates
+    superfluous_params -= set(['n_increase_filter_factor', 'conv_nonlin', 'n_start_filters',
+        'n_post_filters'])
     if len(superfluous_params) > 0:
         raise ValueError("Unused parameters: {:s}".format(
                 str(list(superfluous_params))))
     return sustitution
     
 def get_placeholders(string):
-    # Now check if any params were superfluous
     id_pattern = '\$' + Template.idpattern # '$[_a-z][_a-z0-9]*'
+    #print ("id pattern")
+    #print(id_pattern)
     needed_patterns = re.findall(id_pattern, string)
     # remove dollar at start
     needed_patterns = [p[1:] for p in needed_patterns]
+    #print("needed patterns", needed_patterns)
     return needed_patterns

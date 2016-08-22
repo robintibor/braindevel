@@ -30,12 +30,12 @@ def create_env_corrs(folder_name, params, start, stop):
 def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
     # Load env first to make sure env is actually there.
     result = np.load(base_name + '.result.pkl')
-    print base_name
     env_file_name = dataset_to_env_file(result.parameters['dataset_filename'])
     exp, model = load_exp_and_model(base_name)
     exp.dataset.load()
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
+    rand_model = create_experiment(base_name + '.yaml').final_layer
     for i_layer in i_all_layers:
         log.info("Layer {:d}".format(i_layer))
         trial_env = load_trial_env(env_file_name, model, 
@@ -43,7 +43,6 @@ def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
         topo_corrs = compute_trial_topo_corrs(model, i_layer, train_set, 
             exp.iterator, trial_env)
         
-        rand_model = create_experiment(base_name + '.yaml').final_layer
         rand_topo_corrs = compute_trial_topo_corrs(rand_model, i_layer, train_set, 
             exp.iterator, trial_env)
         file_name_end = '{:d}.npy'.format(i_layer)

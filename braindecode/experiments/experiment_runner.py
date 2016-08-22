@@ -24,6 +24,7 @@ from braindecode.datahandling.splitters import FixedTrialSplitter,\
     SeveralSetsSplitter
 import logging
 from braindecode.util import dict_equal, touch_file
+from braindecode.paper.confusion_mat import compute_pred_target_labels_for_cnt_exp
 log = logging.getLogger(__name__)
 
 
@@ -344,14 +345,34 @@ class ExperimentsRunner:
             exp.setup()
             exp.run()
             endtime = time.time()
+            
+            
+            model = exp.final_layer
+            # very hacky :)
+            if exp.monitors[2].__class__.__name__ == 'CntTrialMisclassMonitor':
+                
+                predictions=[0,3,1,2,3,4],
+                targets=[3,4,1,2,3,4]
+                # disabled due to error/crash :( .. maybe move it
+                # to after everything is saved?
+                #predictions, targets = (
+                #     compute_pred_target_labels_for_cnt_exp(exp, model))
+            else:
+                # dummy predictions and targets
+                predictions=[0,3,1,2,3,4],
+                targets=[3,4,1,2,3,4]
+                
             result_or_results = Result(parameters=train_dict['original_params'],
                 templates={}, 
                 training_time=endtime - starttime, 
                 monitor_channels=exp.monitor_chans, 
-                predictions=[0,3,1,2,3,4],
-                targets=[3,4,1,2,3,4])
-            model = exp.final_layer
+                predictions=predictions,
+                targets=targets)
+               
+                
         else: # cross validation
+            assert False, ("cross validation not used in long time, not up to date"
+                " for example targets predictions not added")
             # default 5 folds for now
             n_folds = train_dict['num_cv_folds']
             exp_cv = ExperimentCrossValidation(final_layer, 
@@ -415,9 +436,6 @@ class ExperimentsRunner:
                 final_layer, experiment_save_id)
         elif isinstance(splitter, SeveralSetsSplitter):
             pass # nothing to do in this case
-        elif hasattr(splitter, 'use_test_as_valid') and splitter.use_test_as_valid:
-            raise ValueError("Splitter has use test as valid set, but unknown dataset type" 
-                "" + str(dataset.__class__.__name__))
          
     def _save_train_string(self, train_string, experiment_index):
         file_name = self._base_save_paths[experiment_index] + ".yaml"
