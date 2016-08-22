@@ -7,28 +7,44 @@ from lasagne.layers.conv import Conv2DLayer
 from jinja2.runtime import identity
 from braindecode.veganlasagne.layers import FinalReshapeLayer,\
     get_n_sample_preds
+from braindecode.veganlasagne.batch_norm import batch_norm
 
 class MergedNet(object):
-    def __init__(self, networks, n_features_per_net, n_classes):
+    def __init__(self, networks, n_features_per_net, n_classes,
+            batch_norm_before_merge=False,
+            nonlin_before_merge=identity):
         self.networks = networks
         self.n_features_per_net = n_features_per_net
         self.n_classes = n_classes
+        self.batch_norm_before_merge = batch_norm_before_merge
+        self.nonlin_before_merge = nonlin_before_merge
+        
         
     def get_layers(self):
+        # make into list if nonlin only one
+        if not hasattr(self.nonlin_before_merge, '__len__'):
+            nonlins_before_merge = ((self.nonlin_before_merge,) *
+                len(self.networks))
+        else:
+            nonlins_before_merge = self.nonlin_before_merge
         layers_per_net = [net.get_layers() for net in self.networks]
         # Check that all have same number of sample preds
         n_sample_preds = get_n_sample_preds(layers_per_net[0][-1])
         for layers in layers_per_net:
             assert get_n_sample_preds(layers[-1]) == n_sample_preds
         # remove dense softmax replace by dense linear
-        reduced_layers = [replace_dense_softmax_by_dense_linear(all_l, n_f) 
-                          for all_l, n_f in zip(layers_per_net, self.n_features_per_net)]
+        reduced_layers = [replace_dense_softmax_by_dense_linear(all_l, n_f, 
+            nonlin_before_merge=nonlin,
+            batch_norm_before_merge=self.batch_norm_before_merge) 
+              for all_l, n_f, nonlin in zip(layers_per_net, self.n_features_per_net,
+                  nonlins_before_merge)]
         # merge to all get same input
         input_first_net = reduced_layers[0][0]
         for layers in reduced_layers:
+            # check if input shape is equal
             input_net = layers[0]
             assert np.array_equal(input_first_net.shape, input_net.shape)
-            # check any that have reference to this input layer,
+            # for any layers that have reference to this input layer,
             # set reference to common input layer
             for l in layers:
                 if hasattr(l, 'input_layer'):
@@ -48,7 +64,8 @@ class MergedNet(object):
             nonlinearity=softmax)
         return lasagne.layers.get_all_layers(l_merged)
 
-def replace_dense_softmax_by_dense_linear(all_layers, n_features):
+def replace_dense_softmax_by_dense_linear(all_layers, n_features,
+        nonlin_before_merge, batch_norm_before_merge):
     """Replace dense/conv (n_classes) -> reshape -> softmax
     by         dense/conv (n_features) -> reshape"""
     
@@ -67,8 +84,11 @@ def replace_dense_softmax_by_dense_linear(all_layers, n_features):
     assert input_to_reshape.stride == (1,1)
     new_input_to_reshape = Conv2DLayer(input_to_reshape.input_layer,
            num_filters=n_features,
-            filter_size=input_to_reshape.filter_size, nonlinearity=identity,
+            filter_size=input_to_reshape.filter_size, nonlinearity=nonlin_before_merge,
             name='final_dense')
+    if batch_norm_before_merge:
+        new_input_to_reshape = batch_norm(new_input_to_reshape, 
+            alpha=0.1,epsilon=0.01)
 
     new_reshape_l = FinalReshapeLayer(new_input_to_reshape)
     return lasagne.layers.get_all_layers(new_reshape_l)

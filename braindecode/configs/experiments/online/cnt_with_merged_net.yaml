@@ -116,7 +116,7 @@
                 !!python/name:braindecode.mywyrm.processing.exponential_demean_cnt , 
                 { }
         ],
-            ],
+            ], 
         resample_cz: 
         [[
                 !!python/name:braindecode.mywyrm.processing.resample_cnt , 
@@ -145,6 +145,8 @@
         markers_10_class: {'Right Hand': [1], 'Left Hand': [2], 'Rest': [3],
            'Feet': [4], 'Face': [5], 'Navigation': [6], 'Music': [7],
             'Rotation': [8], 'Subtraction': [9], 'Words': [10]},
+        markers_5_class: {'Right Hand': [1], 'Rest': [3],
+           'Feet': [4], 'Rotation': [8], 'Words': [10]},
         tied_neighbours: !obj:braindecode.util.FuncAndArgs {
             func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
             loss_expressions: [$categorical_crossentropy,
@@ -157,8 +159,7 @@
          'C1', 'Cz', 'C2', 'C4', 'C6', 'T8', 'M2', 'TP7', 'CP5', 'CP3',
          'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1',
          'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POz', 'PO4',
-         'PO6', 'PO8', 'O1', 'Oz', 'O2']
-,
+         'PO6', 'PO8', 'O1', 'Oz', 'O2'],
          nico_C_sensors: ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6',
           'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz',
           'CP2', 'CP4', 'CP6'],
@@ -174,8 +175,8 @@
         valid_set_fraction: [0.2],
         cnt_preprocessors: [$resample_bandpass_cz_standardize],
         resample_fs: [250], 
-        load_sensor_names: [$dry_sensors],
-        sensor_names: ["null"],
+        #load_sensor_names: [$dry_sensors],
+        #sensor_names: ["null"],
         cleaner: [$no_cleaner],
         dataset: [$combined_cnt_set],
         low_cut_off_hz: ['null',4],
@@ -193,70 +194,51 @@
         
         
         variants: [[{
-            variants: [[
-            {
-                low_cut_off_hz: [4],
-                cnt_preprocessors: [$resample_car_bandpass_standardize],
-                load_sensor_names: [$nico_sensors],
-            }]],
-            max_increasing_epochs: [50],
+#            variants: [[
+#            {
+#                low_cut_off_hz: [4],
+#                cnt_preprocessors: [$resample_car_bandpass_standardize],
+#                load_sensor_names: [$nico_sensors],
+#            }]],
+            max_increasing_epochs: [80],
             max_epochs: [200],
-            #'data/robot-hall/NiRiNBD1S001_ds10_realMovement.BBCI.mat',
-                filenames: [[  
-                'data/robot-hall/NiRiNBD1S001_ds10_imagMovement.BBCI.mat',
-                'data/robot-hall/NiRiNBD1S001_ds10_imagMovement.BBCI.mat'
-                ]],
-                load_sensor_names: [$nico_C_sensors],
+            filenames: [[  
+                'data/robot-hall/NiRiNBD2S001R02_ds10_1-8.BBCI.mat',
+                'data/robot-hall/NiRiNBD3S001R01_ds10_1-10.BBCI.mat',
+                'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
+                'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
+            ]],
+            load_sensor_names: [$nico_C_sensors, $nico_sensors],
+            sensor_names: ["null"],
+            marker_def: [$markers_5_class],
+            n_classes: [5],
                 
-                set_types: [[
-                #'bbci',
+            set_types: [[
+                'bbci',
+                'bbci',
                 'bbci',
                 'bbci',
                 ]],
-                #[0,null],
-                trial_ranges: ["[
+            trial_ranges: ["[
+                   [0,null],
+                   [0,null],
                    [0,400],
                    [400,null],
                 ]"],
-                #[1500,4000],
-                all_segment_ivals: [[
+                
+            all_segment_ivals: [[
+                    [1500,4000],
+                    [1500,4000],
                     [1500,4000],
                     [0,4000],
                 ],
                 ],
-                end_marker_defs: ["[ 
+            end_marker_defs: ["[ 
                 null,
                 null,
-            ]"],#null,
-            variants: [[ {
-            filenames: [[  
-                'data/robot-hall/NiRiNBD2S001R02_ds10_1-8.BBCI.mat',
-                'data/robot-hall/NiRiNBD2S001R02_ds10_1-8.BBCI.mat',
-                ]],
-                load_sensor_names: [$nico_C_sensors],
-                marker_def: [$markers_10_class],
-                n_classes: [10],
-                set_types: [[
-                'bbci',
-                'bbci',
-                ]],
-                #[0,null],
-                trial_ranges: ["[
-                   [0,600],
-                   [600,null],
-                ]"],
-                #[1500,4000],
-                all_segment_ivals: [[
-                    [1500,4000],
-                    [0,4000],
-                ],
-                ],
-                end_marker_defs: ["[ 
                 null,
                 null,
-            ]"],#null,
-            }
-            ]]
+            ]"],
         }]],
         ignore_unused: [['drop_p', 'cleaner', 'test_cleaner', 
             'test_filename', 'loader_type', 'low_cut_hz',
