@@ -58,9 +58,8 @@
 #            set_cz_to_zero: [True],
 #            cleaner: [$max_abs_cleaner],
 #            test_cleaner: [$max_abs_cleaner],
-#            variants: [[{
-#                threshold: [400],
-#            }]]
+#            max_abs_threshold: [800],
+#            trial_start:    [500],
 #        },
         
         {

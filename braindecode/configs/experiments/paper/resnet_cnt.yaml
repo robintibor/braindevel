@@ -16,6 +16,16 @@
                 },
             ]
         },
+        tied_neighbours_decay: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [$categorical_crossentropy,
+                !!python/name:braindecode.veganlasagne.objectives.tied_neighbours_cnt_model ,
+                !obj:braindecode.util.FuncAndArgs {
+                    func: !!python/name:braindecode.veganlasagne.objectives.weight_decay ,
+                    factor: $l2_factor
+                },
+            ]
+        },
         categorical_crossentropy_decay: !obj:braindecode.util.FuncAndArgs {
             func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
             loss_expressions: [$categorical_crossentropy,
@@ -31,7 +41,7 @@
     {
         input_time_length: [1000],
         n_sample_preds : [500], # will be overwritten anyways
-        loss_expression: [$safe_tied_neighbours_decay],
+        loss_expression: [$tied_neighbours_decay],
         l2_factor: [1e-4],
         n_first_filters: [48],
         first_filter_length: [3],
@@ -41,7 +51,7 @@
         n_layers_per_block: [2],
         final_aggregator: ['pool'],
         drop_before_pool: [False],
-        final_nonlin: [$log_softmax],
+        final_nonlin: [$safe_softmax],
         survival_prob: [1],
         split_first_layer: [True],
         add_after_nonlin: [False],

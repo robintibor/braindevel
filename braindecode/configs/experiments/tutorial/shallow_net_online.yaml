@@ -1,0 +1,152 @@
+{
+    templates: {
+        resample_bandpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
+                {'low_cut_hz': $low_cut_off_hz,
+                'high_cut_hz': $high_cut_hz,
+                filt_order: $filt_order}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ],
+            ],
+        combined_cnt_set: !obj:braindecode.datasets.combined.CombinedCntSets {
+            set_args: !!python/object/apply:zip [
+                $filenames, $set_types, 
+                $trial_ranges, $all_segment_ivals, $end_marker_defs],
+            load_sensor_names: $load_sensor_names,
+            sensor_names: $sensor_names,
+            marker_def: $marker_def,
+            cnt_preprocessors: $cnt_preprocessors,
+        },
+        # not used 
+        # end_markers_movement_class: {'01 - Right Hand': [5], 
+        #'02 - Left Hand': [6], '03 - Rest': [7],
+        #   '04 - Feet': [8},
+        markers_10_class: {'1- Right Hand': [1], '2 - Left Hand': [2], '3 - Rest': [3],
+           '4 - Feet': [4], '5 - Face': [5], '6 - Navigation': [6], '7 - Music': [7],
+            '8 - Rotation': [8], '9 - Subtraction': [9], '10 - Words': [10] },
+        markers_movement_class:  {'01 - Right Hand': [1], '02 - Left Hand': [2], '03 - Rest': [3],
+           '04 - Feet': [4]},
+         nico_C_sensors: ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6',
+          'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz',
+          'CP2', 'CP4', 'CP6'],
+          # in_sensors will be replaced automatically 
+          shallow_net: !obj:braindecode.models.shallow_fbcsp.ShallowFBCSPNet {
+            in_chans: in_sensors,
+            input_time_length: $input_time_length,
+            n_classes: $n_classes,
+          },
+          several_sets_splitter: !obj:braindecode.datahandling.splitters.SeveralSetsSplitter {
+            use_test_as_valid: $use_test_as_valid,
+            valid_set_fraction: $valid_set_fraction,
+        },
+        cnt_iterator: !obj:braindecode.datahandling.batch_iteration.CntWindowTrialIterator {
+            batch_size: $batch_size,
+            input_time_length: $input_time_length,
+            n_sample_preds: $n_sample_preds,
+        },
+        sample_trial_monitors: [
+                !obj:braindecode.veganlasagne.monitors.LossMonitor {},
+                !obj:braindecode.veganlasagne.monitors.MisclassMonitor {
+                    chan_name: 'sample_misclass'},
+                !obj:braindecode.veganlasagne.monitors.CntTrialMisclassMonitor { 
+                    input_time_length: $input_time_length},
+                !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
+        ],
+        categorical_crossentropy: !!python/name:lasagne.objectives.categorical_crossentropy ,
+        adam: !!python/name:lasagne.updates.adam ,
+        max_norm_modifier: !obj:braindecode.veganlasagne.update_modifiers.MaxNormConstraint {
+            default_norm: $default_norm,
+        },
+       
+    },
+    variants: [[{ 
+        # where results will be saved
+        save_path: ['data/models/online/tutorial/'],
+        
+        filenames: [[  
+                'data/robot-hall/NiRiNBD2S001R02_ds10_1-8.BBCI.mat',
+                'data/robot-hall/NiRiNBD2S001R02_ds10_1-8.BBCI.mat',
+        ]],
+        set_types: [[
+            'bbci',
+            'bbci',
+        ]],
+        all_segment_ivals: [[
+            [1500, 4500],
+            [0, 4000],
+            ],
+        ],
+        # no end markers
+        end_marker_defs: ["[ 
+                null,
+                null,
+        ]"],
+        load_sensor_names: [$nico_C_sensors],
+        sensor_names: [$nico_C_sensors],
+        cnt_preprocessors: [$resample_bandpass_standardize],
+        resample_fs: [250],
+        
+        # try both 0 and 4
+        low_cut_off_hz: [0,4],
+        high_cut_hz: ['null'],
+        filt_order: [4],
+        
+        dataset: [$combined_cnt_set],
+        dataset_splitter: [$several_sets_splitter],
+        
+        preprocessor: ['null'],
+        
+        layers: [$shallow_net],
+        input_time_length: [750],
+        
+        valid_set_fraction: [0.2],
+        use_test_as_valid: [False],
+        
+        batch_size: [60],
+        n_sample_preds: [200], # will be replaced automatically
+        
+        iterator: [$cnt_iterator],
+        monitors: [$sample_trial_monitors],
+
+        loss_expression: [$categorical_crossentropy],
+        updates_expression: [$adam],
+        updates_modifier: [$max_norm_modifier],
+        default_norm: [2.],
+
+        early_stop_chan: ['valid_misclass'],
+        max_increasing_epochs: [15],
+        max_epochs: [25],
+        run_after_early_stop: [true],
+        batch_modifier: ['null'],
+        variants: [[
+        # with 10 classes
+        {
+            # null indicates till end
+            trial_ranges: [
+            "[[0,600], [600,null]]"
+            ],
+            marker_def: [$markers_10_class],
+            n_classes: [10],
+        }, 
+        # with only movement classes,
+        # adjust trial ranges...
+        {
+            trial_ranges: [
+            "[[0,300], [300,null]]"
+            ],
+            marker_def: [$markers_movement_class],
+            n_classes: [4],
+        }]],
+        # not used but needs to be given
+        num_cv_folds: [-1],
+        
+    }]],
+}

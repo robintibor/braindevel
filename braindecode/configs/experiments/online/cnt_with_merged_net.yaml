@@ -142,11 +142,13 @@
             'FC1', 'FCz', 'FC2', 'C3', 'C1', 'Cz', 'C2', 'C4', 'CP3', 'CP1',
              'CPz', 'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz'],
         end_markers_4_class: {'1': [5], '2': [6], '3': [7], '4': [8]},
-        markers_10_class: {'Right Hand': [1], 'Left Hand': [2], 'Rest': [3],
-           'Feet': [4], 'Face': [5], 'Navigation': [6], 'Music': [7],
-            'Rotation': [8], 'Subtraction': [9], 'Words': [10]},
-        markers_5_class: {'Right Hand': [1], 'Rest': [3],
-           'Feet': [4], 'Rotation': [8], 'Words': [10]},
+        markers_10_class: !!python/name:braindecode.datasets.class_10.marker_10_class ,
+        markers_5_class: !!python/name:braindecode.datasets.class_10.marker_5_class ,
+        markers_movement_class:  {'01 - Right Hand': [1], '02 - Left Hand': [2], '03 - Rest': [3],
+           '04 - Feet': [4]},
+        markers_three_class:  {'01 - Right Hand': [1], '03 - Rest': [3],
+            '04 - Feet': [4]},
+        markers_two_class:  {'01 - Right Hand': [1], '04 - Feet': [4]},
         tied_neighbours: !obj:braindecode.util.FuncAndArgs {
             func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
             loss_expressions: [$categorical_crossentropy,
@@ -165,7 +167,7 @@
           'CP2', 'CP4', 'CP6'],
     },
     variants: [[{ 
-        save_path: ['data/models/online/cnt/merged-net/'],
+        save_path: ['data/models/online/cnt/merged-net/half-trial/'],
         # Remove from params basically..
         test_filename: ["null"], # remove this from params basically.. its coming from base filenames :)
         dataset_splitter: [$several_sets_splitter],
@@ -186,9 +188,11 @@
         
         batch_size: [60], # make it faster(?)
         n_sample_preds: [200], # will be overwritten anyways
-        input_time_length: [800],
+        input_time_length: [771],
         layers: [$merged_net],
         use_test_as_valid: [False], # False
+        load_sensor_names: [$nico_sensors],
+        sensor_names: ["null"],
                 
         
         
@@ -208,29 +212,20 @@
                 'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
                 'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
             ]],
-            load_sensor_names: [$nico_C_sensors, $nico_sensors],
+            load_sensor_names: [$nico_sensors],
             sensor_names: ["null"],
-            marker_def: [$markers_5_class],
-            n_classes: [5],
-                
+            
             set_types: [[
                 'bbci',
                 'bbci',
                 'bbci',
                 'bbci',
                 ]],
-            trial_ranges: ["[
-                   [0,null],
-                   [0,null],
-                   [0,400],
-                   [400,null],
-                ]"],
-                
             all_segment_ivals: [[
-                    [1500,4000],
-                    [1500,4000],
-                    [1500,4000],
-                    [0,4000],
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
                 ],
                 ],
             end_marker_defs: ["[ 
@@ -249,52 +244,110 @@
             'eog_sensors', 'rejection_var_ival', 'num_split_folds',
             'misclass_monitor', 'trial_stop', 'max_abs_threshold',
             'rejection_blink_ival', 'whisker_percent', 'rejection_max_abs_ival']],
-#        max_increasing_epochs: [40],
-#        max_epochs: [30],#250],
-        
-#        filenames: [[
-#            'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
-#            'data/four-sec-dry-32-sensors/cabin/Martin_trainingS001R01_1-4.BBCI.mat',
-#            'data/four-sec-dry-32-sensors/cabin/Martin_sahara32_realMovementS001R01_ds10_1-7.BBCI.mat',
-#            'data/four-sec-dry-32-sensors/cabin/MaVo2_sahara32_realMovementS001R02_ds10_1-5.BBCI.mat',
-#            'data/four-sec-dry-32-sensors/cabin/MaVo_sahara32_realMovement_onlineFeedback_20160315S001R01_1-9.BBCI.mat',
-#            'data/four-sec-dry-32-sensors/cabin/MaVo_sahara32_realMovement_onlineFeedback_20160407S001R01_1-5.BBCI.mat'
-#            ]],
-#        set_types: [[
-#        'bbci',
-#        'bbci',
-#        'bbci',
-#        'bbci',
-#        'bbci',
-#        'bbci',
-#        ]],
-#        
-#        trial_ranges: ["[
-#           [0, 300],
-#           [0,null],
-#           [0,null],
-#           [0,null],
-#           [0,null],
-#           [0,null],
-#        ]"],
-#        
-#        all_segment_ivals: [[
-#            [1000,4000],
-#            [1000,4000],
-#            [500,0],
-#            [500,0],
-#            [0,0],
-#            [0,0],
-#        ],
-#        ],
-#        end_marker_defs: ["[
-#            null,
-#            null,
-#            {'1': [5], '2': [6], '3': [7], '4': [8]},
-#            {'1': [5], '2': [6], '3': [7], '4': [8]},
-#            {'1': [5], '2': [6], '3': [7], '4': [8]},
-#            {'1': [5], '2': [6], '3': [7], '4': [8]},
-#        ]"],
-        
+            variants: [[{
+                marker_def: [$markers_movement_class],
+                n_classes: [4],
+            trial_ranges: ["[
+                   [0,null],
+                   [0,null],
+                   [0,null],
+                   [0,200],
+                   [200,null],
+                ]"],
+                
+            },
+            {
+                marker_def: [$markers_three_class],
+                n_classes: [3],
+                trial_ranges: ["[
+                   [0,null],
+                   [0,null],
+                   [0,null],
+                   [0, 150],
+                   [150, null],
+                ]"],
+                
+            },
+            {
+                marker_def: [$markers_two_class],
+                n_classes: [2],
+                trial_ranges: ["[
+                   [0,null],
+                   [0,null],
+                   [0,null],
+                   [0, 100],
+                   [100, null],
+                ]"],
+                
+            }],
+            [
+            {
+            
+            filenames: [[  
+                'data/robot-hall/NiRiNBD1S001R01_ds10_1-3_real.BBCI.mat',
+                'data/robot-hall/NiRiNBD2S001R02_ds10_1-8.BBCI.mat',
+                'data/robot-hall/NiRiNBD3S001R01_ds10_1-10.BBCI.mat',
+                'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
+                'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
+            ]],
+            set_types: [[
+                'bbci',
+                'bbci',
+                'bbci',
+                'bbci',
+                'bbci',
+                ]],
+            all_segment_ivals: [[
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                ],
+                ],
+                
+                end_marker_defs: ["[ 
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                ]"],
+            
+            },
+            {
+                filenames: [[  
+                'data/robot-hall/NiRiNBD1S001R01_ds10_1-3_real.BBCI.mat',
+                'data/robot-hall/NiRiNBD2S001R02_ds10_1-8.BBCI.mat',
+                'data/robot-hall/NiRiNBD3S001R01_ds10_1-10.BBCI.mat',
+                'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
+                ]],
+                set_types: [[
+                    'bbci',
+                    'bbci',
+                    'bbci',
+                    'bbci',
+                    ]],
+                all_segment_ivals: [[
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                    ],
+                    ],
+                end_marker_defs: ["[ 
+                    null,
+                    null,
+                    null,
+                    null,
+                ]"],
+                trial_ranges: ["[
+                       [0,null],
+                       [0,null],
+                       [0,null],
+                       [0, null],
+                    ]"],
+            }
+            ]],
     }]],
 }
