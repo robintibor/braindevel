@@ -48,7 +48,6 @@ def load_amp_corrs(with_square, with_square_corr, cov_or_corr):
     clean_mask = np.array(clean_mask)
     return all_corrs, clean_mask
 
-
 def create_meaned_amp_pred_corrs(prefix=''):
     """This takes computed cov_vars and transforms them to corrs 
     and saves corrs."""
@@ -66,44 +65,29 @@ def create_meaned_amp_pred_corrs(prefix=''):
     
     all_base_names = [name.replace('.result.pkl', '')
         for name in result_file_names]
-    clean_mask = []
-    all_corrs = dict()
     if prefix != '':
         prefix = '.' + prefix
     for i_file, base_name in enumerate(all_base_names):
-        # hack: remove this again
-        #log.warn("ADDING OLD AMP CORRS!!")
-        #base_name = base_name.replace("car/", "car/old-amp-corrs/")
         log.info("Loading {:s}".format(results[i_file].parameters['dataset_filename']))
-        if any(s in results[i_file].parameters['dataset_filename'] for s in unclean_sets):
-            clean_mask.append(False)
-        else:
-            clean_mask.append(True)
-        for perturb_name in ('rand_mad', 'rand_std', 'no_dev'):
-            filename_end = '{:s}.{:s}.amp_cov_vars.npz'.format(prefix, perturb_name)
-            filename = base_name + filename_end
-            assert os.path.isfile(filename), "File does not exist: {:s}".format(
-                filename)
-            this_arr = all_corrs.pop(perturb_name, [])
-            npz_file = np.load(filename)
-            this_covs, this_pred_vars, this_amp_vars = np.load(filename)
-            this_covs = npz_file['arr_0']
-            this_pred_vars = npz_file['arr_1']
-            this_amp_vars = npz_file['arr_2']
-            this_corrs = transform_to_corrs(this_covs, this_pred_vars, this_amp_vars)
-            this_arr.append(np.mean(this_corrs, axis=0)) # mean over perturbation samples
-            
-            new_file_name_end = '{:s}.{:s}.amp_cov_var_corrs.npy'.format(prefix,
-                perturb_name)
-            new_filename = base_name + new_file_name_end
-            assert new_filename != filename
-            log.info("Saving {:s}...".format(new_filename))
-            np.save(new_filename, np.mean(this_corrs, axis=0))
-            all_corrs[perturb_name] = this_arr
-            
-    clean_mask = np.array(clean_mask)
-    return all_corrs, clean_mask
+        create_meaned_amp_pred_corrs_for_file(base_name, prefix)
 
+def create_meaned_amp_pred_corrs_for_file(base_name, prefix):
+    for perturb_name in 'no_dev', 'rand_mad', 'rand_std':
+        filename_end = '{:s}.{:s}.amp_cov_vars.npz'.format(prefix, perturb_name)
+        filename = base_name + filename_end
+        assert os.path.isfile(filename), "File does not exist: {:s}".format(filename)
+        npz_file = np.load(filename)
+        this_covs, this_pred_vars, this_amp_vars = np.load(filename)
+        this_covs = npz_file['arr_0']
+        this_pred_vars = npz_file['arr_1']
+        this_amp_vars = npz_file['arr_2']
+        this_corrs = transform_to_corrs(this_covs, this_pred_vars, this_amp_vars)
+        new_file_name_end = '{:s}.{:s}.amp_cov_var_corrs.npy'.format(prefix, 
+            perturb_name)
+        new_filename = base_name + new_file_name_end
+        assert new_filename != filename
+        log.info("Saving {:s}...".format(new_filename))
+        np.save(new_filename, np.mean(this_corrs, axis=0))
 
 def transform_to_corrs(this_covs, this_pred_vars, this_amp_vars):
     this_covs = np.array([a for a in this_covs])
@@ -139,9 +123,6 @@ def load_meaned_amp_pred_corrs(prefix=''):
     clean_mask = []
     all_corrs = dict()
     for i_file, base_name in enumerate(all_base_names):
-        # hack: remove this again
-        #log.warn("ADDING OLD AMP CORRS!!")
-        #base_name = base_name.replace("car/", "car/old-amp-corrs/")
         if any(s in results[i_file].parameters['dataset_filename'] for s in unclean_sets):
             clean_mask.append(False)
         else:
@@ -153,10 +134,6 @@ def load_meaned_amp_pred_corrs(prefix=''):
             assert os.path.isfile(filename)
             this_arr = all_corrs.pop(perturb_name, [])
             this_corrs = np.load(filename)
-            # for some reason sign is switched?!
-            # remove this if bug fixed.
-            # fixed now, can remove if not needed
-            #this_corrs = -this_corrs
             this_arr.append(this_corrs)
             all_corrs[perturb_name] = this_arr
 

@@ -175,13 +175,16 @@ def amplitude_phase_to_complex(amplitude, phase):
     return amplitude * np.cos(phase) + amplitude * np.sin(phase) * 1j
 
 
-def compute_amps_baseline_before(cnt, fs, square, divide_win_length):
+def compute_amps_baseline_before(cnt, square, divide_win_length,
+        marker_def=None):
+    if marker_def is None:
+        marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
     trial_start = 0
     trial_stop = 4000
     win_length_ms = 500
-    win_length = win_length_ms * fs / 1000.0
-    win_stride = win_length_ms * fs / 1000.0
-    marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
+    win_length = win_length_ms * cnt.fs / 1000.0
+    win_stride = win_length_ms * cnt.fs / 1000.0
+    
     epo = segment_dat_fast(cnt,marker_def=marker_def, ival=[trial_start,trial_stop])
     amplitudes = compute_power_spectra(epo.data.transpose(0,2,1),
         window_length=win_length, window_stride=win_stride,
@@ -199,7 +202,7 @@ def compute_amps_baseline_before(cnt, fs, square, divide_win_length):
     assert median_baseline_amp.shape[1] == 1, "should only have one timebin"
     corrected_amps = amplitudes / median_baseline_amp[np.newaxis]
     all_class_amps = []
-    for i_class in xrange(4):
+    for i_class in xrange(len(marker_def)):
         this_class_amps = corrected_amps[epo.axes[0] == i_class]
         class_amp = np.log(np.median(this_class_amps, axis=(0,2)))
         all_class_amps.append(class_amp)
@@ -207,13 +210,17 @@ def compute_amps_baseline_before(cnt, fs, square, divide_win_length):
     all_class_amps = np.array(all_class_amps)
     return all_class_amps
     
-def compute_amps_relative(cnt, fs, square, divide_win_length):
-    amplitudes, classes = compute_trial_amplitudes(cnt,fs,square,divide_win_length)
+def compute_amps_relative(cnt, square, divide_win_length,
+        marker_def=None):
+    if marker_def is None:
+        marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
+    amplitudes, classes = compute_trial_amplitudes(cnt, square,
+        divide_win_length, marker_def)
 
     median_baseline_amp = np.median(amplitudes, axis=(0,))
     corrected_amps = amplitudes / median_baseline_amp[None,:]
     all_class_amps = []
-    for i_class in xrange(4):
+    for i_class in xrange(len(marker_def)):
         this_class_amps = corrected_amps[classes == i_class]
         class_amp = np.log(np.median(this_class_amps, axis=(0,2)))
         all_class_amps.append(class_amp)
@@ -222,15 +229,21 @@ def compute_amps_relative(cnt, fs, square, divide_win_length):
     return all_class_amps
 
 
-def compute_amps_to_rest(cnt, fs, square, divide_win_length):
-    amplitudes, classes = compute_trial_amplitudes(cnt,fs,square,divide_win_length)
+def compute_amps_to_rest(cnt, square, divide_win_length,
+        marker_def=None, rest_class=2):
+    """Assumes class 2 (0-based) is rest class"""
+    if marker_def is None:
+        marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
+    amplitudes, classes = compute_trial_amplitudes(cnt, square, 
+        divide_win_length,
+        marker_def)
 
     # to rest class
-    median_baseline_amp = np.median(amplitudes[classes == 2],
+    median_baseline_amp = np.median(amplitudes[classes == rest_class],
         axis=(0,))
     corrected_amps = amplitudes / median_baseline_amp[None]
     all_class_amps = []
-    for i_class in xrange(4):
+    for i_class in xrange(len(marker_def)):
         this_class_amps = corrected_amps[classes == i_class]
         class_amp = np.log(np.median(this_class_amps, axis=(0,2)))
         all_class_amps.append(class_amp)
@@ -238,12 +251,11 @@ def compute_amps_to_rest(cnt, fs, square, divide_win_length):
     all_class_amps = np.array(all_class_amps)
     return all_class_amps
 
-def compute_trial_amplitudes(cnt, fs,square, divide_win_length):
+def compute_trial_amplitudes(cnt, square, divide_win_length, marker_def):
     trial_start = 0
     trial_stop = 4000
     trial_len = trial_stop - trial_start
-    n_samples_per_trial = trial_len * fs / 1000.0
-    marker_def = dict([(str(i), [i]) for i in xrange(1,5)])
+    n_samples_per_trial = trial_len * cnt.fs / 1000.0
     epo = segment_dat_fast(cnt,marker_def=marker_def,
         ival=[trial_start, trial_stop])
     
@@ -252,12 +264,13 @@ def compute_trial_amplitudes(cnt, fs,square, divide_win_length):
         window_length=n_samples_per_trial, window_stride=n_samples_per_trial,
         divide_win_length=divide_win_length, square_amplitude=square)
     assert amplitudes.shape[2] == 1, "should only have one timebin"
-    classes = epo.axes[0]
-    assert len(classes) == len(amplitudes)
-    return amplitudes, classes
+    trial_classes = epo.axes[0]
+    assert len(trial_classes) == len(amplitudes)
+    return amplitudes, trial_classes
 
-def compute_amps_to_others(cnt, fs, square, divide_win_length):
-    amplitudes, classes = compute_trial_amplitudes(cnt,fs,square,divide_win_length)
+def compute_amps_to_others(cnt, square, divide_win_length):
+    amplitudes, classes = compute_trial_amplitudes(cnt, square,
+        divide_win_length)
     assert amplitudes.shape[2] == 1, "should only have one timebin"
     all_class_amps = []
     for i_class in xrange(4):

@@ -46,7 +46,7 @@ def create_amplitude_perturbation_corrs(basename, with_blocks,
     for name, perturb_fn in (
                             ('no_dev', FuncAndArgs(rand_diff,
                                   with_blocks=with_blocks, #just return 1
-                                  deviation_func=lambda arr,axis,keepdims: 1),
+                                  deviation_func=lambda arr,axis,keepdims: 1)),
                             ('rand_mad',
                               FuncAndArgs(rand_diff,
                                   with_blocks=with_blocks,
@@ -54,7 +54,7 @@ def create_amplitude_perturbation_corrs(basename, with_blocks,
                             ('rand_std', FuncAndArgs(rand_diff,
                                   with_blocks=with_blocks, 
                                   deviation_func=np.std)),
-                             )):
+                             ):
         
         file_name_end_prefix = '.{:d}'.format(n_samples)
         if with_square:

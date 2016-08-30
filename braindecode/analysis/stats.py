@@ -232,6 +232,8 @@ def wilcoxon_signed_rank(a,b):
 
     diff = a - b
     ranks = scipy.stats.rankdata(np.abs(diff), method='average')
+    # unnecessary could have simply used diff in formulas below
+    # also...
     signs = np.sign(diff)
 
     negative_rank_sum = np.sum(ranks * (signs < 0))
@@ -240,14 +242,22 @@ def wilcoxon_signed_rank(a,b):
 
     test_statistic = min(negative_rank_sum, positive_rank_sum)
     # add equals half to both sides... so just add half now
+    # after taking minimum, reuslts in the same
     test_statistic += equal_rank_sum / 2.0
     # make it more conservative by taking the ceil
     test_statistic = int(np.ceil(test_statistic))
     
+    # apparently I start sum with 1
+    # as count_signrank(0,n) is always 1
+    # independent of n
+    # so below is equivalent to
+    # n_as_extreme_sums = 0
+    # and using range(0, test-statistic+1)
     n_as_extreme_sums = 1
     for other_sum in range(1,test_statistic+1):
-        n_as_extreme_sums += count_signrank(other_sum,n_samples)
-
+        n_as_extreme_sums += count_signrank(other_sum, n_samples)
+    # I guess 2* for twosided test?
+    # same as scipy does
     p_val = (2 * n_as_extreme_sums) / (2**float(n_samples))
     return p_val
 
@@ -261,7 +271,16 @@ def sign_test(a,b):
     diffs = a - b
     n_positive = np.sum(diffs > 0)
     n_equal = np.sum(diffs == 0)
-    return scipy.stats.binom_test(n_positive + n_equal, n_samples, p=0.5)
+    # adding half of equal to positive (so implicitly
+    # other half is added to negative)otal
+    n_total = n_positive + (n_equal / 2)
+    # rounding conservatively
+    if n_total < (n_samples / 2):
+        n_total = int(np.ceil(n_total))
+    else:
+        n_total = int(np.floor(n_total))
+    
+    return scipy.stats.binom_test(n_total, n_samples, p=0.5)
 
 def median(a, axis=None, keepdims=False):
     """

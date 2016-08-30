@@ -53,6 +53,6 @@ def load_amps(file_pattern='data/fft-analysis-standardized-cnt/*base_others.npy'
     all_relative_class_amps = np.array(all_relative_class_amps)
     clean_mask = np.array(clean_mask)
     assert len(all_relative_class_amps) == 20
-    # 1750 samples, 500 sampling rate
+    # 1750 samples, 500 sampling rate.. apparently this was done without resampling originally
     freqs_relative = np.fft.rfftfreq(1750,1/500.0)
     return all_relative_class_amps, clean_mask, freqs_relative

@@ -24,7 +24,8 @@ from braindecode.datahandling.splitters import FixedTrialSplitter,\
     SeveralSetsSplitter
 import logging
 from braindecode.util import dict_equal, touch_file
-from braindecode.paper.confusion_mat import compute_pred_target_labels_for_cnt_exp
+from braindecode.paper.confusion_mat import compute_pred_target_labels_for_cnt_exp,\
+    add_labels_to_cnt_exp_result
 log = logging.getLogger(__name__)
 
 
@@ -348,19 +349,10 @@ class ExperimentsRunner:
             
             
             model = exp.final_layer
-            # very hacky :)
-            if exp.monitors[2].__class__.__name__ == 'CntTrialMisclassMonitor':
                 
-                predictions=[0,3,1,2,3,4],
-                targets=[3,4,1,2,3,4]
-                # disabled due to error/crash :( .. maybe move it
-                # to after everything is saved?
-                #predictions, targets = (
-                #     compute_pred_target_labels_for_cnt_exp(exp, model))
-            else:
-                # dummy predictions and targets
-                predictions=[0,3,1,2,3,4],
-                targets=[3,4,1,2,3,4]
+            # dummy predictions targets
+            predictions = [0,3,1,2,3,4]
+            targets = [3,4,1,2,3,4]
                 
             result_or_results = Result(parameters=train_dict['original_params'],
                 templates={}, 
@@ -436,6 +428,14 @@ class ExperimentsRunner:
                 final_layer, experiment_save_id)
         elif isinstance(splitter, SeveralSetsSplitter):
             pass # nothing to do in this case
+
+        # very hacky create predictions targets :)
+        # Not done earlier as there were weird theano crashes
+        if exp.monitors[2].__class__.__name__ == 'CntTrialMisclassMonitor':
+            del dataset
+            del exp
+            add_labels_to_cnt_exp_result(self._base_save_paths[experiment_index])
+        
          
     def _save_train_string(self, train_string, experiment_index):
         file_name = self._base_save_paths[experiment_index] + ".yaml"
