@@ -1,17 +1,5 @@
-{
-templates: {
-    bci_competition_eog_sensors: ['EOG-left', 'EOG-central', 'EOG-right'], 
-},
-variants: [[{
-        
-    eog_sensors: [$bci_competition_eog_sensors],
-    loader_type: [BCICompetition4Set2A],
-    sensor_names: ["null"],
-    resample_fs: [250],
-    n_classes: [4],
-    
-    
-    variants: [
+ {
+ variants: [
     [
         {
             dataset_filename: ['data/bci-competition-iv/2a/A01T.mat'],
@@ -49,6 +37,5 @@ variants: [[{
             dataset_filename: ['data/bci-competition-iv/2a/A09T.mat'],
             test_filename: ['data/bci-competition-iv/2a/A09E.mat'],
         },
-    ]]
-}]]
+    ]],
 }

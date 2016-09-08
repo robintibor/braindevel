@@ -55,9 +55,9 @@ def calculate_csp(epo, classes=None):
     Returns
     -------
     v : 2d array
-        the sorted spacial filters
+        the sorted spatial filters
     a : 2d array
-        the sorted spacial patterns. Column i of a represents the
+        the sorted spatial patterns. Column i of a represents the
         pattern of the filter in column i of v.
     d : 1d array
         the variances of the components
@@ -199,7 +199,8 @@ def select_ival_with_markers(cnt, segment_ival):
     # possibly subtract first element of timeaxis so timeaxis starts at 0 again?
     return cnt
 
-def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def, segment_ival, timeaxis=-2):
+def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
+    segment_ival, timeaxis=-2):
     """Segment ival is : (offset to start marker, offset to end marker)"""
     start_to_end_value = dict()
     for class_name in start_marker_def:
@@ -248,13 +249,17 @@ def create_cnt_y(cnt, segment_ival, marker_def=None, timeaxis=-2):
         "Expect only one label per class, otherwise rewrite...")
 
     classes = sorted([labels[0] for labels in marker_def.values()])
-    assert classes == range(1,n_classes+1), ("Expect class labels to be "
-        "from 1 to n_classes (due to matlab 0-based indexing)")
-    
-    cnt = select_marker_classes(cnt,
-        classes)
+    # restrict to only those markers in marker def
+    cnt = select_marker_classes(cnt, classes)
     event_samples_and_classes = get_event_samples_and_classes(cnt,
         timeaxis=timeaxis)
+    # In case classes are not from 1...n_classes
+    # lets map them to be from 1 .. n_classes
+    if classes != range(1,n_classes+1):
+        for i_marker in xrange(len(event_samples_and_classes)):
+            old_class = event_samples_and_classes[i_marker][1]
+            new_class = classes.index(old_class) + 1 #+1 for matlab-based indexing
+            event_samples_and_classes[i_marker][1] = new_class
     return get_y_signal(event_samples_and_classes,n_samples=len(cnt.data),
                        n_classes=n_classes, segment_ival=segment_ival,
                        fs=cnt.fs)
@@ -273,7 +278,8 @@ def get_event_samples_and_classes(cnt, timeaxis=-2):
 
 def get_y_signal(event_samples_and_classes, n_samples, n_classes, segment_ival, fs):
     i_samples, labels = zip(*event_samples_and_classes)
-        
+    """ Expects classes in event_samples_and_classes to be from
+    1 to n_classes (inclusive)"""
     # Create y "signal", first zero everywhere, in loop assign 
     #  1 to where a trial for the respective class happened
     # (respect segmentation interval for this)
@@ -283,6 +289,7 @@ def get_y_signal(event_samples_and_classes, n_samples, n_classes, segment_ival, 
     trial_stop_offset = int(segment_ival[1] * fs / 1000.0)
 
     unique_labels = sorted(np.unique(labels))
+    print unique_labels
     assert np.array_equal(unique_labels, range(1, n_classes+1)), (
         "Expect labels to be from 1 to n_classes...")
 
@@ -876,14 +883,23 @@ def running_standardize_epo(epo, factor_new=0.9, init_block_size=50):
 def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     """Bandpass cnt signal using butterworth filter.
     Uses lowpass in case low cut hz is exactly zero."""
-    if low_cut_hz == 0:
-        log.info("Using lowpass filter since low cut hz is 0")
+    if (low_cut_hz == 0 or low_cut_hz == None) and (
+        high_cut_hz == None):
+        log.info("Not doing any bandpass, since low 0 or None and "
+            "high None")
+        return cnt.copy()
+    if low_cut_hz == 0 or low_cut_hz == None:
+        log.info("Using lowpass filter since low cut hz is 0 or None")
         return lowpass_cnt(cnt, high_cut_hz, filt_order=filt_order)
+    if high_cut_hz == None:
+        log.info("Using highpass filter since high cut hz is None")
+        return highpass_cnt(cnt, low_cut_hz, filt_order=filt_order)
+        
     nyq_freq = 0.5 * cnt.fs
     low = low_cut_hz / nyq_freq
     high = high_cut_hz / nyq_freq
     b, a = scipy.signal.butter(filt_order, [low, high], btype='bandpass')
-    assert filter_is_stable(a)
+    assert filter_is_stable(a), "Filter should be stable..."
     cnt_bandpassed = lfilter(cnt,b,a)
     return cnt_bandpassed
 

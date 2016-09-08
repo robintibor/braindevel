@@ -284,6 +284,7 @@ class CntTrialMisclassMonitor(Monitor):
             input_time_length=self.input_time_length)
         for start, end in zip(i_trial_starts, i_trial_ends):
             targets = dataset.y[start:end]
+            # assert below seems wrong?
             assert np.sum(np.max(targets, axis=0)) == 1, ("Trial should only "
                  "have one class")
             assert np.sum(targets) == len(targets), ("Every sample should have "
@@ -299,17 +300,17 @@ def compute_preds_per_trial(y, all_preds, all_batch_sizes, input_time_length):
     i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
         y, check_trial_lengths_equal=False,
         input_time_length=input_time_length)
-    all_preds_arr = np.concatenate(all_preds, axis=0)
     i_pred_block = 0
     n_sample_preds = all_preds[0].shape[0] / all_batch_sizes[0]
-    preds_per_block = np.reshape(all_preds_arr, (-1, n_sample_preds,
+    all_preds_arr = np.concatenate(all_preds, axis=0)
+    preds_per_forward_pass = np.reshape(all_preds_arr, (-1, n_sample_preds,
         all_preds_arr.shape[1]))
     preds_per_trial = []
     for i_trial in xrange(len(i_trial_starts)):
         # + 1 since end is inclusive
         # so if trial end is 1 and trial start is 0
         # need two samples (0 and 1)
-        needed_samples = i_trial_ends[i_trial] - i_trial_starts[i_trial] + 1
+        needed_samples = (i_trial_ends[i_trial] - i_trial_starts[i_trial]) + 1
         preds_this_trial = []
         while needed_samples > 0:
             # - needed_samples: only has an effect
@@ -317,14 +318,14 @@ def compute_preds_per_trial(y, all_preds, all_batch_sizes, input_time_length):
             # in the block
             # That can happen since final block of a trial can overlap
             # with block before so we can have some redundant preds 
-            pred_samples = preds_per_block[i_pred_block, -needed_samples:]
+            pred_samples = preds_per_forward_pass[i_pred_block, -needed_samples:]
             preds_this_trial.append(pred_samples)
             needed_samples -= len(pred_samples)
             i_pred_block += 1
 
         preds_this_trial = np.concatenate(preds_this_trial, axis=0)
         preds_per_trial.append(preds_this_trial)
-    assert i_pred_block == len(preds_per_block) , ("Expect that all "
-        "prediction blocks are needed, used {:d}, existing {:d}".format(
-            i_pred_block, len(preds_per_block)))
+    assert i_pred_block == len(preds_per_forward_pass) , ("Expect that all "
+        "prediction forward passes are needed, used {:d}, existing {:d}".format(
+            i_pred_block, len(preds_per_forward_pass)))
     return preds_per_trial

@@ -232,6 +232,8 @@ def wilcoxon_signed_rank(a,b):
 
     diff = a - b
     ranks = scipy.stats.rankdata(np.abs(diff), method='average')
+    # unnecessary could have simply used diff in formulas below
+    # also...
     signs = np.sign(diff)
 
     negative_rank_sum = np.sum(ranks * (signs < 0))
@@ -240,14 +242,22 @@ def wilcoxon_signed_rank(a,b):
 
     test_statistic = min(negative_rank_sum, positive_rank_sum)
     # add equals half to both sides... so just add half now
+    # after taking minimum, reuslts in the same
     test_statistic += equal_rank_sum / 2.0
     # make it more conservative by taking the ceil
     test_statistic = int(np.ceil(test_statistic))
     
+    # apparently I start sum with 1
+    # as count_signrank(0,n) is always 1
+    # independent of n
+    # so below is equivalent to
+    # n_as_extreme_sums = 0
+    # and using range(0, test-statistic+1)
     n_as_extreme_sums = 1
     for other_sum in range(1,test_statistic+1):
-        n_as_extreme_sums += count_signrank(other_sum,n_samples)
-
+        n_as_extreme_sums += count_signrank(other_sum, n_samples)
+    # I guess 2* for twosided test?
+    # same as scipy does
     p_val = (2 * n_as_extreme_sums) / (2**float(n_samples))
     return p_val
 
@@ -261,14 +271,23 @@ def sign_test(a,b):
     diffs = a - b
     n_positive = np.sum(diffs > 0)
     n_equal = np.sum(diffs == 0)
-    return scipy.stats.binom_test(n_positive + n_equal, n_samples, p=0.5)
+    # adding half of equal to positive (so implicitly
+    # other half is added to negative)otal
+    n_total = n_positive + (n_equal / 2)
+    # rounding conservatively
+    if n_total < (n_samples / 2):
+        n_total = int(np.ceil(n_total))
+    else:
+        n_total = int(np.floor(n_total))
+    
+    return scipy.stats.binom_test(n_total, n_samples, p=0.5)
 
 def median(a, axis=None, keepdims=False):
     """
     Just since I use old numpy version on one cluster which doesn't
     have keepdims
     """
-    out = np.median(axis)
+    out = np.median(a, axis)
     if keepdims:
         for ax in axis:
             out = np.expand_dims(out, ax)
@@ -280,6 +299,9 @@ def median_absolute_deviation(arr, axis=None, keepdims=False):
         https://en.wikipedia.org/wiki/Median_absolute_deviation 
         http://stackoverflow.com/a/23535934/1469195
     """
+    arr = np.array(arr)
+    if axis is None:
+        axis = range(arr.ndim)
     med = median(arr, axis=axis, keepdims=True)
     return median(np.abs(arr - med), axis=axis, keepdims=keepdims)
 
@@ -310,4 +332,19 @@ def cov(x,y):
     this_cov = np.dot(demeaned_x,demeaned_y.T) / (y.shape[1] -1)
     return this_cov
     
+def wrap_reshape_topo(stat_fn, topo_a, topo_b, axis_a, axis_b):
+    other_axis_a = [i for i in xrange(topo_a.ndim) if i not in axis_a]
+    other_axis_b = [i for i in xrange(topo_b.ndim) if i not in axis_b]
+    transposed_topo_a = topo_a.transpose(tuple(other_axis_a) + tuple(axis_a))
+    n_stat_axis_a = [topo_a.shape[i] for i in axis_a]
+    n_other_axis_a = [topo_a.shape[i] for i in other_axis_a]
+    flat_topo_a = transposed_topo_a.reshape(np.prod(n_other_axis_a), np.prod(n_stat_axis_a))
+    transposed_topo_b = topo_b.transpose(tuple(other_axis_b) + tuple(axis_b))
+    n_stat_axis_b = [topo_b.shape[i] for i in axis_b]
+    n_other_axis_b = [topo_b.shape[i] for i in other_axis_b]
+    flat_topo_b = transposed_topo_b.reshape(np.prod(n_other_axis_b), np.prod(n_stat_axis_b))
+    assert np.array_equal(n_stat_axis_a, n_stat_axis_b)
+    stat_result = stat_fn(flat_topo_a, flat_topo_b)
+    topo_result = stat_result.reshape(tuple(n_other_axis_a) + tuple(n_other_axis_b))
+    return topo_result
     

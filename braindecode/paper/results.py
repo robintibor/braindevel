@@ -1,11 +1,19 @@
 import numpy as np
-from braindecode.analysis.pandas_util import restrict, restrict_or_unset
+import pandas as pd
+from braindecode.analysis.pandas_util import restrict, restrict_or_unset,\
+    round_numeric_columns
 from braindecode.paper import unclean_sets
+from braindecode.analysis.stats import perm_mean_diff_test, wilcoxon_signed_rank,\
+    sign_test
 def clean_datasets(df):
     for name in unclean_sets:
         df = df[np.logical_not(df.dataset_filename.str.contains(name))]
     return df
 
+def merged_main_comp(df):
+    return restrict(df, batch_norm_before_merge=True,
+                     nonlin_before_merge='elu',
+                     num_filters_spat=25)
 ## Main comparison
 def elu_deep_5(df):
     return df[(df.first_nonlin == 'elu') & 
@@ -17,27 +25,29 @@ def square_shallow(df):
         (df.pool_mode == 'average_exc_pad')]
 
 def above_0(df):
-    df = df[(df.cnt_preprocessors == 'resample_highpass_standardize') &
-         (df.low_cut_off_hz == 'null')]
+    if 38 in df.high_cut_hz.values:
+        df = df[(df.high_cut_hz == 38) & (df.low_cut_hz == 0)]
+    else:
+        df = df[(df.high_cut_hz == 'null') & (df.low_cut_hz == 0)]
     return df
 
 def above_4(df):
-    return df[df.low_cut_off_hz == 4]
+    return df[df.low_cut_hz == 4]
 
 def from_0_to_4(df):
     return df[(df.high_cut_hz == 4) & 
-             (df.low_cut_off_hz == "null") |  (df.low_cut_off_hz == '-')]
+             (df.low_cut_hz == 0)]
     
 def deep_5_default(df):
     return df[(df.num_filters_4 == 200) & (df.filter_time_length == 10)]
 
 def csp_above_0(df):
-    return df[(df.min_freq == 1) & ((df.max_freq == 34) | (df.max_freq == 86))]
+    return df[(df.min_freq == 1) & ((df.max_freq == 34) | (df.max_freq == 118))]
 
 def csp_above_4(df):
     df = df[df.min_freq == 7]
     if 'trial_stop' in df.columns and 'max_freq' in df.columns:
-        df = df[(df.trial_stop == 4000) & ((df.max_freq == 34) | (df.max_freq == 86))]
+        df = df[(df.trial_stop == 4000) & ((df.max_freq == 34) | (df.max_freq == 118))]
     return df
 
 def csp_0_to_4(df):
@@ -73,7 +83,7 @@ def deep5_main_comp(df):
     
 def shallow_cnt_main_comp(df):
     df = shallow_main_comp(df)
-    df = restrict(df, loss_expression='tied_neighbours', final_dense_length=30)
+    df = restrict(df, loss_expression='tied_neighbours')
     return df
 
 def shallow_main_comp(df):
@@ -207,3 +217,50 @@ def elu_nonlins(df):
 
 def split_first_layer(df):
     return df[df.split_first_layer == True]
+
+def compare_net_csp(df_net, df_csp, name,freq, dataset, with_csp_acc=False, 
+        with_std=False, with_std_error=False, max_n_p_vals=20):
+    assert len(df_net) == len(df_csp), (
+        "Net ({:d}) and csp ({:d}) should have same length".format(
+            len(df_net), len(df_csp)))
+    df_merged = df_net.merge(df_csp, on='dataset_filename', suffixes=('_net','_csp'))
+    # not really necessary to sort, just to make sure 
+    df_merged = df_merged.sort_values(by='dataset_filename')
+
+    test_acc_net = np.array(df_merged['test_net'])
+    test_acc_csp = np.array(df_merged['test_csp'])
+    if len(test_acc_net) > max_n_p_vals:
+        p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=2**max_n_p_vals)
+    else:
+        p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=None)
+    p_val_wilc = wilcoxon_signed_rank(test_acc_net, test_acc_csp)
+    p_val_sign = sign_test(test_acc_net, test_acc_csp)
+    diff_std = np.std(test_acc_net - test_acc_csp)
+
+    df_out = pd.DataFrame()
+
+    df_out['name'] = [name]
+    df_out['freq'] = [freq]
+    df_out['dataset'] = [dataset]
+    if with_csp_acc:
+        df_out['test_csp'] = [np.mean(test_acc_csp)]
+        
+    df_out['test_net'] = [np.mean(test_acc_net)]
+    df_out['diff'] = [np.mean(test_acc_net) - np.mean(test_acc_csp)]
+    if with_std:
+        df_out['std'] = [diff_std]
+    if with_std_error:
+        df_out['stderr'] = [diff_std / np.sqrt(len(test_acc_net))]
+    df_out = round_numeric_columns(df_out,1)
+        
+    
+        
+    df_out['rand'] = [p_val]
+    df_out['wilc'] = [p_val_wilc]
+    df_out['sign'] = [p_val_sign]
+    df_out['time_net'] = [pd.Timedelta.round(np.mean(df_net.time), 's')]
+
+    assert len(df_merged) == len(df_csp), (
+        "Merged ({:d}) and csp ({:d}) should have same length".format(
+            len(df_merged), len(df_csp)))
+    return df_out

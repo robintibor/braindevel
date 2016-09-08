@@ -9,7 +9,6 @@
     variants: [[
     {
         num_filters: [40],
-        trial_stop: [3996],
         filter_time_length: [25],
         pool_time_length: [75],
         pool_time_stride: [15],

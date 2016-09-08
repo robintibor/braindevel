@@ -133,7 +133,7 @@ def model_structure_equal(final_layer_1, final_layer_2):
         return False
     for l1,l2 in zip(all_layers_1, all_layers_2):
         ignore_keys = ['yaml_src', 'input_var', 'input_layer', '_srng', 'b', 'W', 'params',
-                      'std', 'beta', 'mean', 'gamma']
+                      'std', 'beta', 'mean', 'gamma', 'input_layers', 'reshape_layer']
         if l1.__class__.__name__ != l2.__class__.__name__:
             log.warn("Different classnames {:s} and {:s}".format(
                 l1.__class__.__name__, l2.__class__.__name__))
@@ -166,9 +166,12 @@ def layers_to_str(final_layer):
         if filter_size is not None:
             filter_str = "{:d}x{:d}".format(filter_size[0],
                 filter_size[1])
-            if layer.stride != (1,1):
+            if (hasattr(layer,'stride') and layer.stride != (1,1)):
                 filter_str += " ::{:d} ::{:d}".format(layer.stride[0],
                     layer.stride[1])
+            if (hasattr(layer,'dilation') and layer.dilation != (1,1)):
+                filter_str += " ::{:d} ::{:d}".format(layer.dilation[0],
+                    layer.dilation[1])
             layer_str += "{:15s}".format(filter_str)
         # Also for stride reshape layer
         if hasattr(layer, 'n_stride'):
@@ -184,6 +187,11 @@ def layers_to_str(final_layer):
             not hasattr(layer.nonlinearity, 'func_name') and
             hasattr(layer.nonlinearity, 'name')):
             layer_str += " {:15s}".format(layer.nonlinearity.name)
+        elif (hasattr(layer, 'merge_function')):
+            if hasattr(layer.merge_function, 'func_name'):
+                layer_str += " {:15s}".format(layer.merge_function.func_name)
+            elif hasattr(layer.merge_function, 'name'):
+                layer_str += " {:15s}".format(layer.merge_function.name)
         elif (hasattr(layer, 'pool_size')):
             layer_str += " {:15s}".format(layer.mode)
         else:

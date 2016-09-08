@@ -1,0 +1,86 @@
+{
+extends: ['configs/experiments/ultrasound/defaults.yaml'],
+templates: {
+    auto_net: !obj:braindecode.ultrasound.auto_up_net.AutoUpMergeNet {
+        network: $network,
+        up_network: !obj:braindecode.ultrasound.up.net.UpNetwork {
+            up_nonlin: $up_nonlin,
+            up_merger: !obj:braindecode.ultrasound.up.merge.ConditionalMerger {
+                condition_and_merger: $conditions_mergers,
+            },
+            reduce_chans_in_up_pool: $reduce_chans_in_up_pool,
+        },
+        post_processor: $post_processor,
+    },
+    four_conv_pool: !obj:braindecode.ultrasound.models.dilated.FourConvPool {
+        img_rows: $img_rows,
+        img_cols: $img_cols,
+        conv_nonlin: $conv_nonlin,
+        n_start_filters: $n_start_filters,
+        n_increase_filter_factor: $n_increase_filter_factor,
+    },
+    dilate_concat_and_end_mask: [
+        [
+        !obj:braindecode.ultrasound.up.conditions.AfterDilate { },
+        $concat_merge
+        ],
+        [
+        !obj:braindecode.ultrasound.up.conditions.BeforeUpStart { },
+        !obj:braindecode.ultrasound.up.merge.DenseMask { }
+        ]
+    ],
+    dilate_concat: [
+        [
+        !obj:braindecode.ultrasound.up.conditions.AfterDilate { },
+        $concat_merge
+        ],
+    ],
+    concat: !obj:braindecode.ultrasound.up.merge.Concat { },
+    concat_conv: !obj:braindecode.ultrasound.up.merge.ConcatConv { },
+    concat_conv_mask: !obj:braindecode.ultrasound.up.merge.ConcatConvMask { },
+    mask_concat_conv: !obj:braindecode.ultrasound.up.merge.MaskConcatConv { },
+    two_dense_sigmoid: !obj:braindecode.ultrasound.up.post.TwoDenseSigmoid { },
+    identity: !!python/name:lasagne.nonlinearities.identity ,
+    elu: !!python/name:lasagne.nonlinearities.elu ,
+    relu: !!python/name:lasagne.nonlinearities.rectify ,
+
+    weighted_thresholded_and_l2_norm_and_target_mask: !obj:braindecode.util.FuncAndArgs {
+        func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+        loss_expressions: [
+            !obj:braindecode.util.FuncAndArgs {
+                func: !!python/name:braindecode.veganlasagne.objectives.weighted_thresholded_binary_cross_entropy ,
+                imbalance_factor: $imbalance_factor,
+                lower_threshold: $low_pred_loss_cut, 
+            },
+            !obj:braindecode.util.FuncAndArgs {
+                func: !!python/name:braindecode.veganlasagne.objectives.weight_decay ,
+                factor: $l2_factor
+            },
+            !obj:braindecode.util.FuncAndArgs {
+                func: !!python/name:braindecode.ultrasound.objectives.empty_target_mask_loss ,
+                factor: $mask_factor,
+            },
+        ]
+    },
+},
+
+variants: [[{
+    save_path: ['data/models/ultrasound/dilated/'],
+    reduce_chans_in_up_pool: [False],
+    layers: [$auto_net],
+    network: [$four_conv_pool],
+    up_nonlin: [$relu, $elu],
+    conditions_mergers: [$dilate_concat_and_end_mask, $dilate_concat],
+    concat_merge: [$concat_conv],#$concat, $concat_conv_mask, $mask_concat_conv
+    conv_nonlin: [$relu],
+    n_start_filters: [24],#16,32
+    n_increase_filter_factor: [1.5],#,2
+    post_processor: [$two_dense_sigmoid],
+    l2_factor: [0.0001],
+    mask_factor: [0.5],#0,,1
+    low_pred_loss_cut: [0.2],
+    max_increasing_epochs: [100],
+    max_epochs: [250],
+    loss_expression: [$weighted_thresholded_and_l2_norm_and_target_mask],
+}]]
+}

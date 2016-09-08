@@ -13,7 +13,7 @@ import shutil
 log = logging.getLogger(__name__)
 
 class Result:
-    """ Empty class for holding result values"""
+    """ Class for holding result values"""
     def __init__(self, parameters, templates, training_time,
         monitor_channels, predictions, targets):
         self.__dict__.update(locals())
@@ -345,7 +345,15 @@ class DatasetAveragedResults:
     def results(self):
         return self._results
 
-    
+
+def get_confusion_mats(results):
+    return [get_confusion_mat(r) for r in results]
+
+def get_confusion_mat(result):
+    targets = result.targets
+    predictions = result.predictions
+    return confusion_matrix(targets,predictions) 
+
 def load_result_objects_for_folder(result_folder):
     resultpool = ResultPool()
     resultpool.load_results(result_folder)
@@ -464,7 +472,7 @@ def mark_duplicate_results(result_folder, tag_dict):
         else:
             unique_var_params.append(params)
 
-    # Delete result/experiment/model files    
+    # Update parameters
     for i_exp in duplicate_ids:
         result_file_name = all_result_file_names[i_exp]
         result = np.load(result_file_name)
@@ -520,9 +528,9 @@ def get_all_misclasses(results):
     
     return misclass_dict
 
-def get_padded_misclasses(all_exp_misclasses):
-    """Pad misclasses for several experiments to maximum number of epochs across experiments.
-    Pad with the last value for given experiment. For example if you have two experiment with misclasses:
+def get_padded_chan_vals(all_exp_chan_vals):
+    """Pad values for several experiments to maximum number of epochs across experiments.
+    Pad with the last value for given experiment. For example if you have two experiment with values:
     [0.5,0.2,0.1]
     [0.6,0.4]
     Then pad to:
@@ -531,25 +539,25 @@ def get_padded_misclasses(all_exp_misclasses):
     
     Parameters
     --------
-    all_exp_misclasses: list of 1d arrays
+    all_exp_chan_vals: list of 1d arrays
     
     Returns
     -------
-    padded_misclasses: 2d array
-        Misclasses padded to same length/number of epochs.
+    padded_values: 2d array
+        Values padded to same length/number of epochs.
     n_exps_by_epoch: 1d array
         Number of experiments that were still running in per epoch.
     """
 
-    max_length = max([len(m) for m in all_exp_misclasses])
-    padded_misclasses = np.ones((len(all_exp_misclasses), max_length)) * np.nan
+    max_length = max([len(m) for m in all_exp_chan_vals])
+    padded_values = np.ones((len(all_exp_chan_vals), max_length)) * np.nan
     n_exps_by_epoch = np.zeros(max_length)
-    for i_exp, misclasses in enumerate(all_exp_misclasses):
-        padded_misclasses[i_exp,:len(misclasses)] = misclasses
-        padded_misclasses[i_exp,len(misclasses):] = misclasses[-1]
+    for i_exp, misclasses in enumerate(all_exp_chan_vals):
+        padded_values[i_exp,:len(misclasses)] = misclasses
+        padded_values[i_exp,len(misclasses):] = misclasses[-1]
         n_exps_by_epoch[:len(misclasses)] += 1
-    assert not np.any(np.isnan(padded_misclasses))
-    return padded_misclasses, n_exps_by_epoch
+    assert not np.any(np.isnan(padded_values))
+    return padded_values, n_exps_by_epoch
 
 def compute_confusion_matrix(result_objects):
     try:

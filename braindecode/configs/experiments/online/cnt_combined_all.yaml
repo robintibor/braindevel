@@ -113,6 +113,15 @@
                 { }
         ],
             ],
+        resample_cz: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],[
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+        ],
+            ],
     cnt_shallow_square:  !obj:braindecode.veganlasagne.layer_modifiers.$layer_modifier { 
         layers: [ 
            &in_layer !obj:lasagne.layers.InputLayer {
@@ -223,6 +232,8 @@
         final_dense_length: [5],
         train_loader_type: [BBCIDataset],
         num_filters: [40],
+        run_after_early_stop: [true],
+        
         
         filenames: [[
             'data/BBCI-all-runs/MaVoMoSc1S001R01_ds10_1-13BBCI.mat',
@@ -230,19 +241,20 @@
             'data/four-sec-dry-32-sensors/cabin/Martin_sahara32_realMovementS001R01_ds10_1-7.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/MaVo2_sahara32_realMovementS001R02_ds10_1-5.BBCI.mat',
             'data/four-sec-dry-32-sensors/cabin/MaVo_sahara32_realMovement_onlineFeedback_20160315S001R01_1-9.BBCI.mat',
+            'data/four-sec-dry-32-sensors/cabin/MaVo_sahara32_realMovement_onlineFeedback_20160407S001R01_1-5.BBCI.mat'
             ]],
         set_types: [[
         'bbci',
         'bbci',
         'bbci',
         'bbci',
-        'bbci'
+        'bbci',
+        'bbci',
         ]],
         
-        run_after_early_stop: [true],
-
         trial_ranges: ["[
            [0, 300],
+           [0,null],
            [0,null],
            [0,null],
            [0,null],
@@ -255,11 +267,13 @@
             [500,0],
             [500,0],
             [0,0],
+            [0,0],
         ],
         ],
         end_marker_defs: ["[
             null,
             null,
+            {'1': [5], '2': [6], '3': [7], '4': [8]},
             {'1': [5], '2': [6], '3': [7], '4': [8]},
             {'1': [5], '2': [6], '3': [7], '4': [8]},
             {'1': [5], '2': [6], '3': [7], '4': [8]},
@@ -273,5 +287,13 @@
         use_test_as_valid: [False], # False
         max_increasing_epochs: [40],
         max_epochs: [30],#250],
+        ignore_unused: [['max_min', 'drop_p', 'whisker_length', 'test_cleaner',
+         'test_filename', 'cleaner', 'post_pool_nonlin', 'loader_type', 
+         'train_loader_type', 'eog_sensors', 'dataset_filename',      
+         'rejection_var_ival', 'rejection_blink_ival', 'train_cleaner',
+         'num_split_folds', 'misclass_monitor', 'first_nonlin',
+          'whisker_percent', 'pool_mode', 'i_test_fold',
+          'max_abs_threshold', 'trial_stop', 'trial_start', 'rejection_max_abs_ival']]
+        
     }]],
 }

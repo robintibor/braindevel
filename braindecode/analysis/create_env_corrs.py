@@ -24,18 +24,18 @@ def create_env_corrs(folder_name, params, start, stop):
         with_square = True
         log.info("Running {:s} ({:d} of {:d})".format(
             base_name, i_file+start+1, stop))
-        create_topo_env_corrs_files(base_name, i_all_layers,with_square)
+        create_topo_env_corrs_files(base_name, i_all_layers, with_square)
         create_env_class_corr_file(base_name, with_square)
  
 def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
     # Load env first to make sure env is actually there.
     result = np.load(base_name + '.result.pkl')
-    print base_name
     env_file_name = dataset_to_env_file(result.parameters['dataset_filename'])
     exp, model = load_exp_and_model(base_name)
     exp.dataset.load()
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
+    rand_model = create_experiment(base_name + '.yaml').final_layer
     for i_layer in i_all_layers:
         log.info("Layer {:d}".format(i_layer))
         trial_env = load_trial_env(env_file_name, model, 
@@ -43,7 +43,6 @@ def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
         topo_corrs = compute_trial_topo_corrs(model, i_layer, train_set, 
             exp.iterator, trial_env)
         
-        rand_model = create_experiment(base_name + '.yaml').final_layer
         rand_topo_corrs = compute_trial_topo_corrs(rand_model, i_layer, train_set, 
             exp.iterator, trial_env)
         file_name_end = '{:d}.npy'.format(i_layer)
@@ -56,6 +55,9 @@ def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
 def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
     trial_acts = compute_trial_acts(model, i_layer, iterator, train_set)
     topo_corrs = compute_topo_corrs(trial_env, trial_acts)
+    # TODO compute within trial corrs -> remove mean for each trial
+    # compute between trial corrs -> compute means for trial env and trial acts
+    # with keepdims=True
     return topo_corrs
     
 def dataset_to_env_file(wanted_dataset_filename):
@@ -63,8 +65,7 @@ def dataset_to_env_file(wanted_dataset_filename):
     These experiments are, where envelopes were calculated from originally"""
     res_pool= ResultPool()
     res_pool.load_results('data/models-backup/paper/ours/cnt/deep4/car/',
-                              params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                            low_cut_off_hz="null", first_nonlin="$elu"))
+             params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"))
 
     dataset_to_env_file_name = dict()
     
@@ -99,8 +100,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         stop = int(sys.argv[2])
     create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
-             params=dict(sensor_names="$all_EEG_sensors", batch_modifier="null",
-                         low_cut_off_hz="null", first_nonlin="$elu"),
+             params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"),
              start=start, stop=stop)
 #    create_env_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
 #        params=None)

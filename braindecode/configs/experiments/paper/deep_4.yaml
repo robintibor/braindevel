@@ -1,37 +1,39 @@
  {
     extends: [
-        'configs/experiments/paper/ours/deep_4.yaml',
-        'configs/experiments/paper/cnt.yaml',
-        ],  
+        'configs/experiments/paper/4_layer_no_nin.yaml',
+        ],
     variants: [[
     {
-        save_path: ['data/models/paper/ours/cnt/deep5/'],
-        layers: [$deep_5],
-
-        drop_prob: [0.5],
-        batch_norm: [true],
-
-        final_dense_length: [2],
-        input_time_length: [1000],
-        n_sample_preds : [500], # will be overwritten anyways
-
+        num_filters_time: [25],
+        num_filters_spat: [25],
+        num_filters_2: [50],
+        num_filters_3: [100],
+        num_filters_4: [200],
+        
         filter_time_length: [10],
         filter_length_2: [10],
         filter_length_3: [10],
         filter_length_4: [10],
+        pool_time_length: [3],
+        pool_time_stride: [3],
+        
+        
+        first_nonlin: [$elu],
+        first_pool_mode: ['max'], # just to prevent errors on square run, reenable
+        first_pool_nonlin: [$identity],
+        later_nonlin: [$elu],
+        later_pool_mode: ['max'], # just to prevent errors on square run, reenable
+        later_pool_nonlin: [$identity],
+        
+        drop_in_prob: [0.],
         double_time_convs: [false],
         split_first_layer: [true],
 
-        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
-        'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
-        'misclass_monitor', 'rejection_blink_ival', 'whisker_percent']],
-
+        drop_prob: [0.5],
+        batch_norm: [true],
+        
+        
 #        variants: [[
-#        {
-#            max_increasing_epochs: [160],
-#            max_epochs: [1600],
-#            loss_expression: [$tied_neighbours],
-#        },
 #        {
 #        },
 #        {
@@ -62,7 +64,7 @@
 #            batch_norm: [false],
 #            drop_prob: [0.],
 #        },
-#        {
+#        { # without recent advances
 #            batch_norm: [false],
 #            drop_prob: [0.],
 #            first_nonlin: [$relu],
@@ -87,6 +89,7 @@
 #            filter_length_4: [6],
 #        }
 #        ]],
+        
     }
     ]]
 }

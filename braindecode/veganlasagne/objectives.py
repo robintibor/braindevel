@@ -1,6 +1,6 @@
 import lasagne
 from braindecode.veganlasagne.layers import get_n_sample_preds
-from lasagne.objectives import categorical_crossentropy
+from lasagne.objectives import categorical_crossentropy, binary_crossentropy
 from theano.tensor.shared_randomstreams import RandomStreams
 from lasagne.random import get_rng
 import theano.tensor as T
@@ -12,10 +12,27 @@ def weighted_binary_cross_entropy(preds, targets, imbalance_factor):
     loss = factor_no_target * loss + loss * targets * factor_target
     return loss
 
+def weighted_thresholded_binary_cross_entropy(preds, targets, imbalance_factor,
+        lower_threshold):
+    factor_no_target = (imbalance_factor + 1) / (2.0 *  imbalance_factor)
+    factor_target = (imbalance_factor + 1) / 2.0
+    loss = lasagne.objectives.binary_crossentropy(preds, targets)
+    loss = factor_no_target * loss + loss * targets * factor_target
+    # preds that are below 0.2 where there is no target, are ignored
+    loss_mask = T.or_(T.gt(preds,lower_threshold), T.eq(targets, 1))
+    loss = loss * loss_mask
+    return loss
+
 def safe_categorical_crossentropy(predictions, targets, eps=1e-8):
     predictions = (T.gt(predictions, eps) * predictions + 
         T.le(predictions, eps) * predictions + eps)
     return categorical_crossentropy(predictions, targets)
+def safe_binary_crossentropy(predictions, targets, eps=1e-4):
+    predictions = (T.gt(predictions, eps) * predictions + 
+        T.le(predictions, eps) * predictions + eps)
+    predictions = (T.lt(predictions, 1-eps) * predictions + 
+        T.ge(predictions, 1 - eps) * predictions - eps)
+    return binary_crossentropy(predictions, targets)
     
 def sum_of_losses(preds, targets, final_layer, loss_expressions):
     all_losses = []
@@ -30,6 +47,10 @@ def sum_of_losses(preds, targets, final_layer, loss_expressions):
         
     total_loss = sum(all_losses)
     return total_loss
+
+def tied_losses_image_mask(preds, targets):
+    """ Should return one tied loss per image"""
+    return -T.sum(preds[:,:,1:,1:] * T.log(preds[:,:,:-1,:-1]), axis=(1,2,3))
 
 def weight_decay(preds, targets, final_layer, factor):
     loss = lasagne.regularization.regularize_network_params(final_layer,

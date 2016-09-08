@@ -7,7 +7,7 @@ from braindecode.experiments.load import load_exp_and_model
 log = logging.getLogger(__name__)
 
 def compute_pred_target_labels_for_cnt_exp(exp, model):
-    exp.dataset.load()
+    exp.dataset.ensure_is_loaded()
     test_set = exp.dataset_provider.get_train_merged_valid_test(exp.dataset)['test']
     all_batches = list(exp.iterator.get_batches(test_set, shuffle=False))
     log.info("Compile prediction function...")
@@ -29,12 +29,19 @@ def add_labels_to_cnt_exps_from_dataframe(df):
     folder = df.attrs['folder']
     for exp_id in df.index:
         exp_base_name = os.path.join(folder, str(exp_id))
-        exp, model = load_exp_and_model(exp_base_name)
-        pred_labels, target_labels = compute_pred_target_labels_for_cnt_exp(
-            exp, model)
+        add_labels_to_cnt_exp_result(exp_base_name)
+
+def add_labels_to_cnt_exp_result(basename):
+    result_file_name = basename + '.result.pkl'
+    result = np.load(result_file_name)
+    # check if only dummy targets there, in that case add targets and
+    # predictions
+    if np.array_equal(result.targets, [3,4,1,2,3,4]):
+        exp, model = load_exp_and_model(basename)
+        pred_labels, target_labels = compute_pred_target_labels_for_cnt_exp(exp, model)
         # add targets
-        result_file_name = exp_base_name + '.result.pkl'
-        result = np.load(result_file_name)
         result.predictions = pred_labels
         result.targets = target_labels
         pickle.dump(result, open(result_file_name, 'w'))
+    else:
+        log.warn("Targets/predictions already there for {:s}".format(basename))

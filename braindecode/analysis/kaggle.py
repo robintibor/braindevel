@@ -57,7 +57,7 @@ def transform_to_cnt_activations(time_activations, n_sample_preds, n_samples):
     relevant_acts = time_activations[:,:,valid_mask]
 
     # earlier layers might contain some predictions that are before 
-    # the sample preditions, remove those...
+    # the sample predictions, remove those...
     relevant_acts = relevant_acts[:,:,-n_sample_preds:]
     # now remove the possible overlap between last batch and batch
     # before last batch

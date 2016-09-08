@@ -1,35 +1,9 @@
 {
     extends: [
-        'configs/experiments/paper/ours/shallow.yaml',
-        'configs/experiments/paper/epo.yaml',
+        'configs/experiments/paper/ours/our_data.yaml',
+        'configs/experiments/paper/shallow_epo.yaml',
         ],
     variants: [[{
-        final_dense_length: [61],
-        input_time_length: [2000], # will be overwritten by actual net size...
         save_path: ['data/models/paper/ours/epo/shallow/'],
-
-        first_nonlin: [$square],
-        post_pool_nonlin: [$safe_log],
-        pool_mode: ['average_exc_pad'],
-        
-        drop_p: [0.5],
-        layers: [$cnt_shallow_square],
-        
-        variants: [[
-        {}, # same as before
-        {
-                layers: [$cnt_shallow_square_no_bnorm],
-                drop_p: [0.],
-                ignore_unused: [[
-                    'batch_norm_alpha',
-                    'max_min', 'whisker_length', 'i_test_fold',
-                    'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
-                    'rejection_blink_ival', 'whisker_percent',
-                ]]
-        }]],
-        
-        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
-        'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
-        'rejection_blink_ival', 'whisker_percent']]
     }]],
 }

@@ -1,13 +1,11 @@
 {
     extends: [
-        'configs/experiments/paper/bci_competition/shallow.yaml',
-        'configs/experiments/paper/cnt.yaml',
+        'configs/experiments/paper/bci_competition/bcic_data.yaml',
+        'configs/experiments/paper/shallow_cnt.yaml',
         ],
-    variants: [[{
+    variants: [[
+    {
         save_path: ['data/models/paper/bci-competition/cnt/shallow/'],
-        final_dense_length: [30],
-        input_time_length: [1000],
-        n_sample_preds : [500], # will be overwritten anyways
-        #trial_start: [2500],
-    }]],
+    }
+    ]],
 }

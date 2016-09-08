@@ -1,0 +1,353 @@
+{
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/ours/our_data.yaml',
+        'configs/experiments/paper/shallow.yaml',
+        'configs/experiments/paper/cnt.yaml',
+        'configs/experiments/models/merged.yaml',
+        ],
+    templates: {
+        resample_car_bandpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],[
+                !!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
+                {}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
+                {'low_cut_hz': $low_cut_off_hz,
+                'high_cut_hz': $high_cut_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ]],
+        resample_cz_car_highpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],[
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+        ],[
+                !!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
+                {}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $low_cut_off_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ]],
+        resample_cz_highpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],[
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $low_cut_off_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ],
+            ],
+        resample_bandpass_cz_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            
+            [
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
+                {'low_cut_hz': $low_cut_off_hz,
+                'high_cut_hz': $high_cut_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ],
+            ],
+        resample_cz_bandpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+        ],
+            
+            [
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
+                {'low_cut_hz': $low_cut_off_hz,
+                'high_cut_hz': $high_cut_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ],
+            ],
+        resample_cz_highpass_demean: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],[
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $low_cut_off_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_demean_cnt , 
+                { }
+        ],
+            ], 
+        resample_cz: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],[
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+        ],
+            ],
+        combined_cnt_set: !obj:braindecode.datasets.combined.CombinedCntSets {
+            set_args: !!python/object/apply:zip [
+                $filenames, $set_types, 
+                $trial_ranges, $all_segment_ivals, $end_marker_defs],
+            load_sensor_names: $load_sensor_names,
+            sensor_names: $sensor_names,
+            marker_def: $marker_def,
+            cnt_preprocessors: $cnt_preprocessors,
+        },
+                
+        
+        dry_sensors: ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3',
+            'AFz', 'AF4', 'AF8', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6',
+            'FC1', 'FCz', 'FC2', 'C3', 'C1', 'Cz', 'C2', 'C4', 'CP3', 'CP1',
+             'CPz', 'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz'],
+        end_markers_4_class: {'1': [5], '2': [6], '3': [7], '4': [8]},
+        markers_10_class: !!python/name:braindecode.datasets.class_10.marker_10_class ,
+        markers_5_class: !!python/name:braindecode.datasets.class_10.marker_5_class ,
+        markers_movement_class:  {'01 - Right Hand': [1], '02 - Left Hand': [2], '03 - Rest': [3],
+           '04 - Feet': [4]},
+        markers_three_class:  {'01 - Right Hand': [1], '03 - Rest': [3],
+            '04 - Feet': [4]},
+        markers_two_class:  {'01 - Right Hand': [1], '04 - Feet': [4]},
+        tied_neighbours: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [$categorical_crossentropy,
+                !!python/name:braindecode.veganlasagne.objectives.tied_neighbours_cnt_model ,
+            ]
+        },
+        nico_sensors: ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AF4', 'AF8', 'F7',
+         'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5', 'FC3',
+         'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'M1', 'T7', 'C5', 'C3',
+         'C1', 'Cz', 'C2', 'C4', 'C6', 'T8', 'M2', 'TP7', 'CP5', 'CP3',
+         'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1',
+         'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POz', 'PO4',
+         'PO6', 'PO8', 'O1', 'Oz', 'O2'],
+         nico_C_sensors: ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6',
+          'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz',
+          'CP2', 'CP4', 'CP6'],
+    },
+    variants: [[{ 
+        save_path: ['data/models/online/cnt/merged-net/half-trial/'],
+        # Remove from params basically..
+        test_filename: ["null"], # remove this from params basically.. its coming from base filenames :)
+        dataset_splitter: [$several_sets_splitter],
+        dataset_filename: ['null'], # remove this from params basically.. its coming from base filenames :)
+        pool_mode: ['average_exc_pad'],
+        #loss_expression: [$categorical_crossentropy],
+        valid_set_fraction: [0.2],
+        cnt_preprocessors: [$resample_bandpass_cz_standardize],
+        resample_fs: [250],
+        #load_sensor_names: [$dry_sensors],
+        #sensor_names: ["null"],
+        cleaner: [$no_cleaner],
+        dataset: [$combined_cnt_set],
+        low_cut_off_hz: ['null',4],
+        high_cut_hz: ['null'],#90],#
+        train_loader_type: [BBCIDataset],
+        run_after_early_stop: [true],
+        
+        batch_size: [60], # make it faster(?)
+        n_sample_preds: [200], # will be overwritten anyways
+        input_time_length: [771],
+        layers: [$merged_net],
+        use_test_as_valid: [False], # False
+        load_sensor_names: [$nico_sensors],
+        sensor_names: ["null"],
+                
+        
+        
+        
+        variants: [[{
+#            variants: [[
+#            {
+#                low_cut_off_hz: [4],
+#                cnt_preprocessors: [$resample_car_bandpass_standardize],
+#                load_sensor_names: [$nico_sensors],
+#            }]],
+            max_increasing_epochs: [80],
+            max_epochs: [200],
+            filenames: [[  
+                'data/robot-hall/NiRiNBD2S001R02_ds10_1-8.BBCI.mat',
+                'data/robot-hall/NiRiNBD3S001R01_ds10_1-10.BBCI.mat',
+                'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
+                'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
+            ]],
+            load_sensor_names: [$nico_sensors],
+            sensor_names: ["null"],
+            
+            set_types: [[
+                'bbci',
+                'bbci',
+                'bbci',
+                'bbci',
+                ]],
+            all_segment_ivals: [[
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                ],
+                ],
+            end_marker_defs: ["[ 
+                null,
+                null,
+                null,
+                null,
+            ]"],
+        }]],
+        ignore_unused: [['drop_p', 'cleaner', 'test_cleaner', 
+            'test_filename', 'loader_type', 'low_cut_hz',
+            'conv_norm', 'final_norm', 'pool_type', 'train_loader_type',
+            'train_cleaner', 'num_filters', 'dataset_filename',
+            'post_pool_nonlin', 'pool_mode', 'layer_modifier',
+            'max_min', 'whisker_length', 'i_test_fold', 'trial_start', 
+            'eog_sensors', 'rejection_var_ival', 'num_split_folds',
+            'misclass_monitor', 'trial_stop', 'max_abs_threshold',
+            'rejection_blink_ival', 'whisker_percent', 'rejection_max_abs_ival']],
+            variants: [[{
+                marker_def: [$markers_movement_class],
+                n_classes: [4],
+            trial_ranges: ["[
+                   [0,null],
+                   [0,null],
+                   [0,null],
+                   [0,200],
+                   [200,null],
+                ]"],
+                
+            },
+            {
+                marker_def: [$markers_three_class],
+                n_classes: [3],
+                trial_ranges: ["[
+                   [0,null],
+                   [0,null],
+                   [0,null],
+                   [0, 150],
+                   [150, null],
+                ]"],
+                
+            },
+            {
+                marker_def: [$markers_two_class],
+                n_classes: [2],
+                trial_ranges: ["[
+                   [0,null],
+                   [0,null],
+                   [0,null],
+                   [0, 100],
+                   [100, null],
+                ]"],
+                
+            }],
+            [
+            {
+            
+            filenames: [[  
+                'data/robot-hall/NiRiNBD1S001R01_ds10_1-3_real.BBCI.mat',
+                'data/robot-hall/NiRiNBD2S001R02_ds10_1-8.BBCI.mat',
+                'data/robot-hall/NiRiNBD3S001R01_ds10_1-10.BBCI.mat',
+                'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
+                'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
+            ]],
+            set_types: [[
+                'bbci',
+                'bbci',
+                'bbci',
+                'bbci',
+                'bbci',
+                ]],
+            all_segment_ivals: [[
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                ],
+                ],
+                
+                end_marker_defs: ["[ 
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                ]"],
+            
+            },
+            {
+                filenames: [[  
+                'data/robot-hall/NiRiNBD1S001R01_ds10_1-3_real.BBCI.mat',
+                'data/robot-hall/NiRiNBD2S001R02_ds10_1-8.BBCI.mat',
+                'data/robot-hall/NiRiNBD3S001R01_ds10_1-10.BBCI.mat',
+                'data/robot-hall/NiRiNBD4S001R01_ds10_1-10.BBCI.mat',
+                ]],
+                set_types: [[
+                    'bbci',
+                    'bbci',
+                    'bbci',
+                    'bbci',
+                    ]],
+                all_segment_ivals: [[
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                    [1500, 2500],
+                    ],
+                    ],
+                end_marker_defs: ["[ 
+                    null,
+                    null,
+                    null,
+                    null,
+                ]"],
+                trial_ranges: ["[
+                       [0,null],
+                       [0,null],
+                       [0,null],
+                       [0, null],
+                    ]"],
+            }
+            ]],
+    }]],
+}

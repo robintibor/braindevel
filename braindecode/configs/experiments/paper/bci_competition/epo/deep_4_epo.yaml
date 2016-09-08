@@ -1,33 +1,11 @@
  {
     extends: [
-        'configs/experiments/paper/defaults.yaml',
-        'configs/experiments/paper/bci_competition/files_train_test.yaml',
-        'configs/experiments/paper/epo.yaml',
-        'configs/experiments/paper/bci_competition/deep_4.yaml',
+        'configs/experiments/paper/bci_competition/bcic_data.yaml',
+        'configs/experiments/paper/deep_4_epo.yaml',
         ],
     variants: [[
     {
-        trial_start: [-32],
         save_path: ['data/models/paper/bci-competition/epo/deep4/'],
-        input_time_length: [2000], # will be overwritten by actual net size...
-        final_dense_length: [8],
-        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
-        'eog_sensors', 'rejection_var_ival', 'num_split_folds',
-        'rejection_blink_ival', 'whisker_percent']],
-        
-        variants: [[
-            {},
-            {
-                batch_norm: [false],
-                drop_prob: [0.],
-                first_nonlin: [$relu],
-                first_pool_mode: ['max'],
-                first_pool_nonlin: [$identity],
-                later_nonlin: [$relu],
-                later_pool_mode: ['max'],
-                later_pool_nonlin: [$identity],
-            }
-        ]]
-    }
-    ]]
+     }
+     ]]
 }

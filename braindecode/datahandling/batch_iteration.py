@@ -266,7 +266,7 @@ class CntWindowTrialIterator(object):
         # create start stop indices for all batches still 2d trial -> start stop
         start_end_blocks_per_trial = []
         for i_trial in xrange(len(i_trial_starts)):
-            trial_start = i_trial_starts[i_trial] - 1
+            trial_start = i_trial_starts[i_trial] - 1 # seemingly needed for next call to be correct(?)
             trial_end = i_trial_ends[i_trial]
             start_end_blocks = get_start_end_blocks_for_trial(trial_start,
                 trial_end, self.input_time_length, self.n_sample_preds)
@@ -303,7 +303,7 @@ def get_start_end_blocks_for_trial(trial_start, trial_end, input_time_length,
         i_window_start = i_adjusted_end - input_time_length + 1
         start_end_blocks.append((i_window_start, i_adjusted_end))
     return start_end_blocks
-        
+
 def compute_trial_start_end_samples(y, check_trial_lengths_equal=True,
         input_time_length=None):
     """ Specify input time length to kick out trials that are too short after
@@ -324,7 +324,7 @@ def compute_trial_start_end_samples(y, check_trial_lengths_equal=True,
         i_trial_starts = i_trial_starts[:-1]
     
     assert(len(i_trial_starts) == len(i_trial_ends))
-    assert(np.all(i_trial_starts < i_trial_ends))
+    assert(np.all(i_trial_starts <= i_trial_ends))
     # possibly remove first trials if they are too early
     if input_time_length is not None:
         while i_trial_starts[0] < input_time_length:

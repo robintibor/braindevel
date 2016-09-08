@@ -4,7 +4,7 @@ import logging
 from braindecode.paper import unclean_sets
 log = logging.getLogger(__name__)
 
-def load_patterns(folder):
+def load_patterns(folder='data/models/paper/ours/csp/car/'):
     res_pool = ResultPool()
     res_pool.load_results(folder)
 
@@ -27,16 +27,7 @@ def load_patterns(folder):
         model_file_name = file_name.replace('.result.pkl', '.pkl')
         csp_exp = np.load(model_file_name)
         patterns = csp_exp.binary_csp.patterns
-        pattern_arr = np.ones((patterns.shape[0],
-                           patterns.shape[1],
-                           patterns.shape[2],
-                           patterns[0,0,0].shape[0],
-                           patterns[0,0,0].shape[1],)) * np.nan
-        for a in xrange(pattern_arr.shape[0]):
-            for b in xrange(pattern_arr.shape[1]):
-                for c in xrange(pattern_arr.shape[2]):
-                    pattern_arr[a,b,c] = patterns[a,b,c]
-
+        pattern_arr = patterns_to_single_array(patterns)
         pattern_arr = pattern_arr.squeeze()
         assert not np.any(np.isnan(pattern_arr))
         all_patterns.append(pattern_arr)
@@ -50,3 +41,15 @@ def load_patterns(folder):
     all_patterns = np.array(all_patterns)
     clean_mask = np.array(clean_mask)
     return all_patterns, clean_mask, all_exps
+
+def patterns_to_single_array(patterns):
+    pattern_arr = np.ones((patterns.shape[0],
+                       patterns.shape[1],
+                       patterns.shape[2],
+                       patterns[0,0,0].shape[0],
+                       patterns[0,0,0].shape[1],)) * np.nan
+    for a in xrange(pattern_arr.shape[0]):
+        for b in xrange(pattern_arr.shape[1]):
+            for c in xrange(pattern_arr.shape[2]):
+                pattern_arr[a,b,c] = patterns[a,b,c]
+    return pattern_arr

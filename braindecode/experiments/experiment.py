@@ -51,14 +51,16 @@ class ExperimentCrossValidation():
             self.all_layers.append(deepcopy(exp.final_layer))
             self.all_monitor_chans.append(deepcopy(exp.monitor_chans))
 
-def create_default_experiment(final_layer, dataset, num_epochs=100):
+def create_default_experiment(final_layer, dataset, n_epochs=100,
+        **overwrite_args):
     n_trials = len(dataset.X)
     splitter = FixedTrialSplitter(n_train_trials=n_trials // 2, 
         valid_set_fraction=0.2)
     monitors = [MisclassMonitor(), LossMonitor(),RuntimeMonitor()]
-    stop_criterion = MaxEpochs(num_epochs)
-    exp = Experiment(final_layer, dataset, splitter, preprocessor=None,
-        iterator=BalancedBatchIterator(batch_size=45),
+    stop_criterion = MaxEpochs(n_epochs)
+    
+    exp_args = dict(splitter=splitter,
+        preprocessor=None, iterator=BalancedBatchIterator(batch_size=45),
         loss_expression=lasagne.objectives.categorical_crossentropy,
         updates_expression=lasagne.updates.adam,
         updates_modifier=None,
@@ -67,6 +69,10 @@ def create_default_experiment(final_layer, dataset, num_epochs=100):
         remember_best_chan='valid_misclass',
         run_after_early_stop=True,
         batch_modifier=None)
+    exp_args.update(**overwrite_args)
+    
+    
+    exp = Experiment(final_layer, dataset, **exp_args)
     return exp
     
 class Experiment(object):
@@ -95,6 +101,9 @@ class Experiment(object):
         self.print_layer_sizes()
         log.info("Create theano functions...")
         self.create_theano_functions(target_var)
+        # reset remember best extension in case you rerun some experiment
+        self.remember_extension = RememberBest(
+            self.remember_extension.chan_name)
         log.info("Done.")
 
     def print_layer_sizes(self):
@@ -105,12 +114,27 @@ class Experiment(object):
     
     def create_theano_functions(self, target_var, deterministic_training=False):
         if target_var is None:
-            if self.dataset.y.ndim == 1:
+            # get a dummy batch and determine target size
+            # use test set since it is smaller
+            # maybe memory is freed quicker
+            test_set = self.dataset_provider.get_train_valid_test(self.dataset)['test']
+            batches = self.iterator.get_batches(test_set, shuffle=False)
+            dummy_batch = batches.next()
+            dummy_y = dummy_batch[1]
+            del test_set
+            # for two dims assume we have int targets..
+            # maybe could remove these clauses also
+            # and just keep else clause
+            if dummy_y.ndim == 1:
                 target_var = T.ivector('targets')
-            elif self.dataset.y.ndim == 2:
+            elif dummy_y.ndim == 2:
                 target_var = T.imatrix('targets')
             else:
-                raise ValueError("expect y to either be a tensor or a matrix")
+                # tensor with as many dimensions as y
+                target_type = T.TensorType(
+                    dtype=dummy_y.dtype,
+                    broadcastable=[False]*len(self.dataset.y.shape))
+                target_var = target_type()
         
         prediction = lasagne.layers.get_output(self.final_layer,
             deterministic=deterministic_training)
@@ -158,6 +182,7 @@ class Experiment(object):
         if self.run_after_early_stop:
             log.info("Run until second stop...")
             self.run_until_second_stop()
+            self.readd_old_monitor_chans()
 
     def run_until_early_stop(self):
         log.info("Split/Preprocess datasets...")
@@ -189,9 +214,13 @@ class Experiment(object):
         self.monitor_epoch(datasets)
         self.print_epoch()
         if remember_best:
-            self.remember_extension.remember_epoch(self.monitor_chans, self.all_params)
+            self.remember_extension.remember_epoch(self.monitor_chans,
+                self.all_params)
 
     def setup_after_stop_training(self):
+        # also remember old monitor chans, will be put back into
+        # monitor chans after experiment finished
+        self.old_monitor_chans = deepcopy(self.monitor_chans)
         self.remember_extension.reset_to_best_model(self.monitor_chans,
                 self.all_params)
         loss_to_reach = self.monitor_chans['train_loss'][-1]
@@ -223,6 +252,11 @@ class Experiment(object):
             log.info("{:25s} {:.5f}".format(chan_name,
                 self.monitor_chans[chan_name][-1]))
         log.info("")
+    
+    def readd_old_monitor_chans(self):
+        for key in self.old_monitor_chans:
+            new_key = 'before_reset_' + key
+            self.monitor_chans[new_key] = self.old_monitor_chans[key]
 
 def load_layers_from_dict(train_dict):
     """Layers can  be a list or an object that returns a list."""
