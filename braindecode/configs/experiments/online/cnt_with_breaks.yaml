@@ -176,7 +176,7 @@
         #loss_expression: [$categorical_crossentropy],
         valid_set_fraction: [0.2],
         cnt_preprocessors: [$resample_bandpass_cz_standardize],
-        resample_fs: [250],
+        resample_fs: [250], 
         #load_sensor_names: [$dry_sensors],
         #sensor_names: ["null"],
         cleaner: [$no_cleaner],
@@ -193,6 +193,9 @@
         use_test_as_valid: [False], # False
         load_sensor_names: [$nico_sensors],
         sensor_names: ["null"],
+        marker_cutters: [marker_and_breaks, marker_and_breaks, marker_and_breaks,
+            marker_and_breaks],
+            
                 
         
         

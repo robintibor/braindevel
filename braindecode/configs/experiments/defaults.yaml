@@ -1,8 +1,5 @@
 {
     templates: {
-        online_chan_freq_wise: !obj:braindecode.datahandling.preprocessing.OnlineAxiswiseStandardize {
-            axis: ['c', 1]
-        },
         categorical_crossentropy: !!python/name:lasagne.objectives.categorical_crossentropy ,
         adam: !!python/name:lasagne.updates.adam ,
         C_sensors: ['FFC5h', 'FFC3h', 'FFC1h', 'FFC2h', 'FFC4h', 'FFC6h', 'FC5',
@@ -36,7 +33,7 @@
         iterator: [$balanced_batch_iterator],
         dataset_splitter: [$single_fold_splitter],
         batch_size: [60],
-        preprocessor: [$online_chan_freq_wise],
+        preprocessor: ['null'],
         loss_expression: [$categorical_crossentropy],
         updates_expression: [$adam],
         num_split_folds: [10],

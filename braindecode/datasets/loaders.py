@@ -122,11 +122,14 @@ class BBCIDataset(object):
                 'Feet', 'Face', 'Navigation', 'Music', 'Rotation',
                 'Subtraction', 'Words']:
                 pass # robot hall 10 class decoding
+            elif len(event_times_in_ms) ==  len(all_class_names):
+                pass # weird neuroone(?) logic where class names have event classes
             else:
                 # add another clause here for other class names...
                 raise ValueError("Unknown class names {:s}", all_class_names)
             
         cnt.markers =  zip(event_times_in_ms, event_classes)
+        cnt.class_names = all_class_names
 
     @staticmethod
     def get_all_sensors(filename, pattern):

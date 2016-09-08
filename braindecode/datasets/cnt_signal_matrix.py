@@ -12,7 +12,8 @@ class CntSignalMatrix(DenseDesignMatrix):
         sensor_names='all',
         axes=('b', 'c', 0, 1),
         sort_topological=True,
-        end_marker_def=None):
+        end_marker_def=None,
+        marker_cutter=None):
         # sort sensors topologically to allow networks to exploit topology
         if (sensor_names is not None) and (sensor_names  != 'all') and sort_topological:
             sensor_names = sort_topologically(sensor_names)
@@ -48,16 +49,23 @@ class CntSignalMatrix(DenseDesignMatrix):
                 self.sensor_names)
         self.sensor_names = self.signal_processor.cnt.axes[-1]
 
-    def create_cnt_y(self):
-        """Create continuous target signal"""
+
+    def create_cnt_y_by_signal_processor(self):
         if self.end_marker_def is None:
-            self.y = create_cnt_y(self.signal_processor.cnt,
-                self.signal_processor.segment_ival,
+            self.y = create_cnt_y(self.signal_processor.cnt, 
+                self.signal_processor.segment_ival, 
                 self.signal_processor.marker_def, timeaxis=-2)
         else:
-            self.y = create_cnt_y_start_end_marker(self.signal_processor.cnt,
-                self.signal_processor.marker_def, self.end_marker_def,
+            self.y = create_cnt_y_start_end_marker(self.signal_processor.cnt, 
+                self.signal_processor.marker_def, self.end_marker_def, 
                 self.signal_processor.segment_ival, timeaxis=-2)
+
+    def create_cnt_y(self):
+        """Create continuous target signal"""
+        if self.marker_cutter is None:
+            self.create_cnt_y_by_signal_processor()
+        else:
+            self.y = self.marker_cutter.create_cnt_y(self.signal_processor.cnt)
 
     def create_dense_design_matrix(self):
         # add empty 01 (from bc01) axes ...
@@ -75,3 +83,48 @@ class CntSignalMatrix(DenseDesignMatrix):
 
     def free_memory(self):
         del self.X
+        
+class SetWithMarkers(DenseDesignMatrix):
+    def __init__(self, set_loader, cnt_preprocessors, trial_segmenter):
+        self.set_loader = set_loader
+        self.cnt_preprocessors = cnt_preprocessors
+        self.trial_segmenter = trial_segmenter
+
+    def ensure_is_loaded(self):
+        if not hasattr(self, 'X'):
+            self.load()
+
+    def load(self):
+        self.load_cnt()
+        self.preprocess()
+        self.segment()
+        self.create_dense_design_matrix()
+        self.remove_cnt()
+
+    def load_cnt(self):
+        log.info("Load continuous signal...")
+        self.cnt = self.set_loader.load()
+
+    def preprocess(self):
+        log.info("Preprocess continuous signal...")
+        for func, kwargs in self.cnt_preprocessors:
+            log.info("\tApplying {:s} with {:s}".format(str(func), str(kwargs)))
+            self.cnt = func(self.cnt, **kwargs)
+
+    def segment(self):
+        log.info("Compute trial segmentation...")
+        self.y, self.class_names = self.trial_segmenter.segment(self.cnt)
+        
+    def create_dense_design_matrix(self):
+        # add empty 01 (from bc01) axes ...
+        topo_view = self.cnt.data[:,:,
+            np.newaxis,np.newaxis].astype(np.float32)
+        topo_view = np.ascontiguousarray(np.copy(topo_view))
+        super(SetWithMarkers, self).__init__(topo_view=topo_view, y=self.y, 
+                                              axes=('b', 'c', 0 , 1))
+
+        log.info("Loaded dataset with shape: {:s}".format(
+            str(self.get_topological_view().shape)))
+                 
+    def remove_cnt(self):
+        del self.cnt

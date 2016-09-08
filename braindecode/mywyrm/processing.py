@@ -55,9 +55,9 @@ def calculate_csp(epo, classes=None):
     Returns
     -------
     v : 2d array
-        the sorted spacial filters
+        the sorted spatial filters
     a : 2d array
-        the sorted spacial patterns. Column i of a represents the
+        the sorted spatial patterns. Column i of a represents the
         pattern of the filter in column i of v.
     d : 1d array
         the variances of the components
@@ -199,7 +199,8 @@ def select_ival_with_markers(cnt, segment_ival):
     # possibly subtract first element of timeaxis so timeaxis starts at 0 again?
     return cnt
 
-def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def, segment_ival, timeaxis=-2):
+def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
+    segment_ival, timeaxis=-2):
     """Segment ival is : (offset to start marker, offset to end marker)"""
     start_to_end_value = dict()
     for class_name in start_marker_def:
@@ -248,6 +249,7 @@ def create_cnt_y(cnt, segment_ival, marker_def=None, timeaxis=-2):
         "Expect only one label per class, otherwise rewrite...")
 
     classes = sorted([labels[0] for labels in marker_def.values()])
+    # restrict to only those markers in marker def
     cnt = select_marker_classes(cnt, classes)
     event_samples_and_classes = get_event_samples_and_classes(cnt,
         timeaxis=timeaxis)
@@ -287,6 +289,7 @@ def get_y_signal(event_samples_and_classes, n_samples, n_classes, segment_ival, 
     trial_stop_offset = int(segment_ival[1] * fs / 1000.0)
 
     unique_labels = sorted(np.unique(labels))
+    print unique_labels
     assert np.array_equal(unique_labels, range(1, n_classes+1)), (
         "Expect labels to be from 1 to n_classes...")
 

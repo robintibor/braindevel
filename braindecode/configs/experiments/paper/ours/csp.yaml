@@ -34,14 +34,7 @@
         ignore_unused: [['max_min', 'whisker_length', 'eog_sensors',
             'rejection_var_ival', 'n_classes', 'rejection_blink_ival',
             'whisker_percent', 'low_cut_hz', 'high_cut_hz']],
-        variants: [
-        [
-            {
-                max_abs_threshold: [400],
-             }
-        ],
-        
-        [
+        variants: [[
 #        {
 #            save_path: ['data/models/paper/ours/csp/car/'],
 #            save_model: [True],
@@ -61,35 +54,62 @@
 #            max_abs_threshold: [800],
 #            trial_start:    [500],
 #        },
-        
         {
-            min_freq: [1],
-            max_freq: [118],
-            low_width: [6],
-            high_width: [8],
-            high_overlap: [4],
-            last_low_freq: [10],
-            low_overlap: [3],
-        },
-        {
-            min_freq: [7],
-            max_freq: [118],
-            low_width: [6],
-            high_width: [8],
-            high_overlap: [4],
-            last_low_freq: [10],
-            low_overlap: [3],
-        },
-        {
-            resample_fs: [100],
-            min_freq: [0.5],
-            max_freq: [3.5],
-            low_width: [1],
-            high_width: [1], # ignored anyways
-            high_overlap: [0.5],  # ignored anyways
-            last_low_freq: [3.5],
-            low_overlap: [0.5],
-        },
+            min_freq: [19],
+            max_freq: [19],
+            low_width: [22],
+            high_width: [22],
+            high_overlap: [0],
+            last_low_freq: [19],
+            low_overlap: [0],
+            n_selected_features: ['null'],
+         },
+#        {
+#            min_freq: [11],
+#            max_freq: [26],
+#            low_width: [6],
+#            high_width: [8],
+#            high_overlap: [4],
+#            last_low_freq: [14],
+#            low_overlap: [3],
+#        },
+#        {
+#            min_freq: [11],
+#            max_freq: [118],
+#            low_width: [6],
+#            high_width: [8],
+#            high_overlap: [4],
+#            last_low_freq: [14],
+#            low_overlap: [3],
+#        },
+#        {
+#            min_freq: [1],
+#            max_freq: [118],
+#            low_width: [6],
+#            high_width: [8],
+#            high_overlap: [4],
+#            last_low_freq: [10],
+#            low_overlap: [3],
+#        },
+#        {
+#            min_freq: [7],
+#            max_freq: [118],
+#            low_width: [6],
+#            high_width: [8],
+#            high_overlap: [4],
+#            last_low_freq: [10],
+#            low_overlap: [3],
+#        },
+#        {
+#            resample_fs: [100],
+#            min_freq: [0.5],
+#            max_freq: [3.5],
+#            low_width: [1],
+#            high_width: [1], # ignored anyways
+#            high_overlap: [0.5],  # ignored anyways
+#            last_low_freq: [3.5],
+#            low_overlap: [0.5],
+#        },
         
         ]]
     }]]

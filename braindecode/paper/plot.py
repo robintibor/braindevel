@@ -44,7 +44,7 @@ def plot_freq_classes_corrs(corrs, freqs, merge_func):
     plt.xlabel('Frequency [Hz]')
     plt.tight_layout()
 
-def plot_csp_patterns(wanted_patterns, sensor_names, i_fb=3):
+def plot_csp_patterns(wanted_patterns, sensor_names, i_fb=3, freq_str=u"7—13 Hz"):
     """
     THIS WAS ONLY FOR PAPER; REMOVE LATER :D see function below
     Expects filterband x classpair  x sensor x 2 (pattern).
@@ -54,7 +54,8 @@ def plot_csp_patterns(wanted_patterns, sensor_names, i_fb=3):
     fb_patterns = wanted_patterns[i_fb]
     fig = plot_csp_patterns_(fb_patterns, sensor_names)
     
-    plt.text(0.27,0.5,u"7–13 Hz", transform=fig.transFigure, fontsize=14, rotation=90, va='center')
+    plt.text(0.27,0.5, freq_str, transform=fig.transFigure, fontsize=14,
+        rotation=90, va='center')
     None
 
 
@@ -350,7 +351,7 @@ def plot_conf_mat(conf_mat, p_val_vs_csp, p_val_vs_other_net, label,
     plt.title(label, fontsize=20,y=1.04)
     
     cbar = plt.colorbar(fig.axes[0].images[0], shrink=0.9)
-    ticks = np.arange(0,0.251,0.025)
+    ticks = np.linspace(0, vmax, 5, endpoint=True)
     cbar.set_ticks(ticks)
     cbar.set_ticklabels(ticks * 100)
     cbar.set_label('Trials [%]',labelpad=10, fontsize=14)

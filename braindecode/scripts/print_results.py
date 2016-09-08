@@ -508,6 +508,7 @@ def prettify_word(word):
       ('batch_norm_up', 'bnorm_up'),
       ('batch_norm_sharpen', 'bnorm_sh'),
       ('n_start_filters', 'n_start_f'),
+      ('break_start_offset_ms', 'break+ms'),
       ])
     for key in substitutions:
         word = word.replace(key, substitutions[key])

@@ -136,7 +136,10 @@ class ConfigParser(object):
         if self.debug:
             log.info("Setting debug parameters")
             for variant in all_variants:
-                variant['max_epochs'] = 1
+                if 'max_epochs' in variant:
+                    variant['max_epochs'] = 1
+                if 'n_top_bottom_csp_filters' in variant:
+                    variant['n_top_bottom_csp_filters'] = 1
                 variant['sensor_names'] = ['C3', 'C4', 'Cz']
                 variant['load_sensor_names'] = ['C3', 'C4', 'Cz']
                 #variant['last_subject'] = 1
