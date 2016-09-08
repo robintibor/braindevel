@@ -311,6 +311,8 @@ def parse_command_line_arguments():
     parser.add_argument('--adaptoffset', action='store', default=500, type=int,
         help="Sample offset for the first sample to use (within a trial) "
         "for adaptation updates.")
+    parser.add_argument('--predfreq', action='store', default=125, type=int,
+        help="Amount of samples between predictions.")
     args = parser.parse_args()
     return args
 
@@ -328,7 +330,7 @@ def setup_logging():
 
 def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_data,
         use_ui_server, adapt_model, n_updates_per_break, batch_size,
-        learning_rate, n_min_trials, trial_start_offset):
+        learning_rate, n_min_trials, trial_start_offset, pred_freq):
     setup_logging()
     assert np.little_endian, "Should be in little endian"
     hostname = ''
@@ -357,7 +359,7 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_da
         log.info("Not adapting model...")
         online_trainer = NoTrainer()
     coordinator = OnlineCoordinator(data_processor, online_model, online_trainer,
-        pred_freq=125)
+        pred_freq=pred_freq)
     server = PredictionServer((hostname, port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
         save_data=save_data, use_ui_server=use_ui_server, 
@@ -373,5 +375,5 @@ if __name__ == '__main__':
     args = parse_command_line_arguments()
     main(args.host, args.port, args.modelfile, args.paramsfile, not args.noplot, not args.nosave,
         not args.noui, not args.noadapt, args.updatesperbreak, args.batchsize,
-        args.learningrate, args.mintrials, args.adaptoffset)
+        args.learningrate, args.mintrials, args.adaptoffset, args.predfreq)
     
