@@ -1,5 +1,8 @@
 import numpy as np
-from braindecode.datahandling.batch_iteration import WindowsIterator
+import pytest
+from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
+from braindecode.datahandling.batch_iteration import WindowsIterator,\
+    CntWindowTrialIterator
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 from braindecode.datahandling.batch_iteration import CntWindowsFromCntIterator
 from braindecode.test.util import to_4d_time_array
@@ -84,3 +87,93 @@ def test_cnt_windows_iterator_oversample():
     assert np.array_equal(batches[0][0].squeeze(), [range(6,12), range(10,16), range(14,20)])
     assert np.array_equal(batches[1][0].squeeze(), [range(14,20), range(14,20), range(14,20)])
     assert np.array_equal(batches[2][0].squeeze(), [[18,19] + range(4), range(14,20), range(2,8)])   
+
+def test_cnt_windows_trial_iterator():
+    iterator = CntWindowTrialIterator(batch_size=1, input_time_length=3,
+                      n_sample_preds=2, check_preds_smaller_trial_len=True)
+    topo = np.array(range(6))
+    y = np.array([0] * 2 + [1] * 3 + [0] * 1)
+    dataset = DenseDesignMatrix(topo_view = topo[:,None,None,None], y=y[:,None])
+    
+    expected_topo = np.array([[1,2,3],
+                            [2,3,4]])[:,np.newaxis,np.newaxis,:,np.newaxis]
+    batches = list(iterator.get_batches(dataset, shuffle=False))
+    assert np.array_equal(expected_topo[0], batches[0][0])
+    assert np.array_equal(expected_topo[1], batches[1][0])
+    assert np.array_equal([[1],[1]], batches[0][1])
+    assert np.array_equal([[1],[1]], batches[1][1])
+    assert len(batches) == 2
+    
+    # trial without end is being ignored
+    topo = np.array(range(9))
+    y = np.array([0] * 2 + [1] * 3 + [0] * 1 + [1] * 3)
+    dataset = DenseDesignMatrix(topo_view = topo[:,None,None,None], y=y[:,None])
+    
+    expected_topo = np.array([[1,2,3],
+                            [2,3,4]])[:,np.newaxis,np.newaxis,:,np.newaxis]
+    batches = list(iterator.get_batches(dataset, shuffle=False))
+    assert np.array_equal(expected_topo[0], batches[0][0])
+    assert np.array_equal(expected_topo[1], batches[1][0])
+    assert np.array_equal([[1],[1]], batches[0][1])
+    assert np.array_equal([[1],[1]], batches[1][1])
+    assert len(batches) == 2
+    
+    # Two trials
+    topo = np.array(range(10))
+    y = np.array([0] * 2 + [1] * 3 + [0] * 1 + [1] * 3+ [0])
+    dataset = DenseDesignMatrix(topo_view = topo[:,None,None,None], y=y[:,None])
+    
+    expected_topo = np.array([[1,2,3],
+                            [2,3,4],
+                             [5,6,7],
+                             [6,7,8]])[:,np.newaxis,np.newaxis,:,np.newaxis]
+    batches = list(iterator.get_batches(dataset, shuffle=False))
+    assert np.array_equal(expected_topo[0], batches[0][0])
+    assert np.array_equal(expected_topo[1], batches[1][0])
+    assert np.array_equal(expected_topo[2], batches[2][0])
+    assert np.array_equal(expected_topo[3], batches[3][0])
+    assert np.array_equal([[1],[1]], batches[0][1])
+    assert np.array_equal([[1],[1]], batches[1][1])
+    assert np.array_equal([[1],[1]], batches[2][1])
+    assert np.array_equal([[1],[1]], batches[3][1])
+    assert len(batches) == 4
+    
+    # A small trial leading to zero targets, first with failure
+    topo = np.array(range(4))
+    y = np.array([0] * 2 + [1]  + [0])
+    dataset = DenseDesignMatrix(topo_view = topo[:,None,None,None], y=y[:,None])
+    
+    with pytest.raises(AssertionError) as excinfo:
+        batches = list(iterator.get_batches(dataset, shuffle=False))
+    assert excinfo.value.message == "Trial should be longer or equal than number of sample preds, Trial length: 1, sample preds 2..."
+
+    # Now without failure
+    iterator = CntWindowTrialIterator(batch_size=1, input_time_length=3,
+                          n_sample_preds=2, check_preds_smaller_trial_len=False)
+    topo = np.array(range(4))
+    y = np.array([0] * 2 + [1]  + [0])
+    dataset = DenseDesignMatrix(topo_view = topo[:,None,None,None], y=y[:,None])
+    
+    batches = list(iterator.get_batches(dataset, shuffle=False))
+    
+    expected_topo = np.array([[0,1,2]])[:,np.newaxis,np.newaxis,:,np.newaxis]
+    assert np.array_equal(expected_topo[0], batches[0][0])
+    assert np.array_equal([[0],[1]], batches[0][1])
+    assert len(batches) == 1
+    
+    # Full trial and part-zero-target-trial
+    topo = np.array(range(9))
+    y = np.array([0] * 2 + [1] * 3 + [0] * 2 + [1] + [0])
+    dataset = DenseDesignMatrix(topo_view = topo[:,None,None,None], y=y[:,None])
+    
+    expected_topo = np.array([[1,2,3],
+                            [2,3,4],
+                             [5,6,7]])[:,np.newaxis,np.newaxis,:,np.newaxis]
+    batches = list(iterator.get_batches(dataset, shuffle=False))
+    assert np.array_equal(expected_topo[0], batches[0][0])
+    assert np.array_equal(expected_topo[1], batches[1][0])
+    assert np.array_equal(expected_topo[2], batches[2][0])
+    assert np.array_equal([[1],[1]], batches[0][1])
+    assert np.array_equal([[1],[1]], batches[1][1])
+    assert np.array_equal([[0],[1]], batches[2][1])
+    assert len(batches) == 3

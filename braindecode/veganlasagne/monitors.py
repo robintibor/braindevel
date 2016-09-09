@@ -282,9 +282,12 @@ class CntTrialMisclassMonitor(Monitor):
         i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
             dataset.y, check_trial_lengths_equal=False,
             input_time_length=self.input_time_length)
-        for start, end in zip(i_trial_starts, i_trial_ends):
-            targets = dataset.y[start:end]
-            # assert below seems wrong?
+        for i_trial, (start, end) in enumerate(zip(i_trial_starts, i_trial_ends)):
+            targets = dataset.y[start:end+1] # end is not inclusive
+            assert len(targets) == len(preds_per_trial[i_trial])
+            # max would have several 1s for different classes
+            # if there are any two different classes with 1s
+            # in all samples
             assert np.sum(np.max(targets, axis=0)) == 1, ("Trial should only "
                  "have one class")
             assert np.sum(targets) == len(targets), ("Every sample should have "

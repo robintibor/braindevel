@@ -233,25 +233,24 @@ class CntWindowsFromCntIterator(object):
 class CntWindowTrialIterator(object):
     """Cut out windows for several predictions from a continous dataset
      with a trial marker y signal."""
-    def __init__(self, batch_size, input_time_length, n_sample_preds):
+    def __init__(self, batch_size, input_time_length, n_sample_preds,
+            check_preds_smaller_trial_len=True):
         self.batch_size = batch_size
         self.input_time_length = input_time_length
         self.n_sample_preds = n_sample_preds
+        self.check_preds_smaller_trial_len = check_preds_smaller_trial_len
         self.rng = RandomState(328774)
         
     def reset_rng(self):
         self.rng = RandomState(328774)
     
+
     def get_batches(self, dataset, shuffle):
         i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
             dataset.y, check_trial_lengths_equal=False,
             input_time_length=self.input_time_length)
-        for start, end in zip(i_trial_starts, i_trial_ends):
-            assert end - start + 1 >= self.n_sample_preds, (
-                "Trial should be longer or equal than number of sample preds, "
-                "Trial length: {:d}, sample preds {:d}...".format(
-                    end - start + 1,
-                    self.n_sample_preds))
+        if self.check_preds_smaller_trial_len:
+            self.check_trial_bounds(i_trial_starts, i_trial_ends)
         start_end_blocks_per_trial = self.compute_start_end_block_inds(
             i_trial_starts, i_trial_ends)
 
@@ -259,6 +258,13 @@ class CntWindowTrialIterator(object):
         y = dataset.y
 
         return self.yield_block_batches(topo, y, start_end_blocks_per_trial, shuffle=shuffle)
+
+    def check_trial_bounds(self, i_trial_starts, i_trial_ends):
+        for start, end in zip(i_trial_starts, i_trial_ends):
+            assert end - start + 1 >= self.n_sample_preds, (
+                "Trial should be longer or equal than number of sample preds, "
+                "Trial length: {:d}, sample preds {:d}...".
+                format(end - start + 1, self.n_sample_preds))
 
     
 
@@ -271,13 +277,14 @@ class CntWindowTrialIterator(object):
             start_end_blocks = get_start_end_blocks_for_trial(trial_start,
                 trial_end, self.input_time_length, self.n_sample_preds)
         
-            # check that block is correct, all predicted samples should be the trial samples
-            all_predicted_samples = [range(start_end[1] - self.n_sample_preds + 1, 
-                start_end[1]+1) for start_end in start_end_blocks]
-            # this check takes about 50 ms in performance test
-            # whereas loop itself takes only 5 ms.. deactivate it if not necessary
-            assert np.array_equal(range(i_trial_starts[i_trial], i_trial_ends[i_trial] + 1), 
-                           np.unique(np.concatenate(all_predicted_samples)))
+            if self.check_preds_smaller_trial_len:
+                # check that block is correct, all predicted samples should be the trial samples
+                all_predicted_samples = [range(start_end[1] - self.n_sample_preds + 1, 
+                    start_end[1]+1) for start_end in start_end_blocks]
+                # this check takes about 50 ms in performance test
+                # whereas loop itself takes only 5 ms.. deactivate it if not necessary
+                assert np.array_equal(range(i_trial_starts[i_trial], i_trial_ends[i_trial] + 1), 
+                               np.unique(np.concatenate(all_predicted_samples)))
 
             start_end_blocks_per_trial.append(start_end_blocks)
         return start_end_blocks_per_trial
@@ -327,7 +334,7 @@ def compute_trial_start_end_samples(y, check_trial_lengths_equal=True,
     assert(np.all(i_trial_starts <= i_trial_ends))
     # possibly remove first trials if they are too early
     if input_time_length is not None:
-        while i_trial_starts[0] < input_time_length:
+        while i_trial_starts[0] < (input_time_length -1):
             i_trial_starts = i_trial_starts[1:]
             i_trial_ends = i_trial_ends[1:]
     if check_trial_lengths_equal:

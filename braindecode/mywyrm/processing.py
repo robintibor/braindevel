@@ -289,7 +289,6 @@ def get_y_signal(event_samples_and_classes, n_samples, n_classes, segment_ival, 
     trial_stop_offset = int(segment_ival[1] * fs / 1000.0)
 
     unique_labels = sorted(np.unique(labels))
-    print unique_labels
     assert np.array_equal(unique_labels, range(1, n_classes+1)), (
         "Expect labels to be from 1 to n_classes...")
 
