@@ -168,13 +168,13 @@ class PredictionServer(gevent.server.StreamServer):
         chan_names = chan_names_line.replace('\n','').split(" ")
             
         assert np.array_equal(chan_names, ['Fp1', 'Fpz', 'Fp2', 'F7', 'F3',
-		 'Fz', 'F4', 'F8', 'FC5', 'FC1', 'FC2', 'FC6', 'M1', 'T7', 
-		 'C3', 'Cz', 'C4', 'T8', 'M2', 'CP5', 'CP1', 'CP2', 'CP6',
-		 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'Oz', 'O2', 'AF7',
-		 'AF3', 'AF4', 'AF8', 'F5', 'F1', 'F2', 'F6', 'FC3', 'FCz',
-		 'FC4', 'C5', 'C1', 'C2', 'C6', 'CP3', 'CPz', 'CP4', 'P5',
-		 'P1', 'P2', 'P6', 'PO5', 'PO3', 'PO4', 'PO6', 'FT7', 'FT8',
-		 'TP7', 'TP8', 'PO7', 'PO8', 'marker']
+         'Fz', 'F4', 'F8', 'FC5', 'FC1', 'FC2', 'FC6', 'M1', 'T7', 
+         'C3', 'Cz', 'C4', 'T8', 'M2', 'CP5', 'CP1', 'CP2', 'CP6',
+         'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'Oz', 'O2', 'AF7',
+         'AF3', 'AF4', 'AF8', 'F5', 'F1', 'F2', 'F6', 'FC3', 'FCz',
+         'FC4', 'C5', 'C1', 'C2', 'C6', 'CP3', 'CPz', 'CP4', 'P5',
+         'P1', 'P2', 'P6', 'PO5', 'PO3', 'PO4', 'PO6', 'FT7', 'FT8',
+         'TP7', 'TP8', 'PO7', 'PO8', 'marker']
             )
         n_rows = self.read_until_bytes_received(in_socket, 4)
         n_rows = np.fromstring(n_rows, dtype=np.int32)[0]
@@ -265,136 +265,138 @@ class PredictionServer(gevent.server.StreamServer):
 
     def print_results(self, all_samples, all_preds, all_pred_samples):
         # y labels i from 0 to n_classes (inclusive!), 0 representing
-		# non-trial => no known marker state
-		y_labels = all_samples[:,-1]
-		y_signal = np.ones((len(y_labels), 4)) * np.nan
-		y_signal[:,0] = y_labels == 1
-		y_signal[:,1] = y_labels == 2
-		y_signal[:,2] = np.logical_or(y_labels == 0, y_labels==3)
-		y_signal[:,3] = y_labels == 4
-		
-		assert not np.any(np.isnan(y_signal))
-		
-		interpolate_fn = interpolate.interp1d(all_pred_samples, all_preds.T,
-						     bounds_error=False, fill_value=0)
-		interpolated_preds = interpolate_fn(range(0,len(y_labels)))
-		corrcoeffs = np.corrcoef(interpolated_preds, 
-					 y_signal.T)[:4,4:]
+        # non-trial => no known marker state
+        y_labels = all_samples[:,-1]
+        y_signal = np.ones((len(y_labels), 4)) * np.nan
+        y_signal[:,0] = y_labels == 1
+        y_signal[:,1] = y_labels == 2
+        y_signal[:,2] = np.logical_or(y_labels == 0, y_labels==3)
+        y_signal[:,3] = y_labels == 4
+        
+        assert not np.any(np.isnan(y_signal))
+        
+        interpolate_fn = interpolate.interp1d(all_pred_samples, all_preds.T,
+                                             bounds_error=False, fill_value=0)
+        interpolated_preds = interpolate_fn(range(0,len(y_labels)))
+        corrcoeffs = np.corrcoef(interpolated_preds, 
+                                 y_signal.T)[:4,4:]
 
-		print("Corrcoeffs")
-		print corrcoeffs
-		print("mean across diagonal")
-		print np.mean(np.diag(corrcoeffs))
-		interpolated_pred_labels = np.argmax(interpolated_preds, axis=0)
-		
-		# inside trials
-		corrcoeffs = np.corrcoef(interpolated_preds[:,y_labels!=0], 
-					 y_signal[y_labels!=0].T)[:4,4:]
-		print("Corrcoeffs inside trial")
-		print corrcoeffs
-		print("mean across diagonal inside trial")
-		print np.mean(np.diag(corrcoeffs))
-		
-		# -1 since we have 0 as "break" "non-trial" marker
-		label_pred_equal = interpolated_pred_labels == y_labels - 1
-		label_pred_trial_equal = label_pred_equal[y_labels!=0]
-		print("Accuracy inside trials")
-		print np.sum(label_pred_trial_equal) / float(len(label_pred_trial_equal))
-		
+        print("Corrcoeffs")
+        print corrcoeffs
+        print("mean across diagonal")
+        print np.mean(np.diag(corrcoeffs))
+        interpolated_pred_labels = np.argmax(interpolated_preds, axis=0)
+        
+        # inside trials
+        corrcoeffs = np.corrcoef(interpolated_preds[:,y_labels!=0], 
+                                 y_signal[y_labels!=0].T)[:4,4:]
+        print("Corrcoeffs inside trial")
+        print corrcoeffs
+        print("mean across diagonal inside trial")
+        print np.mean(np.diag(corrcoeffs))
+        
+        # -1 since we have 0 as "break" "non-trial" marker
+        label_pred_equal = interpolated_pred_labels == y_labels - 1
+        label_pred_trial_equal = label_pred_equal[y_labels!=0]
+        print("Accuracy inside trials")
+        print np.sum(label_pred_trial_equal) / float(len(label_pred_trial_equal))
+        
 
-	class DataSaver(object):
-	    """ Remember and save data streamed during an online session."""
-	    def __init__(self, chan_names):
-		self.chan_names = chan_names
-		self.sample_blocks = []
+class DataSaver(object):
+    """ Remember and save data streamed during an online session."""
+    def __init__(self, chan_names):
+        self.chan_names = chan_names
+        self.sample_blocks = []
 
-	    def append_samples(self, samples):
-		""" Expects timexchan"""
-		self.sample_blocks.append(samples)
-		
-	    def save(self):
-		# save with time as filename
-		time_string = get_now_timestring()
-		filename = os.path.join('data/online/', time_string + '.hdf5')
-		log.info("Saving to {:s}...".format(filename))
-		all_samples = np.concatenate(self.sample_blocks).astype(np.float32)
-		with h5py.File(filename, 'w') as out_file:
-		    dt = h5py.special_dtype(vlen=unicode)
-		    dset = out_file.create_dataset("chan_names", (len(self.chan_names),), dtype=dt)
-		    dset[:] = self.chan_names
-		    out_file.create_dataset("cnt_samples", data=all_samples)
-		log.info("Done.")
+    def append_samples(self, samples):
+        """ Expects timexchan"""
+        self.sample_blocks.append(samples)
+        
+    def save(self):
+        # save with time as filename
+        time_string = get_now_timestring()
+        filename = os.path.join('data/online/', time_string + '.hdf5')
+        log.info("Saving to {:s}...".format(filename))
+        all_samples = np.concatenate(self.sample_blocks).astype(np.float32)
+        with h5py.File(filename, 'w') as out_file:
+            dt = h5py.special_dtype(vlen=unicode)
+            dset = out_file.create_dataset("chan_names", (len(self.chan_names),), dtype=dt)
+            dset[:] = self.chan_names
+            out_file.create_dataset("cnt_samples", data=all_samples)
+        log.info("Done.")
 
-	def get_now_timestring():
-	    now = datetime.datetime.now()
-	    time_string = now.strftime('%Y-%m-%d_%H-%M-%S')
-	    return time_string      
+def get_now_timestring():
+    now = datetime.datetime.now()
+    time_string = now.strftime('%Y-%m-%d_%H-%M-%S')
+    return time_string      
 
-	def setup_logging():
-	    """ Set up a root logger so that other modules can use logging
-	    Adapted from scripts/train.py from pylearn"""
 
-	    root_logger = logging.getLogger()
-	    prefix = '%(asctime)s '
-	    formatter = CustomFormatter(prefix=prefix)
-	    handler = CustomStreamHandler(formatter=formatter)
-	    root_logger.handlers  = []
-	    root_logger.addHandler(handler)
-	    root_logger.setLevel(logging.DEBUG)
 
-	def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_data,
-		use_ui_server, adapt_model, n_updates_per_break, batch_size,
-		learning_rate, n_min_trials, trial_start_offset, pred_freq,
-		incoming_port):
-	    setup_logging()
-	    assert np.little_endian, "Should be in little endian"
-	    if args.paramsfile is not None:
-		log.info("Loading params from {:s}".format(args.paramsfile))
-		params = np.load(params_filename)
-	    else:
-		params = np.load(base_name + '.npy')
-	    exp = create_experiment(base_name + '.yaml')
-	    # Have to set for both exp final layer and actually used model
-	    # as exp final layer might be used for adaptation
-	    # maybe check this all for correctness?
-	    model = exp.final_layer
-	    lasagne.layers.set_all_param_values(model, params)
-	    model = transform_to_normal_net(model)
-	    lasagne.layers.set_all_param_values(model, params)
-	    
-	    data_processor = StandardizeProcessor(factor_new=1e-3)
-	    online_model = OnlineModel(model)
-	    if adapt_model:
-		online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break, 
-		    batch_size, learning_rate, n_min_trials, trial_start_offset)
-	    else:
-		log.info("Not adapting model...")
-		online_trainer = NoTrainer()
-	    coordinator = OnlineCoordinator(data_processor, online_model, online_trainer,
-		pred_freq=pred_freq)
-	    hostname = ''
-	    server = PredictionServer((hostname, incoming_port), coordinator=coordinator,
-		ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
-		save_data=save_data, use_ui_server=use_ui_server, 
-		model_base_name=base_name)
-	    online_trainer.initialize()
-	    log.info("Starting server on port {:d}".format(incoming_port))
-	    server.start()
-	    log.info("Started server")
-	    server.serve_forever()
+def setup_logging():
+    """ Set up a root logger so that other modules can use logging
+    Adapted from scripts/train.py from pylearn"""
 
-	if __name__ == '__main__':
-	    gevent.signal(signal.SIGQUIT, gevent.kill)
-	    args = parse_command_line_arguments()
-	    if args.noprint:
-		log.setLevel("WARN")
-	    main(ui_hostname=args.uihost, ui_port=args.uiport, 
-		base_name=args.modelfile, params_filename=args.paramsfile,
-		plot_sensors=not args.noplot, save_data=not args.nosave,
-		use_ui_server=not args.noui, adapt_model=not args.noadapt,
-		n_updates_per_break=args.updatesperbreak, batch_size=args.batchsize,
-		learning_rate=args.learningrate, n_min_trials=args.mintrials, 
-		trial_start_offset=args.adaptoffset, pred_freq=args.predfreq,
-		incoming_port=args.inport,
-		)
+    root_logger = logging.getLogger()
+    prefix = '%(asctime)s '
+    formatter = CustomFormatter(prefix=prefix)
+    handler = CustomStreamHandler(formatter=formatter)
+    root_logger.handlers  = []
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.DEBUG)
+
+def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_data,
+        use_ui_server, adapt_model, n_updates_per_break, batch_size,
+        learning_rate, n_min_trials, trial_start_offset, pred_freq,
+        incoming_port):
+    setup_logging()
+    assert np.little_endian, "Should be in little endian"
+    if args.paramsfile is not None:
+        log.info("Loading params from {:s}".format(args.paramsfile))
+        params = np.load(params_filename)
+    else:
+        params = np.load(base_name + '.npy')
+    exp = create_experiment(base_name + '.yaml')
+    # Have to set for both exp final layer and actually used model
+    # as exp final layer might be used for adaptation
+    # maybe check this all for correctness?
+    model = exp.final_layer
+    lasagne.layers.set_all_param_values(model, params)
+    model = transform_to_normal_net(model)
+    lasagne.layers.set_all_param_values(model, params)
+    
+    data_processor = StandardizeProcessor(factor_new=1e-3)
+    online_model = OnlineModel(model)
+    if adapt_model:
+        online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break, 
+            batch_size, learning_rate, n_min_trials, trial_start_offset)
+    else:
+        log.info("Not adapting model...")
+        online_trainer = NoTrainer()
+    coordinator = OnlineCoordinator(data_processor, online_model, online_trainer,
+        pred_freq=pred_freq)
+    hostname = ''
+    server = PredictionServer((hostname, incoming_port), coordinator=coordinator,
+        ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
+        save_data=save_data, use_ui_server=use_ui_server, 
+        model_base_name=base_name)
+    online_trainer.initialize()
+    log.info("Starting server on port {:d}".format(incoming_port))
+    server.start()
+    log.info("Started server")
+    server.serve_forever()
+
+if __name__ == '__main__':
+    gevent.signal(signal.SIGQUIT, gevent.kill)
+    args = parse_command_line_arguments()
+    if args.noprint:
+        log.setLevel("WARN")
+    main(ui_hostname=args.uihost, ui_port=args.uiport, 
+        base_name=args.modelfile, params_filename=args.paramsfile,
+        plot_sensors=not args.noplot, save_data=not args.nosave,
+        use_ui_server=not args.noui, adapt_model=not args.noadapt,
+        n_updates_per_break=args.updatesperbreak, batch_size=args.batchsize,
+        learning_rate=args.learningrate, n_min_trials=args.mintrials, 
+        trial_start_offset=args.adaptoffset, pred_freq=args.predfreq,
+        incoming_port=args.inport,
+        )
     
