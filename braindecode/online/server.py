@@ -193,7 +193,11 @@ class PredictionServer(gevent.server.StreamServer):
                 if self.use_ui_server:
                     # +1 to convert 0-based to 1-based indexing
                     ui_socket.sendall("{:d}\n".format(i_sample + 1))
-                    ui_socket.sendall("{:f} {:f} {:f} {:f}\n".format(*pred[0]))
+                    n_preds = len(pred[0])
+                    # format all preds as floats with spaces inbetween
+                    format_str = " ".join(["{:f}"] * n_preds) + "\n"
+                    pred_str = format_str.format(*pred[0])
+                    ui_socket.sendall(pred_str)
                 all_preds.append(pred)
                 all_pred_samples.append(i_sample)
         
