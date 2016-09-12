@@ -283,9 +283,11 @@ def parse_command_line_arguments():
         description="""Launch server for online decoding.
         Example: online/server.py --host 172.30.2.129 --port 30000"""
     )
-    parser.add_argument('--host', action='store',
+    parser.add_argument('--inport', action='store', type=int,
+        default=7987, help='Port from which to accept incoming sensor data.')
+    parser.add_argument('--uihost', action='store',
         default='172.30.0.117', help='Hostname/IP of the UI server')
-    parser.add_argument('--port', action='store',
+    parser.add_argument('--uiport', action='store',
         default=30000, help='Port of the UI server')
     parser.add_argument('--modelfile', action='store',
         default='data/models/raw-net-512/3', 
@@ -330,12 +332,10 @@ def setup_logging():
 
 def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_data,
         use_ui_server, adapt_model, n_updates_per_break, batch_size,
-        learning_rate, n_min_trials, trial_start_offset, pred_freq):
+        learning_rate, n_min_trials, trial_start_offset, pred_freq,
+        incoming_port):
     setup_logging()
     assert np.little_endian, "Should be in little endian"
-    hostname = ''
-    # port of our server
-    port = 7987
     if args.paramsfile is not None:
         log.info("Loading params from {:s}".format(args.paramsfile))
         params = np.load(params_filename)
@@ -360,12 +360,13 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_da
         online_trainer = NoTrainer()
     coordinator = OnlineCoordinator(data_processor, online_model, online_trainer,
         pred_freq=pred_freq)
-    server = PredictionServer((hostname, port), coordinator=coordinator,
+    hostname = ''
+    server = PredictionServer((hostname, incoming_port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
         save_data=save_data, use_ui_server=use_ui_server, 
         model_base_name=base_name)
     online_trainer.initialize()
-    log.info("Starting server")
+    log.info("Starting server on port {:d}".format(incoming_port))
     server.start()
     log.info("Started server")
     server.serve_forever()
@@ -373,7 +374,13 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_da
 if __name__ == '__main__':
     gevent.signal(signal.SIGQUIT, gevent.kill)
     args = parse_command_line_arguments()
-    main(args.host, args.port, args.modelfile, args.paramsfile, not args.noplot, not args.nosave,
-        not args.noui, not args.noadapt, args.updatesperbreak, args.batchsize,
-        args.learningrate, args.mintrials, args.adaptoffset, args.predfreq)
+    main(ui_hostname=args.uihost, ui_port=args.uiport, 
+        base_name=args.modelfile, params_filename=args.paramsfile,
+        plot_sensors=not args.noplot, save_data=not args.nosave,
+        use_ui_server=not args.noui, adapt_model=not args.noadapt,
+        n_updates_per_break=args.updatesperbreak, batch_size=args.batchsize,
+        learning_rate=args.learningrate, n_min_trials=args.mintrials, 
+        trial_start_offset=args.adaptoffset, pred_freq=args.predfreq,
+        incoming_port=args.inport,
+        )
     

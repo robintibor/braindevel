@@ -14,8 +14,7 @@
             [
                 !!python/name:braindecode.mywyrm.processing.rereference_to , 
                 {sensor_name: 'Cz'}
-        ],
-            
+            ],
             [
                 !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
                 {'low_cut_hz': $low_cut_hz,
