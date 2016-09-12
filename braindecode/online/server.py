@@ -1,11 +1,59 @@
 #!/usr/bin/env python
 import matplotlib
 import logging
+
+def parse_command_line_arguments():
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="""Launch server for online decoding.
+        Example: online/server.py --host 172.30.2.129 --port 30000"""
+    )
+    parser.add_argument('--inport', action='store', type=int,
+        default=7987, help='Port from which to accept incoming sensor data.')
+    parser.add_argument('--uihost', action='store',
+        default='172.30.0.117', help='Hostname/IP of the UI server')
+    parser.add_argument('--uiport', action='store',
+        default=30000, help='Port of the UI server')
+    parser.add_argument('--modelfile', action='store',
+        default='data/models/raw-net-512/3', 
+        help='Basename of the modelfile')
+    parser.add_argument('--paramsfile', action='store', 
+        help='Use these (possibly adapted) parameters for the model')
+    parser.add_argument('--noplot', action='store_true',
+        help="Don't show plots of the sensors first.")
+    parser.add_argument('--nosave', action='store_true',
+        help="Don't save data.")
+    parser.add_argument('--noui', action='store_true',
+        help="Don't wait for UI server.")
+    parser.add_argument('--noadapt', action='store_true',
+        help="Don't adapt model while running online.")
+    parser.add_argument('--updatesperbreak', action='store', default=5,
+        type=int, help="How many updates to adapt the model during trial break.")
+    parser.add_argument('--batchsize', action='store', default=45, type=int,
+        help="Batch size for adaptation updates.")
+    parser.add_argument('--learningrate', action='store', default=1e-3, 
+        type=float, help="Learning rate for adaptation updates.")
+    parser.add_argument('--mintrials', action='store', default=8, type=int,
+        help="Number of trials before starting adaptation updates.")
+    parser.add_argument('--adaptoffset', action='store', default=500, type=int,
+        help="Sample offset for the first sample to use (within a trial) "
+        "for adaptation updates.")
+    parser.add_argument('--predfreq', action='store', default=125, type=int,
+        help="Amount of samples between predictions.")
+    parser.add_argument('--noprint', action='store_true',
+        help="Don't print on terminal.")
+    parser.add_argument('--plotbackend', action='store',
+        default='agg', help='Matplotlib backend to use for plotting.')
+    args = parser.parse_args()
+    return args
+
 log = logging.getLogger(__name__)
+matplotlib_backend = parse_command_line_arguments().plotbackend
 try:
-    matplotlib.use('agg')
+    matplotlib.use(matplotlib_backend)
 except:
-    log.warn("Could not use Qt5 backend for matplotlib")
+    log.warn("Could not use {:s} backend for matplotlib".format(
+        matplotlib_backend))
     
 import gevent.server
 import signal
@@ -282,45 +330,7 @@ def get_now_timestring():
     time_string = now.strftime('%Y-%m-%d_%H-%M-%S')
     return time_string      
 
-def parse_command_line_arguments():
-    parser = argparse.ArgumentParser(
-        description="""Launch server for online decoding.
-        Example: online/server.py --host 172.30.2.129 --port 30000"""
-    )
-    parser.add_argument('--inport', action='store', type=int,
-        default=7987, help='Port from which to accept incoming sensor data.')
-    parser.add_argument('--uihost', action='store',
-        default='172.30.0.117', help='Hostname/IP of the UI server')
-    parser.add_argument('--uiport', action='store',
-        default=30000, help='Port of the UI server')
-    parser.add_argument('--modelfile', action='store',
-        default='data/models/raw-net-512/3', 
-        help='Basename of the modelfile')
-    parser.add_argument('--paramsfile', action='store', 
-        help='Use these (possibly adapted) parameters for the model')
-    parser.add_argument('--noplot', action='store_true',
-        help="Don't show plots of the sensors first.")
-    parser.add_argument('--nosave', action='store_true',
-        help="Don't save data.")
-    parser.add_argument('--noui', action='store_true',
-        help="Don't wait for UI server.")
-    parser.add_argument('--noadapt', action='store_true',
-        help="Don't adapt model while running online.")
-    parser.add_argument('--updatesperbreak', action='store', default=5,
-        type=int, help="How many updates to adapt the model during trial break.")
-    parser.add_argument('--batchsize', action='store', default=45, type=int,
-        help="Batch size for adaptation updates.")
-    parser.add_argument('--learningrate', action='store', default=1e-3, 
-        type=float, help="Learning rate for adaptation updates.")
-    parser.add_argument('--mintrials', action='store', default=8, type=int,
-        help="Number of trials before starting adaptation updates.")
-    parser.add_argument('--adaptoffset', action='store', default=500, type=int,
-        help="Sample offset for the first sample to use (within a trial) "
-        "for adaptation updates.")
-    parser.add_argument('--predfreq', action='store', default=125, type=int,
-        help="Amount of samples between predictions.")
-    args = parser.parse_args()
-    return args
+
 
 def setup_logging():
     """ Set up a root logger so that other modules can use logging
@@ -378,6 +388,8 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_da
 if __name__ == '__main__':
     gevent.signal(signal.SIGQUIT, gevent.kill)
     args = parse_command_line_arguments()
+    if args.noprint:
+        log.setLevel("WARN")
     main(ui_hostname=args.uihost, ui_port=args.uiport, 
         base_name=args.modelfile, params_filename=args.paramsfile,
         plot_sensors=not args.noplot, save_data=not args.nosave,
