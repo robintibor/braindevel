@@ -1,13 +1,15 @@
 import numpy as np
 from braindecode.datasets.raw import CleanSignalMatrix
-from braindecode.datasets.cnt_signal_matrix import CntSignalMatrix
+from braindecode.datasets.cnt_signal_matrix import CntSignalMatrix,\
+    SetWithMarkers
 from braindecode.mywyrm.clean import clean_train_test_cnt
 import logging
 from braindecode.datasets.loaders import BBCIDataset
 from braindecode.datasets.signal_processor import SignalProcessor
-from braindecode.util import FuncAndArgs
 from braindecode.mywyrm.processing import select_marker_classes,\
     select_marker_epoch_range, select_ival_with_markers
+from braindecode.datasets.trial_segmenter import MarkerSegmenter, AddTrialBreaks,\
+    PipelineSegmenter, RestrictTrialRange
 log = logging.getLogger(__name__)
 
 class CombinedSet(object):
@@ -19,7 +21,9 @@ class CombinedSet(object):
         for dataset in self.sets:
             dataset.ensure_is_loaded()
     def load(self):
-        for dataset in self.sets:
+        for i_set, dataset in enumerate(self.sets):
+            log.info("Loading set {:d} of {:d}...".format(
+                i_set + 1, len(self.sets)))
             dataset.load()
         # hack to have correct y dimensions
         self.y = self.sets[-1].y[0:1]
@@ -29,8 +33,12 @@ class CombinedCntSets(object):
     def __init__(self, set_args, load_sensor_names,
         sensor_names, 
         cnt_preprocessors, marker_def):
+        """ Per Set, set_args should be (filename, constructor, start_stop, 
+                segment_ival, end_marker_def)"""
         self.__dict__.update(locals())
         del self.self
+        if self.load_sensor_names == 'all':
+            self.load_sensor_names = None
     
     def ensure_is_loaded(self):
         if not hasattr(self, 'sets'):
@@ -43,6 +51,7 @@ class CombinedCntSets(object):
                 len(self.sets)))
             dataset.load()
         # hack to have correct y dimensions
+        # TODO: remove
         self.y = self.sets[-1].y[0:1]
     
     def construct_sets(self):
@@ -88,7 +97,9 @@ class CombinedCntSets(object):
                      dict(segment_ival=segment_ival)]
                 additional_cnt_preprocs.append(select_ival)
                 
-            this_cnt_preprocs = self.cnt_preprocessors + additional_cnt_preprocs
+            
+            this_cnt_preprocs = (list(self.cnt_preprocessors) +
+                additional_cnt_preprocs)
             signal_proc= SignalProcessor(
                 set_loader=loader,
                 segment_ival=segment_ival,
@@ -156,4 +167,47 @@ class CombinedCleanedSet(object):
         self.sets = [self.train_set, self.test_set]
         
         self.y = self.sets[-1].y[0:1]
-        
+
+
+def construct_combined_set(filenames, sensor_names, cnt_preprocessors,
+                            marker_def, end_marker_def, trial_classes,
+                          trial_start_offset_ms, trial_stop_offset_ms,
+                           min_break_length_ms, max_break_length_ms,
+                          break_start_offset_ms, break_stop_offset_ms,
+                          last_set_split_trial):
+    sets = []
+
+    marker_segmenter = MarkerSegmenter([trial_start_offset_ms, trial_stop_offset_ms],
+                                 marker_def=marker_def,
+                         trial_classes=trial_classes,
+                        end_marker_def=end_marker_def)
+    trial_break_adder = AddTrialBreaks(min_break_length_ms,max_break_length_ms,
+                           break_start_offset_ms, break_stop_offset_ms)
+    for i_file, filename in enumerate(filenames):
+        if (i_file < len(filenames) - 1) or (last_set_split_trial is None):
+            segmenter  = PipelineSegmenter(
+                [marker_segmenter,trial_break_adder,])
+        else:
+            segmenter  = PipelineSegmenter(
+                [marker_segmenter,
+             RestrictTrialRange(0,last_set_split_trial),
+            trial_break_adder])
+        cnt_set = SetWithMarkers(BBCIDataset(filename,
+                              load_sensor_names=sensor_names),
+                  cnt_preprocessors,
+                  segmenter)        
+        sets.append(cnt_set)
+
+    # add last set last part as test set if you split apart last set
+    if last_set_split_trial is not None:
+        segmenter  = PipelineSegmenter(
+                [marker_segmenter,
+             RestrictTrialRange(last_set_split_trial,None),
+            trial_break_adder])
+        cnt_set = SetWithMarkers(BBCIDataset(filenames[-1], # again last file needed
+                              load_sensor_names=sensor_names),
+                  cnt_preprocessors,
+                  segmenter)
+        sets.append(cnt_set)
+    dataset = CombinedSet(sets)
+    return dataset

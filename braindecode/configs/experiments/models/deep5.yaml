@@ -77,5 +77,18 @@
         later_pool_nonlin: [$identity],
         batch_norm_alpha: [0.1], 
         final_nonlin: [$safe_softmax],
+        
+        num_filters_time: [40],
+        num_filters_spat: [40],
+        num_filters_2: [60],
+        num_filters_3: [90],
+        num_filters_4: [135],
+        
+        filter_time_length: [10],
+        filter_length_2: [10],
+        filter_length_3: [10],
+        filter_length_4: [10],
+        pool_time_length: [3],
+        pool_time_stride: [3],
     }]]
 }

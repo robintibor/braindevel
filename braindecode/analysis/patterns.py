@@ -5,8 +5,7 @@ import theano.tensor as T
 from theano.tensor.nnet import conv2d
 from theano.tensor.signal import downsample
 from braindecode.veganlasagne.layers import get_input_shape,\
-    create_suitable_theano_input_var, create_suitable_theano_output_var,\
-    BiasLayer
+    create_suitable_theano_input_var, create_suitable_theano_output_var
 import logging
 log = logging.getLogger(__name__)
 from theano.compile import UnusedInputError

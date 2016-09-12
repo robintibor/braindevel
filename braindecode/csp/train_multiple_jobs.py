@@ -6,7 +6,7 @@ import time
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or (sys.argv[1] in ['-h', '--help']):
-        print("Usage: ./csp/train_multiple_jobs.py configfilename [start] [stop] [step] [waittime] [train_flags]")
+        print("Usage: ./csp/train_multiple_jobs.py configfilename [start] [stop] [step] [waittime] [hostname] [train_flags]")
         sys.exit(0)
     config_filename = sys.argv[1]
     start = 1

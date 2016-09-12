@@ -5,10 +5,6 @@
         'configs/experiments/paper/deep_4.yaml',
         ],
     variants: [[
-    {
-        
-        variants: [
-        [
         {
             trial_start: [-500],
             trial_stop: [3856],
@@ -24,8 +20,5 @@
 #            trial_stop: [3884],
 #            final_dense_length: [6],
 #        },
-
-        ]]
-    }
     ]]
 }

@@ -108,7 +108,7 @@ cd braindecode (so dass du in braindecode/braindecode bist)
 ln -s /media/EEG/robintibor/braindecode/data/ .
 ```
 
-Possiybly create group etc. for data
+Possibly create group etc. for data
 e.g.
 ```
 sudo addgroup lukas braindecode

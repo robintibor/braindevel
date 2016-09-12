@@ -3,7 +3,9 @@
         'configs/experiments/paper/bci_competition/bcic_data.yaml',
         'configs/experiments/paper/shallow_cnt.yaml',
         ],
-    variants: [[{
+    variants: [[
+    {
         save_path: ['data/models/paper/bci-competition/cnt/shallow/'],
-    }]],
+    }
+    ]],
 }

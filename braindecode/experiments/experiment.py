@@ -114,17 +114,25 @@ class Experiment(object):
     
     def create_theano_functions(self, target_var, deterministic_training=False):
         if target_var is None:
+            # get a dummy batch and determine target size
+            # use test set since it is smaller
+            # maybe memory is freed quicker
+            test_set = self.dataset_provider.get_train_valid_test(self.dataset)['test']
+            batches = self.iterator.get_batches(test_set, shuffle=False)
+            dummy_batch = batches.next()
+            dummy_y = dummy_batch[1]
+            del test_set
             # for two dims assume we have int targets..
             # maybe could remove these clauses also
             # and just keep else clause
-            if self.dataset.y.ndim == 1:
+            if dummy_y.ndim == 1:
                 target_var = T.ivector('targets')
-            elif self.dataset.y.ndim == 2:
+            elif dummy_y.ndim == 2:
                 target_var = T.imatrix('targets')
             else:
                 # tensor with as many dimensions as y
                 target_type = T.TensorType(
-                    dtype=self.dataset.y.dtype,
+                    dtype=dummy_y.dtype,
                     broadcastable=[False]*len(self.dataset.y.shape))
                 target_var = target_type()
         
@@ -174,6 +182,7 @@ class Experiment(object):
         if self.run_after_early_stop:
             log.info("Run until second stop...")
             self.run_until_second_stop()
+            self.readd_old_monitor_chans()
 
     def run_until_early_stop(self):
         log.info("Split/Preprocess datasets...")
@@ -205,9 +214,13 @@ class Experiment(object):
         self.monitor_epoch(datasets)
         self.print_epoch()
         if remember_best:
-            self.remember_extension.remember_epoch(self.monitor_chans, self.all_params)
+            self.remember_extension.remember_epoch(self.monitor_chans,
+                self.all_params)
 
     def setup_after_stop_training(self):
+        # also remember old monitor chans, will be put back into
+        # monitor chans after experiment finished
+        self.old_monitor_chans = deepcopy(self.monitor_chans)
         self.remember_extension.reset_to_best_model(self.monitor_chans,
                 self.all_params)
         loss_to_reach = self.monitor_chans['train_loss'][-1]
@@ -239,6 +252,11 @@ class Experiment(object):
             log.info("{:25s} {:.5f}".format(chan_name,
                 self.monitor_chans[chan_name][-1]))
         log.info("")
+    
+    def readd_old_monitor_chans(self):
+        for key in self.old_monitor_chans:
+            new_key = 'before_reset_' + key
+            self.monitor_chans[new_key] = self.old_monitor_chans[key]
 
 def load_layers_from_dict(train_dict):
     """Layers can  be a list or an object that returns a list."""

@@ -350,7 +350,8 @@ class FinalReshapeLayer(lasagne.layers.Layer):
     def get_output_shape_for(self, input_shape):
         assert input_shape[3] == 1, ("Not tested and thought about " 
             "for nonempty last dim, likely not to work")
-        return [None, input_shape[1]]
+            
+        return (None, input_shape[1])
     
 def get_3rd_dim_shapes_without_invalids(layer):
     all_layers = get_single_path(layer)

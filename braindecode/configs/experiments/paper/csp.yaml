@@ -46,7 +46,7 @@
         load_sensor_names: ["null"],
         resample_fs: ["null"],
         filt_order: [4],
-        trial_start: [-500,0,500],
+        trial_start: [500],
         trial_stop: [4000],
         standardize_epo: [false],
         standardize_cnt: [false],

@@ -59,3 +59,61 @@ def test_cnt_trial_misclass_monitor():
             batch_sizes, all_targets, fake_set)
     
     assert np.allclose(1/3.0, monitor_chans['test_misclass'][-1])
+    
+    # longer input time length and corresponding padding at start
+    monitor_chans = dict(test_misclass=[])
+    fake_set = lambda: None
+    # actually exact targets dont matter..
+    # just creating 3 trials here in the y signal...
+    fake_set.y = np.array([[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],
+                           [0,0,0,1],[0,0,0,1],[0,0,0,0], 
+                            [0,0,1,0],[0,0,1,0],[0,0,0,0],
+                          [0,0,0,0],[1,0,0,0],[1,0,0,0],[0,0,0,0]])
+    
+    # first batch has two rows
+    # second has one
+    all_preds = np.array([
+        np.array([[0,0.1,0.1,0.8], [0,0.1,0.1,0.8], [0,0.8,0.1,0.1],[0,0.8,0.1,0.1]]),
+                 np.array([[0.8,0.1,0.1,0.1],[0.8,0.1,0.1,0.1]])])
+    
+    all_targets = np.array([[[0,0,0,1], [0,0,0,1], [0,0,1,0],[0,0,1,0]],
+                 [[1,0,0,0],[1,0,0,0]]])
+    
+    all_losses=None # ignoring
+    batch_sizes=[2,1]
+    
+    monitor = CntTrialMisclassMonitor(input_time_length=3)
+    monitor.monitor_set(monitor_chans, 'test', all_preds, all_losses,
+            batch_sizes, all_targets, fake_set)
+    
+    assert np.allclose(1/3.0, monitor_chans['test_misclass'][-1])
+    
+    # Ignore the predictions on empty targets
+    # expect it creates 3 outputs per length-2trial
+    
+    fake_set = lambda: None
+    
+    # actually exact targets dont matter..
+    # just creating 3 trials here in the y signal...
+    fake_set.y = np.array([[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],
+                           [0,0,0,1],[0,0,0,1],[0,0,0,0], 
+                            [0,0,1,0],[0,0,1,0],[0,0,0,0],
+                          [0,0,0,0],[1,0,0,0],[1,0,0,0],[0,0,0,0]])
+    
+    all_preds = np.array([
+        np.array([[-1,-1,-1,-1], [0,0.1,0.1,0.8], [0,0.1,0.1,0.8], 
+                  [-1,-1,-1,-1], [0,0.8,0.1,0.1],[0,0.8,0.1,0.1]]),
+                 np.array([[-1,-1,-1,-1],[0.8,0.1,0.1,0.1],[0.8,0.1,0.1,0.1]])])
+    
+    all_targets = np.array([[[0,0,0,0], [0,0,0,1], [0,0,0,1], 
+                             [0,0,0,0], [0,0,1,0],[0,0,1,0]],
+                            [[0,0,0,0], [1,0,0,0],[1,0,0,0]]])
+    
+    all_losses=None # ignoring
+    batch_sizes=[2,1]
+    
+    monitor = CntTrialMisclassMonitor(input_time_length=3)
+    monitor.monitor_set(monitor_chans, 'test', all_preds, all_losses,
+            batch_sizes, all_targets, fake_set)
+    
+    assert np.allclose(1/3.0, monitor_chans['test_misclass'][-1])

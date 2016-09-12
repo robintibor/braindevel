@@ -41,7 +41,7 @@
     },
     variants: [[{
         layer_names_to_norms: [$layer_names_to_norms],
-        layers: [$cnt_shallow_square],
+        layers: [$shallow_fbcsp_net],
         final_nonlin: [$safe_softmax],
         n_classes: [4],
         pool_type: [Pool2DLayer],

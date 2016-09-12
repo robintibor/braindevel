@@ -493,6 +493,23 @@ def prettify_word(word):
       ('final_pool_length', 'final_p_len'),
       ('batch_norm_epsilon', 'bnorm_eps'),
       ('final_aggregator', 'final_agg'),
+      ('border_factor', 'brd_f'),
+      ('mask_factor', 'mask_f'),
+      ('n_post_filters', 'n_post_f'),
+      ('elastic_alpha', 'el_a'),
+      ('elastic_affine', 'el_aff'),
+      ('elastic_sigma', 'el_s'),
+      ('elastic_only_inputs', 'el_in'),
+      ('elastic_fraction', 'el_frac'),
+      ('elastic_max_angle', 'el_angle'),
+      ('elastic_max_d_rows', 'el_rows'),
+      ('elastic_max_d_cols', 'el_cols'),
+      ('replace_faulty_masks', 'clean_m'),
+      ('batch_norm_up', 'bnorm_up'),
+      ('batch_norm_sharpen', 'bnorm_sh'),
+      ('n_start_filters', 'n_start_f'),
+      ('break_start_offset_ms', 'break+ms'),
+      ('trial_start_offset_ms', 'trial+ms'),
       ])
     for key in substitutions:
         word = word.replace(key, substitutions[key])

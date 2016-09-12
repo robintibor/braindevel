@@ -1,0 +1,249 @@
+{
+    extends: [
+        'configs/experiments/defaults.yaml',
+        'configs/experiments/paper/shallow.yaml',
+        'configs/experiments/paper/cnt.yaml',
+        'configs/experiments/models/merged.yaml',
+        ],
+    templates: {
+        resample_cz_bandpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.rereference_to , 
+                {sensor_name: 'Cz'}
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
+                {'low_cut_hz': $low_cut_hz,
+                'high_cut_hz': $high_cut_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ],
+            ],
+        
+        resample_bandpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
+                {'low_cut_hz': $low_cut_hz,
+                'high_cut_hz': $high_cut_hz}
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+            ],
+            ],
+        resample_bandstop_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            
+            [
+                !!python/name:braindecode.mywyrm.processing.bandstop_cnt , 
+                {'low_cut_hz': $low_cut_hz,
+                'high_cut_hz': $high_cut_hz,
+                filt_order: $filt_order}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ],
+            ],
+            
+        
+        resample_double_bandstop_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            
+            [
+                !!python/name:braindecode.mywyrm.processing.bandstop_cnt , 
+                {'low_cut_hz': $low_cut_hz,
+                'high_cut_hz': $high_cut_hz,
+                filt_order: $filt_order}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.bandstop_cnt , 
+                {'low_cut_hz': $low_cut_hz_2,
+                'high_cut_hz': $high_cut_hz_2,
+                filt_order: $filt_order}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ],
+            ],
+        cnt_iterator: !obj:braindecode.datahandling.batch_iteration.CntWindowTrialIterator {
+            batch_size: $batch_size,
+            input_time_length: $input_time_length,
+            n_sample_preds: $n_sample_preds,
+            check_preds_smaller_trial_len: $check_preds_smaller_trial_len,
+        },
+        combined_cnt_set: !!python/object/apply:braindecode.datasets.combined.construct_combined_set {
+            kwds: {
+            filenames: $filenames,
+            sensor_names: $sensor_names, 
+            cnt_preprocessors: $cnt_preprocessors,
+            marker_def: $marker_def,
+            end_marker_def: $end_marker_def,
+            trial_classes: $trial_classes,
+            trial_start_offset_ms: $trial_start_offset_ms,
+            trial_stop_offset_ms: $trial_stop_offset_ms,
+            min_break_length_ms: $min_break_length_ms,
+            max_break_length_ms: $max_break_length_ms,
+            break_start_offset_ms: $break_start_offset_ms,
+            break_stop_offset_ms: $break_stop_offset_ms,
+            last_set_split_trial: $last_set_split_trial,
+           }
+        },
+                
+        
+        several_sets_splitter: !obj:braindecode.datahandling.splitters.SeveralSetsSplitter {
+            use_test_as_valid: $use_test_as_valid,
+            valid_set_fraction: $valid_set_fraction,
+        },
+     
+        markers_right_feet_rot_word: {'Right Hand': [1], 'Feet': [2],
+            'Rotation': [3], 'Words': [4]},
+        end_markers_right_feet_rot_word: {'Right Hand': [10], 'Feet': [20],
+            'Rotation': [30], 'Words': [40]},
+        classes_right_feet_rot_word: ['Right Hand',  'Feet', 'Rotation', 'Words'],
+        
+        end_markers_4_class: {'1': [5], '2': [6], '3': [7], '4': [8]},
+        markers_10_class: !!python/name:braindecode.datasets.class_10.marker_10_class ,
+        markers_5_class: !!python/name:braindecode.datasets.class_10.marker_5_class ,
+        markers_movement_class:  {'01 - Right Hand': [1], '02 - Left Hand': [2], '03 - Rest': [3],
+           '04 - Feet': [4]},
+        markers_three_class:  {'01 - Right Hand': [1], '03 - Rest': [3],
+            '04 - Feet': [4]},
+        markers_two_class:  {'01 - Right Hand': [1], '04 - Feet': [4]},
+        
+        nico_sensors: ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AF4', 'AF8', 'F7',
+         'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5', 'FC3',
+         'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'M1', 'T7', 'C5', 'C3',
+         'C1', 'Cz', 'C2', 'C4', 'C6', 'T8', 'M2', 'TP7', 'CP5', 'CP3',
+         'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1',
+         'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POz', 'PO4',
+         'PO6', 'PO8', 'O1', 'Oz', 'O2'],
+        without_frontal: ['FT7', 'FC5', 'FC3',
+         'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'M1', 'T7', 'C5', 'C3',
+         'C1', 'Cz', 'C2', 'C4', 'C6', 'T8', 'M2', 'TP7', 'CP5', 'CP3',
+         'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1',
+         'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POz', 'PO4',
+         'PO6', 'PO8', 'O1', 'Oz', 'O2'],
+         nico_C_sensors: ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6',
+          'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz',
+          'CP2', 'CP4', 'CP6'],
+    },
+    variants: [[{ 
+        save_path: ['data/models/online/cnt/start-end-mrk/'],
+        filenames: [['data/robot-hall/NiRiNBD6.ds_1-1_500Hz.BBCI.mat',
+            'data/robot-hall/NiRiNBD7.ds_1-1_500Hz.BBCI.mat',
+            'data/robot-hall/NiRiNBD8.ds_1-1_500Hz.BBCI.mat']],
+        last_set_split_trial: [400],
+        sensor_names: [$nico_sensors],
+        marker_def: [$markers_right_feet_rot_word],
+        end_marker_def: [$end_markers_right_feet_rot_word],
+        trial_classes: [$classes_right_feet_rot_word],
+        min_break_length_ms: [6000],
+        max_break_length_ms: [8000],
+        break_start_offset_ms: [1000],
+        break_stop_offset_ms: [-1000],
+        trial_start_offset_ms: [500],
+        trial_stop_offset_ms: [0],
+        check_preds_smaller_trial_len: [False],
+        
+        # Remove from params basically..
+        dataset_splitter: [$several_sets_splitter],
+        pool_mode: ['average_exc_pad'],
+        #loss_expression: [$categorical_crossentropy],
+        cnt_preprocessors: [$resample_bandpass_standardize],
+        resample_fs: [250],
+        #load_sensor_names: [$dry_sensors],
+        #sensor_names: ["null"],
+        dataset: [$combined_cnt_set],
+        low_cut_hz: ['null'],#'null'
+        high_cut_hz: [40],#'null'#90],#
+        run_after_early_stop: [true],
+        n_classes: [5],
+        batch_size: [60], # make it faster(?)
+        n_sample_preds: [200], # will be overwritten anyways
+        input_time_length: [760],
+        layers: [$merged_net],
+        use_test_as_valid: [False], # False
+                
+        max_increasing_epochs: [80],
+        max_epochs: [200],
+        valid_set_fraction: [0.2],
+        preprocessor:  ['null'],
+        
+#        variants: [[{
+#            cnt_preprocessors: [$resample_cz_bandpass_standardize],
+#        }]],
+#        variants: [[
+#        {
+#            sensor_names: [$without_frontal],
+#        }
+#        ]],
+#        variants: [[{
+#            cnt_preprocessors: [$resample_double_bandstop_standardize],
+#            low_cut_hz: [45],
+#            high_cut_hz: [55],
+#            low_cut_hz_2: [95],
+#            high_cut_hz_2: [105],
+#            filt_order: [5],
+#        }]],
+        variants: [[{
+            s_n_filters_spat: [80],
+            s_n_filters_time: [80],
+            layers: [$shallow_fbcsp_net],
+            ignore_unused: [['later_pool_mode', 'pool_time_stride',
+            'final_dense_length', 'later_nonlin', 'filter_time_length',
+             'first_pool_mode', 'double_time_convs', 'first_nonlin',
+             'n_deep_features', 'n_shallow_features', 'drop_prob',
+             'split_first_layer', 'drop_in_prob', 'num_filters_time',
+             'first_pool_nonlin', 'num_filters_spat', 'filter_length_4',
+             'filter_length_3', 'filter_length_2', 'later_pool_nonlin',
+             'pool_time_length', 'num_filters_4', 'final_nonlin',
+             'num_filters_3', 'num_filters_2', 'batch_norm',
+             'drop_p', 
+             'load_sensor_names',
+            'conv_norm', 'final_norm', 'pool_type',
+            'num_filters', 
+            'post_pool_nonlin', 'pool_mode', 'layer_modifier',
+             'i_test_fold', 'trial_start', 'num_split_folds',
+            'misclass_monitor', 'trial_stop',]],
+        }]],
+#        variants: [[{
+#            cnt_preprocessors: [$resample_bandstop_standardize],
+#            low_cut_hz: [45],
+#            high_cut_hz: [55],
+#            filt_order: [5],
+#        }]],
+        
+#        variants: [[{
+#            resample_fs: [100],
+#            input_time_length: [600],
+#            n_sample_preds: [50], # will be overwritten anyways
+#        }]],
+        ignore_unused: [['drop_p', 
+             'load_sensor_names',
+            'conv_norm', 'final_norm', 'pool_type',
+            'num_filters', 
+            'post_pool_nonlin', 'pool_mode', 'layer_modifier',
+             'i_test_fold', 'trial_start', 'num_split_folds',
+            'misclass_monitor', 'trial_stop',]],
+        
+        }
+        ]]
+}

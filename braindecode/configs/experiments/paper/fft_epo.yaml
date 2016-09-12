@@ -1,5 +1,7 @@
 {
     extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/epo.yaml',
         'configs/experiments/paper/fft_epo_spat_freq_time.yaml',
         'configs/experiments/paper/fft_epo_freq_spat_time.yaml',
         'configs/experiments/paper/fft_epo_freq_time_spat.yaml',
@@ -239,11 +241,12 @@
         },
     },
     variants: [[{
+        trial_stop: [4000],
+        trial_start: [-500],
         layer_names_to_norms: [$deep_fft_names_to_norms],
         layers: [$deep_fft_net],
         unsupervised_preprocessor: [$fft_preprocessor],
         
-        trial_start: [0],
         cleaner: [$no_cleaner],
         layer_modifier: [TransformToNormalNet],
         load_sensor_names: ['null'],
@@ -254,11 +257,10 @@
         num_filters_spat: [25],
         num_filters_2: [50],
         num_filters_3: [100],
-        
+       
         filter_time_length: [3],
         filter_length_2: [3],
         filter_length_3: [3],
-        filter_length_4: [3],
         
         drop_in_prob: [0.],
         
@@ -277,5 +279,59 @@
         pool_time_stride: [3],
         later_pool_nonlin: [$identity],
         batch_norm_alpha: [0.1], 
+        fft_window_len: [125],
+        fft_window_stride: [12],
+       
+        variants: [[ 
+        {
+            frequency_start: [0],
+            frequency_end: [40],
+        },
+        {
+            frequency_start: ['null'],
+            frequency_end: ['null'],
+        },
+        ],
+        [
+            {
+                layer_names_to_norms: [$deep_fft_names_to_norms],
+                layers: [$deep_fft_net_spat_time_freq],
+                filter_time_length: [3],
+                filter_length_2: [3],
+                filter_length_3: [3],
+                pad_time: [1],
+                ignore_unused: [['max_min', 'whisker_length',
+                'i_test_fold', 'eog_sensors', 'rejection_var_ival', 'num_split_folds',
+                'final_nonlin', 'rejection_blink_ival', 'whisker_percent',
+                'layer_modifier', 'misclass_monitor', 'input_time_length']],
+                variants: [[{
+                    include_phase: [True, False],
+                    square_amplitude: [True, False],
+                    
+                },
+                ]]
+            },
+#            {
+#                layer_names_to_norms: [$seperated_linear_names_to_norms],
+#                layers: [$seperated_linear],
+#                
+#                square_amplitude: [True],
+#                #square_amplitude: [False],
+#                include_phase: [False],
+#                fft_window_stride: [12, 62],
+#                num_filters_simple: [10],
+#                ignore_unused: [['max_min', 'whisker_length', 'filter_length_4',
+#                'i_test_fold', 'eog_sensors', 'rejection_var_ival', 'num_split_folds',
+#                'final_nonlin', 'rejection_blink_ival', 'whisker_percent',
+#                'layer_modifier', 'pool_layers', 'filter_length_2', 
+#                'later_pool_mode', 'first_pool_layer', 'batch_norm_alpha', 
+#                'later_pool_nonlin', 'pool_time_stride', 'later_nonlin', 
+#                'filter_time_length', 'first_pool_mode', 'pool_time_length', 
+#                'first_pool_nonlin', 'num_filters_time', 'filter_length_3', 
+#                'first_nonlin', 'num_filters_spat', 'num_filters_2', 
+#                'num_filters_3']],
+#            }
+        ]],
+        
     }]]
 }

@@ -9,16 +9,17 @@ def load_model(basename):
     params = np.load(basename + '.npy')
     model = exp.final_layer
     lasagne.layers.set_all_param_values(model, params)
-    all_layers = lasagne.layers.get_all_layers(model)
-    for l in all_layers:
-        if hasattr(l, 'convolve'):
-            # I guess this is for backward compatibility?
-            l.flip_filters = True
-            l.convolution = T.nnet.conv2d
-            l.n = 2
-        # fix final reshape layer
-        if hasattr(l, 'remove_invalids') and not hasattr(l, 'flatten'):
-            l.flatten = True
+    # This was only for baclkwards compatbility probably? # delete? # TODO
+    #all_layers = lasagne.layers.get_all_layers(model)
+    #for l in all_layers:
+    #    if hasattr(l, 'convolve'):
+    #        # I guess this is for backward compatibility?
+    #        l.flip_filters = True
+    #        l.convolution = T.nnet.conv2d
+    #        l.n = 2
+    #    # fix final reshape layer
+    #    if hasattr(l, 'remove_invalids') and not hasattr(l, 'flatten'):
+    #        l.flatten = True
             
     return model
 

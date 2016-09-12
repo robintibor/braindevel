@@ -31,10 +31,10 @@ def load_trial_env(env_file_name, model, i_layer, train_set,
         env = np.square(env)
     env = [e for e in env] # transform that outer part is list so you can freely delete parts inside next function
     log.info("Transforming to trial envelope...")
-    trial_env = transform_to_trial_env(env, model, i_layer, train_set, n_inputs_per_trial)
+    trial_env = transform_to_meaned_trial_env(env, model, i_layer, train_set, n_inputs_per_trial)
     return trial_env
 
-def transform_to_trial_env(env, model, i_layer, train_set, 
+def transform_to_meaned_trial_env(env, model, i_layer, train_set, 
         n_inputs_per_trial):
     all_layers = lasagne.layers.get_all_layers(model)
     layer = all_layers[i_layer]
@@ -123,9 +123,7 @@ def create_envelopes(folder_name, params, start, stop):
 
 def create_envelopes_for_experiment(experiment_file_name):
     iterator, train_set = _load_experiment(experiment_file_name)
-    filterbands = generate_filterbank(min_freq=1, max_freq=115,
-        last_low_freq=31, low_width=6, low_overlap=3,
-        high_width=8, high_overlap=4, low_bound=0.)
+    filterbands = envelope_filterbank()
     env_per_filterband = create_envelops_per_filterband(iterator,
         train_set, filterbands)
     log.info("Saving...")
@@ -134,6 +132,13 @@ def create_envelopes_for_experiment(experiment_file_name):
     np.save(experiment_file_name.replace('.yaml', '.filt_bands.npy'),
         filterbands)
     log.info("Done.")
+
+def envelope_filterbank():
+    filterbands = generate_filterbank(min_freq=1, max_freq=115,
+        last_low_freq=31, low_width=6, low_overlap=3,
+        high_width=8, high_overlap=4, low_bound=0.)
+    return filterbands
+    
 
 def _load_experiment(experiment_file_name):
     exp = create_experiment(experiment_file_name)

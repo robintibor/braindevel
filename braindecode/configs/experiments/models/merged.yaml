@@ -106,8 +106,6 @@
         double_time_convs: [False],
         drop_prob: [0.5],
         n_classes: [4],
-        layer_names_to_norms: [$layer_names_to_norms],
-        layers: [$deep_5],
         final_norm: [0.5],
         conv_norm: [2.0],
         pool_time_length: [3],

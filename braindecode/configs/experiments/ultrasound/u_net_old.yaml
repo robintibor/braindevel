@@ -1,0 +1,66 @@
+{
+    extends: ['configs/experiments/ultrasound/defaults.yaml'],
+    
+    templates: {
+        u_net: !obj:braindecode.ultrasound.models.u_net.UNet {
+            img_rows: $img_rows,
+            img_cols: $img_cols,
+            conv_nonlin: $conv_nonlin,
+        },
+        
+        identity: !!python/name:lasagne.nonlinearities.identity ,
+        elu: !!python/name:lasagne.nonlinearities.elu ,
+        relu: !!python/name:lasagne.nonlinearities.rectify ,
+        
+        weighted_thresholded_binary_cross_entropy: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.weighted_thresholded_binary_cross_entropy ,
+            imbalance_factor: $imbalance_factor,
+            lower_threshold: $low_pred_loss_cut, 
+        },
+        
+        weighted_thresholded_and_l2_norm: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [
+                !obj:braindecode.util.FuncAndArgs {
+                    func: !!python/name:braindecode.veganlasagne.objectives.weighted_thresholded_binary_cross_entropy ,
+                    imbalance_factor: $imbalance_factor,
+                    lower_threshold: $low_pred_loss_cut, 
+                },
+                !obj:braindecode.util.FuncAndArgs {
+                    func: !!python/name:braindecode.veganlasagne.objectives.weight_decay ,
+                    factor: $l2_factor
+                },
+            ]
+        },
+        binary_cross_entropy: !!python/name:lasagne.objectives.binary_crossentropy ,
+    
+    },
+    
+    variants: [[{
+        save_path: ['data/models/ultrasound/u_net/'],
+        layers: [$u_net],
+        conv_nonlin: [$relu],
+        n_train_subjects: [35],
+        n_valid_subjects: [6],
+        n_test_subjects: [6],
+        max_increasing_epochs: [100],
+        max_epochs: [200],
+        variants: [[
+#        {
+#            loss_expression: [$binary_cross_entropy],
+#            ignore_unused: [['load_sensor_names','sensor_names', 'imbalance_factor']],
+#            
+#        },
+#        {
+#            loss_expression: [$weighted_binary_cross_entropy],
+#        },
+        {
+            loss_expression: [$weighted_thresholded_and_l2_norm],
+            low_pred_loss_cut: [0.1, 0.2],
+            l2_factor: [0.,0.00001,0.0001,0.001],
+        }
+        
+        
+        ]]
+    }]]
+}

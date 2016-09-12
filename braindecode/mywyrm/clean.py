@@ -349,7 +349,6 @@ def compute_excessive_outlier_trials(variances, whisker_percent, whisker_length)
     # clean trials with "excessive variance": 
     # trials, where 20 percent of chans are above 
     # whisker determined threshold
-    print ("variance shape", variances.shape)
     threshold = get_variance_threshold(variances, whisker_percent, whisker_length)
     above_threshold = variances > threshold
     fraction_chans_above_threshold = np.mean(above_threshold, axis=1)

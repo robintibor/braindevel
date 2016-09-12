@@ -10,6 +10,10 @@ def clean_datasets(df):
         df = df[np.logical_not(df.dataset_filename.str.contains(name))]
     return df
 
+def merged_main_comp(df):
+    return restrict(df, batch_norm_before_merge=True,
+                     nonlin_before_merge='elu',
+                     num_filters_spat=25)
 ## Main comparison
 def elu_deep_5(df):
     return df[(df.first_nonlin == 'elu') & 
@@ -214,7 +218,8 @@ def elu_nonlins(df):
 def split_first_layer(df):
     return df[df.split_first_layer == True]
 
-def compare_csp_net(df_net, df_csp, name,freq, dataset, with_csp_acc=False, with_std=False, with_std_error=False):
+def compare_net_csp(df_net, df_csp, name,freq, dataset, with_csp_acc=False, 
+        with_std=False, with_std_error=False, max_n_p_vals=20):
     assert len(df_net) == len(df_csp), (
         "Net ({:d}) and csp ({:d}) should have same length".format(
             len(df_net), len(df_csp)))
@@ -224,8 +229,8 @@ def compare_csp_net(df_net, df_csp, name,freq, dataset, with_csp_acc=False, with
 
     test_acc_net = np.array(df_merged['test_net'])
     test_acc_csp = np.array(df_merged['test_csp'])
-    if len(test_acc_net) > 20:
-        p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=2**20)
+    if len(test_acc_net) > max_n_p_vals:
+        p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=2**max_n_p_vals)
     else:
         p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=None)
     p_val_wilc = wilcoxon_signed_rank(test_acc_net, test_acc_csp)

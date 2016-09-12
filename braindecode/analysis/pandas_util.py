@@ -8,6 +8,7 @@ from braindecode.scripts.print_results import prettify_word
 from collections import OrderedDict
 import logging
 from braindecode.util import merge_dicts
+import os.path
 log = logging.getLogger(__name__)
 
 class MetaDataFrame(pd.DataFrame):
@@ -20,6 +21,12 @@ class MetaDataFrame(pd.DataFrame):
 
     def _combine_const(self, other, *args, **kwargs):
         return super(MetaDataFrame, self)._combine_const(other, *args, **kwargs).__finalize__(self)
+
+def load_results_for_df(df, prefix="/home/schirrmr/motor-imagery/"):
+    result_file_names = [os.path.join(save_path, str(exp_id) + ".result.pkl") 
+                 for save_path, exp_id in zip(np.array(df.save_path), np.array(df.index))]
+    results = [np.load(prefix + name) for name in result_file_names]
+    return results
 
 def remove_dollar(param_val):
     if isinstance(param_val, str) and param_val[0] == '$':
@@ -40,7 +47,7 @@ def load_data_frame(folder, params=None, shorten_headers=True):
     return data_frame
 
 def to_data_frame(file_names, result_objs, varying_params, constant_params,
-    shorten_headers=True):
+        shorten_headers=True):
     all_params = [merge_dicts(var, constant_params) for var in varying_params]
     file_numbers = [int(f.split('/')[-1].split('.')[0]) for f in file_names]
     
@@ -95,8 +102,11 @@ def to_tuple_if_list(val):
 def pairwise_compare_frame(df, with_p_vals=False):
     table_vals = []
     table_indices = []
-    param_keys = set(df.keys()) - set(['test', 'time', 'train'])
+    param_keys = set(df.keys()) - set(['test', 'time', 'train',
+        'test_sample', 'train_sample'])
     for key in param_keys:
+        if key == 'dataset_filename' or key == 'test_filename':
+            continue
         possible_vals = df[key].unique()
         for i_value_a in range(0, len(possible_vals) - 1):
             for i_value_b in range(i_value_a + 1, len(possible_vals)):
@@ -130,7 +140,7 @@ def pairwise_compare_frame(df, with_p_vals=False):
                     val_1 = val_b
                     val_2 = val_a
                 if with_p_vals:
-                    if len(accuracies_1) < 19:
+                    if len(accuracies_1) <= 18:
                         diff_perm = perm_mean_diff_test(accuracies_1,
                             accuracies_2) * 100
                     else:
@@ -147,6 +157,8 @@ def pairwise_compare_frame(df, with_p_vals=False):
                 table_vals.append(this_vals)
                 table_indices.append(key)
 
+    if len(table_vals) == 0:
+        return None
     table_vals = np.array(table_vals)
     compare_headers = ['n_exp', 'val_1', 'val_2', 'acc_1', 'acc_2',
                        'diff', 'std']
@@ -266,4 +278,10 @@ def restrict_or_missing_col(df, **params):
     for key, val in params.iteritems():
         if key in df.columns:
             df = df[((df[key]) == val)]
+    return df
+
+def restrict_if_existing_and_not_unique(df, **params):
+    for key, val in params.iteritems():
+        if (key in df.columns) and (len(df[key].unique()) > 1):
+            df = df[df[key] == val]
     return df

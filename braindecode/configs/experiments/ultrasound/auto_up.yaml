@@ -1,0 +1,67 @@
+{
+extends: ['configs/experiments/ultrasound/defaults.yaml'],
+templates: {
+    auto_net: !obj:braindecode.ultrasound.auto_up_net.AutoUpMergeNet {
+        network: $network,
+        up_network: $up_network,
+        post_processor: $post_processor,
+    },
+    auto_net_with_dense: !obj:braindecode.ultrasound.auto_up_net.AutoUpMergeNet {
+        network: !obj:braindecode.ultrasound.models.post_down.DenseAdder {
+            network: $network,
+        },
+        up_network: $up_network,
+        post_processor: $post_processor,
+    },
+    
+    identity: !!python/name:lasagne.nonlinearities.identity ,
+    elu: !!python/name:lasagne.nonlinearities.elu ,
+    relu: !!python/name:lasagne.nonlinearities.rectify ,
+
+    no_post: !obj:braindecode.ultrasound.up.post.NoPostProcessor {
+    },
+    two_dense_sigmoid_b: !obj:braindecode.ultrasound.up.post.TwoDenseSigmoidB {
+        num_filters: $n_post_filters,
+    },
+    up_generic: !obj:braindecode.ultrasound.up.up.UpGeneric {
+        up_nonlin: $up_nonlin,
+        batch_norm_up: $batch_norm_up,
+        batch_norm_sharpen: $batch_norm_sharpen,
+    },
+    concat_down_concat_up: !obj:braindecode.ultrasound.up.post.ConcatDownConcatUp {
+        num_filters: $n_post_filters,
+    },
+    concat_down_up: !obj:braindecode.ultrasound.up.post.ConcatDownUp {
+        num_filters: $n_post_filters,
+    },
+    down_concat_up: !obj:braindecode.ultrasound.up.post.DownConcatUp {
+        num_filters: $n_post_filters,
+    },
+    crop_to_conv_stitch: !obj:braindecode.ultrasound.up.post.Crop2ConvStich {
+        num_filters: $n_post_filters,
+        batch_norm: $batch_norm,
+    },
+    pad_conv_dense: !obj:braindecode.ultrasound.up.post.ConvDensePadSigmoidB {
+        num_filters: $n_post_filters,
+        batch_norm: $batch_norm,
+    },
+    
+},
+
+variants: [[{
+    
+    layers: [$auto_net],
+    up_network: [$up_generic],
+    up_nonlin: [$identity],
+    n_start_filters: [20],
+    n_increase_filter_factor: [1.5],
+    post_processor: [$no_post],
+#    variants: [[{
+#        
+#    },
+#    {   post_processor: [$no_post, $two_dense_sigmoid_b, $concat_down_concat_up,
+#            $concat_down_up, $down_concat_up],
+#        n_post_filters: [25],
+#    }]],
+}]]
+}
