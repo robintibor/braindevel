@@ -3,7 +3,7 @@ import matplotlib
 import logging
 log = logging.getLogger(__name__)
 try:
-    matplotlib.use('Qt5Agg')
+    matplotlib.use('agg')
 except:
     log.warn("Could not use Qt5 backend for matplotlib")
     
@@ -119,10 +119,14 @@ class PredictionServer(gevent.server.StreamServer):
         log.info("Chan names:\n{:s}".format(chan_names_line))
         chan_names = chan_names_line.replace('\n','').split(" ")
             
-        assert np.array_equal(chan_names, ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3',
-            'AFz', 'AF4', 'AF8', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6',
-            'FC1', 'FCz', 'FC2', 'C3', 'C1', 'Cz', 'C2', 'C4', 'CP3', 'CP1',
-             'CPz', 'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz', 'marker']
+        assert np.array_equal(chan_names, ['Fp1', 'Fpz', 'Fp2', 'F7', 'F3',
+		 'Fz', 'F4', 'F8', 'FC5', 'FC1', 'FC2', 'FC6', 'M1', 'T7', 
+		 'C3', 'Cz', 'C4', 'T8', 'M2', 'CP5', 'CP1', 'CP2', 'CP6',
+		 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'Oz', 'O2', 'AF7',
+		 'AF3', 'AF4', 'AF8', 'F5', 'F1', 'F2', 'F6', 'FC3', 'FCz',
+		 'FC4', 'C5', 'C1', 'C2', 'C6', 'CP3', 'CPz', 'CP4', 'P5',
+		 'P1', 'P2', 'P6', 'PO5', 'PO3', 'PO4', 'PO6', 'FT7', 'FT8',
+		 'TP7', 'TP8', 'PO7', 'PO8', 'marker']
             )
         n_rows = self.read_until_bytes_received(in_socket, 4)
         n_rows = np.fromstring(n_rows, dtype=np.int32)[0]
@@ -307,6 +311,8 @@ def parse_command_line_arguments():
     parser.add_argument('--adaptoffset', action='store', default=500, type=int,
         help="Sample offset for the first sample to use (within a trial) "
         "for adaptation updates.")
+    parser.add_argument('--predfreq', action='store', default=125, type=int,
+        help="Amount of samples between predictions.")
     args = parser.parse_args()
     return args
 
@@ -324,12 +330,12 @@ def setup_logging():
 
 def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_data,
         use_ui_server, adapt_model, n_updates_per_break, batch_size,
-        learning_rate, n_min_trials, trial_start_offset):
+        learning_rate, n_min_trials, trial_start_offset, pred_freq):
     setup_logging()
     assert np.little_endian, "Should be in little endian"
     hostname = ''
     # port of our server
-    port = 1234
+    port = 7987
     if args.paramsfile is not None:
         log.info("Loading params from {:s}".format(args.paramsfile))
         params = np.load(params_filename)
@@ -353,7 +359,7 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_da
         log.info("Not adapting model...")
         online_trainer = NoTrainer()
     coordinator = OnlineCoordinator(data_processor, online_model, online_trainer,
-        pred_freq=125)
+        pred_freq=pred_freq)
     server = PredictionServer((hostname, port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
         save_data=save_data, use_ui_server=use_ui_server, 
@@ -369,5 +375,5 @@ if __name__ == '__main__':
     args = parse_command_line_arguments()
     main(args.host, args.port, args.modelfile, args.paramsfile, not args.noplot, not args.nosave,
         not args.noui, not args.noadapt, args.updatesperbreak, args.batchsize,
-        args.learningrate, args.mintrials, args.adaptoffset)
+        args.learningrate, args.mintrials, args.adaptoffset, args.predfreq)
     
