@@ -52,7 +52,7 @@ matplotlib_backend = parse_command_line_arguments().plotbackend
 try:
     matplotlib.use(matplotlib_backend)
 except:
-    log.warn("Could not use {:s} backend for matplotlib".format(
+    print("Could not use {:s} backend for matplotlib".format(
         matplotlib_backend))
     
 import gevent.server
