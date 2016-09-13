@@ -1,13 +1,13 @@
 from lasagne.layers.pool import Pool2DLayer, Layer
 import theano.tensor as T
-from theano.tensor.signal import downsample
+from theano.tensor.signal import pool
 import numpy as np
 from copy import copy
 import collections
 
 class SumPool2dLayer(Pool2DLayer):
     def get_output_for(self, input, **kwargs):
-        pooled = downsample.max_pool_2d(input,
+        pooled = pool.pool_2d(input,
                                         ds=self.pool_size,
                                         st=self.stride,
                                         ignore_border=self.ignore_border,
