@@ -13,8 +13,9 @@ def handle(socket, address):
     
 gevent.signal(signal.SIGQUIT, gevent.kill)
 hostname = ''
-server = gevent.server.StreamServer((hostname, 30000), handle)
-print("Starting server")
+port = 30000
+server = gevent.server.StreamServer((hostname, port), handle)
+print("Starting server on port {:d}".format(port))
 server.start()
 print("Started server")
 server.serve_forever()

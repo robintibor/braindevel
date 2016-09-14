@@ -2,6 +2,8 @@
 import matplotlib
 import logging
 
+# Have to do this here in for choosing correct matplotlib backend before
+# it is imported anywhere
 def parse_command_line_arguments():
     import argparse
     parser = argparse.ArgumentParser(
@@ -18,11 +20,11 @@ def parse_command_line_arguments():
         default='data/models/raw-net-512/3', 
         help='Basename of the modelfile')
     parser.add_argument('--paramsfile', action='store', 
-        help='Use these (possibly adapted) parameters for the model')
+        help='Use these (possibly adapted) parameters for the model '
+        'filename should end with model_params.npy. Can also use "newest"'
+        'to load the newest available  parameter file.')
     parser.add_argument('--noplot', action='store_true',
         help="Don't show plots of the sensors first.")
-    parser.add_argument('--nosave', action='store_true',
-        help="Don't save data.")
     parser.add_argument('--noui', action='store_true',
         help="Don't wait for UI server.")
     parser.add_argument('--noadapt', action='store_true',
@@ -35,13 +37,17 @@ def parse_command_line_arguments():
         type=float, help="Learning rate for adaptation updates.")
     parser.add_argument('--mintrials', action='store', default=8, type=int,
         help="Number of trials before starting adaptation updates.")
-    parser.add_argument('--adaptoffset', action='store', default=500, type=int,
-        help="Sample offset for the first sample to use (within a trial) "
+    parser.add_argument('--adaptoffset', action='store', default=125, type=int,
+        help="Sample offset for the first sample to use (within a trial, in samples) "
         "for adaptation updates.")
     parser.add_argument('--predfreq', action='store', default=125, type=int,
         help="Amount of samples between predictions.")
     parser.add_argument('--noprint', action='store_true',
         help="Don't print on terminal.")
+    parser.add_argument('--nosave', action='store_true',
+        help="Don't save streamed data (including markers).")
+    parser.add_argument('--noolddata', action='store_true',
+        help="Dont load and use old data for adaptation")
     parser.add_argument('--plotbackend', action='store',
         default='agg', help='Matplotlib backend to use for plotting.')
     args = parser.parse_args()
@@ -75,18 +81,23 @@ from braindecode.experiments.experiment import create_experiment
 from braindecode.veganlasagne.layers import transform_to_normal_net
 from braindecode.online.trainer import BatchWiseCntTrainer, NoTrainer
 from pylearn2.utils.logger import (CustomStreamHandler, CustomFormatter)
+from glob import glob
 
 class PredictionServer(gevent.server.StreamServer):
     def __init__(self, listener, coordinator, ui_hostname, ui_port, 
-        plot_sensors, save_data, use_ui_server, model_base_name,
+        plot_sensors, use_ui_server, save_data, model_base_name, adapt_model,
             handle=None, backlog=None, spawn='default', **ssl_args):
+        """
+        adapt_model only needed to know for saving
+        """
         self.coordinator = coordinator
         self.ui_hostname = ui_hostname
         self.ui_port = ui_port
         self.plot_sensors = plot_sensors
-        self.save_data = save_data
         self.use_ui_server = use_ui_server
+        self.save_data = save_data
         self.model_base_name = model_base_name
+        self.adapt_model = adapt_model
         super(PredictionServer, self).__init__(listener, handle=handle, spawn=spawn)
 
 
@@ -113,10 +124,8 @@ class PredictionServer(gevent.server.StreamServer):
             self.plot_sensors_until_enter_press(chan_names, in_socket, n_bytes,
             n_rows, n_cols)
         log.info("After checking plot")
-        
-
-        self.make_predictions_and_save_data(chan_names, n_rows, n_cols, n_bytes,
-        in_socket, ui_socket)
+        self.make_predictions_and_save_params(chan_names, n_rows, n_cols,
+            n_bytes, in_socket, ui_socket)
         self.stop()
 
     def connect_to_ui_server(self):
@@ -212,13 +221,15 @@ class PredictionServer(gevent.server.StreamServer):
         live_plot.close()
         log.info("Plot finished")
 
-    def make_predictions_and_save_data(self, chan_names, n_rows, n_cols, n_bytes,
+    def make_predictions_and_save_params(self, chan_names, n_rows, n_cols, n_bytes,
         in_socket, ui_socket):
-        data_saver = DataSaver(chan_names)
+        
         self.coordinator.initialize(n_chans=n_rows - 1) # one is a marker chan(!)
         
+        # this is to be able to show scores later
         all_preds =  []
         all_pred_samples = []
+        all_sample_blocks = []
         while True:
             array = self.read_until_bytes_received_or_enter_pressed(in_socket,
                 n_bytes)
@@ -228,7 +239,7 @@ class PredictionServer(gevent.server.StreamServer):
             
             array = np.fromstring(array, dtype=np.float32)
             array = array.reshape(n_rows, n_cols, order='F')
-            data_saver.append_samples(array.T)
+            all_sample_blocks.append(array.T)
             # here now also supply y to data processor...
             self.coordinator.receive_samples(array.T)
 
@@ -249,19 +260,39 @@ class PredictionServer(gevent.server.StreamServer):
                 all_preds.append(pred)
                 all_pred_samples.append(i_sample)
         
-        all_samples = np.concatenate(data_saver.sample_blocks).astype(np.float32)
+        all_samples = np.concatenate(all_sample_blocks).astype(np.float32)
         all_preds = np.array(all_preds).squeeze()
         all_pred_samples = np.array(all_pred_samples)
         self.print_results(all_samples, all_preds, all_pred_samples)
         
-        if self.save_data:
-            data_saver.save()
-            # Save parameters
+        now = datetime.datetime.now()
+        now_timestring = now.strftime('%Y-%m-%d_%H-%M-%S')
+        if self.adapt_model:
+            # Save parameters for model
             all_layers = lasagne.layers.get_all_layers(self.coordinator.model.model)
-            filename = "{:s}.{:s}.adapted.npy".format(self.model_base_name,
-                get_now_timestring())
-            log.info("Saving to {:s}...".format(filename))
+            filename = "{:s}.{:s}.model_params.npy".format(self.model_base_name,
+                now_timestring)
+            log.info("Saving model params to {:s}...".format(filename))
             np.save(filename, lasagne.layers.get_all_param_values(all_layers))
+            # save parameters for trainer
+            # this is an ordered dict!! so should be fine to save in order
+            train_params = self.coordinator.trainer.train_params
+            train_param_values = [p.get_value() for p in train_params]
+            filename = "{:s}.{:s}.trainer_params.npy".format(
+                self.model_base_name, now_timestring)
+            log.info("Saving train params to {:s}...".format(filename))
+            np.save(filename, train_param_values)
+        if self.save_data:
+            day_string = now.strftime('%Y-%m-%d')
+            data_folder = 'data/online/{:s}'.format(day_string)
+            if not os.path.exists(data_folder):
+                os.makedirs(data_folder)
+            data_filename = os.path.join(data_folder, "{:s}.npy".format(
+                now_timestring))
+            log.info("Saving data to {:s}".format(data_filename))
+            np.save(data_filename, all_samples)
+            
+            
 
     def print_results(self, all_samples, all_preds, all_pred_samples):
         # y labels i from 0 to n_classes (inclusive!), 0 representing
@@ -302,35 +333,10 @@ class PredictionServer(gevent.server.StreamServer):
         print np.sum(label_pred_trial_equal) / float(len(label_pred_trial_equal))
         
 
-class DataSaver(object):
-    """ Remember and save data streamed during an online session."""
-    def __init__(self, chan_names):
-        self.chan_names = chan_names
-        self.sample_blocks = []
-
-    def append_samples(self, samples):
-        """ Expects timexchan"""
-        self.sample_blocks.append(samples)
-        
-    def save(self):
-        # save with time as filename
-        time_string = get_now_timestring()
-        filename = os.path.join('data/online/', time_string + '.hdf5')
-        log.info("Saving to {:s}...".format(filename))
-        all_samples = np.concatenate(self.sample_blocks).astype(np.float32)
-        with h5py.File(filename, 'w') as out_file:
-            dt = h5py.special_dtype(vlen=unicode)
-            dset = out_file.create_dataset("chan_names", (len(self.chan_names),), dtype=dt)
-            dset[:] = self.chan_names
-            out_file.create_dataset("cnt_samples", data=all_samples)
-        log.info("Done.")
-
 def get_now_timestring():
     now = datetime.datetime.now()
     time_string = now.strftime('%Y-%m-%d_%H-%M-%S')
     return time_string      
-
-
 
 def setup_logging():
     """ Set up a root logger so that other modules can use logging
@@ -344,15 +350,30 @@ def setup_logging():
     root_logger.addHandler(handler)
     root_logger.setLevel(logging.DEBUG)
 
-def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_data,
-        use_ui_server, adapt_model, n_updates_per_break, batch_size,
+def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
+        use_ui_server, adapt_model, save_data, n_updates_per_break, batch_size,
         learning_rate, n_min_trials, trial_start_offset, pred_freq,
-        incoming_port):
+        incoming_port,load_old_data):
     setup_logging()
     assert np.little_endian, "Should be in little endian"
-    if args.paramsfile is not None:
-        log.info("Loading params from {:s}".format(args.paramsfile))
+    train_params = None # for trainer, e.g. adam params
+    if params_filename is not None:
+        if params_filename == 'newest':
+            # sort will already sort temporally with our time string format
+            all_params_files = sorted(glob(base_name + ".*.model_params.npy"))
+            assert len(all_params_files) > 0, ("Expect atleast one params file "
+                "if 'newest' given as argument")
+            params_filename = all_params_files[-1]
+        log.info("Loading model params from {:s}".format(args.paramsfile))
         params = np.load(params_filename)
+        train_params_filename = params_filename.replace('model_params.npy',
+            'trainer_params.npy')
+        if os.path.isfile(train_params_filename):
+            log.info("Loading trainer params from {:s}".format(train_params_filename))
+            train_params = np.load(train_params_filename)
+        else:
+            log.warn("No train/adam params found, starting optimization params "
+                "from scratch (model params will be loaded anyways).")
     else:
         params = np.load(base_name + '.npy')
     exp = create_experiment(base_name + '.yaml')
@@ -368,7 +389,8 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_da
     online_model = OnlineModel(model)
     if adapt_model:
         online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break, 
-            batch_size, learning_rate, n_min_trials, trial_start_offset)
+            batch_size, learning_rate, n_min_trials, trial_start_offset,
+            train_param_values=train_params)
     else:
         log.info("Not adapting model...")
         online_trainer = NoTrainer()
@@ -377,9 +399,13 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors, save_da
     hostname = ''
     server = PredictionServer((hostname, incoming_port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
-        save_data=save_data, use_ui_server=use_ui_server, 
-        model_base_name=base_name)
+        use_ui_server=use_ui_server, save_data=save_data,
+        model_base_name=base_name, adapt_model=adapt_model)
+    # Compilation takes some time so initialize trainer already
+    # before waiting in connection in server
     online_trainer.initialize()
+    if adapt_model and load_old_data:
+        online_trainer.add_data_from_today()
     log.info("Starting server on port {:d}".format(incoming_port))
     server.start()
     log.info("Started server")
@@ -392,11 +418,12 @@ if __name__ == '__main__':
         log.setLevel("WARN")
     main(ui_hostname=args.uihost, ui_port=args.uiport, 
         base_name=args.modelfile, params_filename=args.paramsfile,
-        plot_sensors=not args.noplot, save_data=not args.nosave,
+        plot_sensors=not args.noplot,
+        save_data=not args.nosave,
         use_ui_server=not args.noui, adapt_model=not args.noadapt,
         n_updates_per_break=args.updatesperbreak, batch_size=args.batchsize,
         learning_rate=args.learningrate, n_min_trials=args.mintrials, 
         trial_start_offset=args.adaptoffset, pred_freq=args.predfreq,
-        incoming_port=args.inport,
+        incoming_port=args.inport, load_old_data=not args.noolddata
         )
     

@@ -43,8 +43,8 @@ class StandardizeProcessor(object):
             return (samples - self.running_mean) / np.maximum(self.eps,
                 np.sqrt(self.running_var))
             
-    def get_samples(self, start, end):
-        return self.sample_buffer[start:end]
+    def get_samples(self, start, stop):
+        return self.sample_buffer[start:stop]
 
         
     

@@ -26,7 +26,7 @@ class OnlineCoordinator(object):
         self.last_pred = None
         self.model.initialize()
         self.n_samples_pred_window = self.model.get_n_samples_pred_window()
-        self.trainer.set_model(self.model.model) # lasagne model...
+        self.trainer.set_predicting_model(self.model.model) # lasagne model...
         self.trainer.set_data_processor(self.data_processor)
         self.trainer.set_marker_buffer(self.marker_buffer)
 
