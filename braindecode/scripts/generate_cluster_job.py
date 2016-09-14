@@ -9,19 +9,13 @@ file_prefix = \
 
 cd ${HOME}/braindecode/code/braindecode/
 export PYTHONPATH=$PYTHONPATH:`pwd`/../
-# add stuff for cudnn
-#export LD_LIBRARY_PATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$LD_LIBRARY_PATH
-#export LIBRARY_PATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$LIBRARY_PATH
-#export CPATH=/home/schirrmr/cudnn-6.5-linux-x64-v2:$CPATH
 
-## once you have cuda > 7.0 and can use cudnnv3:
 export LD_LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LIBRARY_PATH
 export CPATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$CPATH
 
 echo "Working directory is $PWD"
 
-#export CUDA_VISIBLE_DEVICES=`cat ${HOME}/${JOB_ID}_${SGE_TASK_ID}_${JOB_NAME}`
 export GPU_ID=0
 echo HOME=$HOME
 echo USER=$USER
@@ -32,15 +26,18 @@ echo SGE_TASK_ID=$SGE_TASK_ID
 echo CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
 echo GPU_ID=$GPU_ID
 echo $CMD
-# used to have this for separate compiledir
-# but never helped with crashes or anything
-# so removing it from theano flags...:
-# ,
-export THEANO_FLAGS="floatX=float32,device=gpu${GPU_ID},nvcc.fastmath=True,force_device=True,compiledir=/tmp/schirrmr.theano_compile.%(queue)s/"
+# once cudnnv5 works or sth... ,maybe not necessary and instead remove 
+# exports for cudnnv3 above...
+#GPU_FLAGS="device=gpu${GPU_ID},force_device=True"
+#DNN_PATH_FLAGS="dnn.include_path=/home/schirrmr/cudnn-7.5-linux-x64-v5.1/include,dnn.library_path=/home/schirrmr/cudnn-7.5-linux-x64-v5.1/lib64"
+#COMPILEDIR_FLAG="compiledir=/tmp/schirrmr.theano_compile_cudnn5.%(queue)s/$"
+#OTHER_FLAGS="floatX=float32,nvcc.fastmath=True"
+#export THEANO_FLAGS="${GPU_FLAGS},{DNN_PATH_FLAGS},{COMPILEDIR_FLAG},{OTHER_FLAGS}"
 echo THEANO_FLAGS=$THEANO_FLAGS
 """
 
 def generate_cluster_job(queue, job_args):
+    raise ValueError("Fix Cudnn3/5 problem first please....")
     config_file = job_args[0]
     arguments_for_train = job_args[1:]
     # Expect that experiment runs sequential by default
