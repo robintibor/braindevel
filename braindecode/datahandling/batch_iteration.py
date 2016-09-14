@@ -303,17 +303,20 @@ class CntWindowTrialIterator(object):
 def get_start_end_blocks_for_trial(trial_start, trial_end, input_time_length,
         n_sample_preds):
     start_end_blocks = []
-    i_window_end = trial_start
+    i_window_end = trial_start - 1 # now when we add sample preds, first sample of trial will be predicted
     while i_window_end < trial_end:
         i_window_end += n_sample_preds
         i_adjusted_end = min(i_window_end, trial_end)
         i_window_start = i_adjusted_end - input_time_length + 1
         start_end_blocks.append((i_window_start, i_adjusted_end))
+        
     return start_end_blocks
 
 def compute_trial_start_end_samples(y, check_trial_lengths_equal=True,
         input_time_length=None):
-    """ Specify input time length to kick out trials that are too short after
+    """ Computes trial start and end samples (end is inclusive) from
+    one-hot encoded y-matrix.
+    Specify input time length to kick out trials that are too short after
     signal start."""
     trial_part = np.sum(y, 1) == 1
     boundaries = np.diff(trial_part.astype(np.int32))
