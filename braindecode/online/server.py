@@ -23,8 +23,8 @@ def parse_command_line_arguments():
         help='Use these (possibly adapted) parameters for the model '
         'filename should end with model_params.npy. Can also use "newest"'
         'to load the newest available  parameter file.')
-    parser.add_argument('--noplot', action='store_true',
-        help="Don't show plots of the sensors first.")
+    parser.add_argument('--plot', action='store_true',
+        help="Show plots of the sensors first.")
     parser.add_argument('--noui', action='store_true',
         help="Don't wait for UI server.")
     parser.add_argument('--noadapt', action='store_true',
@@ -364,7 +364,7 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
             assert len(all_params_files) > 0, ("Expect atleast one params file "
                 "if 'newest' given as argument")
             params_filename = all_params_files[-1]
-        log.info("Loading model params from {:s}".format(args.paramsfile))
+        log.info("Loading model params from {:s}".format(params_filename))
         params = np.load(params_filename)
         train_params_filename = params_filename.replace('model_params.npy',
             'trainer_params.npy')
@@ -418,7 +418,7 @@ if __name__ == '__main__':
         log.setLevel("WARN")
     main(ui_hostname=args.uihost, ui_port=args.uiport, 
         base_name=args.modelfile, params_filename=args.paramsfile,
-        plot_sensors=not args.noplot,
+        plot_sensors=args.plot,
         save_data=not args.nosave,
         use_ui_server=not args.noui, adapt_model=not args.noadapt,
         n_updates_per_break=args.updatesperbreak, batch_size=args.batchsize,
