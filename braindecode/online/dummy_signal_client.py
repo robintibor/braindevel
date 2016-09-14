@@ -37,7 +37,7 @@ while True:
     # change marker roughly every 500 samples
     if i_sample_in_break_or_trial > 500:
         if cur_marker == 0:
-            cur_marker = rng.randint(1,4)
+            cur_marker = rng.randint(1,6)
         else:
             cur_marker = 0
         i_sample_in_break_or_trial = 0

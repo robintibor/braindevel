@@ -13,7 +13,6 @@ class OnlineCoordinator(object):
         self.data_processor = data_processor
         self.model = model
         self.pred_freq = pred_freq
-        # assuming 4 classes
         self.marker_buffer = RingBuffer(np.zeros(
             data_processor.n_samples_in_buffer, 
             dtype=np.int32))
@@ -34,8 +33,8 @@ class OnlineCoordinator(object):
         """Expect samples in timexchan format"""
         sensor_samples = samples[:,:-1]
         markers = samples[:,-1]
-        assert np.all([m in [0,1,2,3,4] for m in markers]), ("Expect all "
-            "markers to be from 0-4, instead got {:s}".format(markers))
+        assert np.all([m in [0,1,2,3,4,5] for m in markers]), ("Expect all "
+            "markers to be from 0-5, instead got {:s}".format(markers))
         self.marker_buffer.extend(markers)
         self.data_processor.process_samples(sensor_samples)
         self.n_samples += len(samples)

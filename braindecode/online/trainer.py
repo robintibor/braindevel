@@ -133,11 +133,12 @@ class BatchWiseCntTrainer(object):
             self.marker_buffer[-len(samples)-2:])
         trial_has_ended = np.sum(np.diff(marker_samples_with_overlap) < 0) > 0
         if trial_has_ended:
-            log.info("Trial has ended")
             trial_starts, trial_stops = self.get_trial_start_stop_indices(
                 self.marker_buffer)
             trial_start = trial_starts[-1]
             trial_stop = trial_stops[-1]
+            log.info("Trial has ended for class {:d}".format(
+                self.marker_buffer[trial_start]))
             assert trial_start < trial_stop, ("trial start {:d} should be "
                 "before trial stop {:d}, markers: {:s}").format(trial_start, 
                     trial_stop, str(marker_samples_with_overlap))
