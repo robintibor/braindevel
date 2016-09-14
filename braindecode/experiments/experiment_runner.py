@@ -103,10 +103,12 @@ class ExperimentsRunner:
     def _determine_base_save_paths_and_create_lock_files(self):
         self._base_save_paths = []
         self._folder_paths = [] # will be set inside function for later result printing
+        
         # for performance reasons set save path of experiments
         # that will not be run to None
         # still should set those at start to have correct indices
-        # after stop should never be accessed
+        
+        # indices after stop should never be accessed
         # so safe to not set them at all
         for i_exp in range(self._get_start_id()):
             self._base_save_paths.append(None)
@@ -120,6 +122,7 @@ class ExperimentsRunner:
             # results by using a lockfile in the determined result folder
             if not self._dry_run:
                 folder_lock_file = os.path.join(folder_path, 'global.lock')
+                # this will create folder if it did not exist
                 folder_lock = fasteners.InterProcessLock(folder_lock_file)
                 log.info("Wait for file lock...")
                 folder_lock.acquire()

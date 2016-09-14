@@ -160,6 +160,8 @@ class Experiment(object):
         input_var = lasagne.layers.get_all_layers(self.final_layer)[0].input_var
         # Store all parameters, including update params like adam params,
         # needed for resetting to best model after early stop
+        # not sure why i am not only doing update params below
+        # possibly because batch norm is not in update params?
         all_layer_params = lasagne.layers.get_all_params(self.final_layer)
         self.all_params = all_layer_params
         # now params from adam would still be missing... add them ...
