@@ -133,7 +133,7 @@ class PredictionServer(gevent.server.StreamServer):
 
     def connect_to_ui_server(self):
         ui_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print (self.ui_hostname, self.ui_port)
+        print("UI server connected at:", self.ui_hostname, self.ui_port)
         ui_socket.connect((self.ui_hostname, self.ui_port))
         return ui_socket
         
@@ -333,13 +333,13 @@ class PredictionServer(gevent.server.StreamServer):
         # -1 since we have 0 as "break" "non-trial" marker
         label_pred_equal = interpolated_pred_labels == y_labels - 1
         label_pred_trial_equal = label_pred_equal[y_labels!=0]
-        print("Accuracy inside trials")
+        print("Sample accuracy inside trials")
         print np.mean(label_pred_trial_equal)
         y_label_with_breaks = np.copy(y_labels)
         y_label_with_breaks[y_label_with_breaks == 0] = np.max(y_labels)
         # from 1-based to 0-based
         y_label_with_breaks -= 1
-        print("Accuracy total")
+        print("Sample accuracy total")
         label_pred_equal = interpolated_pred_labels == y_label_with_breaks
         print np.mean(label_pred_equal)
         
@@ -363,7 +363,7 @@ class PredictionServer(gevent.server.StreamServer):
             last_bound = i_bound
         trial_labels = np.array(trial_labels)
         trial_pred_labels = np.array(trial_pred_labels)
-        print("Trialwise/Per-trial accuracy of {:d} trials".format(
+        print("Trialwise accuracy (mean prediction) of {:d} trials".format(
             len(trial_labels)))
         print(np.mean(trial_labels == trial_pred_labels))
 
