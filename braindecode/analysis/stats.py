@@ -348,3 +348,17 @@ def wrap_reshape_topo(stat_fn, topo_a, topo_b, axis_a, axis_b):
     topo_result = stat_result.reshape(tuple(n_other_axis_a) + tuple(n_other_axis_b))
     return topo_result
     
+def running_mean(arr, window_len, axis=0):
+    # adapted from http://stackoverflow.com/a/27681394/1469195
+    # need to pad to get correct first value also
+    arr_padded = np.insert(arr,0,values=0,axis=axis)
+    cumsum = np.cumsum(arr_padded,axis=axis)
+    later_sums = np.take(cumsum, xrange(window_len, arr_padded.shape[axis]), 
+        axis=axis)
+    earlier_sums = np.take(cumsum, xrange(0, arr_padded.shape[axis] - window_len), 
+        axis=axis)
+    
+
+    moving_average = (later_sums - earlier_sums) / float(window_len)
+    return moving_average
+

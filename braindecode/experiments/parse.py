@@ -305,12 +305,12 @@ def process_templates(templates, parameters):
     processed_templates = {}
     # we need templates to replace placeholders in parameters
     # placeholders defined with $
-    needed_template_names = filter(
-        lambda value: isinstance(value, basestring) and value[0] == '$', 
-        parameters.values())
-    # remove $ at start! :)
-    # e.g. ["$rect_lin", "$dropout"] => ["rect_lin", "dropout"]
-    needed_template_names = [name[1:] for name in needed_template_names]
+    needed_template_names = []
+    for value in parameters.values():
+        param_str = str(value)
+        needed_templates = get_placeholders(param_str)
+        for template_name in needed_templates:
+            needed_template_names.append(template_name)
     
     # now also go through template strings see if a template appears there
     new_template_found = True

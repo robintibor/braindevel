@@ -56,7 +56,10 @@ class BBCIDataset(object):
             # if no sensor names given, take all EEG-chans
             EEG_sensor_names = filter(lambda s: not s.startswith('E'), all_sensor_names)
             EEG_sensor_names = filter(lambda s: not s.startswith('Microphone'), EEG_sensor_names)
-            assert (len(EEG_sensor_names) == 128 or 
+            EEG_sensor_names = filter(lambda s: not s.startswith('Breath'), EEG_sensor_names)
+            EEG_sensor_names = filter(lambda s: not s.startswith('GSR'), EEG_sensor_names)
+            assert (len(EEG_sensor_names) == 128 or
+                len(EEG_sensor_names) == 64 or
                 len(EEG_sensor_names) == 32 or 
                 len(EEG_sensor_names) == 16), (
                 "Recheck this code if you have different sensors...")
@@ -122,11 +125,24 @@ class BBCIDataset(object):
                 'Feet', 'Face', 'Navigation', 'Music', 'Rotation',
                 'Subtraction', 'Words']:
                 pass # robot hall 10 class decoding
+            elif all_class_names == ['RightHand', 'Feet', 'Rotation', 'Words',
+                '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                'RightHand_End', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                'Feet_End', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                'Rotation_End', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                'Words_End']:
+                pass # weird stuff when we recoreded cursor in robot hall
+                    # on 2016-09-14  :D
+            
             elif len(event_times_in_ms) ==  len(all_class_names):
                 pass # weird neuroone(?) logic where class names have event classes
             else:
                 # add another clause here for other class names...
-                raise ValueError("Unknown class names {:s}", all_class_names)
+                raise ValueError("Unknown class names {:s}".format(
+                    all_class_names))
             
         cnt.markers =  zip(event_times_in_ms, event_classes)
         cnt.class_names = all_class_names
@@ -302,10 +318,10 @@ class HDF5StreamedSet(object):
         get dataset lazy loading function""" 
         with h5py.File(self.filename, 'r') as h5file:
             all_data = np.array(h5file['cnt_samples'])
-            sensor_names = h5file['chan_names'][:32]
+            sensor_names = h5file['chan_names'][:-1]
             
             if self.load_sensor_names is None:
-                cnt_data = all_data[:,:32]
+                cnt_data = all_data[:,:-1]
                 wanted_sensor_names = sensor_names
             else:
                 log.warn("Load sensor names may lead to different results for "
@@ -315,7 +331,7 @@ class HDF5StreamedSet(object):
                 cnt_data = all_data[:,chan_inds]
                 wanted_sensor_names = self.load_sensor_names
             
-            marker = all_data[:,32]
+            marker = all_data[:,-1]
             fs = 512.0
             time_steps = np.arange(len(cnt_data)) * 1000.0 / fs
             cnt = wyrm.types.Data(cnt_data,axes=[time_steps, 

@@ -10,6 +10,7 @@ from braindecode.mywyrm.processing import select_marker_classes,\
     select_marker_epoch_range, select_ival_with_markers
 from braindecode.datasets.trial_segmenter import MarkerSegmenter, AddTrialBreaks,\
     PipelineSegmenter, RestrictTrialRange
+from copy import deepcopy, copy
 log = logging.getLogger(__name__)
 
 class CombinedSet(object):
@@ -109,7 +110,7 @@ class CombinedCntSets(object):
                 sensor_names=self.sensor_names,
                 end_marker_def = end_marker_def)
             self.sets.append(this_set)
-        
+
 class CombinedCleanedSet(object):
     reloadable=False
     def __init__(self, train_set, test_set, train_cleaner, test_cleaner):
@@ -168,45 +169,66 @@ class CombinedCleanedSet(object):
         
         self.y = self.sets[-1].y[0:1]
 
-
 def construct_combined_set(filenames, sensor_names, cnt_preprocessors,
                             marker_def, end_marker_def, trial_classes,
                           trial_start_offset_ms, trial_stop_offset_ms,
                            min_break_length_ms, max_break_length_ms,
                           break_start_offset_ms, break_stop_offset_ms,
-                          last_set_split_trial):
+                          last_set_split_trial, add_trial_breaks=True,
+                          filename_to_extra_args=None):
+    """ extra_args should be dict filename -> args that are different for
+    this file."""
+    default_args = deepcopy(locals())
     sets = []
 
-    marker_segmenter = MarkerSegmenter([trial_start_offset_ms, trial_stop_offset_ms],
-                                 marker_def=marker_def,
-                         trial_classes=trial_classes,
-                        end_marker_def=end_marker_def)
-    trial_break_adder = AddTrialBreaks(min_break_length_ms,max_break_length_ms,
-                           break_start_offset_ms, break_stop_offset_ms)
+    if filename_to_extra_args is not None:
+        for filename_with_args in filename_to_extra_args:
+            assert filename_with_args in filenames
+
     for i_file, filename in enumerate(filenames):
-        if (i_file < len(filenames) - 1) or (last_set_split_trial is None):
-            segmenter  = PipelineSegmenter(
-                [marker_segmenter,trial_break_adder,])
+        this_args = copy(default_args)
+        if filename_to_extra_args is not None and (
+                filename in filename_to_extra_args):
+            for key in filename_to_extra_args[filename]:
+                assert key in this_args
+                this_args[key] = filename_to_extra_args[filename][key]
+                assert key != 'last_set_split_trial', "Does not make sense :)"
+        marker_segmenter = MarkerSegmenter(segment_ival=[
+            this_args['trial_start_offset_ms'], 
+            this_args['trial_stop_offset_ms']],
+            marker_def=this_args['marker_def'],
+            trial_classes=this_args['trial_classes'],
+            end_marker_def=this_args['end_marker_def'])
+        trial_break_adder = AddTrialBreaks(this_args['min_break_length_ms'],
+            this_args['max_break_length_ms'], 
+            this_args['break_start_offset_ms'], 
+            this_args['break_stop_offset_ms'])
+        if (i_file < len(filenames) - 1) or (
+                this_args['last_set_split_trial'] is None):
+            segmenters = [marker_segmenter,]
         else:
-            segmenter  = PipelineSegmenter(
-                [marker_segmenter,
-             RestrictTrialRange(0,last_set_split_trial),
-            trial_break_adder])
+            segmenters = [marker_segmenter,
+             RestrictTrialRange(0,this_args['last_set_split_trial'])]
+        if this_args['add_trial_breaks']:
+            segmenters.append(trial_break_adder)
+        segmenter  = PipelineSegmenter(segmenters)
         cnt_set = SetWithMarkers(BBCIDataset(filename,
-                              load_sensor_names=sensor_names),
-                  cnt_preprocessors,
+                              load_sensor_names=this_args['sensor_names']),
+                  this_args['cnt_preprocessors'],
                   segmenter)        
         sets.append(cnt_set)
 
     # add last set last part as test set if you split apart last set
+    # we use that this_args is now from last set already
     if last_set_split_trial is not None:
-        segmenter  = PipelineSegmenter(
-                [marker_segmenter,
-             RestrictTrialRange(last_set_split_trial,None),
-            trial_break_adder])
+        segmenters = [marker_segmenter,
+             RestrictTrialRange(last_set_split_trial,None),]
+        if this_args['add_trial_breaks']:
+            segmenters.append(trial_break_adder)
+        segmenter  = PipelineSegmenter(segmenters)
         cnt_set = SetWithMarkers(BBCIDataset(filenames[-1], # again last file needed
-                              load_sensor_names=sensor_names),
-                  cnt_preprocessors,
+                              load_sensor_names=this_args['sensor_names']),
+                  this_args['cnt_preprocessors'],
                   segmenter)
         sets.append(cnt_set)
     dataset = CombinedSet(sets)

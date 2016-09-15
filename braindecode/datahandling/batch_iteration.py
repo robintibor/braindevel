@@ -272,7 +272,7 @@ class CntWindowTrialIterator(object):
         # create start stop indices for all batches still 2d trial -> start stop
         start_end_blocks_per_trial = []
         for i_trial in xrange(len(i_trial_starts)):
-            trial_start = i_trial_starts[i_trial] - 1 # seemingly needed for next call to be correct(?)
+            trial_start = i_trial_starts[i_trial]
             trial_end = i_trial_ends[i_trial]
             start_end_blocks = get_start_end_blocks_for_trial(trial_start,
                 trial_end, self.input_time_length, self.n_sample_preds)
@@ -303,7 +303,8 @@ class CntWindowTrialIterator(object):
 def get_start_end_blocks_for_trial(trial_start, trial_end, input_time_length,
         n_sample_preds):
     start_end_blocks = []
-    i_window_end = trial_start - 1 # now when we add sample preds, first sample of trial will be predicted
+    i_window_end = trial_start - 1 # now when we add sample preds in loop,
+    # first sample of trial corresponds to first prediction
     while i_window_end < trial_end:
         i_window_end += n_sample_preds
         i_adjusted_end = min(i_window_end, trial_end)

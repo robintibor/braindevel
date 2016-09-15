@@ -1,9 +1,10 @@
 import numpy as np
 from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
-from braindecode.mywyrm.processing import create_cnt_y
+from braindecode.mywyrm.processing import create_cnt_y,\
+    create_new_class_to_old_class
 
 def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
-    segment_ival, timeaxis=-2):
+    segment_ival, timeaxis=-2, trial_classes=None):
     """Segment ival is : (offset to start marker, offset to end marker)"""
     start_to_end_value = dict()
     for class_name in start_marker_def:
@@ -17,11 +18,16 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
     # Otherwise change code...
     all_start_marker_vals = start_to_end_value.keys()
     n_classes = np.max(all_start_marker_vals)
-    assert np.array_equal(np.sort(all_start_marker_vals),
-                         range(1, n_classes+1)), (
-        "Assume start marker values are from 1...n_classes")
+    
+    # You might disable this if you have checked trial_classes implementation here
+    assert (trial_classes is not None) or (
+        np.array_equal(np.sort(all_start_marker_vals), range(1, n_classes+1))), (
+        "Assume start marker values are from 1...n_classes if trial classes not given")
     all_end_marker_vals = start_to_end_value.values()
     
+    if trial_classes is not None:
+        old_class_to_new_class = create_new_class_to_old_class(start_marker_def,
+            trial_classes)
     y = np.zeros((cnt.data.shape[0], np.max(all_start_marker_vals)), dtype= np.int32)
     i_marker = 0
     while i_marker < len(cnt.markers):
@@ -43,7 +49,13 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
             
             first_index = np.searchsorted(cnt.axes[timeaxis], start_marker_ms + segment_ival[0])
             last_index = np.searchsorted(cnt.axes[timeaxis], end_marker_ms+segment_ival[1])
-            y[first_index:last_index, int(start_marker_val) - 1] = 1 
+            if trial_classes is not None:
+                # -1 because before is 1-based matlab-indexing(!)
+                i_class = int(old_class_to_new_class[int(start_marker_val)] - 1)
+            else:
+                # -1 because before is 1-based matlab-indexing(!)
+                i_class = int(start_marker_val - 1)
+            y[first_index:last_index, i_class] = 1 
     return y
 
 class PipelineSegmenter(object):
@@ -70,12 +82,13 @@ class MarkerSegmenter(object):
         # get class names, assume they are sorted by marker codes
         class_names = sorted(self.marker_def.keys(), 
             key= lambda k: self.marker_def[k][0])
-        assert np.array_equal(class_names, self.trial_classes), "otherwise have to reorder and rewrite..."
         if self.end_marker_def is None:
-            y = create_cnt_y(cnt, self.segment_ival,self.marker_def)
+            y = create_cnt_y(cnt, self.segment_ival,self.marker_def,
+                trial_classes=self.trial_classes)
         else:
             y = create_cnt_y_start_end_marker(cnt,self.marker_def, self.end_marker_def,
-                segment_ival=self.segment_ival)
+                segment_ival=self.segment_ival,
+                trial_classes=self.trial_classes)
         return y, class_names
 
 class RestrictTrialRange(object):

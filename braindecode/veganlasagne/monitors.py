@@ -325,7 +325,7 @@ def compute_preds_per_trial(y, all_preds, all_batch_sizes, input_time_length):
             preds_this_trial.append(pred_samples)
             needed_samples -= len(pred_samples)
             i_pred_block += 1
-
+            
         preds_this_trial = np.concatenate(preds_this_trial, axis=0)
         preds_per_trial.append(preds_this_trial)
     assert i_pred_block == len(preds_per_forward_pass) , ("Expect that all "

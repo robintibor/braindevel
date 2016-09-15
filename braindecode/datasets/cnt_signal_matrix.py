@@ -123,8 +123,8 @@ class SetWithMarkers(DenseDesignMatrix):
         super(SetWithMarkers, self).__init__(topo_view=topo_view, y=self.y, 
                                               axes=('b', 'c', 0 , 1))
 
-        log.info("Loaded dataset with shape: {:s}".format(
-            str(self.get_topological_view().shape)))
+        log.info("Loaded dataset with shape: {:s}, y_shape: {:s}".format(
+            str(self.get_topological_view().shape), str(self.y.shape)))
                  
     def remove_cnt(self):
         del self.cnt

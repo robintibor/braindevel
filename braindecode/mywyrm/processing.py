@@ -238,7 +238,8 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
         
     return y
         
-def create_cnt_y(cnt, segment_ival, marker_def=None, timeaxis=-2):
+def create_cnt_y(cnt, segment_ival, marker_def=None, timeaxis=-2,
+        trial_classes=None):
     """ Create a one-hot-encoded signal for all the markers in cnt.
     Dimensions will be #samples x #classes(i.e. marker types)"""
     if marker_def is None:
@@ -255,14 +256,33 @@ def create_cnt_y(cnt, segment_ival, marker_def=None, timeaxis=-2):
         timeaxis=timeaxis)
     # In case classes are not from 1...n_classes
     # lets map them to be from 1 .. n_classes
-    if classes != range(1,n_classes+1):
+    if classes != range(1,n_classes+1) and (trial_classes is None):
         for i_marker in xrange(len(event_samples_and_classes)):
             old_class = event_samples_and_classes[i_marker][1]
             new_class = classes.index(old_class) + 1 #+1 for matlab-based indexing
             event_samples_and_classes[i_marker][1] = new_class
+    
+    if trial_classes is not None:
+        old_class_to_new_class = create_new_class_to_old_class(marker_def,
+            trial_classes)
+        for i_marker in xrange(len(event_samples_and_classes)):
+            old_class = event_samples_and_classes[i_marker][1]
+            new_class = old_class_to_new_class[old_class]
+            event_samples_and_classes[i_marker][1] = new_class
+    
     return get_y_signal(event_samples_and_classes,n_samples=len(cnt.data),
                        n_classes=n_classes, segment_ival=segment_ival,
                        fs=cnt.fs)
+    
+def create_new_class_to_old_class(marker_def, trial_classes):
+    old_class_to_new_class = dict()
+    for new_class, class_name in enumerate(trial_classes):
+        old_class = marker_def[class_name]
+        assert len(old_class) == 1, "Expect only one marker per class, else rewrite below"
+        old_class = old_class[0]
+        new_class += 1 # for matlab based indexing
+        old_class_to_new_class[old_class] = new_class
+    return old_class_to_new_class
 
 def get_event_samples_and_classes(cnt, timeaxis=-2):
     event_samples_and_classes = np.ones(
@@ -589,6 +609,7 @@ def rereference_to(cnt, sensor_name):
 
 def resample_cnt(cnt, newfs, timeaxis=-2):
     if newfs == cnt.fs:
+        log.info("Just copying data, no resampling, since new sampling rate same.")
         return cnt.copy()
     resampled_data = scikits.samplerate.resample(cnt.data, newfs/float(cnt.fs), 
         type='sinc_fastest')

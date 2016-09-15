@@ -34,7 +34,8 @@
             [
                 !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
                 {'low_cut_hz': $low_cut_hz,
-                'high_cut_hz': $high_cut_hz}
+                'high_cut_hz': $high_cut_hz,
+                 filt_order: $filt_order}
             ],
             [
                 !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
@@ -104,6 +105,10 @@
             break_start_offset_ms: $break_start_offset_ms,
             break_stop_offset_ms: $break_stop_offset_ms,
             last_set_split_trial: $last_set_split_trial,
+            add_trial_breaks: $add_trial_breaks,
+            filename_to_extra_args: !!python/object/apply:braindecode.util.merge_dicts {
+                args: $filename_to_extra_args,
+            },
            }
         },
                 
@@ -127,7 +132,25 @@
         markers_three_class:  {'01 - Right Hand': [1], '03 - Rest': [3],
             '04 - Feet': [4]},
         markers_two_class:  {'01 - Right Hand': [1], '04 - Feet': [4]},
-        
+        marker_10_class_day_3_args: {
+            'data/robot-hall/NiRiNBD3S001R01_ds10_1-10.BBCI.mat':
+            {
+                marker_def: {'Right Hand': [1], 'Rest': [3],
+                    'Feet': [4], 'Rotation': [8], 'Words': [10]},
+                trial_stop_offset_ms: 4000,
+                end_marker_def: null,
+                add_trial_breaks: False,
+                trial_classes: ['Right Hand',  'Feet', 'Rotation', 'Words', 'Rest'],
+            }
+        },
+        cursor_4_class_args: {
+            'data/robot-hall/NiRiNBD12_cursor_250Hz.BBCI.mat': 
+            {
+                # break length shd be 3804 actually
+                min_break_length_ms: [3700],
+                max_break_length_ms: [3900],
+            }
+        },
         nico_sensors: ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AF4', 'AF8', 'F7',
          'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5', 'FC3',
          'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'M1', 'T7', 'C5', 'C3',
@@ -147,13 +170,13 @@
     },
     variants: [[{ 
         save_path: ['data/models/online/cnt/start-end-mrk/'],
-        filenames: [['data/robot-hall/NiRiNBD6.ds_1-1_500Hz.BBCI.mat',
-            'data/robot-hall/NiRiNBD7.ds_1-1_500Hz.BBCI.mat',
-            'data/robot-hall/NiRiNBD8.ds_1-1_500Hz.BBCI.mat',
+        filenames: [['data/robot-hall/NiRiNBD3S001R01_ds10_1-10.BBCI.mat',
             'data/robot-hall/NiRiNBD9.ds_1-1_500Hz.BBCI.mat',
-            'data/robot-hall/NiRiNBD10.ds_1-1_500Hz.BBCI.mat',
-            'data/robot-hall/NiRiNBD11.ds_1-1_500Hz.BBCI.mat']],
-        last_set_split_trial: [400],
+            'data/robot-hall/NiRiNBD12_cursor_250Hz.BBCI.mat']],
+        filename_to_extra_args: ['[$marker_10_class_day_3_args,
+            $cursor_4_class_args]'],
+        
+        last_set_split_trial: ['null'],
         sensor_names: [$nico_sensors],
         marker_def: [$markers_right_feet_rot_word],
         end_marker_def: [$end_markers_right_feet_rot_word],
@@ -164,6 +187,7 @@
         break_stop_offset_ms: [-1000],
         trial_start_offset_ms: [500],
         trial_stop_offset_ms: [0],
+        add_trial_breaks: [True],
         check_preds_smaller_trial_len: [False],
         
         # Remove from params basically..
@@ -190,11 +214,44 @@
         valid_set_fraction: [0.2],
         preprocessor:  ['null'],
         
-        variants: [[{
-            last_set_split_trial: ['null'],
-            use_test_as_valid: [True],
+        variants: [
+        [
+            {
+                input_time_length: [1000],
+                s_filter_time_length: [25],
+                s_final_dense_length: [40],
+                final_dense_length: [4],
+            }
+        ],
+        [
+        {
+            filenames: [['data/robot-hall/NiRiNBD6.ds_1-1_500Hz.BBCI.mat',
+                'data/robot-hall/NiRiNBD7.ds_1-1_500Hz.BBCI.mat',
+                'data/robot-hall/NiRiNBD8.ds_1-1_500Hz.BBCI.mat',
+                'data/robot-hall/NiRiNBD9.ds_1-1_500Hz.BBCI.mat',
+                'data/robot-hall/NiRiNBD10.ds_1-1_500Hz.BBCI.mat',
+                'data/robot-hall/NiRiNBD11.ds_1-1_500Hz.BBCI.mat',
+                'data/robot-hall/NiRiNBD12_cursor_250Hz.BBCI.mat']],
+            last_set_split_trial: ['null', 150],
+            filename_to_extra_args: ['[$cursor_4_class_args]'],
+            filt_order: [10],
+            use_test_as_valid: [False],
             max_epochs: [100],
-        }]],
+        },
+#        {
+#            filenames: [['data/robot-hall/NiRiNBD6.ds_1-1_500Hz.BBCI.mat',
+#                'data/robot-hall/NiRiNBD7.ds_1-1_500Hz.BBCI.mat',
+#                'data/robot-hall/NiRiNBD8.ds_1-1_500Hz.BBCI.mat',
+#                'data/robot-hall/NiRiNBD9.ds_1-1_500Hz.BBCI.mat',
+#                'data/robot-hall/NiRiNBD10.ds_1-1_500Hz.BBCI.mat',
+#                'data/robot-hall/NiRiNBD11.ds_1-1_500Hz.BBCI.mat']],
+#            last_set_split_trial: [400],
+#            filename_to_extra_args: ['[]'],
+#            filt_order: [10],
+#            use_test_as_valid: [True],
+#            max_epochs: [100],
+#        }
+        ]],
         
 #        variants: [[{
 #            cnt_preprocessors: [$resample_cz_bandpass_standardize],
