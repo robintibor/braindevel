@@ -243,7 +243,6 @@ class CntWindowTrialIterator(object):
         
     def reset_rng(self):
         self.rng = RandomState(328774)
-    
 
     def get_batches(self, dataset, shuffle):
         i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
@@ -266,8 +265,6 @@ class CntWindowTrialIterator(object):
                 "Trial length: {:d}, sample preds {:d}...".
                 format(end - start + 1, self.n_sample_preds))
 
-    
-
     def compute_start_end_block_inds(self, i_trial_starts, i_trial_ends):
         # create start stop indices for all batches still 2d trial -> start stop
         start_end_blocks_per_trial = []
@@ -288,7 +285,7 @@ class CntWindowTrialIterator(object):
 
             start_end_blocks_per_trial.append(start_end_blocks)
         return start_end_blocks_per_trial
-    
+
     def yield_block_batches(self, topo, y, start_end_blocks_per_trial, shuffle):
         start_end_blocks_flat = np.concatenate(start_end_blocks_per_trial)
         if shuffle:
@@ -370,3 +367,36 @@ def transform_batches_of_trials(batches, n_sample_preds,
     legitimate_last_preds = n_samples_per_trial - n_sample_preds * (n_batches_per_trial - 1)
     trial_batches = np.append(trial_batches, batches[:,-1,:,-legitimate_last_preds:],axis=2)
     return trial_batches
+
+def inputs_per_trial(train_inputs, y, n_sample_preds, input_time_length):
+    """Helper function to transform train batch inputs into 
+    inputs per trial. Used in a notebook once. """
+    i_trial_starts, i_trial_ends = compute_trial_start_end_samples(y,
+        check_trial_lengths_equal=False, input_time_length=input_time_length)
+    train_inputs_per_forward_pass = np.concatenate(train_inputs)
+    train_inputs_per_forward_pass = train_inputs_per_forward_pass[:,:,-n_sample_preds:,]
+    i_pred_block = 0
+    train_inputs_per_trial = []
+    for i_trial in xrange(len(i_trial_starts)):
+        # + 1 since end is inclusive
+        # so if trial end is 1 and trial start is 0
+        # need two samples (0 and 1)
+        needed_samples = (i_trial_ends[i_trial] - i_trial_starts[i_trial]) + 1
+        train_inputs_this_trial = []
+        while needed_samples > 0:
+            # - needed_samples: only has an effect
+            # in case there are more samples than we actually still need
+            # in the block
+            # That can happen since final block of a trial can overlap
+            # with block before so we can have some redundant preds 
+            train_samples = train_inputs_per_forward_pass[i_pred_block, :,-needed_samples:]
+            train_inputs_this_trial.append(train_samples)
+            needed_samples -= train_samples.shape[1]
+            i_pred_block += 1
+
+        train_inputs_this_trial = np.concatenate(train_inputs_this_trial, axis=1)
+        train_inputs_per_trial.append(train_inputs_this_trial)
+    assert i_pred_block == len(train_inputs_per_forward_pass) , ("Expect that all "
+        "forward passes are needed, used {:d}, existing {:d}".format(
+            i_pred_block, len(train_inputs_per_forward_pass)))
+    return train_inputs_per_trial
