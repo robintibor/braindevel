@@ -44,5 +44,5 @@ while True:
     else:
         i_sample_in_break_or_trial += n_samples
     # make sleep time with realistic sampling rate
-    gevent.sleep((1 / 500.0) * 50)
+    gevent.sleep((1 / 500.0) * n_samples)
     

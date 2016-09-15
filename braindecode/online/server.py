@@ -40,6 +40,9 @@ def parse_command_line_arguments():
     parser.add_argument('--adaptoffset', action='store', default=125, type=int,
         help="Sample offset for the first sample to use (within a trial, in samples) "
         "for adaptation updates.")
+    parser.add_argument('--breakoffset', action='store', default=250, type=int,
+        help="Sample offset for the first sample to use (within a break(!), in samples) "
+        "for adaptation updates.")
     parser.add_argument('--predfreq', action='store', default=125, type=int,
         help="Amount of samples between predictions.")
     parser.add_argument('--noprint', action='store_true',
@@ -263,8 +266,8 @@ class PredictionServer(gevent.server.StreamServer):
         all_samples = np.concatenate(all_sample_blocks).astype(np.float32)
         all_preds = np.array(all_preds).squeeze()
         all_pred_samples = np.array(all_pred_samples)
-        self.print_results(all_samples, all_preds, all_pred_samples)
-        
+        log.setLevel("INFO") # show what you are saving again even if printing
+        # disabled before...
         now = datetime.datetime.now()
         now_timestring = now.strftime('%Y-%m-%d_%H-%M-%S')
         if self.adapt_model:
@@ -291,6 +294,7 @@ class PredictionServer(gevent.server.StreamServer):
                 now_timestring))
             log.info("Saving data to {:s}".format(data_filename))
             np.save(data_filename, all_samples)
+        self.print_results(all_samples, all_preds, all_pred_samples)
             
             
 
@@ -309,8 +313,8 @@ class PredictionServer(gevent.server.StreamServer):
         interpolate_fn = interpolate.interp1d(all_pred_samples, all_preds.T,
                                              bounds_error=False, fill_value=0)
         interpolated_preds = interpolate_fn(range(0,len(y_labels)))
-        corrcoeffs = np.corrcoef(interpolated_preds, 
-                                 y_signal.T)[:4,4:]
+        # interpolated_preds are classes x samples (!!)
+        corrcoeffs = np.corrcoef(interpolated_preds, y_signal.T)[:4,4:]
 
         print("Corrcoeffs")
         print corrcoeffs
@@ -330,8 +334,38 @@ class PredictionServer(gevent.server.StreamServer):
         label_pred_equal = interpolated_pred_labels == y_labels - 1
         label_pred_trial_equal = label_pred_equal[y_labels!=0]
         print("Accuracy inside trials")
-        print np.sum(label_pred_trial_equal) / float(len(label_pred_trial_equal))
+        print np.mean(label_pred_trial_equal)
+        y_label_with_breaks = np.copy(y_labels)
+        y_label_with_breaks[y_label_with_breaks == 0] = np.max(y_labels)
+        # from 1-based to 0-based
+        y_label_with_breaks -= 1
+        print("Accuracy total")
+        label_pred_equal = interpolated_pred_labels == y_label_with_breaks
+        print np.mean(label_pred_equal)
         
+        # also compute trial preds
+        # compute boundarides so that boundaries give
+        # indices of starts of new trials/new breaks
+        trial_labels = []
+        trial_pred_labels = []
+        boundaries = np.flatnonzero(np.diff(y_labels) != 0) + 1
+        last_bound = 0
+        for i_bound in boundaries:
+            # i bounds are first sample of new trial
+            this_labels = y_label_with_breaks[last_bound:i_bound]
+            assert len(np.unique(this_labels) == 1), (
+                "Expect only one label, got {:s}".format(str(
+                    np.unique(this_labels))))
+            trial_labels.append(this_labels[0])
+            this_preds = interpolated_preds[:,last_bound:i_bound]
+            pred_label = np.argmax(np.mean(this_preds, axis=1))
+            trial_pred_labels.append(pred_label)
+            last_bound = i_bound
+        trial_labels = np.array(trial_labels)
+        trial_pred_labels = np.array(trial_pred_labels)
+        print("Trialwise/Per-trial accuracy of {:d} trials".format(
+            len(trial_labels)))
+        print(np.mean(trial_labels == trial_pred_labels))
 
 def get_now_timestring():
     now = datetime.datetime.now()
@@ -352,7 +386,8 @@ def setup_logging():
 
 def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
         use_ui_server, adapt_model, save_data, n_updates_per_break, batch_size,
-        learning_rate, n_min_trials, trial_start_offset, pred_freq,
+        learning_rate, n_min_trials, trial_start_offset, break_offset,
+        pred_freq,
         incoming_port,load_old_data):
     setup_logging()
     assert np.little_endian, "Should be in little endian"
@@ -390,6 +425,7 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
     if adapt_model:
         online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break, 
             batch_size, learning_rate, n_min_trials, trial_start_offset,
+            break_start_offset=break_offset,
             train_param_values=train_params)
     else:
         log.info("Not adapting model...")
@@ -423,7 +459,8 @@ if __name__ == '__main__':
         use_ui_server=not args.noui, adapt_model=not args.noadapt,
         n_updates_per_break=args.updatesperbreak, batch_size=args.batchsize,
         learning_rate=args.learningrate, n_min_trials=args.mintrials, 
-        trial_start_offset=args.adaptoffset, pred_freq=args.predfreq,
+        trial_start_offset=args.adaptoffset, break_offset=args.breakoffset,
+        pred_freq=args.predfreq,
         incoming_port=args.inport, load_old_data=not args.noolddata
         )
     

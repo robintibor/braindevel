@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 
 class BatchWiseCntTrainer(object):
     def __init__(self, exp, n_updates_per_break, batch_size, learning_rate,
-                n_min_trials, trial_start_offset, train_param_values,
+                n_min_trials, trial_start_offset, break_start_offset, train_param_values,
                 deterministic_training=False):
         self.cnt_model = exp.final_layer
         self.exp = exp
@@ -27,6 +27,7 @@ class BatchWiseCntTrainer(object):
         self.learning_rate = learning_rate
         self.n_min_trials = n_min_trials
         self.trial_start_offset = trial_start_offset
+        self.break_start_offset = break_start_offset
         self.train_param_values = train_param_values
         self.deterministic_training = deterministic_training
         
@@ -49,6 +50,7 @@ class BatchWiseCntTrainer(object):
         self.y_batches = []
         self.input_time_length = get_input_time_length(self.cnt_model)
         self.n_sample_preds = get_n_sample_preds(self.cnt_model)
+        self.n_classes = self.cnt_model.output_shape[1]
         # create train function
         log.info("Compile train function...")
         self._create_train_function()
@@ -123,7 +125,12 @@ class BatchWiseCntTrainer(object):
                 old_markers)
         log.info("Adding {:d} trials".format(len(trial_starts)))
         for trial_start, trial_stop in zip(trial_starts, trial_stops):
-            self.add_blocks(trial_start, trial_stop, old_samples, old_markers)
+            self.add_blocks(trial_start, trial_stop, old_samples, old_markers,
+                self.trial_start_offset)
+        # now lets add breaks
+        log.info("Adding {:d} breaks".format(len(trial_starts) - 1))
+        for break_start, break_stop in zip(trial_stops[:-1], trial_starts[1:]):
+            self.add_break(break_start, break_stop, old_samples, old_markers)
 
     def process_samples(self, samples):
         # Check if a trial has ended with last samples
@@ -144,11 +151,35 @@ class BatchWiseCntTrainer(object):
                     trial_stop, str(marker_samples_with_overlap))
             self.add_blocks(trial_start, trial_stop,
                 self.data_processor.sample_buffer,
-                self.marker_buffer)
+                self.marker_buffer, self.trial_start_offset)
+            log.info("Now {:d} batches".format(len(self.data_batches)))
             
             with log_timing(log, None, final_msg='Time for training:'):
                 self.train()
-    
+        trial_has_started = np.sum(np.diff(marker_samples_with_overlap) > 0) > 0
+        if trial_has_started:
+            trial_end_in_marker_buffer = np.sum(np.diff(self.marker_buffer) < 0) > 0
+            if trial_end_in_marker_buffer:
+                # +1 necessary since diff removes one index
+                trial_start = np.flatnonzero(np.diff(self.marker_buffer) > 0)[-1] + 1
+                trial_stop = np.flatnonzero(np.diff(self.marker_buffer) < 0)[-1] + 1
+                assert trial_start > trial_stop, ("If trial has just started "
+                    "expect this to be after stop of last trial")
+                self.add_break(break_start=trial_stop, break_stop=trial_start,
+                    all_samples=self.data_processor.sample_buffer,
+                    all_markers=self.marker_buffer)
+            #log.info("Break added, now at {:d} batches".format(len(self.data_batches)))
+                
+    def add_break(self, break_start, break_stop, all_samples, all_markers):
+        all_markers = np.copy(all_markers)
+        assert np.all(all_markers[break_start:break_stop] == 0)
+        assert all_markers[break_start - 1] != 0
+        assert all_markers[break_stop] != 0
+        # keep n_classes for 1-based matlab indexing logic in markers
+        all_markers[break_start:break_stop] = self.n_classes
+        self.add_blocks(break_start, break_stop, all_samples,
+            all_markers, self.break_start_offset)
+
     def get_trial_start_stop_indices(self, markers):
         # + 1 as diff "removes" one index, i.e. diff will be above zero
             # at the index 1 before the increase=> the trial start
@@ -168,14 +199,17 @@ class BatchWiseCntTrainer(object):
         assert(np.all(trial_starts <= trial_stops))
         return trial_starts, trial_stops
     
-    def add_blocks(self, trial_start, trial_stop, all_samples, all_markers):
+    def add_blocks(self, trial_start, trial_stop, all_samples, all_markers,
+            trial_start_offset):
+        """Trial start offset as parameter to give different offsets
+        for break and normal trial."""
         # n_sample_preds is how many predictions done for
         # one forward pass of the network -> how many crops predicted
         # together in one forward pass for given input time length of 
         # the ConvNet
         # -> crop size is how many samples are needed for one prediction
         crop_size = self.input_time_length - self.n_sample_preds + 1
-        pred_start = trial_start + self.trial_start_offset
+        pred_start = trial_start + trial_start_offset
         if pred_start + self.n_sample_preds > trial_stop:
             log.warn("Too little data in this trial to train in it, only "
                 "{:d} predictable samples, need atleast {:d}".format(
@@ -240,7 +274,7 @@ class NoTrainer(object):
     def process_samples(self, samples):
         pass
         
-    def set_model(self, model):
+    def set_predicting_model(self, model):
         pass
     
     def set_data_processor(self, data_processor):
