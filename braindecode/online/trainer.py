@@ -211,7 +211,7 @@ class BatchWiseCntTrainer(object):
         crop_size = self.input_time_length - self.n_sample_preds + 1
         pred_start = trial_start + trial_start_offset
         if pred_start + self.n_sample_preds > trial_stop:
-            log.warn("Too little data in this trial to train in it, only "
+            log.info("Too little data in this trial to train in it, only "
                 "{:d} predictable samples, need atleast {:d}".format(
                      trial_stop - pred_start, self.n_sample_preds))
             return # Too little data in this trial to train on it...
@@ -249,6 +249,8 @@ class BatchWiseCntTrainer(object):
         n_trials = len(self.data_batches)
         if n_trials >= self.n_min_trials:
             log.info("Training model...")
+            model_param_vals_before = lasagne.layers.get_all_param_values(self.exp.final_layer)
+            train_param_vals_before = [p.get_value() for p in self.train_params]
             all_blocks = np.concatenate(self.data_batches, axis=0)
             all_y_blocks = np.concatenate(self.y_batches, axis=0)
             # reshape to per block
@@ -261,6 +263,19 @@ class BatchWiseCntTrainer(object):
                 this_y = np.concatenate(all_y_blocks[i_blocks], axis=0)
                 this_topo = all_blocks[i_blocks]
                 self.train_func(this_topo, this_y)
+            # Check for Nans and if necessary 
+            train_param_vals_now = [p.get_value() for p in self.train_params]
+            
+            if np.any(np.isnan(train_param_vals_now)):
+                log.warn("Reset train parameters due to NaNs")
+                for p, old_val in zip(self.train_params, train_param_vals_before):
+                    p.set_value(old_val)
+            if np.any(np.isnan(lasagne.layers.get_all_param_values(all_layers_trained))):
+                log.warn("Reset model params due to NaNs")
+                lasagne.layers.set_all_param_values(self.exp.final_layer, model_param_vals_before)
+            assert not np.any(np.isnan([p.get_value() for p in self.train_params]))
+            assert not np.any(np.isnan(layers.get_all_param_values(self.exp.final_layer)))
+            
             # Copy over new values
             all_layers_trained = lasagne.layers.get_all_layers(self.exp.final_layer)
             all_layers_used = lasagne.layers.get_all_layers(self.predicting_model)
