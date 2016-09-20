@@ -870,7 +870,8 @@ def highpass_cnt(cnt, low_cut_off_hz, filt_order=3):
     return cnt_highpassed
 
 def lowpass_cnt(cnt, high_cut_off_hz, filt_order=3):
-    b,a = scipy.signal.butter(filt_order, high_cut_off_hz/(cnt.fs/2.0),btype='lowpass')
+    b,a = scipy.signal.butter(filt_order, high_cut_off_hz/(cnt.fs/2.0),
+        btype='lowpass')
     assert filter_is_stable(a)
     cnt_lowpassed = lfilter(cnt,b,a)
     return cnt_lowpassed
