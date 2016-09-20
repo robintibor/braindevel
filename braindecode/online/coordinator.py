@@ -19,6 +19,9 @@ class OnlineCoordinator(object):
         self.trainer = trainer
 
     def initialize(self, n_chans):
+        assert self.data_processor.__class__.__name__ == 'StandardizeProcessor', (
+            "Else change atleast trainer.py add_training_blocks_from_old_data ",
+            "function")
         self.data_processor.initialize(n_chans)
         self.n_samples = 0
         self.i_last_pred = -1
@@ -42,7 +45,7 @@ class OnlineCoordinator(object):
             self.predict()
         # important to do after marker buffer and data processor
         # have processed samples...
-        self.trainer.process_samples(samples)
+        self.trainer.process_markers(markers)
 
     def should_do_next_prediction(self):
         return (self.n_samples >= self.n_samples_pred_window and 
@@ -79,8 +82,14 @@ class OnlineCoordinator(object):
         return self.last_pred is not None
              
 def make_predictions_with_online_predictor(coordinator, cnt_data, 
-    y_labels, block_len, input_start, input_end):
+    y_labels, block_len, input_start, input_end,
+    old_samples_per_set=None, old_markers_per_set=None):
     coordinator.trainer.initialize() # like online, first init trainer
+    if old_samples_per_set is not None:
+        for old_samples, old_markers in zip(old_samples_per_set,
+            old_markers_per_set):
+            coordinator.trainer.add_training_blocks_from_old_data(old_samples,
+                old_markers, coordinator.data_processor)
     coordinator.initialize(n_chans=cnt_data.shape[1])
     window_len = coordinator.model.get_n_samples_pred_window()
     all_preds = []

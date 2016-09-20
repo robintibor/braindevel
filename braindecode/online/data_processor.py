@@ -22,7 +22,7 @@ class StandardizeProcessor(object):
     def process_samples(self, samples):
         standardized_samples = self.update_and_standardize(samples)
         self.sample_buffer.extend(standardized_samples)
-        
+
     def update_and_standardize(self, samples):
         if self.running_mean is not None:
             assert self.running_var is not None
@@ -35,7 +35,6 @@ class StandardizeProcessor(object):
             standardized = demeaned / np.maximum(self.eps, np.sqrt(next_vars))
             self.running_mean = next_means[-1]
             self.running_var = next_vars[-1]
-            #print "running mean after", self.running_mean
             return standardized
         else:
             self.running_mean = np.mean(samples, axis=0)

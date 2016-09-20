@@ -33,17 +33,17 @@ def parse_command_line_arguments():
         type=int, help="How many updates to adapt the model during trial break.")
     parser.add_argument('--batchsize', action='store', default=45, type=int,
         help="Batch size for adaptation updates.")
-    parser.add_argument('--learningrate', action='store', default=1e-3, 
+    parser.add_argument('--learningrate', action='store', default=1e-4, 
         type=float, help="Learning rate for adaptation updates.")
     parser.add_argument('--mintrials', action='store', default=8, type=int,
         help="Number of trials before starting adaptation updates.")
-    parser.add_argument('--adaptoffset', action='store', default=125, type=int,
+    parser.add_argument('--trialoffset', action='store', default=125, type=int,
         help="Sample offset for the first sample to use (within a trial, in samples) "
         "for adaptation updates.")
     parser.add_argument('--breakoffset', action='store', default=250, type=int,
         help="Sample offset for the first sample to use (within a break(!), in samples) "
         "for adaptation updates.")
-    parser.add_argument('--predfreq', action='store', default=125, type=int,
+    parser.add_argument('--predfreq', action='store', default=50, type=int,
         help="Amount of samples between predictions.")
     parser.add_argument('--noprint', action='store_true',
         help="Don't print on terminal.")
@@ -53,6 +53,8 @@ def parse_command_line_arguments():
         help="Dont load and use old data for adaptation")
     parser.add_argument('--plotbackend', action='store',
         default='agg', help='Matplotlib backend to use for plotting.')
+    parser.add_argument('--nooldadamparams', action='store_true',
+        help='Do not load old adam params.')
     args = parser.parse_args()
     return args
 
@@ -300,13 +302,15 @@ class PredictionServer(gevent.server.StreamServer):
 
     def print_results(self, all_samples, all_preds, all_pred_samples):
         # y labels i from 0 to n_classes (inclusive!), 0 representing
-        # non-trial => no known marker state
+        # non-trial => no known marker state -> set to rest class now
+        n_classes = 5
         y_labels = all_samples[:,-1]
-        y_signal = np.ones((len(y_labels), 4)) * np.nan
+        y_signal = np.ones((len(y_labels), n_classes)) * np.nan
         y_signal[:,0] = y_labels == 1
         y_signal[:,1] = y_labels == 2
-        y_signal[:,2] = np.logical_or(y_labels == 0, y_labels==3)
+        y_signal[:,2] = y_labels == 3
         y_signal[:,3] = y_labels == 4
+        y_signal[:,4] = np.logical_or(y_labels == 0, y_labels==n_classes)
         
         assert not np.any(np.isnan(y_signal))
         
@@ -314,7 +318,8 @@ class PredictionServer(gevent.server.StreamServer):
                                              bounds_error=False, fill_value=0)
         interpolated_preds = interpolate_fn(range(0,len(y_labels)))
         # interpolated_preds are classes x samples (!!)
-        corrcoeffs = np.corrcoef(interpolated_preds, y_signal.T)[:4,4:]
+        corrcoeffs = np.corrcoef(interpolated_preds, y_signal.T)[:n_classes,
+            n_classes:]
 
         print("Corrcoeffs")
         print corrcoeffs
@@ -324,7 +329,7 @@ class PredictionServer(gevent.server.StreamServer):
         
         # inside trials
         corrcoeffs = np.corrcoef(interpolated_preds[:,y_labels!=0], 
-                                 y_signal[y_labels!=0].T)[:4,4:]
+                                 y_signal[y_labels!=0].T)[:n_classes,n_classes:]
         print("Corrcoeffs inside trial")
         print corrcoeffs
         print("mean across diagonal inside trial")
@@ -336,11 +341,12 @@ class PredictionServer(gevent.server.StreamServer):
         print("Sample accuracy inside trials")
         print np.mean(label_pred_trial_equal)
         y_label_with_breaks = np.copy(y_labels)
-        y_label_with_breaks[y_label_with_breaks == 0] = np.max(y_labels)
+        # set break to rest label
+        y_label_with_breaks[y_label_with_breaks == 0] = n_classes
         # from 1-based to 0-based
         y_label_with_breaks -= 1
-        print("Sample accuracy total")
         label_pred_equal = interpolated_pred_labels == y_label_with_breaks
+        print("Sample accuracy total")  
         print np.mean(label_pred_equal)
         
         # also compute trial preds
@@ -363,7 +369,7 @@ class PredictionServer(gevent.server.StreamServer):
             last_bound = i_bound
         trial_labels = np.array(trial_labels)
         trial_pred_labels = np.array(trial_pred_labels)
-        print("Trialwise accuracy (mean prediction) of {:d} trials".format(
+        print("Trialwise accuracy (mean prediction) of {:d} trials (including breaks, without offset)".format(
             len(trial_labels)))
         print(np.mean(trial_labels == trial_pred_labels))
 
@@ -388,7 +394,7 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
         use_ui_server, adapt_model, save_data, n_updates_per_break, batch_size,
         learning_rate, n_min_trials, trial_start_offset, break_offset,
         pred_freq,
-        incoming_port,load_old_data):
+        incoming_port,load_old_data,use_new_adam_params):
     setup_logging()
     assert np.little_endian, "Should be in little endian"
     train_params = None # for trainer, e.g. adam params
@@ -404,8 +410,9 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
         train_params_filename = params_filename.replace('model_params.npy',
             'trainer_params.npy')
         if os.path.isfile(train_params_filename):
-            log.info("Loading trainer params from {:s}".format(train_params_filename))
-            train_params = np.load(train_params_filename)
+            if use_new_adam_params:
+                log.info("Loading trainer params from {:s}".format(train_params_filename))
+                train_params = np.load(train_params_filename)
         else:
             log.warn("No train/adam params found, starting optimization params "
                 "from scratch (model params will be loaded anyways).")
@@ -415,13 +422,13 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
     # Have to set for both exp final layer and actually used model
     # as exp final layer might be used for adaptation
     # maybe check this all for correctness?
-    model = exp.final_layer
-    lasagne.layers.set_all_param_values(model, params)
-    model = transform_to_normal_net(model)
-    lasagne.layers.set_all_param_values(model, params)
+    cnt_model = exp.final_layer
+    lasagne.layers.set_all_param_values(cnt_model, params)
+    prediction_model = transform_to_normal_net(cnt_model)
+    lasagne.layers.set_all_param_values(prediction_model, params)
     
     data_processor = StandardizeProcessor(factor_new=1e-3)
-    online_model = OnlineModel(model)
+    online_model = OnlineModel(prediction_model)
     if adapt_model:
         online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break, 
             batch_size, learning_rate, n_min_trials, trial_start_offset,
@@ -441,7 +448,7 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
     # before waiting in connection in server
     online_trainer.initialize()
     if adapt_model and load_old_data:
-        online_trainer.add_data_from_today()
+        online_trainer.add_data_from_today(data_processor)
     log.info("Starting server on port {:d}".format(incoming_port))
     server.start()
     log.info("Started server")
@@ -459,8 +466,9 @@ if __name__ == '__main__':
         use_ui_server=not args.noui, adapt_model=not args.noadapt,
         n_updates_per_break=args.updatesperbreak, batch_size=args.batchsize,
         learning_rate=args.learningrate, n_min_trials=args.mintrials, 
-        trial_start_offset=args.adaptoffset, break_offset=args.breakoffset,
+        trial_start_offset=args.trialoffset, break_offset=args.breakoffset,
         pred_freq=args.predfreq,
-        incoming_port=args.inport, load_old_data=not args.noolddata
+        incoming_port=args.inport, load_old_data=not args.noolddata,
+        use_new_adam_params=not args.nooldadamparams,
         )
     
