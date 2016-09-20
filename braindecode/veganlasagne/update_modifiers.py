@@ -1,5 +1,5 @@
 import lasagne
-from copy import deepcopy
+from copy import deepcopy, copy
 import numpy as np
 import logging
 from _collections import deque
@@ -134,17 +134,18 @@ def layer_to_predecessors_and_successors(final_layer):
             # Some node had an input_layer set to `None`. Just ignore it.
             pass
         elif layer not in seen:
-            # We haven't seen this node yet, update predecessors and parents
+            # We haven't seen this node yet, update predecessors and successors
             # for it and its input layers
             seen.add(layer)
 
             if hasattr(layer, 'input_layers'):
-                layer_to_pred[layer] = layer.input_layers
-                for parent in layer.input_layers:
-                    layer_to_succ[parent] = layer_to_succ[layer] + [layer]
-                for offspring in layer_to_succ[layer]:
-                    layer_to_pred[offspring] += layer.input_layers
-                queue.extendleft(reversed(layer.input_layers))
+                # need copy, else later input layers itself will be modified
+                layer_to_pred[layer] = copy(layer.input_layers)
+                for predecessor in layer.input_layers:
+                    layer_to_succ[predecessor] = layer_to_succ[layer] + [layer]
+                for successor in layer_to_succ[layer]:
+                    layer_to_pred[successor] += copy(layer.input_layers)
+                queue.extendleft(reversed(copy(layer.input_layers)))
 
             elif hasattr(layer, 'input_layer'):
                 layer_to_pred[layer] = [layer.input_layer]

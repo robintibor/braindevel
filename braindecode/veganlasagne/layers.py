@@ -109,7 +109,7 @@ def transform_to_normal_net(final_layer):
     sys.setrecursionlimit(old_limit)
 
     has_reshape_layer = False
-    for l in lasagne.layers.get_all_layers(final_layer):
+    for l in lasagne.layers.get_all_layers(new_final_layer):
         if l.__class__.__name__ == 'FinalReshapeLayer':
             has_reshape_layer = True
     if not has_reshape_layer:
