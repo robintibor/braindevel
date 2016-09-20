@@ -92,7 +92,7 @@ class BBCIDataset(object):
             event_times_in_ms = h5file['mrk']['time'][:,0]
             event_classes = h5file['mrk']['event']['desc'][0]
             
-            # Check wheter class names known and correct order
+            # Check whether class names known and correct order
             class_name_set = h5file['nfo']['className'][:,0]
             all_class_names = [''.join(chr(c) for c in h5file[obj_ref]) 
                 for obj_ref in class_name_set]
@@ -125,7 +125,7 @@ class BBCIDataset(object):
                 'Feet', 'Face', 'Navigation', 'Music', 'Rotation',
                 'Subtraction', 'Words']:
                 pass # robot hall 10 class decoding
-            elif all_class_names == ['RightHand', 'Feet', 'Rotation', 'Words',
+            elif (all_class_names == ['RightHand', 'Feet', 'Rotation', 'Words',
                 '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
                 'RightHand_End', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
                 '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
@@ -133,9 +133,20 @@ class BBCIDataset(object):
                 '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
                 'Rotation_End', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
                 '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                'Words_End']:
+                'Words_End'] or
+                all_class_names == ['RightHand', 'Feet', 'Rotation', 'Words',
+                    'Rest', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                    'RightHand_End', '\x00\x00', '\x00\x00', '\x00\x00',
+                    '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                    '\x00\x00', 'Feet_End', '\x00\x00', '\x00\x00', '\x00\x00',
+                    '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                    '\x00\x00', 'Rotation_End', '\x00\x00', '\x00\x00',
+                    '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                    '\x00\x00', '\x00\x00', 'Words_End', '\x00\x00', '\x00\x00',
+                    '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
+                    '\x00\x00', '\x00\x00', 'Rest_End']):
                 pass # weird stuff when we recoreded cursor in robot hall
-                    # on 2016-09-14  :D
+                    # on 2016-09-14 and 2016-09-16 :D
             
             elif len(event_times_in_ms) ==  len(all_class_names):
                 pass # weird neuroone(?) logic where class names have event classes
