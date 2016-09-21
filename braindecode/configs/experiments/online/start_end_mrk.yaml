@@ -215,27 +215,47 @@
         preprocessor:  ['null'],
         
         variants: [
+        
+#        [
+#            {
+#                input_time_length: [1000],
+#                s_filter_time_length: [25],
+#                s_final_dense_length: [40],
+#                final_dense_length: [4],
+#            }
+#        ],
         [
             {
-                input_time_length: [1000],
-                s_filter_time_length: [25],
-                s_final_dense_length: [40],
-                final_dense_length: [4],
+                input_time_length: [800],
+                resample_fs: [100],
+                s_filter_time_length: [22],
+                s_final_dense_length: [24],
+                final_dense_length: [1],
+            },
+            {
+                input_time_length: [400],
+                resample_fs: [100],
+                s_filter_time_length: [12],
+                s_pool_time_length: [30],
+                s_pool_time_stride: [6],
+                s_final_dense_length: [30],
+                pool_time_length: [2],
+                pool_time_stride: [2],
+                final_dense_length: [5],
             }
         ],
         [
         {
             filenames: [['data/robot-hall/NiRiNBD6.ds_1-1_500Hz.BBCI.mat',
-                'data/robot-hall/NiRiNBD7.ds_1-1_500Hz.BBCI.mat',
                 'data/robot-hall/NiRiNBD8.ds_1-1_500Hz.BBCI.mat',
                 'data/robot-hall/NiRiNBD9.ds_1-1_500Hz.BBCI.mat',
                 'data/robot-hall/NiRiNBD10.ds_1-1_500Hz.BBCI.mat',
-                'data/robot-hall/NiRiNBD11.ds_1-1_500Hz.BBCI.mat',
-                'data/robot-hall/NiRiNBD12_cursor_250Hz.BBCI.mat']],
-            last_set_split_trial: ['null', 150],
+                'data/robot-hall/NiRiNBD12_cursor_250Hz.BBCI.mat',
+                'data/robot-hall/NiRiNBD13_cursorS000R01_onlyFullRuns_250Hz.BBCI.mat']],
+            last_set_split_trial: ['null'], #150
             filename_to_extra_args: ['[$cursor_4_class_args]'],
-            filt_order: [10],
-            use_test_as_valid: [False],
+            filt_order: [10],#30
+            use_test_as_valid: [False, True],
             max_epochs: [100],
         },
 #        {

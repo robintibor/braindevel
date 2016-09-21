@@ -11,10 +11,12 @@ class BandpassLayer(MergeLayer):
         self.truncate_gradient = truncate_gradient
         in_band_layer = incomings[1]
         n_filters = in_band_layer.output_shape[-1]
-        self.W_b = self.add_param(W_b, (n_filters, self.n_filt_order), name='W_b',
-                                            regularizable=True, trainable=True)
-        self.W_a = self.add_param(W_a, (n_filters, self.n_filt_order), name='W_a',
-                                            regularizable=True, trainable=True)
+        self.W_b = self.add_param(W_b,
+            (n_filters, self.n_filt_order), name='W_b',
+                regularizable=True, trainable=True)
+        self.W_a = self.add_param(W_a,
+            (n_filters, self.n_filt_order), name='W_a',
+                regularizable=True, trainable=True)
         
     def get_output_shape_for(self, input_shapes):
         """ input_shapes[0] should be examples x time x chans

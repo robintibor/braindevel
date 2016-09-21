@@ -18,8 +18,33 @@ class BalancedBatchIterator(object):
     def reset_rng(self):
         self.rng = RandomState(328774)
         
-def get_balanced_batches(n_trials, batch_size, rng, shuffle):
-    n_batches = n_trials // batch_size
+def get_balanced_batches(n_trials, rng, shuffle, n_batches=None, batch_size=None):
+    """Create indices for batches balanced in size (batches will have maximum size difference of 1).
+    Supply either batch size or number of batches. Resulting batches
+    will not have the given batch size but rather the next largest batch size
+    that allows to split the set into balanced batches (maximum size difference 1).
+
+    Parameters
+    ----------
+    n_trials : int
+        Size of set.
+    rng :
+        
+    shuffle :
+        Whether to shuffle indices before splitting set.
+    n_batches :
+         (Default value = None)
+    batch_size :
+         (Default value = None)
+
+    Returns
+    -------
+
+    """
+    assert batch_size is not None or n_batches is not None
+    if n_batches is None:
+        n_batches = n_trials // batch_size
+    
     if n_batches > 0:
         min_batch_size = n_trials // n_batches
         n_batches_with_extra_trial =  n_trials % n_batches
@@ -67,8 +92,32 @@ class WindowsIterator(object):
 
 def create_sample_window_batches(topo, y, batch_size, 
        sample_axes_dim, n_samples_per_window, n_sample_stride, shuffle, rng):
-    """Creates batches of windows from given trials (topo should have trials 
-    as first dimension). """
+    """Creates batches of windows from given trials (topo should have trials
+    as first dimension).
+
+    Parameters
+    ----------
+    topo :
+        
+    y :
+        
+    batch_size :
+        
+    sample_axes_dim :
+        
+    n_samples_per_window :
+        
+    n_sample_stride :
+        
+    shuffle :
+        
+    rng :
+        
+
+    Returns
+    -------
+
+    """
     n_trials = topo.shape[0]
     n_samples_per_trial = topo.shape[sample_axes_dim]
     # + 1 necessary since range exclusive...
@@ -122,7 +171,7 @@ class WindowsFromCntIterator(object):
     def get_batches(self, dataset, shuffle):
         predictable_samples = len(dataset.y) - self.input_time_length + 1
         batches = get_balanced_batches(predictable_samples, 
-            self.batch_size, rng=self.rng, shuffle=shuffle)
+            batch_size=self.batch_size, rng=self.rng, shuffle=shuffle)
 
         topo = dataset.get_topological_view()
         for batch_inds in batches:
@@ -232,7 +281,15 @@ class CntWindowsFromCntIterator(object):
         
 class CntWindowTrialIterator(object):
     """Cut out windows for several predictions from a continous dataset
-     with a trial marker y signal."""
+     with a trial marker y signal.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
     def __init__(self, batch_size, input_time_length, n_sample_preds,
             check_preds_smaller_trial_len=True):
         self.batch_size = batch_size
@@ -312,10 +369,24 @@ def get_start_end_blocks_for_trial(trial_start, trial_end, input_time_length,
 
 def compute_trial_start_end_samples(y, check_trial_lengths_equal=True,
         input_time_length=None):
-    """ Computes trial start and end samples (end is inclusive) from
+    """Computes trial start and end samples (end is inclusive) from
     one-hot encoded y-matrix.
     Specify input time length to kick out trials that are too short after
-    signal start."""
+    signal start.
+
+    Parameters
+    ----------
+    y :
+        
+    check_trial_lengths_equal :
+         (Default value = True)
+    input_time_length :
+         (Default value = None)
+
+    Returns
+    -------
+
+    """
     trial_part = np.sum(y, 1) == 1
     boundaries = np.diff(trial_part.astype(np.int32))
     i_trial_starts = np.flatnonzero(boundaries == 1) + 1
@@ -357,7 +428,21 @@ def create_batch(topo, y, start_end_blocks, n_sample_preds):
 def transform_batches_of_trials(batches, n_sample_preds,
     n_samples_per_trial):
     """Utility function to merge batches back into trials.
-    Assumes batches are in trials x batches x channels x 0 x 1 format"""
+    Assumes batches are in trials x batches x channels x 0 x 1 format
+
+    Parameters
+    ----------
+    batches :
+        
+    n_sample_preds :
+        
+    n_samples_per_trial :
+        
+
+    Returns
+    -------
+
+    """
     # restrict to relevant part
     batches = np.array(batches)[:,:,:,-n_sample_preds:]
     n_batches_per_trial = batches.shape[1]
@@ -369,8 +454,24 @@ def transform_batches_of_trials(batches, n_sample_preds,
     return trial_batches
 
 def inputs_per_trial(train_inputs, y, n_sample_preds, input_time_length):
-    """Helper function to transform train batch inputs into 
-    inputs per trial. Used in a notebook once. """
+    """Helper function to transform train batch inputs into
+    inputs per trial. Used in a notebook once.
+
+    Parameters
+    ----------
+    train_inputs :
+        
+    y :
+        
+    n_sample_preds :
+        
+    input_time_length :
+        
+
+    Returns
+    -------
+
+    """
     i_trial_starts, i_trial_ends = compute_trial_start_end_samples(y,
         check_trial_lengths_equal=False, input_time_length=input_time_length)
     train_inputs_per_forward_pass = np.concatenate(train_inputs)
