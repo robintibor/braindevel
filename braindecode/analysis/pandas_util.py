@@ -22,8 +22,14 @@ class MetaDataFrame(pd.DataFrame):
     def _combine_const(self, other, *args, **kwargs):
         return super(MetaDataFrame, self)._combine_const(other, *args, **kwargs).__finalize__(self)
 
-def load_results_for_df(df, prefix="/home/schirrmr/motor-imagery/"):
-    result_file_names = [os.path.join(save_path, str(exp_id) + ".result.pkl") 
+def load_results_for_df(df, prefix="/home/schirrmr/motor-imagery/",
+        debug_exps=False):
+    if not debug_exps:
+        result_file_names = [os.path.join(save_path, str(exp_id) + ".result.pkl") 
+                 for save_path, exp_id in zip(np.array(df.save_path), np.array(df.index))]
+    else:
+        assert debug_exps
+        result_file_names = [os.path.join(save_path, 'debug', str(exp_id) + ".result.pkl") 
                  for save_path, exp_id in zip(np.array(df.save_path), np.array(df.index))]
     results = [np.load(prefix + name) for name in result_file_names]
     return results
