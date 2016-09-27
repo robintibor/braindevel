@@ -122,19 +122,11 @@ class Experiment(object):
             dummy_batch = batches.next()
             dummy_y = dummy_batch[1]
             del test_set
-            # for two dims assume we have int targets..
-            # maybe could remove these clauses also
-            # and just keep else clause
-            if dummy_y.ndim == 1:
-                target_var = T.ivector('targets')
-            elif dummy_y.ndim == 2:
-                target_var = T.imatrix('targets')
-            else:
-                # tensor with as many dimensions as y
-                target_type = T.TensorType(
-                    dtype=dummy_y.dtype,
-                    broadcastable=[False]*len(self.dataset.y.shape))
-                target_var = target_type()
+            # tensor with as many dimensions as y
+            target_type = T.TensorType(
+                dtype=dummy_y.dtype,
+                broadcastable=[False]*len(dummy_y.shape))
+            target_var = target_type()
         
         prediction = lasagne.layers.get_output(self.final_layer,
             deterministic=deterministic_training)

@@ -394,21 +394,6 @@ class ExperimentsRunner:
         log.info("Saving result...")
         with open(result_file_name, 'w') as resultfile:
             pickle.dump(result_or_results, resultfile)
-
-        """ Remove this? since yaml file is saved alrdy
-        log.info("Saving model...")
-        model_file_name = self._get_model_save_path(experiment_index)
-        # Let's save model
-        # set recursion limit very high to avoid problems saving
-        # see 
-        #https://github.com/lisa-lab/pylearn2/blob/74fd21b77f24620de442768cd15f22ad06c7fa2c/pylearn2/utils/serial.py#L102-L124
-        # and http://stackoverflow.com/questions/2134706/hitting-maximum-recursion-depth-using-pythons-pickle-cpickle
-        old_limit = sys.getrecursionlimit()
-        sys.setrecursionlimit(50000)
-        with open(model_file_name, 'w') as modelfile:
-            pickle.dump(model, modelfile)
-        sys.setrecursionlimit(old_limit)
-        """
         
         model_file_name = self._get_model_save_path(experiment_index)
         param_file_name = model_file_name.replace('.pkl', '.npy')
