@@ -199,10 +199,12 @@ def construct_combined_set(filenames, sensor_names, cnt_preprocessors,
             marker_def=this_args['marker_def'],
             trial_classes=this_args['trial_classes'],
             end_marker_def=this_args['end_marker_def'])
-        trial_break_adder = AddTrialBreaks(this_args['min_break_length_ms'],
-            this_args['max_break_length_ms'], 
-            this_args['break_start_offset_ms'], 
-            this_args['break_stop_offset_ms'])
+        trial_break_adder = AddTrialBreaks(min_length_ms=this_args['min_break_length_ms'],
+            max_length_ms=this_args['max_break_length_ms'], 
+            start_offset_ms=this_args['break_start_offset_ms'], 
+            stop_offset_ms=this_args['break_stop_offset_ms'],
+            start_marker_def=this_args['marker_def'],
+            end_marker_def=this_args['end_marker_def'])
         if (i_file < len(filenames) - 1) or (
                 this_args['last_set_split_trial'] is None):
             segmenters = [marker_segmenter,]

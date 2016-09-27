@@ -2,6 +2,8 @@ import numpy as np
 from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
 from braindecode.mywyrm.processing import create_cnt_y,\
     create_new_class_to_old_class
+import logging
+log = logging.getLogger(__name__)
 
 def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
     segment_ival, timeaxis=-2, trial_classes=None):
@@ -120,25 +122,63 @@ class RestrictTrialClasses(object):
         return y, self.class_names
     
 class AddTrialBreaks(object):
-    def __init__(self, min_length_ms, max_length_ms, start_offset_ms, stop_offset_ms):
+    def __init__(self, min_length_ms, max_length_ms,
+            start_offset_ms, stop_offset_ms,
+            start_marker_def, end_marker_def=None, trial_to_break_ms=None):
+        assert (not end_marker_def is None) and (trial_to_break_ms is None)
+        assert trial_to_break_ms is None, "Not implemented yet"
+        self.start_marker_def = start_marker_def
+        self.end_marker_def = end_marker_def
         self.min_length_ms = min_length_ms
         self.max_length_ms = max_length_ms
         self.start_offset_ms = start_offset_ms
         self.stop_offset_ms = stop_offset_ms
         
     def segment(self, cnt, y, class_names):
-        # add new class vector, for now empty
-        y = np.concatenate((y, y[:,0:1] * 0), axis=1)
-        
-        trial_starts, trial_ends = compute_trial_start_end_samples(y, check_trial_lengths_equal=False)
-        start_offset = int(np.round(self.start_offset_ms * float(cnt.fs) / 1000.0))
-        stop_offset = int(np.round(self.stop_offset_ms * float(cnt.fs) / 1000.0))
-        for break_start, break_stop in zip(trial_ends[:-1] + 1, trial_starts[1:]):
-            break_len = break_stop - break_start
-            break_len_ms = break_len * 1000.0 / float(cnt.fs)
+        if 'Rest' not in class_names:
+            # add new class vector, for now empty
+            y = np.concatenate((y, y[:,0:1] * 0), axis=1)
+            i_class = -1
+            class_names = class_names + ['Rest']
+        else:
+            i_class = class_names.index('Rest')
+        break_start_ends_ms = compute_break_start_ends_ms(cnt.markers,
+            self.start_marker_def, self.end_marker_def)
+        start_offset = ms_to_i_sample(self.start_offset_ms, cnt.fs)
+        stop_offset = ms_to_i_sample(self.stop_offset_ms, cnt.fs)
+        n_breaks_added = 0
+        for break_start_ms, break_end_ms in break_start_ends_ms:
+            i_break_start = ms_to_i_sample(break_start_ms, cnt.fs)
+            i_break_stop = ms_to_i_sample(break_end_ms, cnt.fs) + 1
+            break_len_ms = break_end_ms - break_start_ms
             if (break_len_ms >= self.min_length_ms) and (break_len_ms <= self.max_length_ms):
-                start = break_start + start_offset
-                stop  = break_stop + stop_offset
-                y[start:stop,-1] = 1
-        new_class_names = class_names + ["TrialBreak"]
-        return y, new_class_names
+                start = i_break_start + start_offset
+                stop  = i_break_stop + stop_offset
+                y[start:stop,i_class] = 1
+                n_breaks_added += 1
+        log.info("{:d} of {:d} possible breaks added".format(n_breaks_added,
+            len(break_start_ends_ms)))
+        return y, class_names
+
+def ms_to_i_sample(ms, fs):
+    return int(np.round(ms * float(fs) / 1000.0))
+
+def compute_break_start_ends_ms(markers, start_marker_def, end_marker_def):
+    '''
+    Compute break start end in milliseconds as those points that lie between
+    an end marker of a trial and a start marker of a trial.
+    :param markers:
+    :param start_marker_def:
+    :param end_marker_def:
+    '''
+    assert np.all([len(v) == 1 for v in start_marker_def.values()])
+    start_vals = [v[0] for v in start_marker_def.values()]
+    assert np.all([len(v) == 1 for v in end_marker_def.values()])
+    end_vals = [v[0] for v in end_marker_def.values()]
+    break_start_end = [(m, next_m) for m, next_m in zip(markers[:-1], markers[1:])
+                   if (m[1] in end_vals) and (next_m[1] in start_vals)]
+    # now break_start_end is
+    # breaks x 2 (start,end) x 2 (time, markercode)
+    # so lets only take time now
+    break_start_end = np.array(break_start_end)[:,:,0]
+    return break_start_end
