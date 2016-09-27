@@ -55,6 +55,9 @@ def parse_command_line_arguments():
         default='agg', help='Matplotlib backend to use for plotting.')
     parser.add_argument('--nooldadamparams', action='store_true',
         help='Do not load old adam params.')
+    parser.add_argument('--inputsamples', action='store', default=None,
+        type=int,
+        help='Input samples for the ConvNet. None means same as when trained in original experiment.')
     args = parser.parse_args()
     return args
 
@@ -83,7 +86,8 @@ import sys
 import gevent.select
 from scipy import interpolate
 from braindecode.experiments.experiment import create_experiment
-from braindecode.veganlasagne.layers import transform_to_normal_net
+from braindecode.veganlasagne.layers import transform_to_normal_net,\
+    set_input_window_length
 from braindecode.online.trainer import BatchWiseCntTrainer, NoTrainer
 from pylearn2.utils.logger import (CustomStreamHandler, CustomFormatter)
 from glob import glob
@@ -394,7 +398,8 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
         use_ui_server, adapt_model, save_data, n_updates_per_break, batch_size,
         learning_rate, n_min_trials, trial_start_offset, break_offset,
         pred_freq,
-        incoming_port,load_old_data,use_new_adam_params):
+        incoming_port,load_old_data,use_new_adam_params,
+        input_time_length):
     setup_logging()
     assert np.little_endian, "Should be in little endian"
     train_params = None # for trainer, e.g. adam params
@@ -419,6 +424,15 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
     else:
         params = np.load(base_name + '.npy')
     exp = create_experiment(base_name + '.yaml')
+    
+    # Possibly change input time length, for exmaple
+    # if input time length very long during training and should be
+    # shorter for online
+    if input_time_length is not None:
+        log.info("Change input time length to {:d}".format(input_time_length))
+        set_input_window_length(exp.final_layer, input_time_length)
+        # probably unnecessary, just for safety
+        exp.iterator.input_time_length = input_time_length
     # Have to set for both exp final layer and actually used model
     # as exp final layer might be used for adaptation
     # maybe check this all for correctness?
@@ -470,5 +484,6 @@ if __name__ == '__main__':
         pred_freq=args.predfreq,
         incoming_port=args.inport, load_old_data=not args.noolddata,
         use_new_adam_params=not args.nooldadamparams,
+        input_time_length=args.inputsamples,
         )
     

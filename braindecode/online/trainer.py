@@ -14,7 +14,6 @@ from braindecode.datahandling.batch_iteration import (create_batch,
 from braindecode.util import FuncAndArgs
 import logging
 from pylearn2.utils.timing import log_timing
-from braindecode.mywyrm.processing import exponential_standardize_cnt
 from braindecode.datahandling.preprocessing import exponential_running_standardize
 log = logging.getLogger(__name__)
 
@@ -61,6 +60,8 @@ class BatchWiseCntTrainer(object):
         log.info("Done compiling train function.")
         
     def _create_train_function(self):
+        # Maybe replace self.exp.final_layer by self.cnt_model?
+        # not clear to me why I am using self.exp.final_layer here 
         targets = T.ivector()
         input_var = get_input_var(self.exp.final_layer)
         updates_expression = FuncAndArgs(adam, learning_rate=self.learning_rate)
