@@ -155,6 +155,17 @@ def transform_to_normal_net(final_layer):
     input_time_window = get_model_input_window(final_layer)
     all_layers[0].shape = [None,all_layers[0].shape[1], input_time_window,
         all_layers[0].shape[3]]
+    recompute_shapes(new_final_layer)
+
+    return new_final_layer
+
+def recompute_shapes(final_layer):
+    '''
+    Recompute output shapes of all layers after a change in the shape somewhere,
+    typically a change in the input layer shape.
+    :param final_layer:
+    '''
+    all_layers = lasagne.layers.get_all_layers(final_layer)
     for l in all_layers[1:]:
         if hasattr(l, 'input_layer'):
             l.input_shape = l.input_layer.output_shape
@@ -162,7 +173,11 @@ def transform_to_normal_net(final_layer):
             assert hasattr(l, 'input_layers')
             l.input_shapes = [in_l.output_shape for in_l in l.input_layers]
 
-    return new_final_layer
+def set_input_window_length(final_layer, input_time_length):
+    all_layers = lasagne.layers.get_all_layers(final_layer)
+    input_layer = all_layers[0]
+    input_layer.shape[2] = input_time_length
+    recompute_shapes(final_layer)
 
 def create_suitable_theano_input_var(layer):
     if len(get_input_shape(layer)) == 2:
