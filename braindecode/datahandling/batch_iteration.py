@@ -1,5 +1,7 @@
 from numpy.random import RandomState
 import numpy as np
+import logging
+log = logging.getLogger(__name__)
 
 class BalancedBatchIterator(object):
     def __init__(self, batch_size):
@@ -354,6 +356,31 @@ class CntWindowTrialIterator(object):
             batch = create_batch(topo,y, start_end_blocks, self.n_sample_preds)
             yield batch
     
+class BalancedCntWindowTrialIterator(CntWindowTrialIterator):
+    '''
+    Classwise balanced by transforming one-hot-y-vector with factors
+    for different classes. Assumes categorical cross entropy is used as loss function
+    '''
+    def yield_block_batches(self, topo, y, start_end_blocks_per_trial, shuffle):
+        '''
+        For trianing/with shuffle, Yield batches with y adapted 
+        so that more frequent classes
+        have lower values (below 1 when the class is active) and 
+        vice versa for less frequent classes. Should affect loss.
+        :param topo:
+        :param y:
+        :param start_end_blocks_per_trial:
+        :param shuffle:
+        '''
+        new_y = np.copy(y).astype(np.float32)
+        if shuffle:
+            y_sums_per_class = np.sum(new_y, axis=0, keepdims=True)
+            y_divisors = y_sums_per_class / float(np.mean(y_sums_per_class))
+            log.debug("Y divisors {:s}".format(str(y_divisors)))
+            new_y = np.float32(new_y / y_divisors)
+        return super(BalancedCntWindowTrialIterator, self).yield_block_batches(topo,
+            new_y, start_end_blocks_per_trial, shuffle)
+    
 def get_start_end_blocks_for_trial(trial_start, trial_end, input_time_length,
         n_sample_preds):
     start_end_blocks = []
@@ -421,7 +448,7 @@ def create_batch(topo, y, start_end_blocks, n_sample_preds):
         for _, end in start_end_blocks]
     batch_topo = [topo[start:end+1].swapaxes(0,2)
         for start, end in start_end_blocks]
-    batch_y = np.concatenate(batch_y).astype(np.int32)
+    batch_y = np.concatenate(batch_y)#remove?:.astype(np.int32)
     batch_topo = np.concatenate(batch_topo).astype(np.float32)
     return batch_topo, batch_y
 
