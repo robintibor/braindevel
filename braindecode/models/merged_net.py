@@ -19,7 +19,6 @@ class MergedNet(object):
         self.batch_norm_before_merge = batch_norm_before_merge
         self.nonlin_before_merge = nonlin_before_merge
         
-        
     def get_layers(self):
         # make into list if nonlin only one
         if not hasattr(self.nonlin_before_merge, '__len__'):
@@ -38,24 +37,8 @@ class MergedNet(object):
             batch_norm_before_merge=self.batch_norm_before_merge) 
               for all_l, n_f, nonlin in zip(layers_per_net, self.n_features_per_net,
                   nonlins_before_merge)]
-        # merge to all get same input
-        input_first_net = reduced_layers[0][0]
-        for layers in reduced_layers:
-            # check if input shape is equal
-            input_net = layers[0]
-            assert np.array_equal(input_first_net.shape, input_net.shape)
-            # for any layers that have reference to this input layer,
-            # set reference to common input layer
-            for l in layers:
-                if hasattr(l, 'input_layer'):
-                    if l.input_layer == input_net:
-                        l.input_layer = input_first_net
-                elif hasattr(l, 'input_layers'):
-                    for i_in in len(l.input_layers):
-                        if l.input_layers[i_in] == input_net:
-                            l.input_layers[i_in] = input_first_net
-                else:
-                    assert l.__class__.__name__ == "InputLayer"
+        # hopefully still works with new method below:)
+        use_same_input_layer(reduced_layers)
             
         final_layers = [layers[-1] for layers in reduced_layers]
         l_merged = ConcatLayer(final_layers)
@@ -63,6 +46,35 @@ class MergedNet(object):
         l_merged = DenseLayer(l_merged,num_units=self.n_classes,
             nonlinearity=softmax)
         return lasagne.layers.get_all_layers(l_merged)
+
+def use_same_input_layer(networks):
+    '''
+    Make multiple networks use sanme input layer
+    :param networks: List of either final layers or all layers per network
+    '''
+    networks = list(networks)
+    # make into all layers if not 
+    # merge to all get same input
+    for i_net, network in enumerate(networks):
+        if not hasattr(network, '__len__'):
+            networks[i_net] = lasagne.layers.get_all_layers(network)
+        
+    input_first_net = networks[0][0]
+    for layers in networks: # check if input shape is equal
+        input_net = layers[0]
+        assert np.array_equal(input_first_net.shape, input_net.shape)
+        # for any layers that have reference to this input layer,
+        # set reference to common input layer
+        for l in layers:
+            if hasattr(l, 'input_layer'):
+                if l.input_layer == input_net:
+                    l.input_layer = input_first_net
+            elif hasattr(l, 'input_layers'):
+                for i_in in len(l.input_layers):
+                    if l.input_layers[i_in] == input_net:
+                        l.input_layers[i_in] = input_first_net
+            else:
+                assert l.__class__.__name__ == "InputLayer"
 
 def replace_dense_softmax_by_dense_linear(all_layers, n_features,
         nonlin_before_merge, batch_norm_before_merge):
