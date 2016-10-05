@@ -248,7 +248,7 @@
         n_sample_preds: [200], # will be overwritten anyways
         input_time_length: [760],
         layers: [$merged_net],
-        use_test_as_valid: [False], # False
+        use_test_as_valid: [True], # False
                 
         max_increasing_epochs: [80],
         max_epochs: [200],
@@ -321,7 +321,7 @@
             last_set_split_trial: ['null'], #150
             filename_to_extra_args: ['[$cursor_4_class_args, $cursor_5_class_args]'],
             filt_order: [10],#30
-            use_test_as_valid: [False],
+            use_test_as_valid: [True],
             max_epochs: [100],
         },
 #        {

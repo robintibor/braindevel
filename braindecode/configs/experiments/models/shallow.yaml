@@ -8,8 +8,8 @@
             n_filters_time: $n_filters_time,
             n_filters_spat: $n_filters_spat,
             pool_time_length: $pool_time_length,
-            pool_time_stride: $pool_time_length,
-            final_dense_length: $pool_time_length,
+            pool_time_stride: $pool_time_stride,
+            final_dense_length: $final_dense_length,
             conv_nonlin: $conv_nonlin,
             pool_mode: $pool_mode,
             pool_nonlin: $pool_nonlin,
@@ -17,6 +17,7 @@
             batch_norm: $batch_norm,
             batch_norm_alpha: $batch_norm_alpha,
             drop_prob: $drop_prob,
+            n_classes: $n_classes,
         },
         },
        
@@ -42,13 +43,12 @@
     variants: [[{
         layer_names_to_norms: [$layer_names_to_norms],
         layers: [$shallow_fbcsp_net],
-        final_nonlin: [$safe_softmax],
         n_classes: [4],
-        pool_type: [Pool2DLayer],
         batch_norm_alpha: [0.1],
-        first_nonlin: [$square],
+        conv_nonlin: [$square],
         pool_mode: ['average_exc_pad'],
-        post_pool_nonlin: [$safe_log],
+        pool_nonlin: [$safe_log],
         drop_prob: [0.5],
+        split_first_layer: [True],
     }]]
 }

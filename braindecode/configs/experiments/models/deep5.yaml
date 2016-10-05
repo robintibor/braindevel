@@ -67,8 +67,7 @@
         layers: [$deep_5],
         final_norm: [0.5],
         conv_norm: [2.0],
-        pool_time_length: [3],
-        pool_time_stride: [3],
+       
         first_nonlin: [$elu],
         first_pool_mode: ['max'], # just to prevent errors on square run, reenable
         first_pool_nonlin: [$identity],
