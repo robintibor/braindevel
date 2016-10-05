@@ -44,14 +44,16 @@ class GlobalPoolLayerAxisWise(Layer):
         self.axis = axis
 
     def get_output_shape_for(self, input_shape):
+        # remove axis that was pooled over
         new_shape = copy(list(input_shape))
         
         if isinstance(self.axis, collections.Iterable):
-            for ax in self.axis:
-                new_shape[ax] = 1
+            new_shape = np.delete(new_shape, self.axis)
+            #for ax in self.axis:
+            #    new_shape[ax] = 1
         else: # should be just an int
-            new_shape[self.axis] = 1
-        return new_shape
+            new_shape.pop(self.axis)
+        return tuple(new_shape)
 
     def get_output_for(self, input, **kwargs):
         return self.pool_function(input, axis=self.axis)
