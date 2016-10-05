@@ -53,9 +53,14 @@ class ExperimentCrossValidation():
 
 def create_default_experiment(final_layer, dataset, n_epochs=100,
         **overwrite_args):
-    n_trials = len(dataset.X)
-    splitter = FixedTrialSplitter(n_train_trials=n_trials // 2, 
-        valid_set_fraction=0.2)
+    # make special case for this, since we access dataset.X here,
+    # which might not exist 
+    if 'splitter' not in overwrite_args:
+        n_trials = len(dataset.X)
+        splitter = FixedTrialSplitter(n_train_trials=n_trials // 2, 
+            valid_set_fraction=0.2)
+    else:
+        splitter = overwrite_args['splitter']
     monitors = [MisclassMonitor(), LossMonitor(),RuntimeMonitor()]
     stop_criterion = MaxEpochs(n_epochs)
     
@@ -114,10 +119,16 @@ class Experiment(object):
     
     def create_theano_functions(self, target_var, deterministic_training=False):
         if target_var is None:
+            log.info("Automatically determine size of target variable by example...")
             # get a dummy batch and determine target size
             # use test set since it is smaller
             # maybe memory is freed quicker
+            
+            # prevent reloading at this step?
+            was_reloadable = self.dataset.reloadable
+            self.dataset.reloadable = False
             test_set = self.dataset_provider.get_train_valid_test(self.dataset)['test']
+            self.dataset.reloadable = was_reloadable
             batches = self.iterator.get_batches(test_set, shuffle=False)
             dummy_batch = batches.next()
             dummy_y = dummy_batch[1]
@@ -127,6 +138,7 @@ class Experiment(object):
                 dtype=dummy_y.dtype,
                 broadcastable=[False]*len(dummy_y.shape))
             target_var = target_type()
+            self.dataset.ensure_is_loaded()
         
         prediction = lasagne.layers.get_output(self.final_layer,
             deterministic=deterministic_training)
@@ -197,7 +209,8 @@ class Experiment(object):
             self.run_one_epoch(datasets, remember_best)
 
     def run_one_epoch(self, datasets, remember_best):
-        batch_generator = self.iterator.get_batches(datasets['train'], shuffle=True)
+        batch_generator = self.iterator.get_batches(datasets['train'],
+            shuffle=True)
         with log_timing(log, None, final_msg='Time updates following epoch:'):
             for inputs, targets in batch_generator:
                 if self.batch_modifier is not None:
