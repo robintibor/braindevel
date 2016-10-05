@@ -56,7 +56,8 @@ def exponential_running_mean(data, factor_new, start_mean=None,
     running_mean_shape = list(data.shape)
     if axis is not None:
         for ax in axis:
-            running_mean_shape.pop(ax)
+            # keep dim as empty dim
+            running_mean_shape[ax] = 1
 
     running_means = (np.ones(running_mean_shape) * np.nan).astype(np.float32)
 
@@ -151,6 +152,14 @@ def compute_combined_std(num_old, num_new, old_mean, new_mean,
                     combined_mean ** 2
     combined_std = np.sqrt(combined_var)
     return combined_std
+
+class RemoveAllZeroExamples(object):
+    def apply(self, dataset, can_fit=False):
+        topo = dataset.get_topological_view()
+        all_zero_examples = np.alltrue(topo == 0, axis=(1,2,3))
+        topo = topo[np.logical_not(all_zero_examples)]
+        dataset.set_topological_view(topo, dataset.view_converter.axes)
+        
 
 class RestrictTrials(Preprocessor):
     """ Restrict number of trials to given number or given fraction. """
