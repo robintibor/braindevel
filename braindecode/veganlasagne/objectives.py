@@ -5,10 +5,11 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from lasagne.random import get_rng
 import theano.tensor as T
 
-def weighted_binary_cross_entropy(preds, targets, imbalance_factor):
+def weighted_binary_cross_entropy(preds, targets, imbalance_factor,
+        binary_func=lasagne.objectives.binary_crossentropy):
     factor_no_target = (imbalance_factor + 1) / (2.0 *  imbalance_factor)
     factor_target = (imbalance_factor + 1) / 2.0
-    loss = lasagne.objectives.binary_crossentropy(preds, targets)
+    loss = binary_func(preds, targets)
     loss = factor_no_target * loss + loss * targets * factor_target
     return loss
 
