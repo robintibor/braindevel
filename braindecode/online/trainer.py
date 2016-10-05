@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 class BatchWiseCntTrainer(object):
     def __init__(self, exp, n_updates_per_break, batch_size, learning_rate,
                 n_min_trials, trial_start_offset, break_start_offset,
+                break_stop_offset,
                 train_param_values,
                 deterministic_training=False, add_breaks=True):
         self.cnt_model = exp.final_layer
@@ -30,6 +31,7 @@ class BatchWiseCntTrainer(object):
         self.n_min_trials = n_min_trials
         self.trial_start_offset = trial_start_offset
         self.break_start_offset = break_start_offset
+        self.break_stop_offset = break_stop_offset
         self.train_param_values = train_param_values
         self.deterministic_training = deterministic_training
         self.add_breaks = add_breaks
@@ -137,8 +139,8 @@ class BatchWiseCntTrainer(object):
                 old_markers)
         log.info("Adding {:d} trials".format(len(trial_starts)))
         for trial_start, trial_stop in zip(trial_starts, trial_stops):
-            self.add_blocks(trial_start, trial_stop, old_samples, old_markers,
-                self.trial_start_offset)
+            self.add_blocks(trial_start + self.trial_start_offset, 
+                trial_stop, old_samples, old_markers)
         # now lets add breaks
         log.info("Adding {:d} breaks".format(len(trial_starts) - 1))
         for break_start, break_stop in zip(trial_stops[:-1], trial_starts[1:]):
@@ -161,9 +163,9 @@ class BatchWiseCntTrainer(object):
             assert trial_start < trial_stop, ("trial start {:d} should be "
                 "before trial stop {:d}, markers: {:s}").format(trial_start, 
                     trial_stop, str(marker_samples_with_overlap))
-            self.add_blocks(trial_start, trial_stop,
+            self.add_blocks(trial_start + self.trial_start_offset, trial_stop,
                 self.data_processor.sample_buffer,
-                self.marker_buffer, self.trial_start_offset)
+                self.marker_buffer)
             log.info("Now {:d} trials (including breaks)".format(
                 len(self.data_batches)))
             
@@ -191,8 +193,9 @@ class BatchWiseCntTrainer(object):
             assert all_markers[break_stop] != 0
             # keep n_classes for 1-based matlab indexing logic in markers
             all_markers[break_start:break_stop] = self.n_classes
-            self.add_blocks(break_start, break_stop, all_samples,
-                all_markers, self.break_start_offset)
+            self.add_blocks(break_start + self.break_start_offset, 
+                break_stop + self.break_stop_offset, all_samples,
+                all_markers)
         else:
             pass #Ignore break that was supposed to be added
 
@@ -215,8 +218,7 @@ class BatchWiseCntTrainer(object):
         assert(np.all(trial_starts <= trial_stops))
         return trial_starts, trial_stops
     
-    def add_blocks(self, trial_start, trial_stop, all_samples, all_markers,
-            trial_start_offset):
+    def add_blocks(self, trial_start, trial_stop, all_samples, all_markers):
         """Trial start offset as parameter to give different offsets
         for break and normal trial."""
         # n_sample_preds is how many predictions done for
@@ -225,13 +227,12 @@ class BatchWiseCntTrainer(object):
         # the ConvNet
         # -> crop size is how many samples are needed for one prediction
         crop_size = self.input_time_length - self.n_sample_preds + 1
-        pred_start = trial_start + trial_start_offset
-        if pred_start + self.n_sample_preds > trial_stop:
+        if trial_start + self.n_sample_preds > trial_stop:
             log.info("Too little data in this trial to train in it, only "
                 "{:d} predictable samples, need atleast {:d}".format(
-                     trial_stop - pred_start, self.n_sample_preds))
+                     trial_stop - trial_start, self.n_sample_preds))
             return # Too little data in this trial to train on it...
-        needed_sample_start = pred_start - crop_size + 1
+        needed_sample_start = trial_start - crop_size + 1
         # not sure if copy necessary, but why not :)
         needed_samples = np.copy(all_samples[needed_sample_start:trial_stop])
         trial_markers = all_markers[needed_sample_start:trial_stop]
@@ -341,9 +342,6 @@ class NoTrainer(object):
         pass
         
     def initialize(self):
-        pass
-    
-    def add_blocks(self, trial_start, trial_end):
         pass
         
     def train(self):

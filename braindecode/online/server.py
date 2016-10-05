@@ -40,8 +40,11 @@ def parse_command_line_arguments():
     parser.add_argument('--trialoffset', action='store', default=125, type=int,
         help="Sample offset for the first sample to use (within a trial, in samples) "
         "for adaptation updates.")
-    parser.add_argument('--breakoffset', action='store', default=250, type=int,
+    parser.add_argument('--breakstartoffset', action='store', default=250, type=int,
         help="Sample offset for the first sample to use (within a break(!), in samples) "
+        "for adaptation updates.")
+    parser.add_argument('--breakstopoffset', action='store', default=250, type=int,
+        help="Sample offset for the last sample to use (within a break(!), in samples) "
         "for adaptation updates.")
     parser.add_argument('--predfreq', action='store', default=50, type=int,
         help="Amount of samples between predictions.")
@@ -396,7 +399,8 @@ def setup_logging():
 
 def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
         use_ui_server, adapt_model, save_data, n_updates_per_break, batch_size,
-        learning_rate, n_min_trials, trial_start_offset, break_offset,
+        learning_rate, n_min_trials, trial_start_offset, break_start_offset,
+        break_stop_offset,
         pred_freq,
         incoming_port,load_old_data,use_new_adam_params,
         input_time_length):
@@ -446,7 +450,8 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
     if adapt_model:
         online_trainer = BatchWiseCntTrainer(exp, n_updates_per_break, 
             batch_size, learning_rate, n_min_trials, trial_start_offset,
-            break_start_offset=break_offset,
+            break_start_offset=break_start_offset,
+            break_stop_offset=break_stop_offset,
             train_param_values=train_params)
     else:
         log.info("Not adapting model...")
@@ -480,7 +485,8 @@ if __name__ == '__main__':
         use_ui_server=not args.noui, adapt_model=not args.noadapt,
         n_updates_per_break=args.updatesperbreak, batch_size=args.batchsize,
         learning_rate=args.learningrate, n_min_trials=args.mintrials, 
-        trial_start_offset=args.trialoffset, break_offset=args.breakoffset,
+        trial_start_offset=args.trialoffset, break_start_offset=args.breakstartoffset,
+        break_stop_offset=args.breakstopoffset,
         pred_freq=args.predfreq,
         incoming_port=args.inport, load_old_data=not args.noolddata,
         use_new_adam_params=not args.nooldadamparams,
