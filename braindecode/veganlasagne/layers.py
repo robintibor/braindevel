@@ -170,7 +170,8 @@ def recompute_shapes(final_layer):
         if hasattr(l, 'input_layer'):
             l.input_shape = l.input_layer.output_shape
         else:
-            assert hasattr(l, 'input_layers')
+            assert hasattr(l, 'input_layers'), (
+                "{:s} should have either input layer or layers".format(str(l)))
             l.input_shapes = [in_l.output_shape for in_l in l.input_layers]
 
 def set_input_window_length(final_layer, input_time_length):
@@ -350,23 +351,27 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         # final output:
         # (trial 1 all samples), (trial 2 all samples), ...
         
+        input = input.T.reshape((self.input_shape[1], -1, trials))
         # if not flatten, instead reshape to:
         #  trials x classes/filters x sample preds x emptydim
-        input = input.T.reshape((self.input_shape[1], 
-            -1, trials))
         if self.flatten:
             input = input.dimshuffle(0,2,1).reshape((n_classes, -1)).T
         else:
             input = input.dimshuffle(2,0,1,'x')
-            
-        
         return input
         
     def get_output_shape_for(self, input_shape):
         assert input_shape[3] == 1, ("Not tested and thought about " 
             "for nonempty last dim, likely not to work")
-            
-        return (None, input_shape[1])
+        if self.flatten:
+            output_shape = (None, input_shape[1])
+        else:
+            # could probably also compute third dim as
+            # get_n_sample_preds(self) instead of this
+            # but not don't care atm
+            output_shape = (None, input_shape[1],
+                None,1)
+        return output_shape
     
 def get_3rd_dim_shapes_without_invalids(layer):
     all_layers = get_single_path(layer)
