@@ -2,7 +2,7 @@ from lasagne.layers.input import InputLayer
 from lasagne.layers.shape import DimshuffleLayer
 from lasagne.layers.noise import DropoutLayer
 from lasagne.layers.conv import Conv2DLayer
-from lasagne.nonlinearities import identity
+from lasagne.nonlinearities import identity, softmax, elu
 from braindecode.veganlasagne.layers import Conv2DAllColsLayer,\
     StrideReshapeLayer, FinalReshapeLayer
 from braindecode.veganlasagne.batch_norm import BatchNormLayer
@@ -11,14 +11,23 @@ from lasagne.layers.special import NonlinearityLayer
 import lasagne
 
 class Deep5Net(object):
-    def __init__(self, in_chans, input_time_length, drop_in_prob,
+    def __init__(self, in_chans, input_time_length, 
             num_filters_time, filter_time_length, num_filters_spat,
-            batch_norm_alpha, first_nonlin, pool_time_length,
-            first_pool_mode, pool_time_stride, first_pool_nonlin,
-            drop_prob, num_filters_2, filter_length_2, later_nonlin,
-            later_pool_mode, later_pool_nonlin, num_filters_3,
+             pool_time_length, pool_time_stride,
+            num_filters_2, filter_length_2, 
+            num_filters_3,
             filter_length_3, num_filters_4, filter_length_4,
-            final_dense_length, n_classes, final_nonlin, double_time_convs,
+            final_dense_length, n_classes, final_nonlin=softmax,
+            first_nonlin=elu,
+            first_pool_mode='max',
+            first_pool_nonlin=identity,
+            later_nonlin=elu,
+            later_pool_mode='max', 
+            later_pool_nonlin=identity, 
+            drop_in_prob=0.,
+            drop_prob=0.5, 
+            batch_norm_alpha=0.1,
+            double_time_convs=False,
             split_first_layer=True,
             batch_norm=True):
         self.__dict__.update(locals())
