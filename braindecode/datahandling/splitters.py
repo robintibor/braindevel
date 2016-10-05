@@ -16,6 +16,16 @@ class TrainValidTestSplitter(object):
         raise NotImplementedError("Subclass needs to implement this")
     
 class SeveralSetsSplitter(TrainValidTestSplitter):
+    """
+    Split multiple sets, last set as test, second last (if exists) as valid,
+    first as training. In case of only two sets, split off part of first set
+    as valid set.
+    Parameters
+    ----------
+    valid_set_fraction : int
+        In case of only two sets, how much of the
+        first (training set) should be split off for validation.
+    """
     def __init__(self, valid_set_fraction=0.1,
         use_test_as_valid=False):
         self.use_test_as_valid = use_test_as_valid
@@ -48,6 +58,7 @@ class SeveralSetsSplitter(TrainValidTestSplitter):
             valid = sets_container.sets[i_valid_set]
             test = sets_container.sets[i_test_set]
         else:
+            # have to split off valid from first=train set
             topos = [s.get_topological_view() for s in sets_container.sets[:i_valid_set+1]]
             ys = [s.y for s in sets_container.sets[:i_valid_set+1]]
             full_topo = np.concatenate(topos, axis=0)
@@ -84,10 +95,11 @@ class FixedTrialSplitter(TrainValidTestSplitter):
         self.valid_set_fraction = valid_set_fraction
         
     def split_into_train_valid_test(self, dataset):
-        """ Split into train valid test by splitting 
-        dataset into num folds, test fold nr should be given, 
-        valid fold will be the one immediately before the test fold, 
-        train folds the remaining 8 folds"""
+        """Split into train valid test by splitting
+        dataset into num folds, test fold nr should be given,
+        valid fold will be the one immediately before the test fold,
+        train folds the remaining 8 folds
+        """
         assert dataset.view_converter.axes[0] == 'b'
         assert hasattr(dataset, 'X') # needs to be loaded already
         n_trials = dataset.get_topological_view().shape[0]
@@ -105,8 +117,6 @@ class FixedTrialSplitter(TrainValidTestSplitter):
         
         datasets = split_set_by_indices(dataset, train_fold, valid_fold,
             test_fold)
-        
-        # remerge sets here
 
         return datasets
 
@@ -118,10 +128,11 @@ class SingleFoldSplitter(TrainValidTestSplitter):
         self.shuffle=shuffle
 
     def split_into_train_valid_test(self, dataset):
-        """ Split into train valid test by splitting 
-        dataset into num folds, test fold nr should be given, 
-        valid fold will be the one immediately before the test fold, 
-        train folds the remaining 8 folds"""
+        """Split into train valid test by splitting
+        dataset into num folds, test fold nr should be given,
+        valid fold will be the one immediately before the test fold,
+        train folds the remaining 8 folds
+        """
         assert dataset.view_converter.axes[0] == 'b'
         assert hasattr(dataset, 'X') # needs to be loaded already
         n_trials = dataset.get_topological_view().shape[0]
@@ -176,19 +187,20 @@ def split_set_by_indices(dataset, train_fold, valid_fold, test_fold):
         return datasets
     
 def concatenate_sets(first_set, second_set):
-        """ Concatenates topo views and y(targets)"""
-        assert first_set.view_converter.axes == second_set.view_converter.axes,\
-            "first set and second set should have same axes ordering"
-        assert first_set.view_converter.axes[0] == 'b', ("Expect batch axis "
-            "as first axis")
-        merged_topo_view = np.concatenate((first_set.get_topological_view(),
-            second_set.get_topological_view()))
-        merged_y = np.concatenate((first_set.y, second_set.y)) 
-        merged_set = DenseDesignMatrixWrapper(
-            topo_view=merged_topo_view,
-            y=merged_y,
-            axes=first_set.view_converter.axes)
-        return merged_set
+    """Concatenates topo views and y(targets)
+    """
+    assert first_set.view_converter.axes == second_set.view_converter.axes,\
+        "first set and second set should have same axes ordering"
+    assert first_set.view_converter.axes[0] == 'b', ("Expect batch axis "
+        "as first axis")
+    merged_topo_view = np.concatenate((first_set.get_topological_view(),
+        second_set.get_topological_view()))
+    merged_y = np.concatenate((first_set.y, second_set.y)) 
+    merged_set = DenseDesignMatrixWrapper(
+        topo_view=merged_topo_view,
+        y=merged_y,
+        axes=first_set.view_converter.axes)
+    return merged_set
 
 class PreprocessedSplitter(object):
     def __init__(self, dataset_splitter, preprocessor):
@@ -238,15 +250,16 @@ class PreprocessedSplitter(object):
 
     
     def split_sets(self, full_set, split_index, split_to_end_num):
-        """ Assumes that full set may be doubled or tripled in size
+        """Assumes that full set may be doubled or tripled in size
         and split index refers to original size. So
-        if we originally had 100 trials (set1) + 20 trials (set2) 
+        if we originally had 100 trials (set1) + 20 trials (set2)
         merged to 120 trials, we get a split index of 100.
-        If we later have 360 trials we assume that the 360 trials 
+        If we later have 360 trials we assume that the 360 trials
         consist of:
         100 trials set1 + 20 trials set2 + 100 trials set1 + 20 trials set2
         + 100 trials set1 + 20 trials set2
-        (and not 300 trials set1 + 60 trials set2)"""
+        (and not 300 trials set1 + 60 trials set2)
+        """
         full_topo = full_set.get_topological_view()
         full_y = full_set.y
         original_full_len = split_index + split_to_end_num
