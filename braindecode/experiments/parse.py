@@ -140,8 +140,16 @@ class ConfigParser(object):
                     variant['max_epochs'] = 1
                 if 'n_top_bottom_csp_filters' in variant:
                     variant['n_top_bottom_csp_filters'] = 1
-                variant['sensor_names'] = ['C3', 'C4', 'Cz']
-                variant['load_sensor_names'] = ['C3', 'C4', 'Cz']
+                if 'sensor_names' in variant:
+                    variant['sensor_names'] = ['C3', 'C4', 'Cz']
+                if 'load_sensor_names' in variant:
+                    variant['load_sensor_names'] = ['C3', 'C4', 'Cz']
+                if 'n_used_seizures' in variant:
+                    variant['n_train_seizures'] = 4
+                    variant['n_valid_seizures'] = 2
+                    variant['n_used_seizures'] = 8
+                    variant['non_seizure_example_stride'] = 10
+                    
                 #variant['last_subject'] = 1
                 #ignore_before = variant.pop('ignore_unused', [])
                 #variant['ignore_unused'] = ignore_before + ['last_subject']
