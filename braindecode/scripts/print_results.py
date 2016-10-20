@@ -510,6 +510,8 @@ def prettify_word(word):
       ('n_start_filters', 'n_start_f'),
       ('break_start_offset_ms', 'break+ms'),
       ('trial_start_offset_ms', 'trial+ms'),
+      ('n_last_seizure_segments_per_hour', 'n_seg_per_h'),
+      ('mean_after_sigmoid', 'mean_after_sig')
       ])
     for key in substitutions:
         word = word.replace(key, substitutions[key])

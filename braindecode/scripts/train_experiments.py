@@ -62,6 +62,8 @@ def parse_command_line_arguments():
                         Supply it in the form parameter1=value1 parameters2=value2, ...''')
     parser.add_argument('--skipexisting', action="store_true",
                         help='''Only run those experiments that werent run yet.''')
+    parser.add_argument('--nopredlosshack', action="store_true",
+                        help='''Do not use pred loss hack for epilepsy experiments.''')
     args = parser.parse_args()
 
     if args.firstsets is None:
@@ -98,6 +100,6 @@ if __name__ == "__main__":
         stop_id=args.stopid, cross_validation=args.cv, shuffle=args.shuffle,
         debug=args.debug, dry_run=args.dryrun, 
         only_first_n_sets=args.firstsets, batch_test=args.batchtest,
-        skip_existing=args.skipexisting)
+        skip_existing=args.skipexisting, pred_loss_hack=not args.nopredlosshack)
     exp_runner.run(all_train_strs)
 
