@@ -12,7 +12,7 @@ from lasagne.utils import as_tuple
 from lasagne.theano_extensions import padding
 import theano
 from lasagne.nonlinearities import identity
-            
+
 class BiasLayer(Layer):
     def __init__(self, incoming, bias_value, **kwargs):
         super(BiasLayer, self).__init__(incoming, **kwargs)
@@ -27,7 +27,7 @@ class BiasLayer(Layer):
         # was input + self.b.dimshuffle('x',0) before
         else:
             raise ValueError("Unknown input ndim {:d}".format(input.ndim))
-    
+
 def split_out_biases(model):
     """Splits out nonlinearities of layers with weights into nonlinearity
     layers """
@@ -98,6 +98,25 @@ def create_pred_fn(model):
         inputs=inputs, input_var=inputs)
     pred_fn = theano.function([inputs], output)
     return pred_fn
+
+def create_loss_fn(model, loss_expression):
+    '''
+    Returns per-example loss if loss expression returns it.
+    (Does not average output of loss expression)
+    :param model:
+    :param loss_expression:
+    '''
+    inputs = create_suitable_theano_input_var(model)
+    targets = create_suitable_theano_target_var(model)
+    output = lasagne.layers.get_output(model, deterministic=True,
+        inputs=inputs, input_var=inputs)
+    try:
+        loss = loss_expression(output, targets)
+    except TypeError:
+        loss = loss_expression(output, targets, model)
+            
+    loss_fn = theano.function([inputs, targets], loss)
+    return loss_fn
 
 def transform_to_normal_net(final_layer):
     """ Transforms cnt/parallel prediction net to a normal net.
@@ -181,18 +200,26 @@ def set_input_window_length(final_layer, input_time_length):
     recompute_shapes(final_layer)
 
 def create_suitable_theano_input_var(layer):
-    if len(get_input_shape(layer)) == 2:
-        inputs = T.fmatrix()
-    else:
-        inputs = T.ftensor4()
-    return inputs
+    input_type = T.TensorType(
+        dtype='float32',
+        broadcastable=[False]*len(get_input_shape(layer)))
+    input_var = input_type()
+    return input_var
 
 def create_suitable_theano_output_var(layer):
-    if len(layer.output_shape) > 2:
-        outputs = T.ftensor4()
-    else:
-        outputs = T.fmatrix()
-    return outputs
+    output_type = T.TensorType(
+        dtype='float32',
+        broadcastable=[False]*len(layer.output_shape))
+    output_var = output_type()
+    return output_var
+
+def create_suitable_theano_target_var(layer):
+    """Assumes int32 for target dtype."""
+    output_type = T.TensorType(
+        dtype='int32',
+        broadcastable=[False]*len(layer.output_shape))
+    output_var = output_type()
+    return output_var
 
 def get_input_var(final_layer):
     return lasagne.layers.get_all_layers(final_layer)[0].input_var
@@ -269,6 +296,67 @@ def reshape_for_stride_theano(topo_var, topo_shape, n_stride,
     reshaped_out = T.concatenate(reshaped_out)
     return reshaped_out
 
+def reshape_for_stride_theano_scan_subtensor(topo_var, topo_shape, n_stride, 
+        invalid_fill_value=0):
+    assert topo_shape[3] == 1
+    out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
+    n_filt = topo_shape[1]
+    def fill_with_stride_samples(i_stride, topo_out, topo_var, topo_length):
+        i_length = T.cast(T.ceil((topo_shape[2] - i_stride) / float(n_stride)), dtype="int32")
+        i_start = i_stride*topo_var.shape[0]
+        i_end = i_start + topo_var.shape[0]
+        topo_out = T.set_subtensor(topo_out[i_start:i_end,:,:i_length], 
+            topo_var[:,:,i_stride::n_stride]) 
+        return topo_out
+    invalid_fill_value = np.array(invalid_fill_value).astype(theano.config.floatX)
+    output_var = T.alloc(invalid_fill_value, topo_var.shape[0] * n_stride,
+        topo_shape[1], out_length, topo_shape[3])
+    output_var = T.cast(output_var, dtype=theano.config.floatX)
+    reshaped_out, _ = theano.scan(fn=fill_with_stride_samples, sequences=[theano.tensor.arange(n_stride)],
+                                 non_sequences=[topo_var, topo_shape[2]],
+                                 outputs_info=output_var)
+    reshaped_out = reshaped_out[-1]
+    return reshaped_out
+
+def reshape_for_stride_theano_subtensor(topo_var, topo_shape, n_stride, 
+        invalid_fill_value=0):
+    assert topo_shape[3] == 1
+    out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
+    n_filt = topo_shape[1]
+    
+    output_var = T.alloc(invalid_fill_value, topo_var.shape[0] * n_stride,
+        topo_shape[1], out_length, topo_shape[3])
+    for i_stride in xrange(n_stride):
+        i_length = int(np.ceil((topo_shape[2] - i_stride) / float(n_stride)))
+        i_start = i_stride * topo_var.shape[0]
+        i_end = i_start + topo_var.shape[0]
+        output_var = T.set_subtensor(output_var[i_start:i_end,:,:i_length], 
+            topo_var[:,:,i_stride::n_stride])
+    return output_var
+
+def reshape_for_stride_theano_scan(topo_var, topo_shape, n_stride, 
+        invalid_fill_value=0):
+    assert topo_shape[3] == 1
+    out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
+    n_filt = topo_shape[1]
+    reshape_shape = (topo_var.shape[0], n_filt, out_length, 1)
+    def fill_with_stride_samples(i_stride, topo_var, topo_length):
+        reshaped_this = T.ones(reshape_shape, dtype=np.float32) * invalid_fill_value
+
+        i_length = T.cast(T.ceil((topo_shape[2] - i_stride) / float(n_stride)), dtype="int32")
+        i_start = i_stride * topo_var.shape[0]
+        i_end = i_start + topo_var.shape[0]
+        reshaped_this = T.set_subtensor(reshaped_this[:,:,:i_length], 
+            topo_var[:,:,i_stride::n_stride])
+        return reshaped_this
+    reshaped_out, _ = theano.scan(fn=fill_with_stride_samples, sequences=[theano.tensor.arange(n_stride)],
+                                 non_sequences=[topo_var, topo_shape[2]],
+                                 outputs_info=None)
+    reshaped_out = reshaped_out.reshape((reshaped_out.shape[0] * reshaped_out.shape[1], 
+                                         reshaped_out.shape[2], reshaped_out.shape[3],
+                                       reshaped_out.shape[4]))
+    return reshaped_out
+
 def get_output_shape_after_stride(input_shape, n_stride):
     time_length_after = int(np.ceil(input_shape[2] / float(n_stride)))
     if input_shape[0] is None:
@@ -280,13 +368,15 @@ def get_output_shape_after_stride(input_shape, n_stride):
     return output_shape
 
 class StrideReshapeLayer(lasagne.layers.Layer):
-    def __init__(self, incoming, n_stride, invalid_fill_value=0, **kwargs):
+    def __init__(self, incoming, n_stride, invalid_fill_value=0,
+            stride_func=reshape_for_stride_theano, **kwargs):
         self.n_stride = n_stride
         self.invalid_fill_value = invalid_fill_value
+        self.stride_func = stride_func
         super(StrideReshapeLayer, self).__init__(incoming, **kwargs)
 
     def get_output_for(self, input, **kwargs):
-        return reshape_for_stride_theano(input, self.input_shape,self.n_stride,
+        return self.stride_func(input, self.input_shape,self.n_stride,
             invalid_fill_value=self.invalid_fill_value)
 
     def get_output_shape_for(self, input_shape):
@@ -403,6 +493,8 @@ def get_3rd_dim_shapes_without_invalids_for_layers(all_layers):
             cur_lengths = np.array([int(np.ceil((length - i_stride) / 
                                                float(l.n_stride)))
                 for length in cur_lengths for i_stride in range(l.n_stride)])
+        if hasattr(l, 'n_window'):
+            cur_lengths = cur_lengths - l.n_window + 1
     return cur_lengths
 
 def get_n_sample_preds(layer):
