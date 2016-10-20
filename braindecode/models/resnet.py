@@ -9,6 +9,48 @@ from copy import deepcopy
 from lasagne.layers.shape import DimshuffleLayer
 
 class ResNet(object):
+    """Residual Network Model.
+
+    Parameters
+    ----------
+    in_chans :
+        Number of input channels.
+    input_time_length :
+        Size of input crop for the ConvNet, i.e. how many samples processed in
+        one forward pass.
+    projection :
+        Whether to use a projection when increasing the number of channels.
+    n_first_filters :
+        Number of filters in first convolution.
+    first_filter_length :
+        Length of filter in first convolution.
+    final_pool_length :
+        Length of final pooling filter/layer.
+    nonlinearity :
+        Nonlinearity to use after convolution.
+    batch_norm_alpha :
+        param batch_norm_epsilon:
+    drop_before_pool :
+        Whether to use dropout before pooling (with p=0.5)
+    final_aggregator :
+        conv' or 'pool' as final aggregator
+    final_nonlin :
+        Final nonlinearity (after final pooling)
+    survival_prob :
+        Survival prob for stochastic depth
+    split_first_layer :
+        Whether to split first convolution into first a convolution over time
+        and then a convolution over all sensors/spatial filter.
+    add_after_nonlin :
+        Whether to add input back to output after
+        the nonlinearity in the residual blocks.
+    reduction_method :
+        conv' or 'pool' to use as reduction method in case of stride in
+        residual blocks.
+    reduction_pool_mode :
+        E.g. max or average_exc_pad for pooling
+        (only if reduction_method is 'pool')
+    """
     def __init__(self, in_chans, input_time_length,
             projection,  n_layers_per_block,
             n_first_filters, first_filter_length, final_pool_length,
@@ -23,36 +65,6 @@ class ResNet(object):
             add_after_nonlin,
             reduction_method,
             reduction_pool_mode):
-        '''
-        
-        :param in_chans: Number of input channels.
-        :param input_time_length: Size of input crop for the ConvNet, i.e.
-        how many samples processed in one forward pass.
-        :param projection: Whether to use a projection when increasing
-        the number of channels.
-        :param n_first_filters: Number of filters in first convolution.
-        :param first_filter_length: Length of filter in first convolution.
-        :param final_pool_length: Length of final pooling filter/layer.
-        :param nonlinearity: Nonlinearity to use after convolution.
-        :param batch_norm_alpha: 
-        :param batch_norm_epsilon: 
-        :param drop_before_pool: Whether to use dropout before pooling (with p=0.5)
-        :param final_aggregator: 'conv' or 'pool' as final aggregator
-        :param final_nonlin: Final nonlinearity (after final pooling)
-        :param survival_prob: Survival prob for stochastic depth
-        :param split_first_layer: Whether to split first convolution into first
-        a convolution over  time and then a convolution over all 
-        sensors/spatial filter.
-        :param add_after_nonlin: Whether to add input back to output after 
-        the nonlinearity in the residual blocks. 
-        :param reduction_method: 'conv' or 'pool' to use as reduction method
-        in case of stride in residual blocks.
-        :param reduction_pool_mode: E.g. max or average_exc_pad for pooling
-        (only if reduction_method is 'pool')
-
-        
-        
-        '''
         assert survival_prob <= 1 and survival_prob >= 0
         self.__dict__.update(locals())
         del self.self
@@ -60,7 +72,23 @@ class ResNet(object):
     def get_layers(self):
         def resnet_residual_block(model, 
             increase_units_factor=None, half_time=False):
-            """Calling with correct attributes from this object. """
+            """Calling residual_block function with correct attributes
+            from this object.
+
+            Parameters
+            ----------
+            model :
+                
+            increase_units_factor :
+                (Default value = None)
+            half_time :
+                (Default value = False)
+
+            Returns
+            -------
+            Final layer of created residual block.
+            
+            """
             return residual_block(model, 
                 batch_norm_epsilon=self.batch_norm_epsilon,
                 batch_norm_alpha=self.batch_norm_alpha,
