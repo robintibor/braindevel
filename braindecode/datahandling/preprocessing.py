@@ -31,8 +31,8 @@ def exponential_running_demean(data, factor_new, init_block_size=None,
     demeaned = data - means
     return demeaned
 
-def exponential_running_mean(data, factor_new, start_mean=None,
-    init_block_size=None, axis=None):
+def exponential_running_mean(data, factor_new, init_block_size=None,
+    start_mean=None, axis=None):
     """ Compute the running mean across axis 0.
     For each datapoint in axis 0 its "running exponential mean" is computed as:
     Its mean * factor_new + so far computed mean * (1-factor_new).
@@ -67,8 +67,11 @@ def exponential_running_mean(data, factor_new, start_mean=None,
             axes_for_start_mean = (0,) + axis # also average across init trials
         else:
             axes_for_start_mean = 0
-        current_mean = np.mean(start_data, keepdims=True, 
-            axis=axes_for_start_mean)
+        # possibly temporarily upcast to float32 to avoid overflows in sum
+        # that is computed to compute mean
+        current_mean = np.mean(start_data.astype(np.float32),
+            keepdims=True, 
+            axis=axes_for_start_mean).astype(start_data.dtype)
         # repeat mean for running means
         running_means[:init_block_size] = current_mean
         i_start = init_block_size
@@ -85,9 +88,10 @@ def exponential_running_mean(data, factor_new, start_mean=None,
         running_means[i] = next_mean
         current_mean = next_mean
     
-    if np.any(np.isnan(running_means)):
-        print "running means",running_means
-    assert not np.any(np.isnan(running_means))
+    assert not np.any(np.isnan(running_means)), (
+        "RUnning mean has NaNs :\n{:s}".format(str(running_means)))
+    assert not np.any(np.isinf(running_means)), (
+        "RUnning mean has Infs :\n{:s}".format(str(running_means)))
     return running_means
 
 def exponential_running_var_from_demeaned(demeaned_data, factor_new, start_var=None,
@@ -116,8 +120,12 @@ def exponential_running_var_from_demeaned(demeaned_data, factor_new, start_var=N
             axes_for_start_var = (0,) + axis # also average across init trials
         else:
             axes_for_start_var = 0
-        start_running_var = np.mean(np.square(demeaned_data[0:init_block_size]),
-             axis=axes_for_start_var, keepdims=True)
+            
+        # possibly temporarily upcast to float32 to avoid overflows in sum
+        # that is computed to compute mean
+        start_running_var = np.mean(
+            np.square(demeaned_data[0:init_block_size].astype(np.float32)),
+             axis=axes_for_start_var, keepdims=True).astype(demeaned_data.dtype)
         running_vars[0:init_block_size] = start_running_var
         current_var = start_running_var
         start_i = init_block_size
@@ -153,13 +161,30 @@ def compute_combined_std(num_old, num_new, old_mean, new_mean,
     combined_std = np.sqrt(combined_var)
     return combined_std
 
-class RemoveAllZeroExamples(object):
+class ExponentialStandardizePreprocessor(Preprocessor):
+    def __init__(self, init_block_size, factor_new, time_axis=2):
+        self.init_block_size =  init_block_size
+        self.factor_new = factor_new
+        self.time_axis = time_axis
+        
+    def apply(self, dataset, can_fit=False):
+        topo = dataset.get_topological_view()
+        standardized = exponential_running_standardize(topo.swapaxes(self.time_axis,0),
+            init_block_size=self.init_block_size, 
+            factor_new=self.factor_new)
+        del topo # just for memory reasons, maybe not necessary
+        standardized = standardized.swapaxes(0, self.time_axis)
+        dataset.set_topological_view(standardized)
+        return
+
+class RemoveAllZeroExamples(Preprocessor):
     def apply(self, dataset, can_fit=False):
         topo = dataset.get_topological_view()
         all_zero_examples = np.alltrue(topo == 0, axis=(1,2,3))
-        topo = topo[np.logical_not(all_zero_examples)]
+        mask = np.logical_not(all_zero_examples)
+        topo = topo[mask]
         dataset.set_topological_view(topo, dataset.view_converter.axes)
-        
+        dataset.y = dataset.y[mask]
 
 class RestrictTrials(Preprocessor):
     """ Restrict number of trials to given number or given fraction. """
@@ -619,13 +644,25 @@ class ChannelwiseStandardize(Preprocessor):
         other_dims = range(topo_view.ndim)
         other_dims.remove(channel_dim_i)
         other_dims = tuple(other_dims)
-        # assuming channel is on axis 1, so only keeping this axis,
+        # only keeping channel axis,
         # reducing all others
         mean = topo_view.mean(axis=other_dims, keepdims=True)
         std = topo_view.std(axis=other_dims, keepdims=True)
         return mean,std
         
-    
+class RemoveLowVariance(Preprocessor):
+    def __init__(self, cut_off_fraction=0.5):
+        self.cut_off_fraction = cut_off_fraction
+    def apply(self, dataset, can_fit=False):
+        topo = dataset.get_topological_view()
+        assert dataset.view_converter.axes[0] == 'b'
+        stds = np.std(topo, axis=(1,2,3))
+        cutoff = self.cut_off_fraction * np.median(stds)
+        mask = stds > cutoff
+        new_topo = topo[mask]
+        dataset.set_topological_view(new_topo)
+        dataset.y = dataset.y[mask]
+
 class SplitTrials(Preprocessor):
     """ Split each trial into several subtrials, e.g.
     4 second trial into three 2 second trials with 1 second overlap """

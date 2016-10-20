@@ -230,6 +230,9 @@ class PreprocessedSplitter(object):
         train_valid_set = concatenate_sets(this_datasets['train'],
             this_datasets['valid'])
         test_set = this_datasets['test']
+        #preprocessing of train only so that later split is correct...
+        log.info("Preprocessing original train to make sure split is correct")
+        self.preprocessor.apply(this_datasets['train'], can_fit=False)
         n_train_set_trials = len(this_datasets['train'].y)
         del this_datasets['train']
         if self.preprocessor is not None:
@@ -241,9 +244,17 @@ class PreprocessedSplitter(object):
             test_set = deepcopy(test_set)
             self.preprocessor.apply(train_valid_set, can_fit=True)
             self.preprocessor.apply(test_set, can_fit=False)
+            #preprocessing of valid only so that later split is correct...
+            # todelay: think if this is smart or maybe better just use valid set
+            # below without the splitting
+            self.preprocessor.apply(this_datasets['valid'], can_fit=False)
             log.info("Done.")
         _, valid_set = self.split_sets(train_valid_set, 
             n_train_set_trials, len(this_datasets['valid'].y))
+        
+        # In case you stored removed_ys, restore them for recovered valid set
+        if hasattr(this_datasets['valid'], 'removed_ys'):
+            valid_set.removed_ys = this_datasets['valid'].removed_ys
         # train valid is the new train set!!
         return {'train': train_valid_set, 'valid': valid_set, 
             'test': test_set}
