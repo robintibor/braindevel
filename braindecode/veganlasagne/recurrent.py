@@ -38,7 +38,7 @@ class BandpassLayer(MergeLayer):
         out = out.swapaxes(0,1)
         return out
         
-def oneStep(x_tm6, x_tm5, x_tm4, x_tm3, x_tm2, x_tm1, x_t,
+def one_step(x_tm6, x_tm5, x_tm4, x_tm3, x_tm2, x_tm1, x_t,
             y_tm6, y_tm5, y_tm4, y_tm3, y_tm2, y_tm1,
            b,a,y0):
     new_out = (x_tm6 * b[6] + x_tm5 * b[5] + x_tm4 * b[4] +
@@ -52,7 +52,7 @@ def multi_row_recurrent_bandpass(x0, y0, b_sym, a_sym, truncate_gradient=-1):
     a_sym = a_sym.dimshuffle(0,'x', 'x',1)
     b_sym = b_sym.dimshuffle(0, 'x', 'x',1)
     x0 = x0.dimshuffle(0,1,2,'x')
-    (x_vals, _) = theano.scan(fn=oneStep,
+    (x_vals, _) = theano.scan(fn=one_step,
         sequences = [dict(input=x0, taps=range(-6,1))],
         outputs_info=[dict(initial=y0, taps=range(-6,0))],
         non_sequences = [b_sym, a_sym,y0],
