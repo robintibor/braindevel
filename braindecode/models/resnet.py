@@ -14,7 +14,7 @@ class ResNet(object):
     Parameters
     ----------
     in_chans :
-        Number of input channels.
+        Number of input (EEG) channels.
     input_time_length :
         Size of input crop for the ConvNet, i.e. how many samples processed in
         one forward pass.
