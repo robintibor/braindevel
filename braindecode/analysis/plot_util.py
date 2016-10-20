@@ -10,6 +10,7 @@ from pylearn2.utils import serial
 import os.path
 from matplotlib import gridspec
 import seaborn
+from braindecode.analysis.pandas_util import load_results_for_df
 
 def show_misclass_scatter_plot(first_misclasses, second_misclasses, figsize=(4,4)):
     fig = plt.figure(figsize=figsize)
@@ -71,8 +72,7 @@ def plot_misclasses_over_time(misclasses, alpha=1, lw=0.75):
         plt.plot(single_misclass, color=seaborn.color_palette()[2], alpha=alpha, lw=lw)
     
 def plot_multiple_head_signals_tight(signals, sensor_names=None, 
-    figsize=(12, 7),
-        plot_args=None, hspace=0.35, sensor_map=tight_C_positions,
+    figsize=(12, 7), plot_args=None, hspace=0.35, sensor_map=tight_C_positions,
         tsplot=False):
     reshaped_signals=np.array(signals).transpose(1,2,0)
     return plot_head_signals_tight(reshaped_signals, sensor_names, figsize, 
@@ -81,7 +81,6 @@ def plot_multiple_head_signals_tight(signals, sensor_names=None,
 
 def plot_head_signals(signals, sensor_names=None, figsize=(12, 7),
     plot_args=None):
-    
     assert sensor_names is None or len(signals) == len(sensor_names), ("need "
         "sensor names for all sensor matrices")
     if sensor_names is None:
@@ -263,13 +262,24 @@ def plot_head_signals_tight_multiple_signals(all_signals, sensor_names=None,
     return figure
         
 def plot_sensor_signals(signals, sensor_names=None, figsize=None,
-        yticks=None, plotargs=[], sharey=True, highlight_zero_line=True,
+        yticks=None, plot_args=None, sharey=True, highlight_zero_line=True,
         xvals=None, fontsize=9):
+    """
+    Plot signals of all sensors below each other, one row per sensor.
+    
+    Parameters
+    ----------
+    yticks: 1d-array or str or None
+        Which yticks to show, either supply yticks or "minmax", "keep", "onlymax"
+        or None (Default= None, means no ticks)
+    """
     assert sensor_names is None or len(signals) == len(sensor_names), ("need "
         "sensor names for all sensor matrices")
     if sensor_names is None:
         sensor_names = map(str, range(len(signals)))  
     num_sensors = signals.shape[0]
+    if plot_args is None:
+        plot_args = dict()
     if figsize is None:
         figsize = (7, np.maximum(num_sensors // 4, 1))
     figure, axes = plt.subplots(num_sensors, sharex=True, sharey=sharey,
@@ -280,9 +290,9 @@ def plot_sensor_signals(signals, sensor_names=None, figsize=None,
         else:
             ax = axes
         if xvals is None:
-            ax.plot(signals[sensor_i], *plotargs)
+            ax.plot(signals[sensor_i], **plot_args)
         else:
-            ax.plot(xvals, signals[sensor_i], *plotargs)
+            ax.plot(xvals, signals[sensor_i], **plot_args)
         if yticks is None:
             ax.set_yticks([])
         elif (isinstance(yticks, list)): 
@@ -295,6 +305,8 @@ def plot_sensor_signals(signals, sensor_names=None, figsize=None,
             ax.set_yticks([ymax])
         elif yticks == "keep": 
             pass
+        else:
+            raise ValueError("Unknown yticks value {:s}".format(str(yticks)))
         ax.text(-0.035, 0.4, sensor_names[sensor_i], fontsize=fontsize,
             transform=ax.transAxes,
             horizontalalignment='right')
@@ -306,36 +318,80 @@ def plot_sensor_signals(signals, sensor_names=None, figsize=None,
     figure.subplots_adjust(hspace=0)
     return figure
 
+def plot_misclasses_for_exps(df):
+    results = load_results_for_df(df)
+    for result in results:
+        plot_misclasses_for_result(result)
+
+def plot_losses_for_exps(df):
+    results = load_results_for_df(df)
+    for result in results:
+        plot_loss_for_result(result)
+
+def plot_chan_for_all_exps(df, val):
+    results = load_results_for_df(df)
+    all_exps_vals = [r.monitor_channels[val] for r in results]
+    for exp_vals in all_exps_vals:
+        plt.plot(exp_vals)
+
 def plot_misclasses_for_file(result_file_path):
     assert result_file_path.endswith('result.pkl')
     result = serial.load(result_file_path)
-    fig = plot_misclasses_for_result(result)
-    fig.suptitle("Misclass: " + result_file_path, fontsize=14)
-    return fig
+    plot_misclasses_for_result(result)
+    figure = plt.gcf()
+    figure.suptitle("Misclass: " + result_file_path, fontsize=14)
+    return figure
 
 def plot_misclasses_loss_for_file(result_file_path):
     assert result_file_path.endswith('result.pkl')
    
     result = serial.load(result_file_path)
-    fig = plot_misclass_loss_for_result(result)
+    plot_misclass_loss_for_result(result)
     
-    fig.suptitle("Misclass/Loss: " + result_file_path)
-    return fig
+    figure = plt.gcf()
+    figure.suptitle("Misclass/Loss: " + result_file_path)
+    return figure
 
 def plot_misclass_loss_for_result(result):
     fig = plt.figure()
-    plot_misclasses_for_result(result, fig)
-    plot_loss_for_result(result, fig)
+    plot_misclasses_for_result(result)
+    plot_loss_for_result(result)
     return fig
 
-def plot_loss_for_file(result_file_path, figure=None, start=None, stop=None):
+def plot_loss_for_file(result_file_path, start=None, stop=None):
     assert result_file_path.endswith('result.pkl')
-    if figure is None:
-        figure = plt.figure()
     result = serial.load(result_file_path)
-    figure = plot_loss_for_result(result, figure, start, stop)
+    plot_loss_for_result(result, start, stop)
+    figure = plt.gcf()
     figure.suptitle("Loss: " + result_file_path)
     return figure
+
+def plot_misclasses_for_result(result):
+    set_names = ('train', 'valid', 'test')
+    for i_set, setname in enumerate(set_names):
+        plt.plot(result.monitor_channels['{:s}_misclass'.format(setname)],
+                linewidth=1, color=seaborn.color_palette()[i_set])
+        plt.plot(result.monitor_channels['before_reset_{:s}_misclass'.format(setname)],
+                linestyle='--', linewidth=1,color=seaborn.color_palette()[i_set])
+        plt.legend(plt.gca().get_lines()[0:6:2], set_names, fontsize=12)
+        plt.xlabel("Epochs")
+        plt.ylabel("Misclass")
+        plt.title("Misclass")
+        plt.ylim(0,1)
+
+        
+def plot_loss_for_result(result):
+    set_names = ('train', 'valid', 'test')
+    for i_set, setname in enumerate(set_names):
+        plt.plot(result.monitor_channels['{:s}_loss'.format(setname)],
+                linewidth=1, color=seaborn.color_palette()[i_set])
+        plt.plot(result.monitor_channels['before_reset_{:s}_loss'.format(setname)],
+                linestyle='--', linewidth=1,color=seaborn.color_palette()[i_set])
+    plt.legend(plt.gca().get_lines()[0:6:2], set_names, fontsize=12)
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title("Loss")
+
 
 def add_early_stop_boundary(monitor_channels):
     """Plot early stop boundary as black vertical line into plot
@@ -348,14 +404,6 @@ def add_early_stop_boundary(monitor_channels):
     plt.axvline(i_last_epoch_before_early_stop, color='black', lw=1)
 
 
-def plot_misclasses_for_result(result, figure=None):
-    fig = plot_train_valid_test_epochs(result.monitor_channels['train_misclass'],
-        result.monitor_channels['valid_misclass'],
-        result.monitor_channels['test_misclass'],
-        figure=figure)
-    plt.ylim(0, 1)
-    add_early_stop_boundary(result.monitor_channels)
-    return fig
 
 def plot_train_valid_test_epochs(train, valid, test, figure=None):
     if figure is None:
@@ -366,14 +414,6 @@ def plot_train_valid_test_epochs(train, valid, test, figure=None):
     plt.legend(('train', 'valid', 'test'))
     return figure
 
-def plot_loss_for_result(result, figure=None, start=None, stop=None):
-    fig = plot_train_valid_test_epochs(result.monitor_channels['train_loss'],
-        result.monitor_channels['valid_loss'],
-        result.monitor_channels['test_loss'],
-        figure=figure)
-    
-    add_early_stop_boundary(result.monitor_channels)
-    return fig
 
 def plot_confusion_matrix_for_averaged_result(result_folder, result_nr):
     """ Plot confusion matrix for averaged dataset result."""

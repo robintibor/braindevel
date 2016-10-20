@@ -9,6 +9,7 @@ from collections import OrderedDict
 import logging
 from braindecode.util import merge_dicts
 import os.path
+from scipy.stats.morestats import wilcoxon
 log = logging.getLogger(__name__)
 
 class MetaDataFrame(pd.DataFrame):
@@ -111,7 +112,7 @@ def pairwise_compare_frame(df, with_p_vals=False):
     param_keys = set(df.keys()) - set(['test', 'time', 'train',
         'test_sample', 'train_sample'])
     for key in param_keys:
-        if key == 'dataset_filename' or key == 'test_filename':
+        if key == 'dataset_filename' or key == 'test_filename' or key == 'subject_id':
             continue
         possible_vals = df[key].unique()
         for i_value_a in range(0, len(possible_vals) - 1):
@@ -149,9 +150,13 @@ def pairwise_compare_frame(df, with_p_vals=False):
                     if len(accuracies_1) <= 18:
                         diff_perm = perm_mean_diff_test(accuracies_1,
                             accuracies_2) * 100
-                    else:
+                    elif len(accuracies_1) <= 62:
                         diff_perm = perm_mean_diff_test(accuracies_1,
-                            accuracies_2, n_diffs=2**18) * 100
+                            accuracies_2, n_diffs=2**17) * 100
+                    else:
+                        _, diff_perm = wilcoxon(accuracies_1,
+                            accuracies_2)
+                        diff_perm *= 100
 
                 diffs = accuracies_2 - accuracies_1
                 diff_std = np.std(diffs)
@@ -169,7 +174,7 @@ def pairwise_compare_frame(df, with_p_vals=False):
     compare_headers = ['n_exp', 'val_1', 'val_2', 'acc_1', 'acc_2',
                        'diff', 'std']
     if with_p_vals:
-        compare_headers.append('perm')
+        compare_headers.append('p_val')
     compare_frame = pd.DataFrame(table_vals, columns=compare_headers,  
                                  index=(table_indices))
     compare_frame = to_numeric_where_possible(compare_frame)
@@ -184,16 +189,23 @@ def tstd(series):
     """Std of time and rounding."""
     return pd.Timedelta.round(np.std(series), 's')
 
-def dataset_averaged_frame(data_frame):
-    param_keys = [k for k in data_frame.keys() if k not in ['test',
+def dataset_averaged_frame(data_frame, ignorable_keys=(),
+        filename_key=None):
+    ignorable_keys = ('test',
         'dataset_filename', 'test_filename', 'time', 'train', 'filename',
-        'test_sample', 'train_sample']]
+        'test_sample', 'train_sample') + ignorable_keys
+    if filename_key is not None:
+        ignorable_keys += (filename_key,)
+    
+    param_keys = [k for k in data_frame.keys() if k not in ignorable_keys]
+    # weird this len(parma_keys)>0 shd always be rue unsure of this
     if len(param_keys) > 0:
         grouped = data_frame.groupby(param_keys)
         # Check for dup
         for name, group in grouped:
-            filename_key = ('filename' if 'filename' in data_frame.keys() 
-                else 'dataset_filename')
+            if filename_key is None:
+                filename_key = ('filename' if 'filename' in data_frame.keys() 
+                    else 'dataset_filename')
             duplicates = group[filename_key][group[filename_key].duplicated()]
             if duplicates.size > 0:
                 log.warn("Duplicate filenames:\n{:s}".format(str(duplicates)))
@@ -201,6 +213,8 @@ def dataset_averaged_frame(data_frame):
         avg_frame = grouped.agg(OrderedDict([('time', [len, tmean, tstd]), 
               ('test', [np.mean, np.std]),
                ('train', [np.mean, np.std]),]))
+        # cast from time to int for len
+        avg_frame[('time', 'len')] = np.int32(avg_frame[('time', 'len')])
     else:
         # Recreate group result manually for just one group
         avg_frame = pd.DataFrame(columns=pd.MultiIndex(
@@ -290,4 +304,17 @@ def restrict_if_existing_and_not_unique(df, **params):
     for key, val in params.iteritems():
         if (key in df.columns) and (len(df[key].unique()) > 1):
             df = df[df[key] == val]
+    return df
+
+
+def get_valid_misclass_at_stop(result):
+    runtimes_after_first = result.monitor_channels['runtime'][1:]
+    i_last_epoch_before_early_stop = np.argmax(np.abs(runtimes_after_first - 
+        np.mean(runtimes_after_first))) - 1
+    return result.monitor_channels['valid_misclass'][i_last_epoch_before_early_stop]
+
+def add_valid_accuracy_at_stop(df):
+    results = load_results_for_df(df)
+    misclasses = np.array([get_valid_misclass_at_stop(r) for r in results])
+    df['valid_at_stop'] = (1 - misclasses) * 100
     return df
