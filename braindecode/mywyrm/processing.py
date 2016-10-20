@@ -861,6 +861,24 @@ def resample_epo(epo, newfs, timeaxis=-2):
     new_data = scipy.signal.resample(old_data, num=newnumsamples, axis=timeaxis)
     return epo.copy(data=new_data, fs=newfs)
 
+
+def running_standardize_epo(epo, factor_new=0.9, init_block_size=50):
+    """ Running standardize channelwise."""
+    assert factor_new <= 1.0 and factor_new >= 0.0
+    running_means = exponential_running_mean(epo.data, factor_new=factor_new, 
+        init_block_size=init_block_size, axis=1)
+    running_means = np.expand_dims(running_means, 1)
+    demeaned_data = epo.data - running_means
+    running_vars = exponential_running_var_from_demeaned(demeaned_data,
+        running_means, factor_new=factor_new, init_block_size=init_block_size,
+        axis=1)
+    
+    running_vars = np.expand_dims(running_vars, 1)
+    running_std = np.sqrt(running_vars)
+    
+    standardized_epo_data = demeaned_data / running_std
+    return epo.copy(data=standardized_epo_data)
+
 def highpass_cnt(cnt, low_cut_off_hz, filt_order=3):
     if low_cut_off_hz is None:
         return cnt.copy()
@@ -883,23 +901,6 @@ def highpass_filt_filt_cnt(cnt, low_cut_off_hz, filt_order=3):
     cnt_highpassed = filtfilt(cnt,b,a)
     return cnt_highpassed
 
-
-def running_standardize_epo(epo, factor_new=0.9, init_block_size=50):
-    """ Running standardize channelwise."""
-    assert factor_new <= 1.0 and factor_new >= 0.0
-    running_means = exponential_running_mean(epo.data, factor_new=factor_new, 
-        init_block_size=init_block_size, axis=1)
-    running_means = np.expand_dims(running_means, 1)
-    demeaned_data = epo.data - running_means
-    running_vars = exponential_running_var_from_demeaned(demeaned_data,
-        running_means, factor_new=factor_new, init_block_size=init_block_size,
-        axis=1)
-    
-    running_vars = np.expand_dims(running_vars, 1)
-    running_std = np.sqrt(running_vars)
-    
-    standardized_epo_data = demeaned_data / running_std
-    return epo.copy(data=standardized_epo_data)
 
 def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     """Bandpass cnt signal using butterworth filter.
