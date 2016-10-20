@@ -383,6 +383,7 @@ class StrideReshapeLayer(lasagne.layers.Layer):
         assert input_shape[3] == 1, "Not tested for nonempty last dim"
         return get_output_shape_after_stride(input_shape, self.n_stride)
     
+
 class FinalReshapeLayer(lasagne.layers.Layer):
     def __init__(self, incoming, remove_invalids=True, flatten=True,
              **kwargs):
@@ -456,11 +457,9 @@ class FinalReshapeLayer(lasagne.layers.Layer):
         if self.flatten:
             output_shape = (None, input_shape[1])
         else:
-            # could probably also compute third dim as
-            # get_n_sample_preds(self) instead of this
-            # but not don't care atm
+            n_sample_preds = get_n_sample_preds(self)
             output_shape = (None, input_shape[1],
-                None,1)
+                n_sample_preds,1)
         return output_shape
     
 def get_3rd_dim_shapes_without_invalids(layer):
@@ -493,6 +492,10 @@ def get_3rd_dim_shapes_without_invalids_for_layers(all_layers):
             cur_lengths = np.array([int(np.ceil((length - i_stride) / 
                                                float(l.n_stride)))
                 for length in cur_lengths for i_stride in range(l.n_stride)])
+        
+        if l.__class__.__name__ == 'FinalReshapeLayer':
+            # now all should be merged into one again
+            cur_lengths = np.array([np.sum(cur_lengths)])
         if hasattr(l, 'n_window'):
             cur_lengths = cur_lengths - l.n_window + 1
     return cur_lengths
