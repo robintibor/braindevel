@@ -97,3 +97,10 @@ def touch_file(path):
         os.makedirs(basedir)
     with open(path, 'a'):
         os.utime(path, None)
+
+
+def to_tuple(sequence_or_element, length):
+    if hasattr(sequence_or_element, '__len__'):
+        return tuple(sequence_or_element)
+    else:
+        return (sequence_or_element,) * length
