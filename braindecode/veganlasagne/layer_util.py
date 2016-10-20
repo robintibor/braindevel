@@ -173,11 +173,15 @@ def layers_to_str(final_layer):
                 filter_str += " ::{:d} ::{:d}".format(layer.dilation[0],
                     layer.dilation[1])
             layer_str += "{:15s}".format(filter_str)
+        if hasattr(layer, 'min_val'):
+            # For Clip layers
+            layer_str += "{:f} {:f}".format(layer.min_val,
+                layer.max_val)
         # Also for stride reshape layer
         if hasattr(layer, 'n_stride'):
             filter_str = "    ::{:d} ::1".format(layer.n_stride)
             layer_str += "{:15s}".format(filter_str)
-        layer_str = "{:2d} {:50s}".format(i, layer_str)
+        layer_str = "{:2d}-{:50s}".format(i, layer_str)
         # Possibly add nonlinearities
         if (hasattr(layer, 'nonlinearity') and 
             hasattr(layer.nonlinearity, 'func_name') and 
