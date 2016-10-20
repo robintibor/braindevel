@@ -1,5 +1,5 @@
 import theano.tensor as T
-from lasagne.nonlinearities import softmax, elu
+from lasagne.nonlinearities import softmax, elu, sigmoid
 
 def safe_log(x, eps=1e-6):
     """ Prevents log(0) by using max of eps and given x."""
@@ -27,3 +27,6 @@ def log_softmax(x):
     From https://github.com/Lasagne/Lasagne/issues/332#issuecomment-122328992"""
     xdev = x - x.max(1, keepdims=True)
     return xdev - T.log(T.sum(T.exp(xdev), axis=1, keepdims=True))
+
+def safe_sigmoid(x, eps=1e-6):
+    return T.clip(sigmoid(x), eps, 1-eps)
