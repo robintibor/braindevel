@@ -39,6 +39,9 @@ def generate_filterbank(min_freq, max_freq, last_low_freq,
     return filterbank
 
 def filter_is_stable(a):
+    assert a[0] == 1.0, (
+        "a[0] should normally be zero, did you accidentally supply b?\n"
+        "a: {:s}".format(str(a)))
     # from http://stackoverflow.com/a/8812737/1469195
     return np.all(np.abs(np.roots(a))<1)
 
