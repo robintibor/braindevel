@@ -33,7 +33,7 @@ class ExperimentsRunner:
     def __init__(self, test=False, start_id=None, stop_id=None, 
             quiet=False, dry_run=False, cross_validation=False,
             shuffle=False, debug=False, only_first_n_sets=False,
-            batch_test=False, skip_existing=False):
+            batch_test=False, skip_existing=False, pred_loss_hack=False):
         self._start_id = start_id
         self._stop_id = stop_id
         self._test = test
@@ -45,6 +45,7 @@ class ExperimentsRunner:
         self._only_first_n_sets = only_first_n_sets
         self._batch_test=batch_test
         self._skip_existing = skip_existing
+        self._pred_loss_hack = pred_loss_hack
         
     def run(self, all_train_strs):
         if (self._quiet):
@@ -273,7 +274,7 @@ class ExperimentsRunner:
                 # make at least batches
                 n_samples = int(n_sample_preds * 1.5 * 200)
             dataset = RandomSet(topo_shape=[n_samples, n_chans, 1, 1], 
-                y_shape=[n_samples, n_classes]) 
+                y_shape=[n_samples, n_classes])
             dataset.load()
             splitter = FixedTrialSplitter(n_train_trials=int(n_samples*0.8), 
                 valid_set_fraction=0.1)
@@ -299,21 +300,26 @@ class ExperimentsRunner:
         dataset.load()
         iterator = train_dict['exp_args']['iterator']
         splitter = train_dict['dataset_splitter']
-        train_set = splitter.split_into_train_valid_test(dataset)['train']
-        batch_gen = iterator.get_batches(train_set, shuffle=True)
-        dummy_batch_topo = batch_gen.next()[0]
-        del train_set
-
-        # not for ultrasound: assert 'in_sensors' in train_str
-        # not for cnt net assert 'in_rows' in train_str
-        # not for resnet: assert 'in_cols' in train_str
-        
-        train_str = train_str.replace('in_sensors',
-            str(dummy_batch_topo.shape[1]))
-        train_str = train_str.replace('in_rows',
-            str(dummy_batch_topo.shape[2]))
-        train_str = train_str.replace('in_cols', 
-            str(dummy_batch_topo.shape[3]))
+        if dataset.__class__.__name__ == 'EpilepsySet':
+            log.info("Reducing to float16 for epilepsy set...")
+            dataset.seizure_topo = np.float16(dataset.seizure_topo)
+            dataset.non_seizure_topo = np.float16(dataset.non_seizure_topo)
+        else:
+            # todo: remove this?
+            log.info("Determining dataset dimensions to set possible model params...")
+            train_set = splitter.split_into_train_valid_test(dataset)['train']
+            batch_gen = iterator.get_batches(train_set, shuffle=True)
+            dummy_batch_topo = batch_gen.next()[0]
+            del train_set
+            # not for ultrasound: assert 'in_sensors' in train_str
+            # not for cnt net assert 'in_rows' in train_str
+            # not for resnet: assert 'in_cols' in train_str
+            train_str = train_str.replace('in_sensors',
+                str(dummy_batch_topo.shape[1]))
+            train_str = train_str.replace('in_rows',
+                str(dummy_batch_topo.shape[2]))
+            train_str = train_str.replace('in_cols', 
+                str(dummy_batch_topo.shape[3]))
         
         self._save_train_string(train_str, experiment_index)
         
@@ -344,8 +350,14 @@ class ExperimentsRunner:
                 get_model_input_window(final_layer)))
         
         if not self._cross_validation:
-            exp = Experiment(final_layer, dataset, splitter,
-                **train_dict['exp_args'])
+            if (dataset.__class__.__name__ == 'EpilepsySet') and self._pred_loss_hack:
+                from braindecode.epilepsy.experiment import EpilepsyExperiment
+                log.info("Creating epilepsy experiment with the pred loss hack")
+                exp = EpilepsyExperiment(final_layer, dataset, splitter,
+                    **train_dict['exp_args'])
+            else:
+                exp = Experiment(final_layer, dataset, splitter,
+                    **train_dict['exp_args'])
             exp.setup()
             exp.run()
             endtime = time.time()

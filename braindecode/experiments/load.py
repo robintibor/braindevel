@@ -1,4 +1,3 @@
-import theano.tensor as T
 import numpy as np
 import lasagne
 from braindecode.experiments.experiment import create_experiment
@@ -12,10 +11,10 @@ def load_model(basename):
             
     return model
 
-def load_exp_and_model(basename, set_invalid_to_NaN=True):
+def load_exp_and_model(basename, set_invalid_to_NaN=True, seed=9859295):
     """ Loads experiment and model for analysis, sets invalid fillv alues to NaN."""
     model = load_model(basename)
-    exp = create_experiment(basename + '.yaml')
+    exp = create_experiment(basename + '.yaml', seed=seed)
     all_layers = lasagne.layers.get_all_layers(model)
     if set_invalid_to_NaN:
         # mark nans to be sure you are doing correct transformations

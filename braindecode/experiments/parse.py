@@ -148,7 +148,8 @@ class ConfigParser(object):
                     variant['n_train_seizures'] = 4
                     variant['n_valid_seizures'] = 2
                     variant['n_used_seizures'] = 8
-                    variant['non_seizure_example_stride'] = 10
+                    variant['non_seizure_example_stride'] = 15
+                    #variant['n_middle_crop'] = 30000
                     
                 #variant['last_subject'] = 1
                 #ignore_before = variant.pop('ignore_unused', [])

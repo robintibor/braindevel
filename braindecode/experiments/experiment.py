@@ -119,26 +119,36 @@ class Experiment(object):
     
     def create_theano_functions(self, target_var, deterministic_training=False):
         if target_var is None:
-            log.info("Automatically determine size of target variable by example...")
-            # get a dummy batch and determine target size
-            # use test set since it is smaller
-            # maybe memory is freed quicker
-            
-            # prevent reloading at this step?
-            was_reloadable = self.dataset.reloadable
-            self.dataset.reloadable = False
-            test_set = self.dataset_provider.get_train_valid_test(self.dataset)['test']
-            self.dataset.reloadable = was_reloadable
-            batches = self.iterator.get_batches(test_set, shuffle=False)
-            dummy_batch = batches.next()
-            dummy_y = dummy_batch[1]
-            del test_set
-            # tensor with as many dimensions as y
-            target_type = T.TensorType(
-                dtype=dummy_y.dtype,
-                broadcastable=[False]*len(dummy_y.shape))
-            target_var = target_type()
-            self.dataset.ensure_is_loaded()
+            if hasattr(self.dataset, 'get_dummy_y'):
+                log.info("Use dataset-supplied dummy y to determine "
+                    "shape and type of target variable")
+                dummy_y = self.dataset.get_dummy_y()
+                # tensor with as many dimensions as y
+                target_type = T.TensorType(
+                    dtype=dummy_y.dtype,
+                    broadcastable=[False]*len(dummy_y.shape))
+                target_var = target_type()
+            else:
+                log.info("Automatically determine size of target variable by example...")
+                # get a dummy batch and determine target size
+                # use test set since it is smaller
+                # maybe memory is freed quicker
+                
+                # prevent reloading at this step?
+                was_reloadable = self.dataset.reloadable
+                self.dataset.reloadable = False
+                test_set = self.dataset_provider.get_train_valid_test(self.dataset)['test']
+                self.dataset.reloadable = was_reloadable
+                batches = self.iterator.get_batches(test_set, shuffle=False)
+                dummy_batch = batches.next()
+                dummy_y = dummy_batch[1]
+                del test_set
+                # tensor with as many dimensions as y
+                target_type = T.TensorType(
+                    dtype=dummy_y.dtype,
+                    broadcastable=[False]*len(dummy_y.shape))
+                target_var = target_type()
+                self.dataset.ensure_is_loaded()
         
         prediction = lasagne.layers.get_output(self.final_layer,
             deterministic=deterministic_training)
@@ -273,11 +283,11 @@ def load_layers_from_dict(train_dict):
     else:
         return layers_obj.get_layers()
 
-def create_experiment(yaml_filename):
+def create_experiment(yaml_filename, seed=9859295):
     """Utility function to create experiment from yaml file"""
     # for reproducibility for layer weights
     # should be same seed as in experiment_runner.py
-    lasagne.random.set_rng(RandomState(9859295))
+    lasagne.random.set_rng(RandomState(seed))
     train_dict = yaml_parse.load(open(yaml_filename, 'r'))
     layers = load_layers_from_dict(train_dict)
     final_layer = layers[-1]
