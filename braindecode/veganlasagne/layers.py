@@ -118,6 +118,79 @@ def create_loss_fn(model, loss_expression):
     loss_fn = theano.function([inputs, targets], loss)
     return loss_fn
 
+def create_pred_loss_fn(model, loss_expression):
+    '''
+    Returns per-example loss if loss expression returns it.
+    (Does not average output of loss expression)
+    :param model:
+    :param loss_expression:
+    '''
+    inputs = create_suitable_theano_input_var(model)
+    targets = create_suitable_theano_target_var(model)
+    output = lasagne.layers.get_output(model, deterministic=True,
+        inputs=inputs, input_var=inputs)
+    try:
+        loss = loss_expression(output, targets)
+    except TypeError:
+        loss = loss_expression(output, targets, model)
+            
+    loss_fn = theano.function([inputs, targets], [output, loss])
+    return loss_fn
+
+def create_pred_loss_fake_train_fn(model, loss_expression, updates_expression):
+    '''
+    Create function that trains, outputs loss and prediction,
+    but then reverses parameters to original state.
+    Good for checking how large a batch size fits into GPU memory.
+    '''
+    # maybe use in future? maybe also replace in monitor manager then?
+    target_sym = T.ivector()
+    input_sym = lasagne.layers.get_all_layers(model)[0].input_var
+    # test as in during testing not as in "test set"
+    prediction = lasagne.layers.get_output(model, 
+        deterministic=False)
+    # returning loss per row, for more finegrained analysis
+    try:
+        loss = loss_expression(prediction, target_sym)
+    except TypeError:
+        loss = loss_expression(prediction, target_sym, model)
+    trainable_params = lasagne.layers.get_all_params(model, trainable=True)
+    updates = updates_expression(loss.mean(), trainable_params)
+    pred_loss_fn = theano.function([input_sym, target_sym], [prediction,
+        loss], updates=updates)
+    
+    def pred_loss_fake_train_fn(inputs, targets):
+        # hack since pred loss func now does use updates also
+        param_vals_before = [p.get_value() for p in trainable_params]
+        preds, loss = pred_loss_fn(inputs, targets)
+        _ = [p.set_value(p_val) for p, p_val in 
+            zip(trainable_params, param_vals_before)]
+        return preds, loss
+    return pred_loss_fake_train_fn
+
+def create_pred_loss_train_fn(model, loss_expression, updates_expression):
+    '''
+    Create function that trains, outputs loss and prediction,
+    and for outputted loss, does not mean across examples/rows.
+    Good for debugging.
+    '''
+    # maybe use in future? maybe also replace in monitor manager then?
+    target_sym = T.ivector()
+    input_sym = lasagne.layers.get_all_layers(model)[0].input_var
+    # test as in during testing not as in "test set"
+    prediction = lasagne.layers.get_output(model, 
+        deterministic=False)
+    # returning loss per row, for more finegrained analysis
+    try:
+        loss = loss_expression(prediction, target_sym)
+    except TypeError:
+        loss = loss_expression(prediction, target_sym, model)
+    trainable_params = lasagne.layers.get_all_params(model, trainable=True)
+    updates = updates_expression(loss.mean(), trainable_params)
+    pred_loss_train_fn = theano.function([input_sym, target_sym], [prediction,
+        loss], updates=updates)
+    return pred_loss_train_fn
+
 def transform_to_normal_net(final_layer):
     """ Transforms cnt/parallel prediction net to a normal net.
     Leaves normal net intact"""
@@ -484,9 +557,13 @@ def get_3rd_dim_shapes_without_invalids_for_layers(all_layers):
             else:
                 print l
                 raise ValueError("Not implemented this padding:", l.pad, l, l.filter_size)
+            
                 
         if hasattr(l, 'pool_size'):
             cur_lengths = cur_lengths - l.pool_size[0] + 1
+        if hasattr(l, 'stride'): # needs to be after kernel size subtraction from pool or conv!!
+            if l.stride[0] != 1:
+                cur_lengths = np.int32(np.ceil(cur_lengths / float(l.stride[0])))
         if hasattr(l, 'n_stride'):
             # maybe it should be floor not ceil?
             cur_lengths = np.array([int(np.ceil((length - i_stride) / 
