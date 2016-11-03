@@ -26,8 +26,8 @@
         },
     },
     variants: [[{
-        updates_modifier: [$max_norm_modifier],
-        layer_names_to_norms: [null], # have to supply this in subyamls
+        #updates_modifier: [$max_norm_modifier], force to choose this
+        #layer_names_to_norms: [null], # have to supply this in subyamls
         monitors: [$monitors],
         misclass_monitor: [$default_misclass],
         iterator: [$balanced_batch_iterator],
