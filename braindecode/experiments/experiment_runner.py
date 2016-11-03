@@ -350,13 +350,14 @@ class ExperimentsRunner:
                 get_model_input_window(final_layer)))
         
         if not self._cross_validation:
-            if (dataset.__class__.__name__ == 'EpilepsySet') and self._pred_loss_hack:
-                from braindecode.epilepsy.experiment import EpilepsyExperiment
-                log.info("Creating epilepsy experiment with the pred loss hack")
-                exp = EpilepsyExperiment(final_layer, dataset, splitter,
-                    **train_dict['exp_args'])
-            else:
-                exp = Experiment(final_layer, dataset, splitter,
+            # for now lets not do that, current models seem fine again.
+#             if (dataset.__class__.__name__ == 'EpilepsySet') and self._pred_loss_hack:
+#                 from braindecode.epilepsy.experiment import EpilepsyExperiment
+#                 log.info("Creating epilepsy experiment with the pred loss hack")
+#                 exp = EpilepsyExperiment(final_layer, dataset, splitter,
+#                     **train_dict['exp_args'])
+#             else:
+            exp = Experiment(final_layer, dataset, splitter,
                     **train_dict['exp_args'])
             exp.setup()
             exp.run()

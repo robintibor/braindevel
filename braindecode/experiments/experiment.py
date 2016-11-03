@@ -213,7 +213,7 @@ class Experiment(object):
         if remember_best:
             self.remember_extension.remember_epoch(self.monitor_chans,
                 self.all_params)
-            
+
         self.iterator.reset_rng()
         while not self.stop_criterion.should_stop(self.monitor_chans):
             self.run_one_epoch(datasets, remember_best)
