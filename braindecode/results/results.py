@@ -528,7 +528,7 @@ def get_all_misclasses(results):
     
     return misclass_dict
 
-def get_padded_chan_vals(all_exp_chan_vals):
+def get_padded_chan_vals(all_exp_chan_vals, pad_by='last'):
     """Pad values for several experiments to maximum number of epochs across experiments.
     Pad with the last value for given experiment. For example if you have two experiment with values:
     [0.5,0.2,0.1]
@@ -540,6 +540,7 @@ def get_padded_chan_vals(all_exp_chan_vals):
     Parameters
     --------
     all_exp_chan_vals: list of 1d arrays
+    pad_by: 'last' or a concrete value
     
     Returns
     -------
@@ -554,9 +555,13 @@ def get_padded_chan_vals(all_exp_chan_vals):
     n_exps_by_epoch = np.zeros(max_length)
     for i_exp, misclasses in enumerate(all_exp_chan_vals):
         padded_values[i_exp,:len(misclasses)] = misclasses
-        padded_values[i_exp,len(misclasses):] = misclasses[-1]
+        if pad_by == 'last':
+            padded_values[i_exp,len(misclasses):] = misclasses[-1]
+        else:
+            padded_values[i_exp,len(misclasses):] = pad_by
         n_exps_by_epoch[:len(misclasses)] += 1
-    assert not np.any(np.isnan(padded_values))
+    if not (pad_by is np.nan):
+        assert not np.any(np.isnan(padded_values))
     return padded_values, n_exps_by_epoch
 
 def compute_confusion_matrix(result_objects):
