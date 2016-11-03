@@ -181,6 +181,10 @@ def layers_to_str(final_layer):
         if hasattr(layer, 'n_stride'):
             filter_str = "    ::{:d} ::1".format(layer.n_stride)
             layer_str += "{:15s}".format(filter_str)
+        if hasattr(layer, 'p'):
+            p_str = "{:.3f}".format(layer.p)
+            layer_str += "{:15s}".format(p_str)
+            
         layer_str = "{:2d}-{:50s}".format(i, layer_str)
         # Possibly add nonlinearities
         if (hasattr(layer, 'nonlinearity') and 
@@ -191,6 +195,16 @@ def layers_to_str(final_layer):
             not hasattr(layer.nonlinearity, 'func_name') and
             hasattr(layer.nonlinearity, 'name')):
             layer_str += " {:15s}".format(layer.nonlinearity.name)
+        elif hasattr(layer, 'nonlinearity') and hasattr(layer.nonlinearity,
+            'func') and hasattr(layer.nonlinearity, 'kwargs'):
+            # ignoring args for now as usually not used
+            if hasattr(layer.nonlinearity.func, 'func_name'):
+                func_str = "{:s} {:s}".format(layer.nonlinearity.func.func_name,
+                    str(layer.nonlinearity.kwargs))
+            elif hasattr(layer.nonlinearity.func, 'name'):
+                func_str = "{:s} {:s}".format(layer.nonlinearity.func.name,
+                    str(layer.nonlinearity.kwargs))
+            layer_str += " {:15s}".format(func_str)
         elif (hasattr(layer, 'merge_function')):
             if hasattr(layer.merge_function, 'func_name'):
                 layer_str += " {:15s}".format(layer.merge_function.func_name)
