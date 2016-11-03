@@ -10,7 +10,105 @@ from pylearn2.utils import serial
 import os.path
 from matplotlib import gridspec
 import seaborn
-from braindecode.analysis.pandas_util import load_results_for_df
+from braindecode.analysis.pandas_util import load_results_for_df,\
+    extract_from_results, get_dfs_for_matched_exps_with_different_vals
+from numpy.random import RandomState
+
+def plot_loss_mean_std_for_exps_with_tube(df):
+    test_losses = extract_from_results(df, lambda r: r.monitor_channels['test_loss'])
+    test_losses, exps_by_epoch = get_padded_chan_vals(test_losses, pad_by=np.nan)
+
+    valid_losses = extract_from_results(df, lambda r: r.monitor_channels['valid_loss'])
+    valid_losses, exps_by_epoch = get_padded_chan_vals(valid_losses, pad_by=np.nan)
+    train_losses = extract_from_results(df, lambda r: r.monitor_channels['train_loss'])
+    train_losses, exps_by_epoch = get_padded_chan_vals(train_losses, pad_by=np.nan)
+    plot_with_tube(range(train_losses.shape[1]),np.nanmean(train_losses, axis=0),
+          np.nanstd(train_losses, axis=0))
+    plot_with_tube(range(valid_losses.shape[1]),np.nanmean(valid_losses, axis=0),
+              np.nanstd(valid_losses, axis=0), color=seaborn.color_palette()[1])
+    plot_with_tube(range(test_losses.shape[1]),np.nanmean(test_losses, axis=0),
+              np.nanstd(test_losses, axis=0), color=seaborn.color_palette()[2])
+    plt.plot(exps_by_epoch / float(exps_by_epoch[0]), color='black', linestyle='dashed')
+    
+
+def plot_misclasses_mean_std_for_exps_with_tube(df):
+    test_misclasses = extract_from_results(df, lambda r: r.monitor_channels['test_misclass'])
+    test_misclasses, exps_by_epoch = get_padded_chan_vals(test_misclasses, pad_by=np.nan)
+
+    valid_misclasses = extract_from_results(df, lambda r: r.monitor_channels['valid_misclass'])
+    valid_misclasses, exps_by_epoch = get_padded_chan_vals(valid_misclasses, pad_by=np.nan)
+    train_misclasses = extract_from_results(df, lambda r: r.monitor_channels['train_misclass'])
+    train_misclasses, exps_by_epoch = get_padded_chan_vals(train_misclasses, pad_by=np.nan)
+    plot_with_tube(range(train_misclasses.shape[1]),np.nanmean(train_misclasses, axis=0),
+          np.nanstd(train_misclasses, axis=0))
+    plot_with_tube(range(valid_misclasses.shape[1]),np.nanmean(valid_misclasses, axis=0),
+              np.nanstd(valid_misclasses, axis=0), color=seaborn.color_palette()[1])
+    plot_with_tube(range(test_misclasses.shape[1]),np.nanmean(test_misclasses, axis=0),
+              np.nanstd(test_misclasses, axis=0), color=seaborn.color_palette()[2])
+    plt.plot(exps_by_epoch / float(exps_by_epoch[0]), color='black', linestyle='dashed')
+    
+
+def plot_all_matched_vals(df):
+    param_keys = set(df.keys()) - set(['test', 'time', 'train',
+        'test_sample', 'train_sample'])
+    for key in param_keys:
+        if len(df[key].unique()) > 1:
+            dfs, unique_vals = get_dfs_for_matched_exps_with_different_vals(
+                df, key)
+            if len(dfs[0]) > 0:
+                plt.figure()
+                plot_per_sub_unique_vals(df, key, matched=True)
+                plt.title(key, fontsize=12)
+    
+def plot_dfs_test(dfs):
+    plot_dfs_vals(dfs, values_fn=lambda df: df.test)
+
+def plot_dfs_vals(dfs, values_fn=lambda df: df.test):
+    '''
+    
+    :param dfs: 
+    :type dfs: Pandas Dataframes
+    :param values_fn: Function to extract values (default extract test)
+    '''
+    if values_fn == 'time':
+        # in mintues (nanoseconds to minutes)
+        values_fn=lambda df: df.time / (1.0e9 * 60.0)
+    rng = RandomState(3483948)
+    for i_df, this_df in enumerate(dfs):
+        vals = values_fn(this_df)
+        plt.plot(i_df + rng.randn(len(vals)) * 0.05, vals, linestyle='None', marker='o',
+                alpha=0.5)
+
+def plot_per_sub_dfs_test(dfs):
+    plot_per_sub_dfs(dfs, values_fn=lambda df: df.test)
+
+def plot_per_sub_dfs(dfs, values_fn):
+    per_sub_dfs = get_per_sub_dfs(dfs)
+    cp = seaborn.color_palette()
+    with seaborn.color_palette(np.repeat(cp,len(dfs),axis=0)):
+        plot_dfs_vals(per_sub_dfs, values_fn=values_fn)
+    subject_legend_mrks = [plt.Line2D((0,1),(0,0),
+                                  color=seaborn.color_palette()[i_color], marker='o', linestyle='Null')
+                       for i_color in (0,1,2)]
+    
+    plt.legend(subject_legend_mrks, ("Subj 1","Subj 2","Subj 3"))
+    
+
+def get_per_sub_dfs(dfs):
+    # shd be (subject1, firstdf), (subject1, seconddf), ... (subject2, firstdf),...
+    return [d[d.subject_id == sid] for sid in (1,2,3) for d in dfs ]
+    
+def plot_per_sub_unique_vals(df, col_name, values_fn=lambda df: df.test,
+        matched=False):
+    assert len(df) > 0
+    if matched:
+        dfs, unique_vals = get_dfs_for_matched_exps_with_different_vals(df,
+            col_name)
+    else:
+        unique_vals = df[col_name].unique()
+        dfs = [df[df[col_name] == val] for val in unique_vals]
+    plot_per_sub_dfs(dfs, values_fn=values_fn)
+    plt.xticks(range(len(dfs) * 3), np.tile(unique_vals,3), rotation=30, ha='right')
 
 def show_misclass_scatter_plot(first_misclasses, second_misclasses, figsize=(4,4)):
     fig = plt.figure(figsize=figsize)
@@ -263,7 +361,7 @@ def plot_head_signals_tight_multiple_signals(all_signals, sensor_names=None,
         
 def plot_sensor_signals(signals, sensor_names=None, figsize=None,
         yticks=None, plot_args=None, sharey=True, highlight_zero_line=True,
-        xvals=None, fontsize=9):
+        xvals=None, fontsize=9, x_ticks_x_offset=-0.035):
     """
     Plot signals of all sensors below each other, one row per sensor.
     
@@ -307,7 +405,7 @@ def plot_sensor_signals(signals, sensor_names=None, figsize=None,
             pass
         else:
             raise ValueError("Unknown yticks value {:s}".format(str(yticks)))
-        ax.text(-0.035, 0.4, sensor_names[sensor_i], fontsize=fontsize,
+        ax.text(x_ticks_x_offset, 0.4, sensor_names[sensor_i], fontsize=fontsize,
             transform=ax.transAxes,
             horizontalalignment='right')
         if (highlight_zero_line):
@@ -318,15 +416,15 @@ def plot_sensor_signals(signals, sensor_names=None, figsize=None,
     figure.subplots_adjust(hspace=0)
     return figure
 
-def plot_misclasses_for_exps(df):
+def plot_misclasses_for_exps(df, **plot_args):
     results = load_results_for_df(df)
     for result in results:
-        plot_misclasses_for_result(result)
+        plot_misclasses_for_result(result, **plot_args)
 
-def plot_losses_for_exps(df):
+def plot_losses_for_exps(df, **plot_args):
     results = load_results_for_df(df)
     for result in results:
-        plot_loss_for_result(result)
+        plot_loss_for_result(result, **plot_args)
 
 def plot_chan_for_all_exps(df, val):
     results = load_results_for_df(df)
@@ -366,13 +464,17 @@ def plot_loss_for_file(result_file_path, start=None, stop=None):
     figure.suptitle("Loss: " + result_file_path)
     return figure
 
-def plot_misclasses_for_result(result):
+def plot_misclasses_for_result(result, linewidth=1, **plot_args):
     set_names = ('train', 'valid', 'test')
     for i_set, setname in enumerate(set_names):
         plt.plot(result.monitor_channels['{:s}_misclass'.format(setname)],
-                linewidth=1, color=seaborn.color_palette()[i_set])
-        plt.plot(result.monitor_channels['before_reset_{:s}_misclass'.format(setname)],
-                linestyle='--', linewidth=1,color=seaborn.color_palette()[i_set])
+                linewidth=linewidth,
+                color=seaborn.color_palette()[i_set], **plot_args)
+        before_key = 'before_reset_{:s}_misclass'.format(setname)
+        if before_key in result.monitor_channels:
+            plt.plot(result.monitor_channels[before_key],
+                linestyle='--', linewidth=linewidth,
+                color=seaborn.color_palette()[i_set], **plot_args)
         plt.legend(plt.gca().get_lines()[0:6:2], set_names, fontsize=12)
         plt.xlabel("Epochs")
         plt.ylabel("Misclass")
@@ -380,13 +482,17 @@ def plot_misclasses_for_result(result):
         plt.ylim(0,1)
 
         
-def plot_loss_for_result(result):
+def plot_loss_for_result(result, linewidth=1, **plot_args):
     set_names = ('train', 'valid', 'test')
     for i_set, setname in enumerate(set_names):
         plt.plot(result.monitor_channels['{:s}_loss'.format(setname)],
-                linewidth=1, color=seaborn.color_palette()[i_set])
-        plt.plot(result.monitor_channels['before_reset_{:s}_loss'.format(setname)],
-                linestyle='--', linewidth=1,color=seaborn.color_palette()[i_set])
+                linewidth=linewidth, color=seaborn.color_palette()[i_set],
+                **plot_args)
+        before_key = 'before_reset_{:s}_loss'.format(setname)
+        if before_key in result.monitor_channels:
+            plt.plot(result.monitor_channels[before_key],
+                linestyle='--', linewidth=linewidth,
+                color=seaborn.color_palette()[i_set], **plot_args)
     plt.legend(plt.gca().get_lines()[0:6:2], set_names, fontsize=12)
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
@@ -567,7 +673,7 @@ def plot_class_probs(probs, value_minmax=None):
     fig.axes[0].get_xaxis().set_ticklabels([])
     fig.axes[0].get_yaxis().set_ticks([])
     fig.axes[0].get_xaxis().set_ticks([0.5, 1.5, 2.5])
-
+                
 def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
     figsize=(8, 4.5), yticks=(), yticklabels=(),
     correctness_matrices=None, colormap=cm.coolwarm,

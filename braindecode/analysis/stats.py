@@ -306,6 +306,9 @@ def median_absolute_deviation(arr, axis=None, keepdims=False):
     return median(np.abs(arr - med), axis=axis, keepdims=keepdims)
 
 def corr(x,y):
+    """
+    Assumes x and y are features x samples
+    """
     # Difference to numpy:
     # Correlation only between terms of x and y
     # not between x and x or y and y

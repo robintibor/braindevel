@@ -105,7 +105,37 @@ def to_tuple_if_list(val):
         return tuple(val)
     else:
         return val
-    
+
+def get_dfs_for_matched_exps_with_different_vals(df, key):
+    """Matched in the sense all other keys/parameters are the same."""
+    param_keys = set(df.keys()) - set(['test', 'time', 'train',
+    'test_sample', 'train_sample'])
+
+
+    possible_vals = np.unique(df[key])
+    other_param_keys = list(param_keys - set([key]))
+    joined_frame = None
+    for i_value in range(0, len(possible_vals)):
+        val = possible_vals[i_value]
+        frame = df[df[key] == val]
+        if joined_frame is None:
+            joined_frame = frame
+        else:
+            joined_frame = joined_frame.merge(frame, on=other_param_keys, suffixes=('','_' + str(val)))
+
+    # just keep the joined frame and rename/overwrite columns of interest
+    # cleaner might be to delete other val columns but not necessary
+    # overwrite train test time correctly
+    # df for first value just copy, since it did not get any suffix
+    dfs = [joined_frame.copy()]
+    for i_value in range(1, len(possible_vals)):
+        val = possible_vals[i_value]
+        this_df = joined_frame.copy()
+        for shared_key in ('train', 'test', 'time'):
+            this_df[shared_key] = this_df[shared_key + '_' + str(val)]
+        dfs.append(this_df)
+    return dfs, possible_vals
+
 def pairwise_compare_frame(df, with_p_vals=False):
     table_vals = []
     table_indices = []
@@ -193,7 +223,7 @@ def dataset_averaged_frame(data_frame, ignorable_keys=(),
         filename_key=None):
     ignorable_keys = ('test',
         'dataset_filename', 'test_filename', 'time', 'train', 'filename',
-        'test_sample', 'train_sample') + ignorable_keys
+        'test_sample', 'train_sample', 'valid') + ignorable_keys
     if filename_key is not None:
         ignorable_keys += (filename_key,)
     
@@ -210,7 +240,15 @@ def dataset_averaged_frame(data_frame, ignorable_keys=(),
             if duplicates.size > 0:
                 log.warn("Duplicate filenames:\n{:s}".format(str(duplicates)))
                 log.warn("From group {:s}".format(str(name)))
-        avg_frame = grouped.agg(OrderedDict([('time', [len, tmean, tstd]), 
+        if  'valid' in data_frame.keys():
+            avg_frame = grouped.agg(OrderedDict([('time', [len, tmean, tstd]), 
+              ('test', [np.mean, np.std]),
+               ('valid', [np.mean, np.std]),
+               ('train', [np.mean, np.std]),
+               ]))
+           
+        else: 
+            avg_frame = grouped.agg(OrderedDict([('time', [len, tmean, tstd]), 
               ('test', [np.mean, np.std]),
                ('train', [np.mean, np.std]),]))
         # cast from time to int for len
@@ -318,3 +356,47 @@ def add_valid_accuracy_at_stop(df):
     misclasses = np.array([get_valid_misclass_at_stop(r) for r in results])
     df['valid_at_stop'] = (1 - misclasses) * 100
     return df
+
+def extract_valid(df):
+    results = load_results_for_df(df)
+    return np.array([100 * (1 - r.monitor_channels['valid_misclass'][-1]) for r in results])
+
+def extract_train_valid_test_mean(df):
+    results = load_results_for_df(df)
+    return np.array([
+            100 * ( 1 - np.mean((r.monitor_channels['train_misclass'][-1],
+                     r.monitor_channels['valid_misclass'][-1],
+                     r.monitor_channels['test_misclass'][-1])))
+                     for r in results])
+def extract_train_valid_mean(df):
+    results = load_results_for_df(df)
+    return np.array([
+            100 * ( 1 - np.mean((r.monitor_channels['train_misclass'][-1],
+                     r.monitor_channels['valid_misclass'][-1])))
+                     for r in results])
+
+def extract_from_results(df, extract_fn):
+    results = load_results_for_df(df)
+    return [extract_fn(r) for r in results]
+    
+def extract_n_epochs_before_early_stop(df):
+    results = load_results_for_df(df)
+    n_epochs = [len(r.monitor_channels['before_reset_test_misclass']) for r in results]
+    return n_epochs
+
+def extract_last_best_epochs(df):
+    results = load_results_for_df(df)
+    return [extract_last_best_epoch(r) for r in results]
+
+def extract_last_best_epoch(result):
+    valid_misclass_til_early_stop = result.monitor_channels['before_reset_valid_misclass']
+    n_epochs = len(valid_misclass_til_early_stop)
+    # in case of multiple occurences get last one
+    best_epoch_from_behind = np.argmin(valid_misclass_til_early_stop[::-1])
+    best_epoch = n_epochs - best_epoch_from_behind
+    return best_epoch
+
+def extract_n_epochs(df):
+    results = load_results_for_df(df)
+    n_epochs = [len(r.monitor_channels['test_misclass']) for r in results]
+    return n_epochs
