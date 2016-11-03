@@ -10,15 +10,14 @@ def weighted_binary_cross_entropy(preds, targets, imbalance_factor,
     factor_no_target = (imbalance_factor + 1) / (2.0 *  imbalance_factor)
     factor_target = (imbalance_factor + 1) / 2.0
     loss = binary_func(preds, targets)
-    loss = factor_no_target * loss + loss * targets * factor_target
+    loss = ((factor_no_target * loss * (1-targets)) + 
+        (loss * targets * factor_target))
     return loss
 
 def weighted_thresholded_binary_cross_entropy(preds, targets, imbalance_factor,
         lower_threshold):
-    factor_no_target = (imbalance_factor + 1) / (2.0 *  imbalance_factor)
-    factor_target = (imbalance_factor + 1) / 2.0
-    loss = lasagne.objectives.binary_crossentropy(preds, targets)
-    loss = factor_no_target * loss + loss * targets * factor_target
+    loss = weighted_binary_cross_entropy(preds, targets,
+        imbalance_factor=imbalance_factor,)
     # preds that are below 0.2 where there is no target, are ignored
     loss_mask = T.or_(T.gt(preds,lower_threshold), T.eq(targets, 1))
     loss = loss * loss_mask
@@ -29,10 +28,10 @@ def safe_categorical_crossentropy(predictions, targets, eps=1e-8):
         T.le(predictions, eps) * predictions + eps)
     return categorical_crossentropy(predictions, targets)
 def safe_binary_crossentropy(predictions, targets, eps=1e-4):
-    predictions = (T.gt(predictions, eps) * predictions + 
-        T.le(predictions, eps) * predictions + eps)
-    predictions = (T.lt(predictions, 1-eps) * predictions + 
-        T.ge(predictions, 1 - eps) * predictions - eps)
+    # add eps for predictions that are smaller than eps
+    predictions = predictions + T.le(predictions, eps) * eps
+    # remove eps for predictions that are larger than 1 - eps
+    predictions = predictions - T.ge(predictions, 1 - eps) * eps
     return binary_crossentropy(predictions, targets)
     
 def sum_of_losses(preds, targets, final_layer, loss_expressions):
