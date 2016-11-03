@@ -1,4 +1,5 @@
 import os
+import errno
 
 class FuncAndArgs(object):
     """Container for a function and its arguments. 
@@ -104,3 +105,13 @@ def to_tuple(sequence_or_element, length):
         return tuple(sequence_or_element)
     else:
         return (sequence_or_element,) * length
+    
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
