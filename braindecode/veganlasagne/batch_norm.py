@@ -115,6 +115,13 @@ class BatchNormLayer(Layer):
         super(BatchNormLayer, self).__init__(incoming, **kwargs)
         self.nonlinearity = nonlinearity
         self.batch_norm_use_averages = batch_norm_use_averages
+        # I (robintibor@gmail.com) 
+        # think more logical this way, so batch_norm not using averages
+        # always only applies to training time/when determinstic not set...
+        # now when deterministic==True, averages are always used
+        if self.batch_norm_use_averages == False:
+            self.batch_norm_use_averages = None
+        
         if axes == 'auto':
             # default: normalize over all but the second axis
             axes = (0,) + tuple(range(2, len(self.input_shape)))
