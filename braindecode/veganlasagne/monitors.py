@@ -83,9 +83,9 @@ class LossMonitor(Monitor):
             num_trials += batch_size
             total_loss += (batch_loss * batch_size)
             
-        mean_loss = total_loss / num_trials
+        mean_loss = total_loss / float(num_trials)
         monitor_key = "{:s}_loss".format(setname)
-        monitor_chans[monitor_key].append(float(mean_loss))
+        monitor_chans[monitor_key].append(mean_loss)
         
 class MisclassMonitor(Monitor):
     def __init__(self, chan_name='misclass'):
