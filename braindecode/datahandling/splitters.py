@@ -230,8 +230,9 @@ class PreprocessedSplitter(object):
             this_datasets['valid'])
         test_set = this_datasets['test']
         #preprocessing of train only so that later split is correct...
-        log.info("Preprocessing original train to make sure split is correct")
-        self.preprocessor.apply(this_datasets['train'], can_fit=False)
+        if self.preprocessor is not None:
+            log.info("Preprocessing original train to make sure split is correct")
+            self.preprocessor.apply(this_datasets['train'], can_fit=False)
         n_train_set_trials = len(this_datasets['train'].y)
         del this_datasets['train']
         if self.preprocessor is not None:
