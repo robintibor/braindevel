@@ -7,7 +7,6 @@ import numpy as np
 import re
 from braindecode.util import add_message_to_exception, merge_dicts
 import logging
-import pprint
 log = logging.getLogger(__name__)
 
 def transform_vals_to_string_constructor(loader, node):

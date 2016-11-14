@@ -67,6 +67,22 @@ def get_receptive_field_size(layer):
     receptive_field_size:
         How many samples one output has "seen"/is influenced by.
     """
+    _, ends = get_receptive_field_start_ends(layer)
+    return ends[0] + 1
+
+def get_receptive_field_start_ends(layer):
+    """First and last samples of the receptive field of a single output of the given layer.
+    
+    Parameters
+    ----------
+    layer: Lasagne layer
+        Layer to compute receptive field size of the outputs from.
+        
+    Returns
+    -------
+    receptive_field_size:
+        How many samples one output has "seen"/is influenced by.
+    """
 
     all_layers = lasagne.layers.get_all_layers(layer)
 
@@ -74,17 +90,30 @@ def get_receptive_field_size(layer):
 
 
     receptive_field_end = np.arange(in_layer.shape[2])
+    receptive_field_start = np.arange(in_layer.shape[2])
     for layer in all_layers:
+        filter_length = None
         if hasattr(layer, 'filter_size'):
-            receptive_field_end = receptive_field_end[layer.filter_size[0]-1:]
+            filter_length = layer.filter_size[0]
         if hasattr(layer, 'pool_size'):
-            receptive_field_end = receptive_field_end[layer.pool_size[0]-1:]
+            filter_length = layer.pool_size[0]
+        if (filter_length is not None) and (filter_length > 1):
+            receptive_field_end = receptive_field_end[filter_length-1:]
+            receptive_field_start = receptive_field_start[:-(filter_length-1)]
+        stride = None
         if hasattr(layer,'stride'):
-            receptive_field_end = receptive_field_end[::layer.stride[0]]
+            stride = layer.stride[0]
         if hasattr(layer,'n_stride'):
-            receptive_field_end = receptive_field_end[::layer.n_stride]
+            stride = layer.n_stride
+        if (stride is not None) and (stride > 1):
+            receptive_field_end = receptive_field_end[::stride]
+            receptive_field_start = receptive_field_start[::stride]
+            # can happen that there is a partial pooling /conv region
+            # assume this is removed (maybe not correct for stridereshape?)
+            receptive_field_start = receptive_field_start[:len(receptive_field_end)]
+        assert len(receptive_field_start) == len(receptive_field_end)
 
-    return receptive_field_end[0] + 1
+    return receptive_field_start, receptive_field_end
 
 def get_trial_acts(all_outs_per_batch, batch_sizes, n_trials, n_inputs_per_trial,
                    n_trial_len, n_sample_preds):
@@ -220,3 +249,25 @@ def layers_to_str(final_layer):
             cur_shape = layer.output_shape
         all_layers_str += layer_str + "\n"
     return all_layers_str
+
+def recompute_bnorm_layer_statistics(final_layer, dataset, iterator):
+    all_layers = lasagne.layers.get_all_layers(final_layer)
+    bnorm_layers = [l for l in all_layers
+        if l.__class__.__name__ == 'BatchNormLayer']
+    for bnorm_layer in bnorm_layers:
+        log.info("Compiling bnorm layer...")
+        this_layer_pred_fn = create_pred_fn(bnorm_layer)
+        log.info("Predictions for bnorm layer...")
+        outs = [this_layer_pred_fn(b[0]) for b in iterator.get_batches(dataset,
+            shuffle=False)]
+        outs = np.concatenate(outs)
+        outs_before_transform = ((outs -
+            bnorm_layer.beta.get_value()[None,:,None,None]) /
+            bnorm_layer.gamma.get_value()[None,:,None,None])
+        outs_before_transform = ((outs_before_transform /
+            bnorm_layer.inv_std.get_value()[None,:,None,None]) +
+            bnorm_layer.mean.get_value()[None,:,None,None])
+        mean_this_layer = np.mean(outs_before_transform, axis=(0,2,3))
+        stds_this_layer = np.std(outs_before_transform, axis=(0,2,3))
+        bnorm_layer.mean.set_value(mean_this_layer)
+        bnorm_layer.inv_std.set_value(1.0 / stds_this_layer)

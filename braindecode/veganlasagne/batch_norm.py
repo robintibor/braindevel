@@ -117,7 +117,7 @@ class BatchNormLayer(Layer):
         self.batch_norm_use_averages = batch_norm_use_averages
         # I (robintibor@gmail.com) 
         # think more logical this way, so batch_norm not using averages
-        # always only applies to training time/when determinstic not set...
+        # always only applies to training time/when deterministic not set...
         # now when deterministic==True, averages are always used
         if self.batch_norm_use_averages == False:
             self.batch_norm_use_averages = None

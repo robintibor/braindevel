@@ -173,6 +173,7 @@ def create_pred_loss_train_fn(model, loss_expression, updates_expression):
     Create function that trains, outputs loss and prediction,
     and for outputted loss, does not mean across examples/rows.
     Good for debugging.
+    Also returns update params now
     '''
     # maybe use in future? maybe also replace in monitor manager then?
     target_sym = T.ivector()
@@ -189,7 +190,7 @@ def create_pred_loss_train_fn(model, loss_expression, updates_expression):
     updates = updates_expression(loss.mean(), trainable_params)
     pred_loss_train_fn = theano.function([input_sym, target_sym], [prediction,
         loss], updates=updates)
-    return pred_loss_train_fn
+    return pred_loss_train_fn, updates.keys()
 
 def transform_to_normal_net(final_layer):
     """ Transforms cnt/parallel prediction net to a normal net.
@@ -341,94 +342,43 @@ class Conv2DAllColsLayer(Conv2DLayer):
              W=W, b=b, nonlinearity=nonlinearity,
              convolution=convolution, **kwargs)
 
-def reshape_for_stride_theano(topo_var, topo_shape, n_stride, 
+def reshape_for_stride_only_reshape(topo_var, topo_shape, n_stride, 
         invalid_fill_value=0):
     assert topo_shape[3] == 1, ("Not tested for nonempty third dim, "
         "might work though")
-    # Create a different
-    # out tensor for each offset from 0 to stride (exclusive),
-    # e.g. 0,1,2 for stride 3
-    # Then concatenate them together again.
-    # From 4 different variants (this, using scan, using output preallocation 
-    # + set_subtensor, using scan + output preallocation + set_subtensor)
-    # this was the fastest, but only by a few percent
-    
-    n_third_dim = int(np.ceil(topo_shape[2] / float(n_stride)))
-    reshaped_out = []
-    if topo_shape[0] is not None:
-        zero_dim_len = topo_shape[0]
+    if topo_shape[2] % n_stride != 0:
+        n_vals_to_add = (n_stride - (topo_shape[2] % n_stride))
+        # this whole function was tested in numpy :)))
+        # right combination of transpose and reshape can give correct result...
+        fill_vals = T.alloc(invalid_fill_value, topo_var.shape[0], 
+                                      topo_shape[1], 
+                                      n_vals_to_add, 
+                                      topo_shape[3])
+        fill_vals = T.cast(fill_vals, theano.config.floatX)
+        padded_topo = T.concatenate((topo_var, fill_vals), axis=2)
+        padded_shape = list(topo_shape)
+        padded_shape[2] += n_vals_to_add
     else:
-        zero_dim_len = topo_var.shape[0]
-    reshape_shape = (zero_dim_len, topo_shape[1], n_third_dim, topo_shape[3])
-    for i_stride in xrange(n_stride):
-        reshaped_this = T.ones(reshape_shape, dtype=np.float32) * invalid_fill_value
-        i_length = int(np.ceil((topo_shape[2] - i_stride) / float(n_stride)))
-        reshaped_this = T.set_subtensor(reshaped_this[:,:,:i_length], 
-            topo_var[:,:,i_stride::n_stride])
-        reshaped_out.append(reshaped_this)
-    reshaped_out = T.concatenate(reshaped_out)
-    return reshaped_out
+        padded_topo = topo_var
+        padded_shape = topo_shape
+    assert padded_shape[2] % n_stride == 0
 
-def reshape_for_stride_theano_scan_subtensor(topo_var, topo_shape, n_stride, 
-        invalid_fill_value=0):
-    assert topo_shape[3] == 1
-    out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
-    n_filt = topo_shape[1]
-    def fill_with_stride_samples(i_stride, topo_out, topo_var, topo_length):
-        i_length = T.cast(T.ceil((topo_shape[2] - i_stride) / float(n_stride)), dtype="int32")
-        i_start = i_stride*topo_var.shape[0]
-        i_end = i_start + topo_var.shape[0]
-        topo_out = T.set_subtensor(topo_out[i_start:i_end,:,:i_length], 
-            topo_var[:,:,i_stride::n_stride]) 
-        return topo_out
-    invalid_fill_value = np.array(invalid_fill_value).astype(theano.config.floatX)
-    output_var = T.alloc(invalid_fill_value, topo_var.shape[0] * n_stride,
-        topo_shape[1], out_length, topo_shape[3])
-    output_var = T.cast(output_var, dtype=theano.config.floatX)
-    reshaped_out, _ = theano.scan(fn=fill_with_stride_samples, sequences=[theano.tensor.arange(n_stride)],
-                                 non_sequences=[topo_var, topo_shape[2]],
-                                 outputs_info=output_var)
-    reshaped_out = reshaped_out[-1]
-    return reshaped_out
-
-def reshape_for_stride_theano_subtensor(topo_var, topo_shape, n_stride, 
-        invalid_fill_value=0):
-    assert topo_shape[3] == 1
-    out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
-    n_filt = topo_shape[1]
-    
-    output_var = T.alloc(invalid_fill_value, topo_var.shape[0] * n_stride,
-        topo_shape[1], out_length, topo_shape[3])
-    for i_stride in xrange(n_stride):
-        i_length = int(np.ceil((topo_shape[2] - i_stride) / float(n_stride)))
-        i_start = i_stride * topo_var.shape[0]
-        i_end = i_start + topo_var.shape[0]
-        output_var = T.set_subtensor(output_var[i_start:i_end,:,:i_length], 
-            topo_var[:,:,i_stride::n_stride])
-    return output_var
-
-def reshape_for_stride_theano_scan(topo_var, topo_shape, n_stride, 
-        invalid_fill_value=0):
-    assert topo_shape[3] == 1
-    out_length = int(np.ceil(topo_shape[2] / float(n_stride)))
-    n_filt = topo_shape[1]
-    reshape_shape = (topo_var.shape[0], n_filt, out_length, 1)
-    def fill_with_stride_samples(i_stride, topo_var, topo_length):
-        reshaped_this = T.ones(reshape_shape, dtype=np.float32) * invalid_fill_value
-
-        i_length = T.cast(T.ceil((topo_shape[2] - i_stride) / float(n_stride)), dtype="int32")
-        i_start = i_stride * topo_var.shape[0]
-        i_end = i_start + topo_var.shape[0]
-        reshaped_this = T.set_subtensor(reshaped_this[:,:,:i_length], 
-            topo_var[:,:,i_stride::n_stride])
-        return reshaped_this
-    reshaped_out, _ = theano.scan(fn=fill_with_stride_samples, sequences=[theano.tensor.arange(n_stride)],
-                                 non_sequences=[topo_var, topo_shape[2]],
-                                 outputs_info=None)
-    reshaped_out = reshaped_out.reshape((reshaped_out.shape[0] * reshaped_out.shape[1], 
-                                         reshaped_out.shape[2], reshaped_out.shape[3],
-                                       reshaped_out.shape[4]))
-    return reshaped_out
+    reshaped = padded_topo.reshape((topo_var.shape[0], padded_shape[1],
+                       padded_shape[2] // n_stride, n_stride, 
+                       padded_shape[3]))
+    transposed = reshaped.transpose(0,3,1,2,4)
+    # swapaxes only needed cause we want to have the order:
+    # first stride offset, then example index
+    # i.e. stride offset 0 all examples, stride offset 1 all examples etc.
+    # otherwise would get example 0 all offsets, example 1 all offsets, etc.
+    # so would just have to adjust final reshape function accordingly
+    #
+    out = transposed.swapaxes(0,1).reshape(
+        (topo_var.shape[0] * n_stride,
+         padded_shape[1],
+         padded_shape[2] // n_stride,
+        padded_shape[3]))
+    return out
 
 def get_output_shape_after_stride(input_shape, n_stride):
     time_length_after = int(np.ceil(input_shape[2] / float(n_stride)))
@@ -442,7 +392,7 @@ def get_output_shape_after_stride(input_shape, n_stride):
 
 class StrideReshapeLayer(lasagne.layers.Layer):
     def __init__(self, incoming, n_stride, invalid_fill_value=0,
-            stride_func=reshape_for_stride_theano, **kwargs):
+            stride_func=reshape_for_stride_only_reshape, **kwargs):
         self.n_stride = n_stride
         self.invalid_fill_value = invalid_fill_value
         self.stride_func = stride_func

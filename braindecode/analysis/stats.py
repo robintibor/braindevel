@@ -360,7 +360,6 @@ def running_mean(arr, window_len, axis=0):
         axis=axis)
     earlier_sums = np.take(cumsum, xrange(0, arr_padded.shape[axis] - window_len), 
         axis=axis)
-    
 
     moving_average = (later_sums - earlier_sums) / float(window_len)
     return moving_average

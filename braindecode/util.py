@@ -100,11 +100,15 @@ def touch_file(path):
         os.utime(path, None)
 
 
-def to_tuple(sequence_or_element, length):
+def to_tuple(sequence_or_element, length=None):
     if hasattr(sequence_or_element, '__len__'):
+        assert length is None
         return tuple(sequence_or_element)
     else:
-        return (sequence_or_element,) * length
+        if length is None:
+            return (sequence_or_element, )
+        else:
+            return (sequence_or_element,) * length
     
 
 def mkdir_p(path):

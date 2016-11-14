@@ -223,11 +223,12 @@ def dataset_averaged_frame(data_frame, ignorable_keys=(),
         filename_key=None):
     ignorable_keys = ('test',
         'dataset_filename', 'test_filename', 'time', 'train', 'filename',
-        'test_sample', 'train_sample', 'valid') + ignorable_keys
+        'test_sample', 'train_sample', 'valid', 'valtest') + ignorable_keys
     if filename_key is not None:
         ignorable_keys += (filename_key,)
-    
+    print("hi")
     param_keys = [k for k in data_frame.keys() if k not in ignorable_keys]
+    print "param keys", param_keys
     # weird this len(parma_keys)>0 shd always be rue unsure of this
     if len(param_keys) > 0:
         grouped = data_frame.groupby(param_keys)
@@ -307,12 +308,16 @@ def remove_columns_with_same_value(df, exclude=('train',)):
     cols_multiple_vals = []
     for col in df.columns:
         try:
-            has_multiple_vals = len(set(df[col])) > 1
+            values_set = set(df[col])
+            has_multiple_vals = len(values_set) > 1
+            if has_multiple_vals:
+                all_nans = np.all(np.isnan(values_set))
         except TypeError:
+            all_nans = False
             # transform to string in case there are lists
             # since lists not hashable to set
             has_multiple_vals = len(set([str(val) for val in df[col]])) > 1
-        cols_multiple_vals.append(has_multiple_vals)
+        cols_multiple_vals.append((has_multiple_vals and (not all_nans)))
     cols_multiple_vals = np.array(cols_multiple_vals)
     excluded_cols = np.array([c in exclude for c in df.columns])
     df = df.iloc[:,(cols_multiple_vals | excluded_cols)]

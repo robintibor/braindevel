@@ -93,6 +93,17 @@ def plot_per_sub_dfs(dfs, values_fn):
     
     plt.legend(subject_legend_mrks, ("Subj 1","Subj 2","Subj 3"))
     
+def plot_per_sub_val_range(df, col_name, val_fn, **fig_kw):
+    mask = ~np.isnan(df[col_name])
+    reduced_df = df[mask]
+    _, axes = plt.subplots(1,3,sharey=True, sharex=True, **fig_kw)
+    for subject_id in (1,2,3):
+        this_df = reduced_df[reduced_df.subject_id == subject_id].sort_values(
+            by=col_name)
+        vals = val_fn(this_df)
+        param_vals = this_df[col_name]
+        axes[subject_id-1].plot(param_vals, vals, marker='o', linestyle='None',
+                                color=seaborn.color_palette()[subject_id-1])
 
 def get_per_sub_dfs(dfs):
     # shd be (subject1, firstdf), (subject1, seconddf), ... (subject2, firstdf),...
@@ -475,7 +486,9 @@ def plot_misclasses_for_result(result, linewidth=1, **plot_args):
             plt.plot(result.monitor_channels[before_key],
                 linestyle='--', linewidth=linewidth,
                 color=seaborn.color_palette()[i_set], **plot_args)
-        plt.legend(plt.gca().get_lines()[0:6:2], set_names, fontsize=12)
+            plt.legend(plt.gca().get_lines()[0:6:2], set_names, fontsize=12)
+        else:
+            plt.legend(plt.gca().get_lines()[0:3], set_names, fontsize=12)
         plt.xlabel("Epochs")
         plt.ylabel("Misclass")
         plt.title("Misclass")

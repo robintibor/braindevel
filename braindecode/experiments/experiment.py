@@ -206,6 +206,7 @@ class Experiment(object):
         log.info("...Done")
         self.create_monitors(datasets)
         self.run_until_stop(datasets, remember_best=True)
+        return datasets
 
     def run_until_stop(self, datasets, remember_best):
         self.monitor_epoch(datasets)
@@ -245,7 +246,7 @@ class Experiment(object):
             MaxEpochs(num_epochs=self.remember_extension.best_epoch * 2),
             ChanBelow(chan_name='valid_loss', target_value=loss_to_reach)])
         log.info("Train loss to reach {:.5f}".format(loss_to_reach))
-    
+
     def run_until_second_stop(self):
         datasets = self.dataset_provider.get_train_merged_valid_test(
             self.dataset)

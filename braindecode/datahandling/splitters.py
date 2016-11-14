@@ -8,7 +8,6 @@ from copy import deepcopy
 import logging
 log = logging.getLogger(__name__)
 
-
 class TrainValidTestSplitter(object):
     __metaclass__ = ABCMeta
     @abstractmethod
@@ -185,7 +184,7 @@ def split_set_by_indices(dataset, train_fold, valid_fold, test_fold):
         datasets = OrderedDict([('train', train_set), ('valid', valid_set), 
                 ('test', test_set)])
         return datasets
-    
+
 def concatenate_sets(first_set, second_set):
     """Concatenates topo views and y(targets)
     """
