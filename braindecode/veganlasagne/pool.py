@@ -38,22 +38,29 @@ class GlobalPoolLayerAxisWise(Layer):
     """
 
     def __init__(self, incoming, pool_function=T.mean, 
-        axis=2, **kwargs):
+        axis=2, keepdims=False, **kwargs):
         super(GlobalPoolLayerAxisWise, self).__init__(incoming, **kwargs)
         self.pool_function = pool_function
         self.axis = axis
+        self.keepdims=keepdims
 
     def get_output_shape_for(self, input_shape):
         # remove axis that was pooled over
         new_shape = copy(list(input_shape))
         
         if isinstance(self.axis, collections.Iterable):
-            new_shape = np.delete(new_shape, self.axis)
-            #for ax in self.axis:
-            #    new_shape[ax] = 1
+            if self.keepdims == False:
+                new_shape = np.delete(new_shape, self.axis)
+            else:
+                for ax in self.axis:
+                    new_shape[ax] = 1
         else: # should be just an int
-            new_shape.pop(self.axis)
+            if self.keepdims == False:
+                new_shape.pop(self.axis)
+            else:
+                new_shape[self.axis] = 1
         return tuple(new_shape)
 
     def get_output_for(self, input, **kwargs):
-        return self.pool_function(input, axis=self.axis)
+        return self.pool_function(input, axis=self.axis,
+            keepdims=self.keepdims)

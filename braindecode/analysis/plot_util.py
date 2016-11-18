@@ -11,7 +11,8 @@ import os.path
 from matplotlib import gridspec
 import seaborn
 from braindecode.analysis.pandas_util import load_results_for_df,\
-    extract_from_results, get_dfs_for_matched_exps_with_different_vals
+    extract_from_results, get_dfs_for_matched_exps_with_different_vals,\
+    get_dfs_per_unique_val
 from numpy.random import RandomState
 
 def plot_loss_mean_std_for_exps_with_tube(df):
@@ -60,6 +61,22 @@ def plot_all_matched_vals(df):
                 plot_per_sub_unique_vals(df, key, matched=True)
                 plt.title(key, fontsize=12)
     
+def plot_pairwise_comparison_unmatched(df, values_fn=lambda df: df.test):
+    param_keys = set(df.keys()) - set(['test', 'time', 'train',
+        'test_sample', 'train_sample', 'valid', 'valtest', 'subject_id',
+        'non_seizure_example_stride'])
+    for key in param_keys:
+        unique_vals = df[key].unique()
+        if len(unique_vals) > 1:
+            if len(unique_vals) > 5:
+                plot_per_sub_val_range(df, key, val_fn=values_fn)
+                plt.gcf().suptitle(key, fontsize=12)
+            else:
+                plt.figure()
+                plot_per_sub_unique_vals(df, key, values_fn=values_fn, matched=False)
+                plt.title(key)
+            
+    
 def plot_dfs_test(dfs):
     plot_dfs_vals(dfs, values_fn=lambda df: df.test)
 
@@ -94,7 +111,10 @@ def plot_per_sub_dfs(dfs, values_fn):
     plt.legend(subject_legend_mrks, ("Subj 1","Subj 2","Subj 3"))
     
 def plot_per_sub_val_range(df, col_name, val_fn, **fig_kw):
-    mask = ~np.isnan(df[col_name])
+    if df[col_name].dtype == np.dtype('O') and np.any(df[col_name] == 'None'):
+        mask = np.logical_not(df[col_name].str.contains('None') == True)
+    else:
+        mask = ~np.isnan(df[col_name])
     reduced_df = df[mask]
     _, axes = plt.subplots(1,3,sharey=True, sharex=True, **fig_kw)
     for subject_id in (1,2,3):

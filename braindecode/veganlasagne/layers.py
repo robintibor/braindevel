@@ -137,6 +137,45 @@ def create_pred_loss_fn(model, loss_expression):
     loss_fn = theano.function([inputs, targets], [output, loss])
     return loss_fn
 
+def create_grad_in_fn(model, loss_expression):
+    '''
+    Create function that returns gradient on inputs.
+    :param model:
+    :param loss_expression:
+    '''
+    inputs = create_suitable_theano_input_var(model)
+    targets = create_suitable_theano_target_var(model)
+    output = lasagne.layers.get_output(model, deterministic=True,
+        inputs=inputs, input_var=inputs)
+    try:
+        loss = loss_expression(output, targets)
+    except TypeError:
+        loss = loss_expression(output, targets, model)
+    grads_inputs = T.grad(T.sum(loss), inputs)
+            
+    grads_fn = theano.function([inputs, targets], grads_inputs)
+    return grads_fn
+
+def create_grad_params_fn(model, loss_expression):
+    '''
+    Create function that returns gradient on parameters.
+    :param model:
+    :param loss_expression:
+    '''
+    inputs = create_suitable_theano_input_var(model)
+    targets = create_suitable_theano_target_var(model)
+    output = lasagne.layers.get_output(model, deterministic=True,
+        inputs=inputs, input_var=inputs)
+    try:
+        loss = loss_expression(output, targets)
+    except TypeError:
+        loss = loss_expression(output, targets, model)
+    trainable_params = lasagne.layers.get_all_params(model, trainable=True)
+    grads_params = T.grad(T.sum(loss), trainable_params)
+            
+    grads_fn = theano.function([inputs, targets], grads_params)
+    return grads_fn
+
 def create_pred_loss_fake_train_fn(model, loss_expression, updates_expression):
     '''
     Create function that trains, outputs loss and prediction,

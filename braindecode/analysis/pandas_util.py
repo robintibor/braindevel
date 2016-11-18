@@ -106,6 +106,17 @@ def to_tuple_if_list(val):
     else:
         return val
 
+def get_dfs_per_unique_val(df, key):
+    """Matched in the sense all other keys/parameters are the same."""
+    possible_vals = np.unique(df[key])
+    all_dfs = []
+    for i_value in range(0, len(possible_vals)):
+        val = possible_vals[i_value]
+        frame = df[df[key] == val]
+        all_dfs.append(frame)
+    return all_dfs, possible_vals
+
+
 def get_dfs_for_matched_exps_with_different_vals(df, key):
     """Matched in the sense all other keys/parameters are the same."""
     param_keys = set(df.keys()) - set(['test', 'time', 'train',

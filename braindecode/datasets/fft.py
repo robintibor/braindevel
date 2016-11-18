@@ -119,10 +119,11 @@ class FFTCleanSignalMatrix(CleanSignalMatrix):
             freq_bin_start:freq_bin_stop]
 
 def compute_power_and_phase(trials, window_length, window_stride,
-        divide_win_length, square_amplitude, phases_diff):
+        divide_win_length, square_amplitude, phases_diff, window_fn=blackmanharris):
     """Expects trials #trialsx#channelsx#samples order"""
     fft_trials = compute_short_time_fourier_transform(trials, 
-        window_length=window_length, window_stride=window_stride)
+        window_length=window_length, window_stride=window_stride,
+        window_fn=window_fn)
     # now #trialsx#channelsx#samplesx#freqs
     # Todelay: Not sure if division by window length is necessary/correct?
     power_spectra = np.abs(fft_trials)
@@ -143,10 +144,11 @@ def compute_power_and_phase(trials, window_length, window_stride,
     return power_and_phases
 
 def compute_power_spectra(trials, window_length, window_stride, 
-        divide_win_length, square_amplitude):
+        divide_win_length, square_amplitude, window_fn=blackmanharris):
     """Expects #trialsx#channelsx#samples order"""
     fft_trials = compute_short_time_fourier_transform(trials, 
-        window_length=window_length, window_stride=window_stride)
+        window_length=window_length, window_stride=window_stride,
+        window_fn=window_fn)
     # Todelay: Not sure if division by window length is necessary/correct?
     # Hopefully does not matter since standardization will divide by variance
     # anyways
@@ -158,13 +160,14 @@ def compute_power_spectra(trials, window_length, window_stride,
     return power_spectra
     
 
-def compute_short_time_fourier_transform(trials, window_length, window_stride):
+def compute_short_time_fourier_transform(trials, window_length, window_stride,
+        window_fn=blackmanharris):
     """Expects trials #trialsx#channelsx#samples order"""
     start_times = np.arange(0, trials.shape[2] - window_length+1, window_stride)
     freq_bins = int(np.floor(window_length / 2) + 1)
     fft_trials = np.empty((trials.shape[0], trials.shape[1], len(start_times), freq_bins), dtype=complex)
     for time_bin, start_time in enumerate(start_times):        
-        w = blackmanharris(window_length)
+        w = window_fn(window_length)
         w=w/np.linalg.norm(w)
         trials_for_fft = trials[:,:,start_time:start_time+window_length] * w
         fft_trial = np.fft.rfft(trials_for_fft, axis=2)

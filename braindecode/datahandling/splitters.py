@@ -32,7 +32,7 @@ class SeveralSetsSplitter(TrainValidTestSplitter):
 
     def split_into_train_valid_test(self, sets_container):
         # Otherwise rewrite code should not be too hard..
-        assert len(sets_container.sets) > 1, "Expect atlest 2 sets here..."
+        assert len(sets_container.sets) > 1, "Expect atleast 2 sets here..."
         # merge all sets before last into one...
         # left out, final set, is test set
         # if we have more than 2 sets use secondlastset as valid set
