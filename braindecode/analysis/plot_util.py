@@ -30,7 +30,6 @@ def plot_loss_mean_std_for_exps_with_tube(df):
     plot_with_tube(range(test_losses.shape[1]),np.nanmean(test_losses, axis=0),
               np.nanstd(test_losses, axis=0), color=seaborn.color_palette()[2])
     plt.plot(exps_by_epoch / float(exps_by_epoch[0]), color='black', linestyle='dashed')
-    
 
 def plot_misclasses_mean_std_for_exps_with_tube(df):
     test_misclasses = extract_from_results(df, lambda r: r.monitor_channels['test_misclass'])
@@ -65,12 +64,21 @@ def plot_pairwise_comparison_unmatched(df, values_fn=lambda df: df.test):
     param_keys = set(df.keys()) - set(['test', 'time', 'train',
         'test_sample', 'train_sample', 'valid', 'valtest', 'subject_id',
         'non_seizure_example_stride'])
+    param_keys = sorted(param_keys)
     for key in param_keys:
         unique_vals = df[key].unique()
+        # Remove none stuff
+        unique_vals = set(unique_vals) - set(['None'])
         if len(unique_vals) > 1:
             if len(unique_vals) > 5:
-                plot_per_sub_val_range(df, key, val_fn=values_fn)
-                plt.gcf().suptitle(key, fontsize=12)
+                try:
+                    plot_per_sub_val_range(df, key, val_fn=values_fn)
+                    plt.gcf().suptitle(key, fontsize=12)
+                except TypeError:
+                    plt.figure()
+                    plot_per_sub_unique_vals(df, key,
+                        values_fn=values_fn, matched=False)
+                    plt.title(key)
             else:
                 plt.figure()
                 plot_per_sub_unique_vals(df, key, values_fn=values_fn, matched=False)
@@ -107,7 +115,6 @@ def plot_per_sub_dfs(dfs, values_fn):
     subject_legend_mrks = [plt.Line2D((0,1),(0,0),
                                   color=seaborn.color_palette()[i_color], marker='o', linestyle='Null')
                        for i_color in (0,1,2)]
-    
     plt.legend(subject_legend_mrks, ("Subj 1","Subj 2","Subj 3"))
     
 def plot_per_sub_val_range(df, col_name, val_fn, **fig_kw):
@@ -117,14 +124,23 @@ def plot_per_sub_val_range(df, col_name, val_fn, **fig_kw):
         mask = ~np.isnan(df[col_name])
     reduced_df = df[mask]
     _, axes = plt.subplots(1,3,sharey=True, sharex=True, **fig_kw)
+    all_param_vals = []
+    all_vals =[]
     for subject_id in (1,2,3):
         this_df = reduced_df[reduced_df.subject_id == subject_id].sort_values(
             by=col_name)
+        if len(this_df) == 0:
+            continue
         vals = val_fn(this_df)
         param_vals = this_df[col_name]
         axes[subject_id-1].plot(param_vals, vals, marker='o', linestyle='None',
                                 color=seaborn.color_palette()[subject_id-1])
-
+        all_vals.extend(np.array(vals))
+        all_param_vals.extend(np.array(param_vals))
+        
+    plt.xlim(np.min(all_param_vals), np.max(all_param_vals))
+    plt.ylim(np.min(all_vals), np.max(all_vals))
+    
 def get_per_sub_dfs(dfs):
     # shd be (subject1, firstdf), (subject1, seconddf), ... (subject2, firstdf),...
     return [d[d.subject_id == sid] for sid in (1,2,3) for d in dfs ]
@@ -273,7 +289,7 @@ def plot_head_signals_tight_with_tube(signals, deviation,
 
 def plot_head_signals_tight(signals, sensor_names=None, figsize=(12, 7),
         plot_args=None, hspace=0.35, sensor_map=tight_C_positions,
-        tsplot=False):
+        tsplot=False, sharex=True, sharey=True):
     assert sensor_names is None or len(signals) == len(sensor_names), ("need "
         "sensor names for all sensor matrices")
     assert sensor_names is not None
@@ -302,9 +318,17 @@ def plot_head_signals_tight(signals, sensor_names=None, figsize=(12, 7),
         if first_ax is None:
             ax = figure.add_subplot(rows, cols, subplot_ind)
             first_ax = ax
-        else:
+        elif sharex  is True and sharey is True:
             ax = figure.add_subplot(rows, cols, subplot_ind, sharey=first_ax,
                 sharex=first_ax)
+        elif sharex  is True and sharey is False:
+            ax = figure.add_subplot(rows, cols, subplot_ind,
+                sharex=first_ax)
+        elif sharex  is False and sharey is True:
+            ax = figure.add_subplot(rows, cols, subplot_ind, sharey=first_ax)
+        else:
+            ax = figure.add_subplot(rows, cols, subplot_ind)
+            
         signal = signals[i]
         if tsplot is False:
             ax.plot(signal, **plot_args)
@@ -498,6 +522,8 @@ def plot_loss_for_file(result_file_path, start=None, stop=None):
 def plot_misclasses_for_result(result, linewidth=1, **plot_args):
     set_names = ('train', 'valid', 'test')
     for i_set, setname in enumerate(set_names):
+        if '{:s}_misclass'.format(setname) not in result.monitor_channels:
+            continue
         plt.plot(result.monitor_channels['{:s}_misclass'.format(setname)],
                 linewidth=linewidth,
                 color=seaborn.color_palette()[i_set], **plot_args)

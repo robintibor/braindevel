@@ -12,6 +12,20 @@ from braindecode.util import dict_equal, dict_is_subset
 import shutil
 log = logging.getLogger(__name__)
 
+class QuickResult(object):
+    def __init__(self):
+        self.dict = dict()
+        
+    def __getitem__(self, name):
+        if name not in self.dict:
+            self.dict[name] = []
+        return self.dict[name]
+    def append(self, name,val):
+        if name not in self.dict:
+            self.dict[name] = []
+        self.dict[name].append(val)
+
+
 class Result:
     """ Class for holding result values"""
     def __init__(self, parameters, templates, training_time,

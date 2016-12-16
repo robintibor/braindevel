@@ -48,11 +48,12 @@ def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
         file_name_end = '{:d}.npy'.format(i_layer)
         if with_square:
             file_name_end = 'square.' + file_name_end
-        np.save('{:s}.env_corrs.{:s}'.format(base_name, file_name_end), topo_corrs)
-        np.save('{:s}.env_rand_corrs.{:s}'.format(base_name, file_name_end), rand_topo_corrs)
+        np.save('{:s}.labelsplitted.env_corrs.{:s}'.format(base_name, file_name_end), topo_corrs)
+        np.save('{:s}.labelsplitted.env_rand_corrs.{:s}'.format(base_name, file_name_end), rand_topo_corrs)
     return
 
 def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
+    """Now split per class."""
     trial_acts = compute_trial_acts(model, i_layer, iterator, train_set)
     topo_corrs = compute_topo_corrs(trial_env, trial_acts)
     # TODO compute within trial corrs -> remove mean for each trial
@@ -65,12 +66,12 @@ def dataset_to_env_file(wanted_dataset_filename):
     These experiments are, where envelopes were calculated from originally"""
     res_pool= ResultPool()
     res_pool.load_results('data/models-backup/paper/ours/cnt/deep4/car/',
-             params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"))
+             params=dict(cnt_preprocessors="$cz_zero_resample_car_demean",
+                 trial_start=1500, trial_stop=4000))
 
     dataset_to_env_file_name = dict()
     
     for result, res_file_name in zip(res_pool.result_objects(), res_pool.result_file_names()):
-        
         dataset_file_name = result.parameters['dataset_filename']
         envelope_file_name = res_file_name.replace('.result.pkl', '.env.npy')
         assert os.path.isfile(envelope_file_name)
@@ -100,7 +101,8 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         stop = int(sys.argv[2])
     create_env_corrs('data/models-backup/paper/ours/cnt/deep4/car/',
-             params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"),
+             params=dict(cnt_preprocessors="$cz_zero_resample_car_demean",
+                 trial_start=1500, trial_stop=4000),
              start=start, stop=stop)
 #    create_env_corrs('data/models-backup/paper/ours/cnt/shallow/car/',
 #        params=None)

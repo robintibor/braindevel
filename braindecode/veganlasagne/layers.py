@@ -118,7 +118,7 @@ def create_loss_fn(model, loss_expression):
     loss_fn = theano.function([inputs, targets], loss)
     return loss_fn
 
-def create_pred_loss_fn(model, loss_expression):
+def create_pred_loss_fn(model, loss_expression, target_sym=None):
     '''
     Returns per-example loss if loss expression returns it.
     (Does not average output of loss expression)
@@ -126,15 +126,16 @@ def create_pred_loss_fn(model, loss_expression):
     :param loss_expression:
     '''
     inputs = create_suitable_theano_input_var(model)
-    targets = create_suitable_theano_target_var(model)
+    if target_sym is None:
+        target_sym = create_suitable_theano_target_var(model)
     output = lasagne.layers.get_output(model, deterministic=True,
         inputs=inputs, input_var=inputs)
     try:
-        loss = loss_expression(output, targets)
+        loss = loss_expression(output, target_sym)
     except TypeError:
-        loss = loss_expression(output, targets, model)
+        loss = loss_expression(output, target_sym, model)
             
-    loss_fn = theano.function([inputs, targets], [output, loss])
+    loss_fn = theano.function([inputs, target_sym], [output, loss])
     return loss_fn
 
 def create_grad_in_fn(model, loss_expression):
@@ -207,7 +208,8 @@ def create_pred_loss_fake_train_fn(model, loss_expression, updates_expression):
         return preds, loss
     return pred_loss_fake_train_fn
 
-def create_pred_loss_train_fn(model, loss_expression, updates_expression):
+def create_pred_loss_train_fn(model, loss_expression, updates_expression,
+    target_sym=None):
     '''
     Create function that trains, outputs loss and prediction,
     and for outputted loss, does not mean across examples/rows.
@@ -215,7 +217,8 @@ def create_pred_loss_train_fn(model, loss_expression, updates_expression):
     Also returns update params now
     '''
     # maybe use in future? maybe also replace in monitor manager then?
-    target_sym = T.ivector()
+    if target_sym is None:
+        target_sym = T.ivector()
     input_sym = lasagne.layers.get_all_layers(model)[0].input_var
     # test as in during testing not as in "test set"
     prediction = lasagne.layers.get_output(model, 
@@ -230,6 +233,32 @@ def create_pred_loss_train_fn(model, loss_expression, updates_expression):
     pred_loss_train_fn = theano.function([input_sym, target_sym], [prediction,
         loss], updates=updates)
     return pred_loss_train_fn, updates.keys()
+
+def create_train_fn(model, loss_expression, updates_expression,
+    target_sym=None):
+    '''
+    Create function that trains, outputs loss and prediction,
+    and for outputted loss, does not mean across examples/rows.
+    Good for debugging.
+    Also returns update params now
+    '''
+    # maybe use in future? maybe also replace in monitor manager then?
+    if target_sym is None:
+        target_sym = T.ivector()
+    input_sym = lasagne.layers.get_all_layers(model)[0].input_var
+    # test as in during testing not as in "test set"
+    prediction = lasagne.layers.get_output(model, 
+        deterministic=False)
+    # returning loss per row, for more finegrained analysis
+    try:
+        loss = loss_expression(prediction, target_sym)
+    except TypeError:
+        loss = loss_expression(prediction, target_sym, model)
+    trainable_params = lasagne.layers.get_all_params(model, trainable=True)
+    updates = updates_expression(loss.mean(), trainable_params)
+    train_fn = theano.function([input_sym, target_sym], updates=updates)
+    return train_fn, updates.keys()
+
 
 def transform_to_normal_net(final_layer):
     """ Transforms cnt/parallel prediction net to a normal net.
@@ -549,7 +578,15 @@ def get_3rd_dim_shapes_without_invalids_for_layers(all_layers):
             
                 
         if hasattr(l, 'pool_size'):
-            cur_lengths = cur_lengths - l.pool_size[0] + 1
+            if l.pad == (0,0):
+                cur_lengths = cur_lengths - l.pool_size[0] + 1
+            elif (l.pad == 'same') or (l.pad == 
+                ((l.pool_size[0] - 1) / 2, (l.pool_size[1] - 1) / 2)):
+                cur_lengths = cur_lengths
+            else:
+                print l
+                raise ValueError("Not implemented this padding:", l.pad, l, l.filter_size)
+            
         if hasattr(l, 'stride'): # needs to be after kernel size subtraction from pool or conv!!
             if l.stride[0] != 1:
                 cur_lengths = np.int32(np.ceil(cur_lengths / float(l.stride[0])))
@@ -614,7 +651,8 @@ def get_all_paths(layer, treat_as_input=None):
     Returns
     -------
     list of list
-        a list of lists of :class:`Layer` instances feeding into the given
+        a list of paths:
+        lists of :class:`Layer` instances feeding into the given
         instance(s) either directly or indirectly, and the given
         instance(s) themselves, in topological order.
     """
@@ -826,3 +864,19 @@ class SeparableConv2DLayer(Conv2DLayer):
             activation = conved + self.b.dimshuffle('x', 0, 'x', 'x')
 
         return self.nonlinearity(activation)
+    
+def convolve_keeping_chans(inputs, filters, input_shape, filter_shape,
+        border_mode, filter_flip, subsample):
+    # inputs shape should be #batches #virtualchans x #0 x #1
+    # loop through filters, make convolutions for 1-dimensional chans
+    assert input_shape[1] == filter_shape[0]
+    n_filters = filter_shape[0]
+    
+    conv_outs = []
+    for filter_i in range(n_filters):
+        conved_by_filter_i = T.nnet.conv2d(inputs[:,filter_i:filter_i+1,:,:], 
+            filters[filter_i:filter_i+1,:,:,:], subsample=subsample,
+            filter_flip=filter_flip,
+            border_mode=border_mode)
+        conv_outs.append(conved_by_filter_i)
+    return T.concatenate(conv_outs, axis=1)

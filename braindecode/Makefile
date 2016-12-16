@@ -12,5 +12,7 @@ unit-tests-verbose:
 acceptance-tests:
 	THEANO_FLAGS=optimizer=fast_compile,device=cpu,floatX=float32 py.test -vv test/acceptance_tests
 
+#. ../../../motor-imagery/ipython-notebooks-metagpu/venv/bin/activate && 
+
 run-ipython-notebooks-top-level:
-	. ../../../motor-imagery/ipython-notebooks-metagpu/venv/bin/activate && cd /home/schirrmr && jupyter notebook --config=/home/schirrmr/.jupyter/profile_nbserver/ipython_config.py
+	cd /home/schirrmr && jupyter notebook --config=/home/schirrmr/.jupyter/profile_nbserver/ipython_config.py

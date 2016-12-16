@@ -227,7 +227,9 @@ class Experiment(object):
                 if self.batch_modifier is not None:
                     inputs, targets = self.batch_modifier.process(inputs,
                         targets)
-                self.train_func(inputs, targets)
+                # could happen that batch modifier has removed all inputs...
+                if len(inputs) > 0:
+                    self.train_func(inputs, targets)
         
         self.monitor_epoch(datasets)
         self.print_epoch()

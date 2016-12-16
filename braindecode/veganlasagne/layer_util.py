@@ -4,7 +4,7 @@ from braindecode.analysis.kaggle import (transform_to_time_activations,
     transform_to_cnt_activations)
 import logging
 from braindecode.veganlasagne.layers import create_pred_fn,\
-    get_input_time_length, get_n_sample_preds
+    get_input_time_length, get_n_sample_preds, get_all_paths
 from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
 log = logging.getLogger(__name__)
 
@@ -84,11 +84,23 @@ def get_receptive_field_start_ends(layer):
         How many samples one output has "seen"/is influenced by.
     """
 
-    all_layers = lasagne.layers.get_all_layers(layer)
+    all_paths = get_all_paths(layer)
+    all_starts = []
+    all_ends = []
+    for path in all_paths:
+        starts, ends = get_receptive_field_start_ends_for_path(path)
+        all_starts.append(starts)
+        all_ends.append(ends)
+    for starts, ends in zip(all_starts, all_ends):
+        assert len(starts) == len(all_starts[0])
+        assert len(ends) == len(starts)
+    min_starts = np.min(np.array(all_starts), axis=0)
+    max_ends = np.max(np.array(all_ends), axis=0)
+    return min_starts, max_ends
 
+def get_receptive_field_start_ends_for_path(all_layers):
+    
     in_layer = all_layers[0]
-
-
     receptive_field_end = np.arange(in_layer.shape[2])
     receptive_field_start = np.arange(in_layer.shape[2])
     for layer in all_layers:
@@ -112,9 +124,7 @@ def get_receptive_field_start_ends(layer):
             # assume this is removed (maybe not correct for stridereshape?)
             receptive_field_start = receptive_field_start[:len(receptive_field_end)]
         assert len(receptive_field_start) == len(receptive_field_end)
-
     return receptive_field_start, receptive_field_end
-
 def get_trial_acts(all_outs_per_batch, batch_sizes, n_trials, n_inputs_per_trial,
                    n_trial_len, n_sample_preds):
     """Compute trial activations from activations of a specific layer.
@@ -271,3 +281,20 @@ def recompute_bnorm_layer_statistics(final_layer, dataset, iterator):
         stds_this_layer = np.std(outs_before_transform, axis=(0,2,3))
         bnorm_layer.mean.set_value(mean_this_layer)
         bnorm_layer.inv_std.set_value(1.0 / stds_this_layer)
+        
+        
+def set_to_new_input_layer(final_layer, new_input_layer):
+    all_layers = lasagne.layers.get_all_layers(final_layer)
+    old_ins = [l for l in all_layers
+             if l.__class__.__name__ == 'InputLayer']
+    if np.all([l == new_input_layer for l in old_ins]):
+        return
+    for l in all_layers[1:]:
+        if hasattr(l, 'input_layer') and l.input_layer in old_ins:
+            l.input_layer = new_input_layer
+        elif hasattr(l, 'input_layers'):
+            new_cur_in_layers = list(l.input_layers)
+            for i_l , old_cur_in in enumerate(l.input_layers):
+                if old_cur_in in old_ins:
+                    new_cur_in_layers[i_l] = new_input_layer
+            l.input_layers = tuple(new_cur_in_layers)

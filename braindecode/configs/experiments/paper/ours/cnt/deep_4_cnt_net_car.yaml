@@ -3,7 +3,7 @@
         'configs/experiments/paper/ours/cnt/deep_4_cnt.yaml',
        ],
     templates: {
-        all_EEG_sensors: ['Fp1', 'Fpz', 'Fp2', 'AFp3h', 'AFp4h', 'AF7', 'AF3',
+        all_eeg_sensors: ['Fp1', 'Fpz', 'Fp2', 'AFp3h', 'AFp4h', 'AF7', 'AF3',
         'AFz', 'AF4', 'AF8', 'AFF5h', 'AFF1', 'AFF2', 'AFF6h', 'F7', 'F5',
         'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FFT7h', 'FFC5h', 'FFC3h',
         'FFC1h', 'FFC2h', 'FFC4h', 'FFC6h', 'FFT8h', 'FT9', 'FT7', 'FC5', 'FC3',
@@ -44,9 +44,8 @@
     
     variants: [[{
         save_path: ['data/models/paper/ours/cnt/deep4/car/'],
-        sensor_names: [$all_EEG_sensors],
+        sensor_names: [$all_eeg_sensors],
         cnt_preprocessors: [$cz_zero_resample_car_demean],
-        
         # all default values
         drop_prob: [0.5],
         batch_norm: [true],
@@ -69,6 +68,21 @@
         later_pool_nonlin: [$identity],
         loss_expression: [$tied_neighbours],
         layer_names_to_norms: [$layer_names_to_norms],
+        
+        
+        variants: [[{
+            trial_start: [1000],
+            trial_stop: [1500],
+            input_time_length: [640],
+            n_sample_preds : [100], # will be overwritten anyways
+        },
+        {
+            trial_start: [3500],
+            trial_stop: [4000],
+            input_time_length: [640],
+            n_sample_preds : [100], # will be overwritten anyways
+        },
+        ]],
         
         resample_fs: [250],
         ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',

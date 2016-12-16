@@ -136,3 +136,13 @@ def tied_neighbours_logdomain(preds, n_sample_preds, n_classes):
 def categorical_crossentropy_logdomain(log_predictions, targets):
     """From https://github.com/Lasagne/Lasagne/issues/332#issuecomment-122328992"""
     return -T.sum(targets * log_predictions, axis=1)
+
+def distance_capped_binary_crossentropy(preds, targets, distance):
+    loss = binary_crossentropy(preds, targets)
+    mask = T.gt(T.abs_(preds - targets), distance)
+    return loss * mask
+
+def distance_capped_categorical_crossentropy(preds, targets, distance):
+    loss = categorical_crossentropy(preds, targets)
+    mask = T.gt(T.mean(T.abs_(preds - targets), axis=1), distance)
+    return loss * mask

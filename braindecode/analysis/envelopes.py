@@ -119,6 +119,8 @@ def create_envelopes(folder_name, params, start, stop):
         file_name = yaml_file_names[i_file]
         log.info("Running {:s} ({:d} of {:d})".format(
             file_name, i_file+1, stop))
+        log.info("Parameters {:s}".format(
+            str(res_pool.result_objects()[i_file].parameters)))
         create_envelopes_for_experiment(file_name)
 
 def create_envelopes_for_experiment(experiment_file_name):
@@ -137,6 +139,7 @@ def envelope_filterbank():
     filterbands = generate_filterbank(min_freq=1, max_freq=115,
         last_low_freq=31, low_width=6, low_overlap=3,
         high_width=8, high_overlap=4, low_bound=0.)
+    return [[7,13],[13,31], [71,91]]
     return filterbands
     
 
@@ -211,7 +214,8 @@ if __name__ == "__main__":
     args = parse_command_line_arguments()
     if args.folder is None:
         create_envelopes('data/models-backup/paper/ours/cnt/deep4/car/',
-            params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"),
+            params=dict(cnt_preprocessors="$cz_zero_resample_car_demean",
+                trial_start=1500, trial_stop=4000),
                         start=args.start, stop=args.stop)
     else:
         print args.experiments_folder

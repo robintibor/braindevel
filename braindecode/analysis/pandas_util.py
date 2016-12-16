@@ -147,6 +147,10 @@ def get_dfs_for_matched_exps_with_different_vals(df, key):
         dfs.append(this_df)
     return dfs, possible_vals
 
+def add_valid_test(df):
+    df['valid']  = extract_valid(df)
+    df['valtest'] = (df['valid'] + df.test) / 2.0
+    
 def pairwise_compare_frame(df, with_p_vals=False):
     table_vals = []
     table_indices = []
@@ -237,10 +241,8 @@ def dataset_averaged_frame(data_frame, ignorable_keys=(),
         'test_sample', 'train_sample', 'valid', 'valtest') + ignorable_keys
     if filename_key is not None:
         ignorable_keys += (filename_key,)
-    print("hi")
     param_keys = [k for k in data_frame.keys() if k not in ignorable_keys]
-    print "param keys", param_keys
-    # weird this len(parma_keys)>0 shd always be rue unsure of this
+    # weird this len(parma_keys)>0 shd always be true unsure of this
     if len(param_keys) > 0:
         grouped = data_frame.groupby(param_keys)
         # Check for dup
@@ -416,3 +418,35 @@ def extract_n_epochs(df):
     results = load_results_for_df(df)
     n_epochs = [len(r.monitor_channels['test_misclass']) for r in results]
     return n_epochs
+
+def compare_dfs(df_before, df_later):
+    """Compare two dfs, which new columns appear and which new
+    unique values appear per column. Cannot tell if
+    new combinations of values appeared."""
+    all_cols = np.union1d(df_before.columns, df_later.columns)
+    param_keys = set(all_cols) - set(('test',
+            'time', 'train',
+            'test_sample', 'train_sample', 'valid', 'valtest'))
+    for col in param_keys:
+        if col not in df_later.columns: 
+            print("Column only exists before: {:s}".format(col))
+        elif col not in df_before.columns:
+            print("Column only exists after:  {:s}".format(col))
+        else:
+            unique_vals_1 = df_before[col].unique()
+            unique_vals_2 = df_later[col].unique()
+            try:
+                only_in_1 = np.setdiff1d(unique_vals_1, unique_vals_2)
+                if len(only_in_1) > 0:
+                    print("Only exist before for {:s}: {:s}".format(col,
+                        str(only_in_1)))
+            except ValueError:
+                log.warn("Could not compare before:\n{:s}\nwith after:\n{:s}".format(
+                    unique_vals_1, unique_vals_2))
+            try:
+                only_in_2 = np.setdiff1d(unique_vals_2, unique_vals_1)
+                if len(only_in_2) > 0:
+                    print("Only exist after for {:s}:  {:s}".format(col, str(only_in_2)))
+            except ValueError:
+                log.warn("Could not compare after:\n{:s}\nwith before:\n{:s}".format(
+                    unique_vals_2, unique_vals_1))

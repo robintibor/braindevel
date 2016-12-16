@@ -1,5 +1,6 @@
 import os
 import errno
+import numpy as np
 
 class FuncAndArgs(object):
     """Container for a function and its arguments. 
@@ -50,6 +51,7 @@ def add_message_to_exception(exc, additional_message):
     if not args:
         arg0 = ''
     else:
+                    
         arg0 = args[0]
     arg0 += additional_message
     exc.args = (arg0, ) + args[1:]
@@ -119,3 +121,8 @@ def mkdir_p(path):
             pass
         else:
             raise
+        
+def select_inverse_inds(arr, inds):
+    mask = np.ones(len(arr),dtype=bool)
+    mask[inds] = False
+    return arr[mask]

@@ -145,7 +145,7 @@ class BBCIDataset(object):
                     '\x00\x00', '\x00\x00', 'Words_End', '\x00\x00', '\x00\x00',
                     '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
                     '\x00\x00', '\x00\x00', 'Rest_End']):
-                pass # weird stuff when we recoreded cursor in robot hall
+                pass # weird stuff when we recorded cursor in robot hall
                     # on 2016-09-14 and 2016-09-16 :D
             
             elif len(event_times_in_ms) ==  len(all_class_names):

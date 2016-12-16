@@ -40,7 +40,8 @@ def load_amp_corrs(with_square, with_square_corr, cov_or_corr):
             if with_square_corr:
                 file_name_end = ".corrtosquare" + file_name_end
             file_name = base_name + file_name_end
-            assert os.path.isfile(file_name)
+            assert os.path.isfile(file_name), "Expect {:s} to exist".format(
+                file_name)
             this_arr = all_corrs.pop(perturb_name, [])
             this_arr.append(np.load(file_name))
             all_corrs[perturb_name] = this_arr
@@ -48,12 +49,18 @@ def load_amp_corrs(with_square, with_square_corr, cov_or_corr):
     clean_mask = np.array(clean_mask)
     return all_corrs, clean_mask
 
-def create_meaned_amp_pred_corrs(prefix=''):
+def create_meaned_amp_pred_corrs(prefix='',
+        folder='data/models/paper/ours/cnt/deep4/car/',
+        params='default',
+        perturb_names=('no_dev', 'rand_mad', 'rand_std')):
     """This takes computed cov_vars and transforms them to corrs 
     and saves corrs."""
+    if params == 'default':
+        params = dict(cnt_preprocessors="$cz_zero_resample_car_demean",
+            trial_start=1500, trial_stop=4000)
     res_pool = ResultPool()
-    res_pool.load_results('data/models/paper/ours/cnt/deep4/car/',
-        params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"))
+    res_pool.load_results(folder,
+        params=params)
     result_file_names = res_pool.result_file_names()
     results = res_pool.result_objects()
     
@@ -69,13 +76,15 @@ def create_meaned_amp_pred_corrs(prefix=''):
         prefix = '.' + prefix
     for i_file, base_name in enumerate(all_base_names):
         log.info("Loading {:s}".format(results[i_file].parameters['dataset_filename']))
-        create_meaned_amp_pred_corrs_for_file(base_name, prefix)
+        create_meaned_amp_pred_corrs_for_file(base_name, prefix, perturb_names)
 
-def create_meaned_amp_pred_corrs_for_file(base_name, prefix):
-    for perturb_name in 'no_dev', 'rand_mad', 'rand_std':
+def create_meaned_amp_pred_corrs_for_file(base_name, prefix, perturb_names):
+    for perturb_name in perturb_names:
         filename_end = '{:s}.{:s}.amp_cov_vars.npz'.format(prefix, perturb_name)
         filename = base_name + filename_end
-        assert os.path.isfile(filename), "File does not exist: {:s}".format(filename)
+        if not os.path.isfile(filename):
+            log.warn("File does not exist: {:s}".format(filename))
+            continue
         npz_file = np.load(filename)
         this_covs, this_pred_vars, this_amp_vars = np.load(filename)
         this_covs = npz_file['arr_0']
@@ -103,10 +112,16 @@ def transform_to_corrs(this_covs, this_pred_vars, this_amp_vars):
     all_corrs = np.array(all_flat_corrs).reshape(this_covs.shape)
     return all_corrs
 
-def load_meaned_amp_pred_corrs(prefix=''):
+def load_meaned_amp_pred_corrs(prefix='',
+        folder='data/models/paper/ours/cnt/deep4/car/',
+        params='default',
+        perturb_names=('no_dev','rand_mad', 'rand_std')):
+    if params == 'default':
+        params = dict(cnt_preprocessors="$cz_zero_resample_car_demean",
+            trial_start=1500, trial_stop=4000)
     res_pool = ResultPool()
-    res_pool.load_results('data/models/paper/ours/cnt/deep4/car/',
-        params=dict(cnt_preprocessors="$cz_zero_resample_car_demean"))
+    res_pool.load_results(folder,
+        params=params)
     result_file_names = res_pool.result_file_names()
     results = res_pool.result_objects()
     if prefix != '':
@@ -123,19 +138,36 @@ def load_meaned_amp_pred_corrs(prefix=''):
     clean_mask = []
     all_corrs = dict()
     for i_file, base_name in enumerate(all_base_names):
+        # Check that all perturbations exist
+        all_perturbations_exist = True
+        for perturb_name in perturb_names:
+            filename_end =  '{:s}.{:s}.amp_cov_var_corrs.npy'.format(
+                prefix, perturb_name)
+            filename = base_name + filename_end
+            if not os.path.isfile(filename):
+                all_perturbations_exist = False
+                log.warn("{:s} does not exist".format(
+                filename))
+        if not all_perturbations_exist:
+            log.warn("Skipping {:s} since not all perturbations exist".format(
+                base_name))
+            continue
+                
+        # Check that all exist for subject
         if any(s in results[i_file].parameters['dataset_filename'] for s in unclean_sets):
             clean_mask.append(False)
         else:
             clean_mask.append(True)
-        for perturb_name in ('rand_mad', 'rand_std', 'no_dev'):
+        for perturb_name in perturb_names:
             filename_end =  '{:s}.{:s}.amp_cov_var_corrs.npy'.format(
                 prefix, perturb_name)
             filename = base_name + filename_end
-            assert os.path.isfile(filename)
+            assert os.path.isfile(filename), ("Expect {:s} to exist".format(
+                filename))
             this_arr = all_corrs.pop(perturb_name, [])
             this_corrs = np.load(filename)
             this_arr.append(this_corrs)
             all_corrs[perturb_name] = this_arr
-
+                
     clean_mask = np.array(clean_mask)
     return all_corrs, clean_mask

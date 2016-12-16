@@ -163,9 +163,9 @@ def compute_power_spectra(trials, window_length, window_stride,
 def compute_short_time_fourier_transform(trials, window_length, window_stride,
         window_fn=blackmanharris):
     """Expects trials #trialsx#channelsx#samples order"""
+    fft_shape = compute_short_time_fft_shape(trials.shape, window_length, window_stride)
+    fft_trials = np.empty(fft_shape, dtype=complex)
     start_times = np.arange(0, trials.shape[2] - window_length+1, window_stride)
-    freq_bins = int(np.floor(window_length / 2) + 1)
-    fft_trials = np.empty((trials.shape[0], trials.shape[1], len(start_times), freq_bins), dtype=complex)
     for time_bin, start_time in enumerate(start_times):        
         w = window_fn(window_length)
         w=w/np.linalg.norm(w)
@@ -174,6 +174,13 @@ def compute_short_time_fourier_transform(trials, window_length, window_stride,
         fft_trials[:,:,time_bin, :] = fft_trial
     return fft_trials
 
+def compute_short_time_fft_shape(trials_shape, window_length, window_stride):
+    """Expects trialshape #trialsx#channelsx#samples order"""
+    start_times = np.arange(0, trials_shape[2] - window_length+1, window_stride)
+    freq_bins = int(np.floor(window_length / 2) + 1)
+    fft_shape = (trials_shape[0], trials_shape[1], len(start_times), freq_bins)
+    return fft_shape
+    
 def amplitude_phase_to_complex(amplitude, phase):
     return amplitude * np.cos(phase) + amplitude * np.sin(phase) * 1j
 

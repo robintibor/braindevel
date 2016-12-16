@@ -188,10 +188,11 @@ def split_set_by_indices(dataset, train_fold, valid_fold, test_fold):
 def concatenate_sets(first_set, second_set):
     """Concatenates topo views and y(targets)
     """
-    assert first_set.view_converter.axes == second_set.view_converter.axes,\
-        "first set and second set should have same axes ordering"
-    assert first_set.view_converter.axes[0] == 'b', ("Expect batch axis "
-        "as first axis")
+    # hackily disabled for epilepsy competition
+    #assert first_set.view_converter.axes == second_set.view_converter.axes,\
+    #    "first set and second set should have same axes ordering"
+    #assert first_set.view_converter.axes[0] == 'b', ("Expect batch axis "
+    #    "as first axis")
     merged_topo_view = np.concatenate((first_set.get_topological_view(),
         second_set.get_topological_view()))
     merged_y = np.concatenate((first_set.y, second_set.y)) 

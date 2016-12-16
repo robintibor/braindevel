@@ -50,6 +50,7 @@
         
     },
     variants: [[{
+        updates_modifier: [$max_norm_modifier],
         max_abs_threshold: [800],
         dataset: [$cleaned_combined_set],
         marker_def: [$markers_4_class],
