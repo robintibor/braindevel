@@ -139,9 +139,7 @@ def envelope_filterbank():
     filterbands = generate_filterbank(min_freq=1, max_freq=115,
         last_low_freq=31, low_width=6, low_overlap=3,
         high_width=8, high_overlap=4, low_bound=0.)
-    return [[7,13],[13,31], [71,91]]
     return filterbands
-    
 
 def _load_experiment(experiment_file_name):
     exp = create_experiment(experiment_file_name)

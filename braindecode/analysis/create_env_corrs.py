@@ -5,6 +5,7 @@ from braindecode.results.results import ResultPool
 from braindecode.experiments.load import load_exp_and_model
 from braindecode.analysis.envelopes import load_trial_env, compute_topo_corrs
 from braindecode.veganlasagne.layer_util import compute_trial_acts
+from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
 import logging
 from braindecode.experiments.experiment import create_experiment
 log = logging.getLogger(__name__)
@@ -54,13 +55,33 @@ def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
 
 def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
     """Now split per class."""
+    
     trial_acts = compute_trial_acts(model, i_layer, iterator, train_set)
-    topo_corrs = compute_topo_corrs(trial_env, trial_acts)
+    trial_labels = determine_trial_labels(train_set, iterator)
+    topo_corrs_per_class = []
+    for i_label in xrange(trial_labels.shape[1]):
+        this_trial_mask = trial_labels[:,i_label] == 1
+        this_trial_env = trial_env[:, this_trial_mask]
+        this_trial_acts = trial_acts[this_trial_mask]
+        topo_corrs = compute_topo_corrs(this_trial_env, this_trial_acts)
+        topo_corrs_per_class.append(topo_corrs)
+    topo_corrs_per_class = np.array(topo_corrs_per_class)
+    # TODELETE (old without split input per label): 
+    # topo_corrs = compute_topo_corrs(trial_env, trial_acts)
     # TODO compute within trial corrs -> remove mean for each trial
     # compute between trial corrs -> compute means for trial env and trial acts
     # with keepdims=True
-    return topo_corrs
+    return topo_corrs_per_class
     
+def determine_trial_labels(dataset, iterator):
+    # determine trial labels
+    i_trial_starts, _ =  compute_trial_start_end_samples(
+                dataset.y, check_trial_lengths_equal=True,
+                input_time_length=iterator.input_time_length)
+    trial_labels = dataset.y[i_trial_starts]
+    assert np.all(np.sum(trial_labels, axis=1) == 1)
+    return trial_labels
+
 def dataset_to_env_file(wanted_dataset_filename):
     """ For any dataset filename, give envelope filename
     These experiments are, where envelopes were calculated from originally"""
