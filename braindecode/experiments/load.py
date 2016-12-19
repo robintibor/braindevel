@@ -26,11 +26,13 @@ def load_exp_and_model(basename, set_invalid_to_NaN=True, seed=9859295):
 
 def set_param_values_backwards_compatible(final_layer, param_values):
     """Backwards compatible for old batch norm layer params."""
+    old_batch_norm_layer_used = False
     for param, param_val in zip(lasagne.layers.get_all_params(final_layer), param_values):
         if param.get_value().shape == param_val.shape:
             param.set_value(param_val)
         # account for change in batch norm layer
         elif param.get_value().ndim == 1 and param_val.ndim == 4:
+            old_batch_norm_layer_used = True
             assert param.get_value().shape[0] == param_val.shape[1]
             if param.name == 'inv_std': # was std before, now inv std
                 # assuming epislonw as always 1e-4 :)
@@ -48,7 +50,9 @@ def set_param_values_backwards_compatible(final_layer, param_values):
                 str(param.get_value().shape), str(param_val.shape)))
             
     for l in lasagne.layers.get_all_layers(final_layer):
-        if l.__class__.__name__ == 'BatchNormLayer':
+        if (l.__class__.__name__ == 'BatchNormLayer' and
+                old_batch_norm_layer_used):
+            print("Correcting for old batch norm layer")
             false_mean = l.mean.get_value()
             false_inv_std = l.inv_std.get_value()
             false_beta = l.beta.get_value()
