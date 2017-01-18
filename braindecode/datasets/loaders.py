@@ -162,7 +162,7 @@ class BBCIDataset(object):
     def get_all_sensors(filename, pattern):
         # TODELAY: split into two methods?
         with h5py.File(filename, 'r') as h5file:
-            clab_set = h5file['dat']['clab'][:,0]
+            clab_set = h5file['dat']['clab'][:].squeeze()
             all_sensor_names = [''.join(chr(c) for c in h5file[obj_ref]) for obj_ref in clab_set]
             if pattern is not None:
                 all_sensor_names = filter(lambda sname: re.search(pattern, sname), 

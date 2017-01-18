@@ -62,6 +62,9 @@ class CSPExperiment(object):
             The overlap of the filterbands in the higher frequencies.
         filt_order : int
             The filter order of the butterworth filter which computes the filterbands.
+        standardize_filt_cnt: bool
+            Whether to do (channel-wise) exponential moving standardization of the
+            continuous signal
         segment_ival : sequence of 2 floats
             The start and end of the trial in milliseconds with respect to the markers.
         standardize_epo : bool

@@ -42,10 +42,10 @@ def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
         trial_env = load_trial_env(env_file_name, model, 
             i_layer, train_set, n_inputs_per_trial=2, square_before_mean=with_square)
         topo_corrs = compute_trial_topo_corrs(model, i_layer, train_set, 
-            exp.iterator, trial_env)
+            exp.iterator, trial_env, split_per_class=True)
         
         rand_topo_corrs = compute_trial_topo_corrs(rand_model, i_layer, train_set, 
-            exp.iterator, trial_env)
+            exp.iterator, trial_env, split_per_class=True)
         file_name_end = '{:d}.npy'.format(i_layer)
         if with_square:
             file_name_end = 'square.' + file_name_end
@@ -53,25 +53,28 @@ def create_topo_env_corrs_files(base_name, i_all_layers, with_square):
         np.save('{:s}.labelsplitted.env_rand_corrs.{:s}'.format(base_name, file_name_end), rand_topo_corrs)
     return
 
-def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env):
-    """Now split per class."""
+def compute_trial_topo_corrs(model, i_layer, train_set, iterator, trial_env,
+    split_per_class):
+    """Now with split per class arg."""
     
     trial_acts = compute_trial_acts(model, i_layer, iterator, train_set)
     trial_labels = determine_trial_labels(train_set, iterator)
-    topo_corrs_per_class = []
-    for i_label in xrange(trial_labels.shape[1]):
-        this_trial_mask = trial_labels[:,i_label] == 1
-        this_trial_env = trial_env[:, this_trial_mask]
-        this_trial_acts = trial_acts[this_trial_mask]
-        topo_corrs = compute_topo_corrs(this_trial_env, this_trial_acts)
-        topo_corrs_per_class.append(topo_corrs)
-    topo_corrs_per_class = np.array(topo_corrs_per_class)
-    # TODELETE (old without split input per label): 
-    # topo_corrs = compute_topo_corrs(trial_env, trial_acts)
-    # TODO compute within trial corrs -> remove mean for each trial
-    # compute between trial corrs -> compute means for trial env and trial acts
-    # with keepdims=True
-    return topo_corrs_per_class
+    if split_per_class:
+        topo_corrs_per_class = []
+        for i_label in xrange(trial_labels.shape[1]):
+            this_trial_mask = trial_labels[:,i_label] == 1
+            this_trial_env = trial_env[:, this_trial_mask]
+            this_trial_acts = trial_acts[this_trial_mask]
+            topo_corrs = compute_topo_corrs(this_trial_env, this_trial_acts)
+            topo_corrs_per_class.append(topo_corrs)
+        topo_corrs_per_class = np.array(topo_corrs_per_class)
+        # TODO compute within trial corrs -> remove mean for each trial
+        # compute between trial corrs -> compute means for trial env and trial acts
+        # with keepdims=True
+        return topo_corrs_per_class
+    else:
+        topo_corrs = compute_topo_corrs(trial_env, trial_acts)
+        return topo_corrs
     
 def determine_trial_labels(dataset, iterator):
     # determine trial labels
