@@ -8,7 +8,6 @@ log = logging.getLogger(__name__)
 from braindecode.datasets.sensor_positions import sort_topologically
 from wyrm.processing import append_cnt
 
-
 class BBCIDataset(object):
     def __init__(self, filename, load_sensor_names=None):
         """ Constructor will not call superclass constructor yet"""
@@ -36,7 +35,7 @@ class BBCIDataset(object):
                 # i.e ch1,ch2,....
                 chan_set_name = 'ch' + str(chan_ind_set + 1)
                 # first 0 to unpack into vector, before it is 1xN matrix
-                chan_signal = h5file[chan_set_name][0,:] # already load into memory
+                chan_signal = h5file[chan_set_name][:].squeeze() # already load into memory
                 continuous_signal[:, chan_ind_arr] = chan_signal
             samplenumbers = np.array(range(continuous_signal.shape[0]))
             timesteps_in_ms = samplenumbers * 1000.0 / fs
@@ -54,7 +53,9 @@ class BBCIDataset(object):
         all_sensor_names = self.get_all_sensors(self.filename, pattern=None)
         if self.load_sensor_names is None:
             # if no sensor names given, take all EEG-chans
-            EEG_sensor_names = filter(lambda s: not s.startswith('E'), all_sensor_names)
+            EEG_sensor_names = all_sensor_names
+            EEG_sensor_names = filter(lambda s: not s.startswith('BIP'), EEG_sensor_names)
+            EEG_sensor_names = filter(lambda s: not s.startswith('E'), EEG_sensor_names)
             EEG_sensor_names = filter(lambda s: not s.startswith('Microphone'), EEG_sensor_names)
             EEG_sensor_names = filter(lambda s: not s.startswith('Breath'), EEG_sensor_names)
             EEG_sensor_names = filter(lambda s: not s.startswith('GSR'), EEG_sensor_names)
@@ -64,7 +65,9 @@ class BBCIDataset(object):
                 len(EEG_sensor_names) == 16), (
                 "Recheck this code if you have different sensors...")
             # sort sensors topologically to allow networks to exploit topology
-            self.load_sensor_names = sort_topologically(EEG_sensor_names)
+            # no longer sort topologically...
+            #self.load_sensor_names = sort_topologically(EEG_sensor_names)
+            self.load_sensor_names = EEG_sensor_names
         chan_inds = self.determine_chan_inds(all_sensor_names, 
             self.load_sensor_names)
         return chan_inds, self.load_sensor_names
@@ -89,11 +92,11 @@ class BBCIDataset(object):
     
     def add_markers(self, cnt):
         with h5py.File(self.filename, 'r') as h5file:
-            event_times_in_ms = h5file['mrk']['time'][:,0]
-            event_classes = h5file['mrk']['event']['desc'][0]
+            event_times_in_ms = h5file['mrk']['time'][:].squeeze()
+            event_classes = h5file['mrk']['event']['desc'][:].squeeze()
             
             # Check whether class names known and correct order
-            class_name_set = h5file['nfo']['className'][:,0]
+            class_name_set = h5file['nfo']['className'][:].squeeze()
             all_class_names = [''.join(chr(c) for c in h5file[obj_ref]) 
                 for obj_ref in class_name_set]
             if all_class_names == ['Right Hand', 'Left Hand', 'Rest', 'Feet']:
@@ -148,6 +151,55 @@ class BBCIDataset(object):
                 pass # weird stuff when we recorded cursor in robot hall
                     # on 2016-09-14 and 2016-09-16 :D
             
+            elif (all_class_names == ['0004', '0016', '0032', '0056', '0064',
+                '0088', '0095', '0120']):
+                pass
+            elif (all_class_names == ['0004', '0056', '0088', '0120']):
+                pass
+            elif (all_class_names == ['0004', '0016', '0032', '0048', '0056',
+                '0064', '0080', '0088', '0095', '0120']):
+                pass
+            elif (all_class_names == ['0004', '0016', '0056', '0088', '0120',
+                '__']):
+                pass
+            elif (all_class_names == ['0004', '0056', '0088', '0120', '__']):
+                pass
+            elif (all_class_names == ['0004', '0032', '0048', '0056', '0064',
+                '0080', '0088', '0095', '0120', '__']):
+                pass
+            elif (all_class_names == ['0004', '0056', '0080', '0088', '0096',
+                '0120', '__']):
+                pass
+            elif (all_class_names == ['0004', '0032', '0056', '0064', '0080',
+                '0088', '0095', '0120']):
+                pass
+            elif (all_class_names == ['0004', '0032', '0048', '0056', '0064',
+                '0080', '0088', '0095', '0120']):
+                pass
+            elif (all_class_names == ['0004', '0016', '0032', '0048', '0056',
+                '0064', '0080', '0088', '0095', '0096', '0120']):
+                pass
+            elif (all_class_names == ['4', '16', '32', '56', '64', '88', '95',
+                '120']):
+                pass
+            elif (all_class_names == ['4', '56', '88', '120']):
+                pass
+            elif (all_class_names == ['4', '16', '32', '48', '56',
+                '64', '80', '88', '95', '120']):
+                pass
+            elif (all_class_names == ['0', '4', '56', '88', '120']):
+                pass
+            elif (all_class_names == ['0', '4', '16', '56', '88', '120']):
+                pass
+            elif (all_class_names == ['0', '4', '32', '48', '56', '64', '80',
+                '88', '95', '120']):
+                pass
+            elif (all_class_names == ['0', '4', '56', '80', '88', '96', '120']):
+                pass
+            elif (all_class_names == ['4', '32', '56', '64', '80', '88', '95', '120']):
+                pass
+            elif (all_class_names == ['One', 'Two', 'Three', 'Four']):
+                pass
             elif len(event_times_in_ms) ==  len(all_class_names):
                 pass # weird neuroone(?) logic where class names have event classes
             else:
@@ -363,3 +415,23 @@ class HDF5StreamedSet(object):
                 pair in event_samples_and_classes]
             cnt.markers = event_ms_and_classes
         return cnt
+    
+class MultipleSetLoader(object):
+    def __init__(self, set_loaders):
+        self.set_loaders = set_loaders
+        
+    def load(self):
+        cnt = self.set_loaders[0].load()
+        for loader in self.set_loaders[1:]:
+            cnt = append_cnt(cnt, loader.load())
+        return cnt
+    
+class MultipleBBCIDataset(object):
+    def __init__(self, filenames, load_sensor_names=None):
+        self.filenames = filenames
+        self.load_sensor_names = load_sensor_names
+    
+    def load(self):
+        bbci_sets = [BBCIDataset(fname, load_sensor_names=self.load_sensor_names)
+                     for fname in self.filenames]
+        return MultipleSetLoader(bbci_sets).load()

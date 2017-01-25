@@ -48,7 +48,7 @@ class CSPExperimentsRunner(ExperimentsRunner):
             folder_path = self._folder_paths[experiment_index]
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
-            
+
             result_file_name = self._get_result_save_path(experiment_index)
             with open(result_file_name, 'w') as resultfile:
                 pickle.dump(result, resultfile)

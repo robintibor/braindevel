@@ -110,6 +110,8 @@ def calculate_csp(epo, classes=None):
     indx = indx[::-1]
     d = d.take(indx)
     v = v.take(indx, axis=1)
+    
+    # Now compute patterns
     #old pattern computation
     #a = sp.linalg.inv(v).transpose()
     c_avg = (c1 + c2) / 2.0
@@ -756,9 +758,10 @@ def segment_dat_fast(dat, marker_def, ival, newsamples=None, timeaxis=-2):
                 mask = range(first_index, last_index)
                 if len(mask) != expected_samples:
                     # result is too short or too long, ignore it
-                    print ("ignoring trial")
-                    print("expected samples in trial segmentation", expected_samples)
-                    print("actual samples", len(mask))
+                    log.warn("ignoring trial")
+                    log.warn("expected samples in trial segmentation {:d}".format(
+                        expected_samples))
+                    log.warn("actual samples {:d}".format(len(mask)))
                     continue
                 # check if the new cnt shares at least one timepoint
                 # with the new samples. attention: we don't only have to

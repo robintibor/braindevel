@@ -97,6 +97,7 @@ def plot_scalp_grid(data, sensor_names, scale_per_row=False,
                          scale_individually=False, figsize=None, 
                          row_names=None, col_names=None,
                          vmin=None, vmax=None,
+                        chan_pos_list=CHANNEL_10_20_APPROX,
                         colormap=cm.coolwarm,
                         fontsize=16):
     """
@@ -142,7 +143,8 @@ def plot_scalp_grid(data, sensor_names, scale_per_row=False,
                 ax = axes[i_col]
             ax_scalp(this_data,sensor_names, colormap=colormap,ax=ax,
                     scalp_line_width=scalp_line_width, scalp_line_style=scalp_line_style,
-                    vmin=vmin, vmax=vmax)
+                    vmin=vmin, vmax=vmax, chan_pos_list=chan_pos_list,
+                    zorder=10)
             if col_names is not None and i_row == 0:
                 ax.set_title(col_names[i_col], fontsize=fontsize)
             if row_names is not None and i_col == 0:
@@ -163,6 +165,50 @@ def add_colorbar_to_scalp_grid(fig, axes, label, min_max_ticks=True, shrink=0.9,
     cbar.ax.tick_params(labelsize=ticklabelsize)
     cbar.set_label(label, fontsize=labelsize)
     return cbar
+
+# see http://stackoverflow.com/a/31397438/1469195
+def cmap_map(function, cmap, name='colormap_mod', N=None, gamma=None):
+    """
+    Modify a colormap using `function` which must operate on 3-element
+    arrays of [r, g, b] values.
+
+    You may specify the number of colors, `N`, and the opacity, `gamma`,
+    value of the returned colormap. These values default to the ones in
+    the input `cmap`.
+
+    You may also specify a `name` for the colormap, so that it can be
+    loaded using plt.get_cmap(name).
+    """
+    from matplotlib.colors import LinearSegmentedColormap as lsc
+    if N is None:
+        N = cmap.N
+    if gamma is None:
+        gamma = cmap._gamma
+    cdict = cmap._segmentdata
+    # Cast the steps into lists:
+    step_dict = {key: map(lambda x: x[0], cdict[key]) for key in cdict}
+    # Now get the unique steps (first column of the arrays):
+    step_list = np.unique(sum(step_dict.values(), []))
+    # 'y0', 'y1' are as defined in LinearSegmentedColormap docstring:
+    y0 = cmap(step_list)[:, :3]
+    y1 = y0.copy()[:, :3]
+    # Go back to catch the discontinuities, and place them into y0, y1
+    for iclr, key in enumerate(['red', 'green', 'blue']):
+        for istp, step in enumerate(step_list):
+            try:
+                ind = step_dict[key].index(step)
+            except ValueError:
+                # This step is not in this color
+                continue
+            y0[istp, iclr] = cdict[key][ind][1]
+            y1[istp, iclr] = cdict[key][ind][2]
+    # Map the colors to their new values:
+    y0 = np.array(map(function, y0))
+    y1 = np.array(map(function, y1))
+    # Build the new colormap (overwriting step_dict):
+    for iclr, clr in enumerate(['red', 'green', 'blue']):
+        step_dict[clr] = np.vstack((step_list, y0[:, iclr], y1[:, iclr])).T
+    return lsc(name, step_dict, N=N, gamma=gamma)
 
 def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
                                 p_val_vs_other_net,
@@ -199,8 +245,12 @@ def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
         vmin = 0
     if vmax is None:
         vmax = np.max(normed_conf_mat)
-    ax.imshow(np.array(augmented_conf_mat), cmap=colormap,
-        interpolation='nearest', alpha=0.6,vmin=vmin, vmax=vmax)
+    # see http://stackoverflow.com/a/31397438/1469195
+    def brighten(x, ):
+        return (1 - ((1 - x) * 0.4))
+    brightened_cmap = cmap_map(brighten, colormap)
+    ax.imshow(np.array(augmented_conf_mat), cmap=brightened_cmap,
+        interpolation='nearest', vmin=vmin, vmax=vmax)
     width = len(confusion_mat)
     height = len(confusion_mat[0])
     for x in xrange(width):

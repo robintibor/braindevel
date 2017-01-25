@@ -234,7 +234,10 @@ class CSPExperiment(object):
         # use only number of clean trials to split folds
         n_clean_trials = len(self.clean_trials)
         if self.restricted_n_trials is not None:
-            n_clean_trials = int(n_clean_trials * self.restricted_n_trials)
+            if self.restricted_n_trials <= 1:
+                n_clean_trials = int(n_clean_trials * self.restricted_n_trials)
+            else:
+                n_clean_trials = min(n_clean_trials, self.restricted_n_trials)
         if not self.shuffle:
             folds = KFold(n_clean_trials, n_folds=self.n_folds, 
                 shuffle=False)
@@ -422,7 +425,8 @@ class TwoFileCSPExperiment(CSPExperiment):
         assert filterbank_is_stable(self.filterbands, self.filt_order, 
             self.cnt.fs), (
                 "Expect filter bank to be stable given filter order.")
-        self.class_pairs = list(itertools.combinations([0,1,2,3],2))
+        n_classes = len(self.marker_def)
+        self.class_pairs = list(itertools.combinations(range(n_classes),2))
         train_fold = range(len(self.cnt.markers))
         test_fold = np.arange(len(self.test_cnt.markers)) + len(train_fold)
         self.folds = [{'train': train_fold, 'test': test_fold}]

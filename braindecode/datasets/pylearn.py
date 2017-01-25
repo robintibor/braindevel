@@ -12,6 +12,8 @@ class SimpleSet(object):
     reloadable = False
     def __init__(self, topo_view, y, axes=None):
         self.topo_view = topo_view
+        # use both topo_view and X
+        self.X = topo_view
         self.y = y
         if axes is not None:
             log.warn("axes {:s} are being ignored ".format(str(axes)))

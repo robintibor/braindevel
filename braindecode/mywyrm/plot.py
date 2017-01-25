@@ -85,7 +85,7 @@ def ax_scalp(v, channels,
     scalp_line_width=1,
     scalp_line_style='solid',
     chan_pos_list=CHANNEL_10_20_APPROX,
-    interpolation='bilinear'):
+    interpolation='bilinear', zorder=None):
     """Draw a scalp plot.
 
     Draws a scalp plot on an existing axes. The method takes an array of
@@ -125,6 +125,7 @@ def ax_scalp(v, channels,
     ax_colorbar
 
     """
+    print("hi zorder")
     if ax is None:
         ax = plt.gca()
     assert len(v) == len(channels), "Should be as many values as channels"
@@ -156,7 +157,9 @@ def ax_scalp(v, channels,
         zz = np.ones((len(xx), len(yy)))
         for i_x in xrange(len(xx)):
             for i_y in xrange(len(yy)):
-                zz[i_x,i_y] = f(xx[i_x], yy[i_y])
+                # somehow this is correct. don't know why :(
+                zz[i_y,i_x] = f(xx[i_x], yy[i_y])
+                #zz[i_x,i_y] = f(xx[i_x], yy[i_y])
         assert not np.any(np.isnan(zz))
 
         
@@ -165,17 +168,19 @@ def ax_scalp(v, channels,
     # plot map
     image = ax.imshow(zz, vmin=vmin, vmax=vmax, cmap=colormap,
         extent=[min(x),max(x),min(y),max(y)], origin='lower',
-        interpolation=interpolation)
+        interpolation=interpolation, zorder=zorder)
     #image = ax.contourf(xx, yy, zz, 100, vmin=vmin, vmax=vmax,
     #    cmap=colormap)
     # paint the head
     ax.add_artist(plt.Circle((0, 0), 1, linestyle=scalp_line_style,
-        linewidth=scalp_line_width, fill=False))
+        linewidth=scalp_line_width, fill=False, zorder=zorder),
+        zorder=zorder)
     # add a nose
     ax.plot([-0.1, 0, 0.1], [1, 1.1, 1], color='black', 
-        linewidth=scalp_line_width, linestyle=scalp_line_style,)
+        linewidth=scalp_line_width, linestyle=scalp_line_style,
+        zorder=zorder)
     # add ears
-    add_ears(ax, scalp_line_width, scalp_line_style)
+    add_ears(ax, scalp_line_width, scalp_line_style, zorder=zorder)
     # add markers at channels positions
     # set the axes limits, so the figure is centered on the scalp
     ax.set_ylim([-1.05, 1.15])

@@ -61,6 +61,37 @@ def log_clean_result(clean_result):
     log.info("(from var):        {:d}".format(
         len(clean_result.rejected_var)))
 
+class ChanMaxAbsVarCleaner(object):
+    def __init__(self, segment_ival, marker_def):
+        self.marker_def = marker_def
+        self.segment_ival = segment_ival
+
+    def clean(self, cnt, ignore_chans=False):
+        highpassed_cnt = highpass_cnt(cnt, low_cut_off_hz=0.1, filt_order=4)
+        epo = segment_dat_fast(highpassed_cnt, marker_def=self.marker_def, 
+           ival=self.segment_ival)
+        if not ignore_chans:
+            max_abs_vals_per_chan = np.max(np.abs(epo.data), axis=(0,1))
+            abs_threshold = np.median(max_abs_vals_per_chan) * 4
+            vars_per_chan = np.mean(np.var(epo.data, axis=1), axis=0)
+            var_threshold = np.median(vars_per_chan) * 4
+            
+            unwanted_abs_chan = max_abs_vals_per_chan > abs_threshold
+            unwanted_var_chan = vars_per_chan > var_threshold
+            unwanted_chan_mask = unwanted_abs_chan | unwanted_var_chan
+            rejected_chan_names = np.array(epo.axes[2])[unwanted_chan_mask]
+        else:
+            rejected_chan_names = []
+            
+        clean_trials = range(epo.data.shape[0])
+        
+        clean_result = CleanResult(rejected_chan_names=rejected_chan_names,
+            rejected_trials=[],
+            clean_trials=clean_trials,
+            rejected_max_min=[],
+            rejected_var=[])
+        return clean_result
+
 class NoCleaner():
     def __init__(self, segment_ival=None, marker_def=None):
         self.marker_def = marker_def

@@ -1,6 +1,7 @@
 import numpy as np
 import re
 import csv
+import h5py
     
 cap_positions = \
     [['EOG_H',[],'Sync',[],[],[],[],[],'Fp1',[],'FPz',[],'Fp2',[],[],[],[],[],[],[],'EOG_V'],\
@@ -840,3 +841,15 @@ def get_nico_sensors():
          'PO6', 'PO8', 'O1', 'Oz', 'O2']
     assert np.array_equal(sensors, sort_topologically(sensors))
     return sensors
+
+def get_cartesian_sensor_pos_from_bbci(filename):
+    from braindecode.datasets.loaders import BBCIDataset
+    filename = filename
+    with h5py.File(filename, 'r') as h5file:
+        sensor_names = BBCIDataset.get_all_sensors(filename, None)
+        x_pos = h5file['mnt']['x'][:].squeeze()
+        y_pos = h5file['mnt']['y'][:].squeeze()
+        xy_pos = tuple(zip(x_pos, y_pos))
+        sensor_name_pos = zip(sensor_names, xy_pos)
+        sensor_name_pos_cartesian = ('cartesian', ) + tuple(sensor_name_pos)
+    return sensor_name_pos_cartesian

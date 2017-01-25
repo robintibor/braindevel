@@ -229,10 +229,13 @@ def compare_net_csp(df_net, df_csp, name,freq, dataset, with_csp_acc=False,
 
     test_acc_net = np.array(df_merged['test_net'])
     test_acc_csp = np.array(df_merged['test_csp'])
-    if len(test_acc_net) > max_n_p_vals:
-        p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=2**max_n_p_vals)
-    else:
-        p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=None)
+    # for permutation test, takes more time:
+    # (also outcomment line below
+    #df_out['rand'] = [p_val]
+    #if len(test_acc_net) > max_n_p_vals:
+    #    p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=2**max_n_p_vals)
+    #else:
+    #    p_val = perm_mean_diff_test(test_acc_net,test_acc_csp, n_diffs=None)
     p_val_wilc = wilcoxon_signed_rank(test_acc_net, test_acc_csp)
     p_val_sign = sign_test(test_acc_net, test_acc_csp)
     diff_std = np.std(test_acc_net - test_acc_csp)
@@ -255,7 +258,7 @@ def compare_net_csp(df_net, df_csp, name,freq, dataset, with_csp_acc=False,
         
     
         
-    df_out['rand'] = [p_val]
+    #df_out['rand'] = [p_val]
     df_out['wilc'] = [p_val_wilc]
     df_out['sign'] = [p_val_sign]
     df_out['time_net'] = [pd.Timedelta.round(np.mean(df_net.time), 's')]
