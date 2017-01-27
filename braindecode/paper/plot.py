@@ -11,7 +11,7 @@ from braindecode.mywyrm.plot import add_ears, get_channelpos
 def plot_freq_bands_corrs_topo(corrs, freqs, freq_bands, sensor_names, merge_func):
     """Expects corrs classes already resorted."""
     freq_amp_corrs = []
-    freq_strs = [u"{:d}—{:d} Hz".format(low,high) for low, high in freq_bands]
+    freq_strs = [u"{:d}–{:d} Hz".format(low,high) for low, high in freq_bands]
     for i_freq, (freq_low, freq_high) in enumerate(freq_bands):
         i_freq_start = np.searchsorted(freqs,freq_low) - 1
         i_freq_stop = np.searchsorted(freqs,freq_high)
@@ -44,7 +44,7 @@ def plot_freq_classes_corrs(corrs, freqs, merge_func):
     plt.xlabel('Frequency [Hz]')
     plt.tight_layout()
 
-def plot_csp_patterns(wanted_patterns, sensor_names, i_fb=3, freq_str=u"7—13 Hz"):
+def plot_csp_patterns(wanted_patterns, sensor_names, i_fb=3, freq_str=u"7–13 Hz"):
     """
     THIS WAS ONLY FOR PAPER; REMOVE LATER :D see function below
     Expects filterband x classpair  x sensor x 2 (pattern).
@@ -76,7 +76,7 @@ def plot_csp_patterns_(all_patterns, sensor_names,
             ax = plt.subplot(2,6, i_class_pair+(i_sub_pattern * 6)+1)
             if i_sub_pattern == 0 and i_class_pair == 0:
                 scalp_line_width = 1
-                #ax.set_ylabel(u"{:.0f}—{:.0f} Hz".format(*filterbands[i_fb]))
+                #ax.set_ylabel(u"{:.0f}–{:.0f} Hz".format(*filterbands[i_fb]))
             else:
                 scalp_line_width = 0
 
@@ -143,8 +143,7 @@ def plot_scalp_grid(data, sensor_names, scale_per_row=False,
                 ax = axes[i_col]
             ax_scalp(this_data,sensor_names, colormap=colormap,ax=ax,
                     scalp_line_width=scalp_line_width, scalp_line_style=scalp_line_style,
-                    vmin=vmin, vmax=vmax, chan_pos_list=chan_pos_list,
-                    zorder=10)
+                    vmin=vmin, vmax=vmax, chan_pos_list=chan_pos_list)
             if col_names is not None and i_row == 0:
                 ax.set_title(col_names[i_col], fontsize=fontsize)
             if row_names is not None and i_col == 0:
@@ -246,6 +245,8 @@ def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
     if vmax is None:
         vmax = np.max(normed_conf_mat)
     # see http://stackoverflow.com/a/31397438/1469195
+    # brighten so that black text remains readable
+    # used alpha=0.6 before
     def brighten(x, ):
         return (1 - ((1 - x) * 0.4))
     brightened_cmap = cmap_map(brighten, colormap)
