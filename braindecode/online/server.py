@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import matplotlib
 import logging
+from braindecode.experiments.load import set_param_values_backwards_compatible
 
 # Have to do this here in for choosing correct matplotlib backend before
 # it is imported anywhere
@@ -441,9 +442,9 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
     # as exp final layer might be used for adaptation
     # maybe check this all for correctness?
     cnt_model = exp.final_layer
-    lasagne.layers.set_all_param_values(cnt_model, params)
+    set_param_values_backwards_compatible(cnt_model, params)
     prediction_model = transform_to_normal_net(cnt_model)
-    lasagne.layers.set_all_param_values(prediction_model, params)
+    set_param_values_backwards_compatible(prediction_model, params)
     
     data_processor = StandardizeProcessor(factor_new=1e-3)
     online_model = OnlineModel(prediction_model)

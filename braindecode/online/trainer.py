@@ -15,6 +15,7 @@ from braindecode.util import FuncAndArgs
 import logging
 from pylearn2.utils.timing import log_timing
 from braindecode.datahandling.preprocessing import exponential_running_standardize
+from braindecode.experiments.load import set_param_values_backwards_compatible
 log = logging.getLogger(__name__)
 
 class BatchWiseCntTrainer(object):
@@ -315,14 +316,14 @@ class BatchWiseCntTrainer(object):
             if np.any([np.any(np.isnan(p_val))
                     for p_val in lasagne.layers.get_all_param_values(all_layers_trained)]):
                 log.warn("Reset model params due to NaNs")
-                lasagne.layers.set_all_param_values(self.exp.final_layer, model_param_vals_before)
+                set_param_values_backwards_compatible(self.exp.final_layer, model_param_vals_before)
             assert not np.any([np.any(np.isnan(p.get_value())) for p in self.train_params])
             assert not np.any([np.any(np.isnan(p_val))
                     for p_val in lasagne.layers.get_all_param_values(all_layers_trained)])
             
             # Copy over new values to model used for prediction
             all_layers_used = lasagne.layers.get_all_layers(self.predicting_model)
-            lasagne.layers.set_all_param_values(all_layers_used,
+            set_param_values_backwards_compatible(all_layers_used,
                 lasagne.layers.get_all_param_values(all_layers_trained))
         else:
             log.info("Not training model yet, only have {:d} of {:d} trials ".format(

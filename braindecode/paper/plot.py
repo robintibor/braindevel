@@ -117,7 +117,7 @@ def plot_scalp_grid(data, sensor_names, scale_per_row=False,
     if figsize is None:
         figsize = (n_rows*3, n_cols*2)
     fig, axes = plt.subplots(nrows=n_rows, ncols=n_cols,figsize=figsize)
-    for i_row in xrange(n_rows):
+    for i_row in range(n_rows):
         if scale_per_row:
             max_abs_val = np.max(np.abs(data[i_row]))
             vmin = -max_abs_val
