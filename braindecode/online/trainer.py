@@ -191,9 +191,10 @@ class BatchWiseCntTrainer(object):
             all_markers = np.copy(all_markers)
             assert np.all(all_markers[break_start:break_stop] == 0), (
                 "all markers in break should be 0, instead have markers:"
-                "{:s}\nbreak start: {:d}\nbreak stop: {:d}".format(
+                "{:s}\nbreak start: {:d}\nbreak stop: {:d}\nmarker sequence: {:s}".format(
                     str(np.unique(all_markers[break_start:break_stop]
-                    )), break_start, break_stop))
+                    )), break_start, break_stop,
+                    str(all_markers[break_start-1:break_stop+1])))
             assert all_markers[break_start - 1] != 0
             assert all_markers[break_stop] != 0
             # keep n_classes for 1-based matlab indexing logic in markers
