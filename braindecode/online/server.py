@@ -62,6 +62,8 @@ def parse_command_line_arguments():
     parser.add_argument('--inputsamples', action='store', default=None,
         type=int,
         help='Input samples for the ConvNet. None means same as when trained in original experiment.')
+    parser.add_argument('--nobreaktraining',action='store_true',
+        help='Do not use the breaks as training examples for the rest class.')
     args = parser.parse_args()
     return args
 
@@ -404,7 +406,8 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
         break_stop_offset,
         pred_freq,
         incoming_port,load_old_data,use_new_adam_params,
-        input_time_length):
+        input_time_length,
+        train_on_breaks):
     setup_logging()
     assert np.little_endian, "Should be in little endian"
     train_params = None # for trainer, e.g. adam params
@@ -453,7 +456,8 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
             batch_size, learning_rate, n_min_trials, trial_start_offset,
             break_start_offset=break_start_offset,
             break_stop_offset=break_stop_offset,
-            train_param_values=train_params)
+            train_param_values=train_params,
+            add_breaks=train_on_breaks)
     else:
         log.info("Not adapting model...")
         online_trainer = NoTrainer()
@@ -492,5 +496,6 @@ if __name__ == '__main__':
         incoming_port=args.inport, load_old_data=not args.noolddata,
         use_new_adam_params=not args.nooldadamparams,
         input_time_length=args.inputsamples,
+        train_on_breaks=(not args.nobreaktraining)
         )
     
