@@ -220,7 +220,9 @@ class BatchWiseCntTrainer(object):
             # cut out last trial which only has start marker
             trial_starts = trial_starts[:-1]
         
-        assert(len(trial_starts) == len(trial_stops))
+        assert (len(trial_starts) == len(trial_stops)), (
+            "Have {:d} trial starts, but {:d} trial stops (should be equal)".format(
+                len(trial_starts), len(trial_stops)))
         assert(np.all(trial_starts <= trial_stops))
         return trial_starts, trial_stops
     
