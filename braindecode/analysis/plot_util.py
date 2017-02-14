@@ -113,7 +113,7 @@ def plot_per_sub_dfs(dfs, values_fn):
     with seaborn.color_palette(np.repeat(cp,len(dfs),axis=0)):
         plot_dfs_vals(per_sub_dfs, values_fn=values_fn)
     subject_legend_mrks = [plt.Line2D((0,1),(0,0),
-                                  color=seaborn.color_palette()[i_color], marker='o', linestyle='Null')
+                                  color=seaborn.color_palette()[i_color], marker='o', linestyle='None')
                        for i_color in (0,1,2)]
     plt.legend(subject_legend_mrks, ("Subj 1","Subj 2","Subj 3"))
     

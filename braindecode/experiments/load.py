@@ -35,7 +35,7 @@ def set_param_values_backwards_compatible(final_layer, param_values):
             old_batch_norm_layer_used = True
             assert param.get_value().shape[0] == param_val.shape[1]
             if param.name == 'inv_std': # was std before, now inv std
-                # assuming epislonw as always 1e-4 :)
+                # assuming epsilon was always 1e-4 :)
                 #epsilon = 1e-4
                 #param_val = 1.0 / (param_val + epsilon)
                 pass

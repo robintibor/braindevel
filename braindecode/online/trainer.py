@@ -189,7 +189,10 @@ class BatchWiseCntTrainer(object):
     def add_break(self, break_start, break_stop, all_samples, all_markers):
         if self.add_breaks:
             all_markers = np.copy(all_markers)
-            assert np.all(all_markers[break_start:break_stop] == 0)
+            assert np.all(all_markers[break_start:break_stop] == 0), (
+                "all markers in break should be 0, instead have markers:"
+                "{:s}".format(str(np.unique(all_markers[break_start:break_stop]
+                    ))))
             assert all_markers[break_start - 1] != 0
             assert all_markers[break_stop] != 0
             # keep n_classes for 1-based matlab indexing logic in markers
