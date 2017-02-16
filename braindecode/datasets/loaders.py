@@ -200,11 +200,21 @@ class BBCIDataset(object):
                 pass
             elif (all_class_names == ['One', 'Two', 'Three', 'Four']):
                 pass
+            elif (all_class_names == ['1', '10', '11', '12', '2', '20', '3', '30', '4', '40']):
+                pass
+            elif (all_class_names == ['1', '10', '12', '13', '2', '20', '3', '30', '4', '40']):
+                pass
+            elif (all_class_names == ['1', '10', '13', '2', '20', '3', '30', '4', '40', '99']):
+                pass
+            elif (all_class_names == ['1', '10', '11', '14', '18', '20', '21', '24', '251', '252', '28', '30', '4', '8']):
+                pass
+            elif (all_class_names == ['1', '10', '11', '14', '18', '20', '21', '24', '252', '253', '28', '30', '4', '8']):
+                pass
             elif len(event_times_in_ms) ==  len(all_class_names):
                 pass # weird neuroone(?) logic where class names have event classes
             else:
-                # add another clause here for other class names...
-                raise ValueError("Unknown class names {:s}".format(
+                # remove this whole if else stuffs?
+                log.warn("Unknown class names {:s}".format(
                     all_class_names))
             
         cnt.markers =  zip(event_times_in_ms, event_classes)

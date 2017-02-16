@@ -1,16 +1,18 @@
 import numpy as np
+from copy import deepcopy, copy
+from glob import glob
+import os.path
 from braindecode.datasets.raw import CleanSignalMatrix
 from braindecode.datasets.cnt_signal_matrix import CntSignalMatrix,\
     SetWithMarkers
 from braindecode.mywyrm.clean import clean_train_test_cnt
 import logging
-from braindecode.datasets.loaders import BBCIDataset
+from braindecode.datasets.loaders import BBCIDataset, MultipleBBCIDataset
 from braindecode.datasets.signal_processor import SignalProcessor
 from braindecode.mywyrm.processing import select_marker_classes,\
     select_marker_epoch_range, select_ival_with_markers
 from braindecode.datasets.trial_segmenter import MarkerSegmenter, AddTrialBreaks,\
     PipelineSegmenter, RestrictTrialRange
-from copy import deepcopy, copy
 log = logging.getLogger(__name__)
 
 class CombinedSet(object):
@@ -215,6 +217,74 @@ def construct_combined_set(filenames, sensor_names, cnt_preprocessors,
             segmenters.append(trial_break_adder)
         segmenter  = PipelineSegmenter(segmenters)
         cnt_set = SetWithMarkers(BBCIDataset(filename,
+                              load_sensor_names=this_args['sensor_names']),
+                  this_args['cnt_preprocessors'],
+                  segmenter)        
+        sets.append(cnt_set)
+
+    # add last set last part as test set if you split apart last set
+    # we use that this_args is now from last set already
+    if last_set_split_trial is not None:
+        segmenters = [marker_segmenter,
+             RestrictTrialRange(last_set_split_trial,None),]
+        if this_args['add_trial_breaks']:
+            segmenters.append(trial_break_adder)
+        segmenter  = PipelineSegmenter(segmenters)
+        cnt_set = SetWithMarkers(BBCIDataset(filenames[-1], # again last file needed
+                              load_sensor_names=this_args['sensor_names']),
+                  this_args['cnt_preprocessors'],
+                  segmenter)
+        sets.append(cnt_set)
+    dataset = CombinedSet(sets)
+    return dataset
+
+def construct_folder_combined_set(folder_names, sensor_names, cnt_preprocessors,
+                            marker_def, end_marker_def, trial_classes,
+                          trial_start_offset_ms, trial_stop_offset_ms,
+                           min_break_length_ms, max_break_length_ms,
+                          break_start_offset_ms, break_stop_offset_ms,
+                          last_set_split_trial, add_trial_breaks=True,
+                          folder_name_to_extra_args=None):
+    """ extra_args should be dict filename -> args that are different for
+    this file."""
+    default_args = deepcopy(locals())
+    sets = []
+
+    if folder_name_to_extra_args is not None:
+        for folder_name_with_args in folder_name_to_extra_args:
+            assert folder_name_with_args in folder_names
+
+    for i_folder, folder_name in enumerate(folder_names):
+        this_args = copy(default_args)
+        if folder_name_to_extra_args is not None and (
+                folder_name in folder_name_to_extra_args):
+            for key in folder_name_to_extra_args[folder_name]:
+                assert key in this_args
+                this_args[key] = folder_name_to_extra_args[folder_name][key]
+                assert key != 'last_set_split_trial', "Does not make sense :)"
+        marker_segmenter = MarkerSegmenter(segment_ival=[
+            this_args['trial_start_offset_ms'], 
+            this_args['trial_stop_offset_ms']],
+            marker_def=this_args['marker_def'],
+            trial_classes=this_args['trial_classes'],
+            end_marker_def=this_args['end_marker_def'])
+        trial_break_adder = AddTrialBreaks(min_length_ms=this_args['min_break_length_ms'],
+            max_length_ms=this_args['max_break_length_ms'], 
+            start_offset_ms=this_args['break_start_offset_ms'], 
+            stop_offset_ms=this_args['break_stop_offset_ms'],
+            start_marker_def=this_args['marker_def'],
+            end_marker_def=this_args['end_marker_def'])
+        if (i_folder < len(folder_names) - 1) or (
+                this_args['last_set_split_trial'] is None):
+            segmenters = [marker_segmenter,]
+        else:
+            segmenters = [marker_segmenter,
+             RestrictTrialRange(0,this_args['last_set_split_trial'])]
+        if this_args['add_trial_breaks']:
+            segmenters.append(trial_break_adder)
+        segmenter  = PipelineSegmenter(segmenters)
+        filenames = glob(os.path.join(folder_name, '*.BBCI.mat'))
+        cnt_set = SetWithMarkers(MultipleBBCIDataset(filenames,
                               load_sensor_names=this_args['sensor_names']),
                   this_args['cnt_preprocessors'],
                   segmenter)        

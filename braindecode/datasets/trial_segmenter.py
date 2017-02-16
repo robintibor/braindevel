@@ -13,8 +13,7 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
         start_marker_vals = start_marker_def[class_name]
         end_marker_vals = end_marker_def[class_name]
         assert len(start_marker_vals) == 1
-        assert len(end_marker_vals) == 1
-        start_to_end_value[start_marker_vals[0]] = end_marker_vals[0] 
+        start_to_end_value[start_marker_vals[0]] = end_marker_vals
 
     # Assuming start marker vals are 1 ... n_classes
     # Otherwise change code...
@@ -25,12 +24,12 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
     assert (trial_classes is not None) or (
         np.array_equal(np.sort(all_start_marker_vals), range(1, n_classes+1))), (
         "Assume start marker values are from 1...n_classes if trial classes not given")
-    all_end_marker_vals = start_to_end_value.values()
+    all_end_marker_vals = np.concatenate(start_to_end_value.values())
     
     if trial_classes is not None:
         old_class_to_new_class = create_new_class_to_old_class(start_marker_def,
             trial_classes)
-    y = np.zeros((cnt.data.shape[0], np.max(all_start_marker_vals)), dtype= np.int32)
+    y = np.zeros((cnt.data.shape[0], len(all_start_marker_vals)), dtype= np.int32)
     i_marker = 0
     while i_marker < len(cnt.markers):
         # first find start marker
@@ -47,7 +46,7 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
             assert i_marker < len(cnt.markers), "There should be an end marker for each start marker(?)"
             end_marker_ms = cnt.markers[i_marker][0]
             end_marker_val = cnt.markers[i_marker][1]
-            assert end_marker_val == start_to_end_value[start_marker_val]
+            assert end_marker_val in start_to_end_value[start_marker_val]
             
             first_index = np.searchsorted(cnt.axes[timeaxis], start_marker_ms + segment_ival[0])
             last_index = np.searchsorted(cnt.axes[timeaxis], end_marker_ms+segment_ival[1])
@@ -173,8 +172,7 @@ def compute_break_start_ends_ms(markers, start_marker_def, end_marker_def):
     '''
     assert np.all([len(v) == 1 for v in start_marker_def.values()])
     start_vals = [v[0] for v in start_marker_def.values()]
-    assert np.all([len(v) == 1 for v in end_marker_def.values()])
-    end_vals = [v[0] for v in end_marker_def.values()]
+    end_vals = np.concatenate(end_marker_def.values())
     break_start_end = [(m, next_m) for m, next_m in zip(markers[:-1], markers[1:])
                    if (m[1] in end_vals) and (next_m[1] in start_vals)]
     # now break_start_end is
