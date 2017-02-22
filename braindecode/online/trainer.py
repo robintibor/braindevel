@@ -164,6 +164,17 @@ class BatchWiseCntTrainer(object):
             assert trial_start < trial_stop, ("trial start {:d} should be "
                 "before trial stop {:d}, markers: {:s}").format(trial_start, 
                     trial_stop, str(marker_samples_with_overlap))
+            assert self.marker_buffer[trial_start - 1] == 0, (
+                "Expect a 0 marker before trial start, instead {:d}".format(
+                    self.marker_buffer[trial_start - 1] ))
+            assert self.marker_buffer[trial_start] != 0, (
+                "Expect a nonzero marker at trial start instead {:d}".format(
+                    self.marker_buffer[trial_start]))
+            assert self.marker_buffer[trial_start] == self.marker_buffer[trial_stop], (
+                "Expect a same marker at trial start and stop instead {:d} / {:d}".format(
+                    self.marker_buffer[trial_start]), 
+                    self.marker_buffer[trial_start])
+            # TODO: here rechcek
             self.add_blocks(trial_start + self.trial_start_offset, trial_stop,
                 self.data_processor.sample_buffer,
                 self.marker_buffer)
@@ -181,11 +192,17 @@ class BatchWiseCntTrainer(object):
                 trial_stop = np.flatnonzero(np.diff(self.marker_buffer) < 0)[-1] + 1
                 assert trial_start > trial_stop, ("If trial has just started "
                     "expect this to be after stop of last trial")
+                assert self.marker_buffer[trial_start - 1] == 0, (
+                    "Expect a 0 marker before trial start, instead {:d}".format(
+                    self.marker_buffer[trial_start - 1]))
+                assert self.marker_buffer[trial_start] != 0, (
+                    "Expect a nonzero marker at trial start instead {:d}".format(
+                    self.marker_buffer[trial_start]))
                 self.add_break(break_start=trial_stop, break_stop=trial_start,
                     all_samples=self.data_processor.sample_buffer,
                     all_markers=self.marker_buffer)
             #log.info("Break added, now at {:d} batches".format(len(self.data_batches)))
-                
+
     def add_break(self, break_start, break_stop, all_samples, all_markers):
         if self.add_breaks:
             all_markers = np.copy(all_markers)
@@ -198,6 +215,11 @@ class BatchWiseCntTrainer(object):
             assert all_markers[break_start - 1] != 0
             assert all_markers[break_stop] != 0
             # keep n_classes for 1-based matlab indexing logic in markers
+            
+            #TODO: here set to -1 in case break runs into trial
+            # so in case break start + break offset runs into trial
+            # but also make sure that break start + break offset
+            # smaller than break stop + break stop offset
             all_markers[break_start:break_stop] = self.n_classes
             self.add_blocks(break_start + self.break_start_offset, 
                 break_stop + self.break_stop_offset, all_samples,

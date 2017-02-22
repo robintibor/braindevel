@@ -62,7 +62,8 @@ class OnlineCoordinator(object):
             self.n_samples_pred_window,
             self.n_samples - self.i_last_pred - self.pred_freq - 1)
         assert n_samples_after_pred < self.pred_freq, ("Other case "
-            "not implemented yet")
+            "(multiple predictions should have happened in one "
+            "block that was sent) not implemented yet")
         start = -self.n_samples_pred_window - n_samples_after_pred
         end = -n_samples_after_pred
         if end == 0:
