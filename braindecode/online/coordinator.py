@@ -9,10 +9,10 @@ class OnlineCoordinator(object):
     when necessary.
     Online coordinator is mainly responsible
     for cutting out correct time windows for the model to predict on. """
-    def __init__(self, data_processor, model, trainer, pred_freq):
+    def __init__(self, data_processor, model, trainer, pred_gap):
         self.data_processor = data_processor
         self.model = model
-        self.pred_freq = pred_freq
+        self.pred_gap = pred_gap
         self.marker_buffer = RingBuffer(np.zeros(
             data_processor.n_samples_in_buffer, 
             dtype=np.int32))
@@ -49,7 +49,7 @@ class OnlineCoordinator(object):
 
     def should_do_next_prediction(self):
         return (self.n_samples >= self.n_samples_pred_window and 
-            self.n_samples > (self.i_last_pred + self.pred_freq))
+            self.n_samples > (self.i_last_pred + self.pred_gap))
 
     def predict(self):
         # Compute how many samples we already have past the
@@ -60,8 +60,8 @@ class OnlineCoordinator(object):
         # -1 at the end below since python  indexing is zerobased
         n_samples_after_pred = min(self.n_samples - 
             self.n_samples_pred_window,
-            self.n_samples - self.i_last_pred - self.pred_freq - 1)
-        assert n_samples_after_pred < self.pred_freq, ("Other case "
+            self.n_samples - self.i_last_pred - self.pred_gap - 1)
+        assert n_samples_after_pred < self.pred_gap, ("Other case "
             "(multiple predictions should have happened in one "
             "block that was sent) not implemented yet")
         start = -self.n_samples_pred_window - n_samples_after_pred
@@ -104,7 +104,7 @@ def make_predictions_with_online_predictor(coordinator, cnt_data,
         coordinator.receive_samples(block)
         if coordinator.has_new_prediction():
             pred, i_sample = coordinator.pop_last_prediction_and_sample_ind()
-            assert ((i_sample + 1) - window_len) % coordinator.pred_freq == 0
+            assert ((i_sample + 1) - window_len) % coordinator.pred_gap == 0
             all_preds.append(pred)
             i_pred_samples.append(i_sample)
         # Logging process

@@ -448,7 +448,7 @@ def create_batch(topo, y, start_end_blocks, n_sample_preds):
         for _, end in start_end_blocks]
     batch_topo = [topo[start:end+1].swapaxes(0,2)
         for start, end in start_end_blocks]
-    batch_y = np.concatenate(batch_y)#remove?:.astype(np.int32)
+    batch_y = np.concatenate(batch_y)
     batch_topo = np.concatenate(batch_topo).astype(np.float32)
     return batch_topo, batch_y
 

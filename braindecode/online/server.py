@@ -8,22 +8,29 @@ from braindecode.experiments.load import set_param_values_backwards_compatible
 def parse_command_line_arguments():
     import argparse
     parser = argparse.ArgumentParser(
-        description="""Launch server for online decoding.
-        Example: online/server.py --host 172.30.2.129 --port 30000"""
+        description="""Launch server for online decoding.""",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+    # see http://stackoverflow.com/a/24181138/1469195
+    required_named = parser.add_argument_group('required named arguments')
+    required_named.add_argument('--fs', action='store', type=int,
+        help="Sampling rate of EEG signal (in Hz). Only used to convert "
+        "other arguments from milliseconds to number of samples", required=True)
+    required_named.add_argument('--modelfile', action='store',
+        help='Basename of the modelfile')
     parser.add_argument('--inport', action='store', type=int,
         default=7987, help='Port from which to accept incoming sensor data.')
     parser.add_argument('--uihost', action='store',
-        default='172.30.0.117', help='Hostname/IP of the UI server')
+        default='172.30.0.117', help='Hostname/IP of the UI server (= the '
+        'server that the predictions are being sent to).')
     parser.add_argument('--uiport', action='store',
         default=30000, help='Port of the UI server')
-    parser.add_argument('--modelfile', action='store',
-        default='data/models/raw-net-512/3', 
-        help='Basename of the modelfile')
     parser.add_argument('--paramsfile', action='store', 
-        help='Use these (possibly adapted) parameters for the model '
-        'filename should end with model_params.npy. Can also use "newest"'
-        'to load the newest available  parameter file.')
+        help='Use these (possibly adapted) parameters for the model. '
+        'Filename should end with model_params.npy. Can also use "newest"'
+        'to load the newest available  parameter file. '
+        'None means to not load any new parameters, instead use '
+        'originally (offline)-trained parameters.')
     parser.add_argument('--plot', action='store_true',
         help="Show plots of the sensors first.")
     parser.add_argument('--noui', action='store_true',
@@ -36,19 +43,23 @@ def parse_command_line_arguments():
         help="Batch size for adaptation updates.")
     parser.add_argument('--learningrate', action='store', default=1e-4, 
         type=float, help="Learning rate for adaptation updates.")
-    parser.add_argument('--mintrials', action='store', default=8, type=int,
+    parser.add_argument('--mintrials', action='store', default=10, type=int,
         help="Number of trials before starting adaptation updates.")
-    parser.add_argument('--trialoffset', action='store', default=125, type=int,
-        help="Sample offset for the first sample to use (within a trial, in samples) "
+    parser.add_argument('--trialstartoffset', action='store', default=500, type=int,
+        help="Time offset for the first sample to use (within a trial, in ms) "
         "for adaptation updates.")
-    parser.add_argument('--breakstartoffset', action='store', default=250, type=int,
-        help="Sample offset for the first sample to use (within a break(!), in samples) "
+    parser.add_argument('--breakstartoffset', action='store', default=1000, type=int,
+        help="Time offset for the first sample to use (within a break(!), in ms) "
         "for adaptation updates.")
-    parser.add_argument('--breakstopoffset', action='store', default=250, type=int,
-        help="Sample offset for the last sample to use (within a break(!), in samples) "
+    parser.add_argument('--breakstopoffset', action='store', default=-1000, type=int,
+        help="Sample offset for the last sample to use (within a break(!), in ms) "
         "for adaptation updates.")
-    parser.add_argument('--predfreq', action='store', default=50, type=int,
-        help="Amount of samples between predictions.")
+    parser.add_argument('--predgap', action='store', default=200, type=int,
+        help="Amount of milliseconds between predictions.")
+    parser.add_argument('--minbreakms', action='store', default=2000, type=int,
+        help="Minimum length of a break to be used for training (in ms).")
+    parser.add_argument('--mintrialms', action='store', default=0, type=int,
+        help="Minimum length of a trial to be used for training (in ms).")
     parser.add_argument('--noprint', action='store_true',
         help="Don't print on terminal.")
     parser.add_argument('--nosave', action='store_true',
@@ -61,7 +72,7 @@ def parse_command_line_arguments():
         help='Do not load old adam params.')
     parser.add_argument('--inputsamples', action='store', default=None,
         type=int,
-        help='Input samples for the ConvNet. None means same as when trained in original experiment.')
+        help='Input samples (!) for the ConvNet. None means same as when trained in original experiment.')
     parser.add_argument('--nobreaktraining',action='store_true',
         help='Do not use the breaks as training examples for the rest class.')
     args = parser.parse_args()
@@ -190,7 +201,8 @@ class PredictionServer(gevent.server.StreamServer):
             chan_names_line += in_socket.recv(1)
         log.info("Chan names:\n{:s}".format(chan_names_line))
         chan_names = chan_names_line.replace('\n','').split(" ")
-            
+        
+        #
         assert np.array_equal(chan_names, ['Fp1', 'Fpz', 'Fp2', 'AF7',
          'AF3', 'AF4', 'AF8', 'F7',
          'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5', 'FC3',
@@ -199,7 +211,11 @@ class PredictionServer(gevent.server.StreamServer):
          'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1',
          'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POz', 'PO4',
          'PO6', 'PO8', 'O1', 'Oz', 'O2', 'marker']
-            )
+            ) or np.array_equal(chan_names,
+         ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8',
+         'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'FC1', 'FCz',
+         'FC2', 'C3', 'C1', 'Cz', 'C2', 'C4', 'CP3', 'CP1', 'CPz',
+         'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz', 'marker'])
         n_rows = self.read_until_bytes_received(in_socket, 4)
         n_rows = np.fromstring(n_rows, dtype=np.int32)[0]
         log.info("Number of rows:    {:d}".format(n_rows))
@@ -404,10 +420,12 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
         use_ui_server, adapt_model, save_data, n_updates_per_break, batch_size,
         learning_rate, n_min_trials, trial_start_offset, break_start_offset,
         break_stop_offset,
-        pred_freq,
+        pred_gap,
         incoming_port,load_old_data,use_new_adam_params,
         input_time_length,
-        train_on_breaks):
+        train_on_breaks,
+        min_break_samples,
+        min_trial_samples):
     setup_logging()
     assert np.little_endian, "Should be in little endian"
     train_params = None # for trainer, e.g. adam params
@@ -457,12 +475,14 @@ def main(ui_hostname, ui_port, base_name, params_filename, plot_sensors,
             break_start_offset=break_start_offset,
             break_stop_offset=break_stop_offset,
             train_param_values=train_params,
-            add_breaks=train_on_breaks)
+            add_breaks=train_on_breaks,
+            min_break_samples=min_break_samples,
+            min_trial_samples=min_trial_samples)
     else:
         log.info("Not adapting model...")
         online_trainer = NoTrainer()
     coordinator = OnlineCoordinator(data_processor, online_model, online_trainer,
-        pred_freq=pred_freq)
+        pred_gap=pred_gap)
     hostname = ''
     server = PredictionServer((hostname, incoming_port), coordinator=coordinator,
         ui_hostname=ui_hostname, ui_port=ui_port, plot_sensors=plot_sensors,
@@ -483,19 +503,31 @@ if __name__ == '__main__':
     args = parse_command_line_arguments()
     if args.noprint:
         log.setLevel("WARN")
-    main(ui_hostname=args.uihost, ui_port=args.uiport, 
-        base_name=args.modelfile, params_filename=args.paramsfile,
+    # factor for converting to samples
+    ms_to_samples = args.fs / 1000.0
+    # convert all millisecond arguments to number of samples
+    main(ui_hostname=args.uihost,
+        ui_port=args.uiport, 
+        base_name=args.modelfile,
+        params_filename=args.paramsfile,
         plot_sensors=args.plot,
         save_data=not args.nosave,
-        use_ui_server=not args.noui, adapt_model=not args.noadapt,
-        n_updates_per_break=args.updatesperbreak, batch_size=args.batchsize,
-        learning_rate=args.learningrate, n_min_trials=args.mintrials, 
-        trial_start_offset=args.trialoffset, break_start_offset=args.breakstartoffset,
-        break_stop_offset=args.breakstopoffset,
-        pred_freq=args.predfreq,
-        incoming_port=args.inport, load_old_data=not args.noolddata,
+        use_ui_server=not args.noui,
+        adapt_model=not args.noadapt,
+        n_updates_per_break=args.updatesperbreak,
+        batch_size=args.batchsize,
+        learning_rate=args.learningrate,
+        n_min_trials=args.mintrials, 
+        trial_start_offset=int(args.trialstartoffset * ms_to_samples), 
+        break_start_offset=int(args.breakstartoffset * ms_to_samples),
+        break_stop_offset=int(args.breakstopoffset * ms_to_samples),
+        pred_gap=int(args.predgap * ms_to_samples),
+        incoming_port=args.inport,
+        load_old_data=not args.noolddata,
         use_new_adam_params=not args.nooldadamparams,
         input_time_length=args.inputsamples,
-        train_on_breaks=(not args.nobreaktraining)
+        train_on_breaks=(not args.nobreaktraining),
+        min_break_samples=int(args.minbreakms * ms_to_samples),
+        min_trial_samples=int(args.mintrialms * ms_to_samples),
         )
     

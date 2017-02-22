@@ -16,6 +16,8 @@ import logging
 from pylearn2.utils.timing import log_timing
 from braindecode.datahandling.preprocessing import exponential_running_standardize
 from braindecode.experiments.load import set_param_values_backwards_compatible
+from lasagne.objectives import categorical_crossentropy
+from braindecode.online.objectives import masked_loss_func
 log = logging.getLogger(__name__)
 
 class BatchWiseCntTrainer(object):
@@ -23,19 +25,11 @@ class BatchWiseCntTrainer(object):
                 n_min_trials, trial_start_offset, break_start_offset,
                 break_stop_offset,
                 train_param_values,
-                deterministic_training=False, add_breaks=True):
+                deterministic_training=False, add_breaks=True,
+                min_break_samples=0, min_trial_samples=0):
         self.cnt_model = exp.final_layer
-        self.exp = exp
-        self.n_updates_per_break = n_updates_per_break
-        self.batch_size = batch_size
-        self.learning_rate = learning_rate
-        self.n_min_trials = n_min_trials
-        self.trial_start_offset = trial_start_offset
-        self.break_start_offset = break_start_offset
-        self.break_stop_offset = break_stop_offset
-        self.train_param_values = train_param_values
-        self.deterministic_training = deterministic_training
-        self.add_breaks = add_breaks
+        self.__dict__.update(locals())
+        del self.self
         
     def set_predicting_model(self, model):
         """ Needed to keep trained and used params in sync, i.e.
@@ -72,11 +66,8 @@ class BatchWiseCntTrainer(object):
             deterministic=self.deterministic_training, input_var=input_var,
             inputs=input_var)
         # Loss function might need layers or not...
-        try:
-            loss = self.exp.loss_expression(prediction, targets).mean()
-        except TypeError:
-            loss = self.exp.loss_expression(prediction, targets,
-                self.exp.final_layer).mean()
+        loss_fn = masked_loss_func(categorical_crossentropy)
+        loss = loss_fn(prediction, targets).mean()
         # create parameter update expressions
         params = lasagne.layers.get_all_params(self.exp.final_layer,
             trainable=True)
@@ -86,7 +77,7 @@ class BatchWiseCntTrainer(object):
             # 2 and max col norm 0.5
             updates = self.exp.updates_modifier.modify(updates,
                 self.exp.final_layer)
-            
+
         # store only the parameters for training,
         # assumes parameters for layers already set
         self.train_params = []
@@ -166,16 +157,18 @@ class BatchWiseCntTrainer(object):
                     trial_stop, str(marker_samples_with_overlap))
             assert self.marker_buffer[trial_start - 1] == 0, (
                 "Expect a 0 marker before trial start, instead {:d}".format(
-                    self.marker_buffer[trial_start - 1] ))
+                    self.marker_buffer[trial_start - 1]))
             assert self.marker_buffer[trial_start] != 0, (
                 "Expect a nonzero marker at trial start instead {:d}".format(
                     self.marker_buffer[trial_start]))
-            assert self.marker_buffer[trial_start] == self.marker_buffer[trial_stop], (
-                "Expect a same marker at trial start and stop instead {:d} / {:d}".format(
-                    self.marker_buffer[trial_start]), 
-                    self.marker_buffer[trial_start])
-            # TODO: here rechcek
-            self.add_blocks(trial_start + self.trial_start_offset, trial_stop,
+            assert self.marker_buffer[trial_stop-1] != 0, (
+                "Expect a nonzero marker at trial end instead {:d}".format(
+                self.marker_buffer[trial_stop]))
+            assert self.marker_buffer[trial_start] == self.marker_buffer[trial_stop-1], (
+                "Expect a same marker at trial start and end instead {:d} / {:d}".format(
+                    self.marker_buffer[trial_start],
+                    self.marker_buffer[trial_stop]))
+            self.add_trial(trial_start, trial_stop,
                 self.data_processor.sample_buffer,
                 self.marker_buffer)
             log.info("Now {:d} trials (including breaks)".format(
@@ -203,6 +196,30 @@ class BatchWiseCntTrainer(object):
                     all_markers=self.marker_buffer)
             #log.info("Break added, now at {:d} batches".format(len(self.data_batches)))
 
+    def add_trial(self, trial_start, trial_stop, all_samples, all_markers):
+        # Add trial by determining needed signal/samples and markers
+        # In case the model predicts more samples concurrently
+        # than the number of trials in this sample
+        # prepad the markers with -1 and signal with zeros
+        assert (len(np.unique(all_markers[trial_start:trial_stop])) == 1), (
+            "All markers should be the same in one trial, instead got:"
+            "{:s}".format(str(np.unique(all_markers[trial_start:trial_stop]))))
+        # determine markers and in samples for default case
+        pred_start = trial_start + self.trial_start_offset
+        if (pred_start < trial_stop) and (trial_stop - trial_start >= self.min_trial_samples):
+            assert (len(np.unique(all_markers[pred_start:trial_stop])) == 1), (
+                "All predicted markers should be the same in one trial, instead got:"
+                "{:s}".format(str(np.unique(all_markers[trial_start:trial_stop]))))
+            self.add_trial_or_break(pred_start, trial_stop, all_samples,
+                all_markers)
+        elif pred_start >= trial_stop:
+            log.warning("Prediction start {:d} is past trial stop {:d}".format(
+                    pred_start, trial_stop) + ", not adding trial")
+        else:
+            assert trial_stop - trial_start < self.min_trial_samples
+            log.warn("Trial only {:d} samples, want {:d} samples, not using.".format(
+                trial_stop -trial_start, self.min_trial_samples))
+
     def add_break(self, break_start, break_stop, all_samples, all_markers):
         if self.add_breaks:
             all_markers = np.copy(all_markers)
@@ -214,18 +231,77 @@ class BatchWiseCntTrainer(object):
                     str(all_markers[break_start-1:break_stop+1])))
             assert all_markers[break_start - 1] != 0
             assert all_markers[break_stop] != 0
-            # keep n_classes for 1-based matlab indexing logic in markers
-            
-            #TODO: here set to -1 in case break runs into trial
-            # so in case break start + break offset runs into trial
-            # but also make sure that break start + break offset
-            # smaller than break stop + break stop offset
-            all_markers[break_start:break_stop] = self.n_classes
-            self.add_blocks(break_start + self.break_start_offset, 
-                break_stop + self.break_stop_offset, all_samples,
-                all_markers)
+            pred_start = break_start + self.break_start_offset
+            pred_stop = break_stop + self.break_stop_offset
+            if (pred_start < pred_stop) and (break_stop - break_start >= self.min_break_samples):
+                # keep n_classes for 1-based matlab indexing logic in markers
+                all_markers[pred_start:pred_stop] = self.n_classes
+                self.add_trial_or_break(pred_start, pred_stop, all_samples, all_markers)
+            elif pred_start >= pred_stop:
+                log.warning(
+                    "Prediction start {:d} is past prediction stop {:d}".format(
+                        pred_start, pred_stop) + ", not adding break")
+            else:
+                assert break_stop - break_start < self.min_break_samples
+                log.warn("Break only {:d} samples, want {:d} samples, not using.".format(
+                    break_stop - break_start, self.min_break_samples))
+                
         else:
             pass #Ignore break that was supposed to be added
+
+    def add_trial_or_break(self, pred_start, pred_stop, all_samples, all_markers):
+        """Assumes all markers already changed the class for break."""
+        crop_size = self.input_time_length - self.n_sample_preds + 1
+        in_sample_start = pred_start - crop_size + 1
+        # Later functions need one marker per input sample
+        # (so also need markers at start that will not actually be used, 
+        # which are only there
+        # for the receptive field of ConvNet)
+        # These functions will then cut out correct markers.
+        # We want to make sure that no unwanted markers are used, so
+        # we only extract the markers that will actually be predicted
+        # and pad with 0s (which will be converted to -1 (!) and 
+        # should not be used later, except
+        # trial too small and we go into the if clause below)
+        assert len(all_markers) == len(all_samples)
+        assert pred_stop < len(all_markers)
+        needed_samples = all_samples[in_sample_start:pred_stop]
+        needed_markers = np.copy(all_markers[pred_start:pred_stop])
+        needed_markers = np.concatenate((np.zeros(crop_size - 1,
+            dtype=needed_markers.dtype), needed_markers))
+        assert len(needed_samples) == len(needed_markers), (
+            "{:d} markers and {:d} samples (should be same)".format(
+                len(needed_samples), len(needed_markers)))
+        n_expected_samples = pred_stop - pred_start + crop_size - 1
+        # this assertion here for regression reasons, failed before
+        assert len(needed_markers) == n_expected_samples, (
+            "Extracted {:d} markers, but should have {:d}".format(
+                len(needed_markers), n_expected_samples))
+        # handle case where trial is too small
+        if pred_stop - pred_start < self.n_sample_preds:
+            log.warn("Trial/break has only {:d} predicted samples in it, "
+                "less than the "
+                "{:d} concurrently processed samples of the model!".format(
+                    pred_stop - pred_start,
+                    self.n_sample_preds))
+            # add -1 markers that will not be used during training for the
+            # data before
+            n_pad_samples = self.n_sample_preds - (pred_stop - pred_start)
+            pad_markers = np.zeros(n_pad_samples, dtype=all_markers.dtype)
+            needed_markers = np.concatenate((pad_markers, needed_markers))
+            pad_samples = np.zeros_like(all_samples[0:n_pad_samples])
+            needed_samples = np.concatenate((pad_samples, needed_samples))
+            pred_start = pred_start - n_pad_samples
+
+        assert pred_stop - pred_start >= self.n_sample_preds
+        n_expected_samples = pred_stop - pred_start + crop_size - 1
+        assert len(needed_markers) == n_expected_samples, (
+            "Extracted {:d} markers, but should have {:d}".format(
+                len(needed_markers), n_expected_samples))
+        assert len(needed_samples) == n_expected_samples, (
+            "Extracted {:d} samples, but should have {:d}".format(
+                len(needed_samples), n_expected_samples))
+        self.add_trial_topo_trial_y(needed_samples, needed_markers)
 
     def get_trial_start_stop_indices(self, markers):
         # + 1 as diff "removes" one index, i.e. diff will be above zero
@@ -247,38 +323,14 @@ class BatchWiseCntTrainer(object):
                 len(trial_starts), len(trial_stops)))
         assert(np.all(trial_starts <= trial_stops))
         return trial_starts, trial_stops
-    
-    def add_blocks(self, trial_start, trial_stop, all_samples, all_markers):
-        """Trial start offset as parameter to give different offsets
-        for break and normal trial."""
-        # n_sample_preds is how many predictions done for
-        # one forward pass of the network -> how many crops predicted
-        # together in one forward pass for given input time length of 
-        # the ConvNet
-        # -> crop size is how many samples are needed for one prediction
-        crop_size = self.input_time_length - self.n_sample_preds + 1
-        if trial_start + self.n_sample_preds > trial_stop:
-            log.info("Too little data in this trial to train in it, only "
-                "{:d} predictable samples, need atleast {:d}".format(
-                     trial_stop - trial_start, self.n_sample_preds))
-            return # Too little data in this trial to train on it...
-        needed_sample_start = trial_start - crop_size + 1
-        # not sure if copy necessary, but why not :)
-        needed_samples = np.copy(all_samples[needed_sample_start:trial_stop])
-        trial_markers = all_markers[needed_sample_start:trial_stop]
-        # trial start can't be at zero atm or else we would have to take more data
-        assert (len(np.unique(trial_markers[(crop_size - 1):])) == 1), (
-            ("Trial should have exactly one class, markers: {:s} "
-                "trial start: {:d}, trial_stop: {:d}").format(
-                np.unique(trial_markers[(crop_size - 1):]), # crop_size -1 is index of first prediction
-                needed_sample_start, trial_stop))
-        self.add_trial_topo_trial_y(needed_samples, trial_markers)
-        
+
     def add_trial_topo_trial_y(self, needed_samples, trial_markers):
         """ needed_samples are samples needed for predicting entire trial,
         i.e. they typically include a part before the first sample of the trial."""
         crop_size = self.input_time_length - self.n_sample_preds + 1
-        assert (len(np.unique(trial_markers[(crop_size - 1):])) == 1), (
+        assert (len(np.unique(trial_markers[(crop_size - 1):])) == 1) or (
+            (len(np.unique(trial_markers[(crop_size - 1):])) == 2) and (
+                0 in trial_markers[(crop_size - 1):])), (
             ("Trial should have exactly one class, markers: {:s} ").format(
                 np.unique(trial_markers[(crop_size - 1):])))
         trial_topo = needed_samples[:,:,np.newaxis,np.newaxis]
@@ -307,18 +359,13 @@ class BatchWiseCntTrainer(object):
             all_y_blocks = np.reshape(all_y_blocks, (-1, self.n_sample_preds))
             
             # make classes balanced
-            # hopefully this is correct?! any sample shd be fine, -10 is a random decision
-            labels_per_block = all_y_blocks[:,-10]
+            # hopefully this is correct?! any sample shd be fine, -1 is a random decision
+            labels_per_block = all_y_blocks[:,-1]
+            
+            # Rebalance by calculating frequencies of classes in data
+            # and then rebalancing by sampling with inverse probability
             unique_labels = sorted(np.unique(labels_per_block))
-            if not np.array_equal(range(len(unique_labels)), 
-                unique_labels):
-                missing_classes = np.setdiff1d(range(len(unique_labels)),
-                    unique_labels)
-                log.info(("Do not have labels for all classes yet, "
-                    "missing: {:s}, Skipping training...".format(
-                        str(missing_classes))))
-                return
-            class_probs = np.zeros(len(unique_labels))
+            class_probs = {}
             for i_class in unique_labels:
                 freq = np.mean(labels_per_block == i_class)
                 prob = 1.0/ (len(unique_labels) * freq)
@@ -326,6 +373,7 @@ class BatchWiseCntTrainer(object):
             block_probs = np.zeros(len(labels_per_block))
             for i_class in unique_labels:
                 block_probs[labels_per_block == i_class] = class_probs[i_class]
+            # Renormalize probabilities
             block_probs = block_probs / np.sum(block_probs)
             
             assert len(all_blocks) == len(all_y_blocks)

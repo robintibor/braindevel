@@ -128,7 +128,7 @@
         # Remove from params basically..
         dataset_splitter: [$several_sets_splitter],
         pool_mode: ['average_exc_pad'],
-        #loss_expression: [$categorical_crossentropy],
+        loss_expression: [$categorical_crossentropy],
         cnt_preprocessors: [$bandpass_resample_standardize],
         resample_fs: [250],
         #load_sensor_names: [$dry_sensors],

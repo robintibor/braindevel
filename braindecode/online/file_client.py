@@ -66,7 +66,7 @@ def send_file_data():
         "labels 0-4")
     print("Done.")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(("127.0.0.1", 1234))
+    s.connect(("127.0.0.1", 7987))
     
     chan_names = ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3',
             'AFz', 'AF4', 'AF8', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6',
