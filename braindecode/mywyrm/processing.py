@@ -624,6 +624,20 @@ def resample_cnt(cnt, newfs, timeaxis=-2):
     newaxes[timeaxis] = timesteps
     return cnt.copy(data=resampled_data, fs=newfs, axes=newaxes)
 
+
+def subsample_cnt(cnt, newfs, timeaxis=-2):
+    if newfs == cnt.fs:
+        log.info("Just copying data, no resampling, since new sampling rate same.")
+        return cnt.copy()
+    assert (float(cnt.fs) / float(newfs)).is_integer(), ("Only allow "
+        "subsamplings for integer ratios")
+    subsample_factor = int(float(cnt.fs) / float(newfs))
+    resampled_data = cnt.data[::subsample_factor]
+    newaxes= deepcopy(cnt.axes)
+    timesteps = cnt.axes[timeaxis][::subsample_factor]
+    newaxes[timeaxis] = timesteps
+    return cnt.copy(data=resampled_data, fs=newfs, axes=newaxes)
+
 def segment_dat_fast(dat, marker_def, ival, newsamples=None, timeaxis=-2):
     """Convert a continuous data object to an epoched one.
 

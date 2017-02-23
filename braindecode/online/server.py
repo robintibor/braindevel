@@ -76,6 +76,8 @@ def parse_command_line_arguments():
     parser.add_argument('--nobreaktraining',action='store_true',
         help='Do not use the breaks as training examples for the rest class.')
     args = parser.parse_args()
+    assert args.breakstopoffset <= 0, ("Please supply a nonpositive break stop "
+        "offset, you supplied {:d}".format(args.breakstopoffset))
     return args
 
 log = logging.getLogger(__name__)

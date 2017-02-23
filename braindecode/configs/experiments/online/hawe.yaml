@@ -6,7 +6,7 @@
         'configs/experiments/models/merged.yaml',
         ],
     templates: {
-        bandpass_resample_standardize: 
+        bandpass_subsample_standardize: 
         [
             [
                 !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
@@ -15,7 +15,7 @@
                  filt_order: $filt_order}
             ],
             [
-                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                !!python/name:braindecode.mywyrm.processing.subsample_cnt , 
                 {'newfs': $resample_fs},
             ],
             [
@@ -129,13 +129,14 @@
         dataset_splitter: [$several_sets_splitter],
         pool_mode: ['average_exc_pad'],
         loss_expression: [$categorical_crossentropy],
-        cnt_preprocessors: [$bandpass_resample_standardize],
+        cnt_preprocessors: [$bandpass_subsample_standardize],
         resample_fs: [250],
         #load_sensor_names: [$dry_sensors],
         #sensor_names: ["null"],
         dataset: [$combined_cnt_set],
         low_cut_hz: ['null'],
         high_cut_hz: [40],
+        filt_order: [20],#30
         run_after_early_stop: [true],
         n_classes: [5],
         batch_size: [60], # make it faster(?)
@@ -148,8 +149,7 @@
         valid_set_fraction: [0.2],
         preprocessor:  ['null'],
         last_set_split_trial: ['null'], #150
-        folder_name_to_extra_args: ['[$non_gui_args]'],#
-        filt_order: [12],#30
+        folder_name_to_extra_args: ['[]'],
         use_test_as_valid: [False],
         max_epochs: [100],
         iterator: [$balanced_cnt_iterator],
@@ -158,44 +158,10 @@
         [
         {
             folder_names: [[
-                'data/robot-hall/HaWe/HaWeNBD1/',
-                'data/robot-hall/HaWe/HaWeNBD2/',
                 'data/robot-hall/HaWe/HaWeNBD3/',
                 'data/robot-hall/HaWe/HaWeNBD4/',
                 'data/robot-hall/HaWe/HaWeNBD5/',
-                'data/robot-hall/HaWe/HaWeNBD5/'
-                ]],
-        },
-        {
-            folder_names: [[
-                'data/robot-hall/HaWe/HaWeNBD1/',
-                'data/robot-hall/HaWe/HaWeNBD2/',
-                'data/robot-hall/HaWe/HaWeNBD3/',
-                'data/robot-hall/HaWe/HaWeNBD4/',
-                'data/robot-hall/HaWe/HaWeNBD5/'
-                ]],
-        },
-        {
-            folder_names: [[
-                'data/robot-hall/HaWe/HaWeNBD1/',
-                'data/robot-hall/HaWe/HaWeNBD2/',
-                'data/robot-hall/HaWe/HaWeNBD3/',
-                'data/robot-hall/HaWe/HaWeNBD5/'
-                ]],
-        },
-        {
-            folder_names: [[
-                'data/robot-hall/HaWe/HaWeNBD1/',
-                'data/robot-hall/HaWe/HaWeNBD2/',
-                'data/robot-hall/HaWe/HaWeNBD5/'
-                ]],
-        },
-        {
-            folder_name_to_extra_args: ['[]'],
-            folder_names: [[
-                'data/robot-hall/HaWe/HaWeNBD3/',
-                'data/robot-hall/HaWe/HaWeNBD4/',
-                'data/robot-hall/HaWe/HaWeNBD5/'
+                'data/robot-hall/HaWe/HaWeNBD7/'
                 ]],
         },
         {
@@ -204,7 +170,8 @@
                 'data/robot-hall/HaWe/HaWeNBD3/',
                 'data/robot-hall/HaWe/HaWeNBD4/',
                 'data/robot-hall/HaWe/HaWeNBD5/',
-                'data/robot-hall/HaWe/HaWeNBD5/'
+                'data/robot-hall/HaWe/HaWeNBD7/',
+                'data/robot-hall/HaWe/HaWeNBD7/'
                 ]],
         },
         ]],
