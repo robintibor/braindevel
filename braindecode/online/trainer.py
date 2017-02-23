@@ -281,7 +281,8 @@ class BatchWiseCntTrainer(object):
         if pred_stop - pred_start < self.n_sample_preds:
             log.warn("Trial/break has only {:d} predicted samples in it, "
                 "less than the "
-                "{:d} concurrently processed samples of the model!".format(
+                "{:d} concurrently processed samples of the model!"
+                "Will add padding that should be masked during training.".format(
                     pred_stop - pred_start,
                     self.n_sample_preds))
             # add -1 markers that will not be used during training for the
