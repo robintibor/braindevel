@@ -131,8 +131,8 @@ class BatchWiseCntTrainer(object):
                 old_markers)
         log.info("Adding {:d} trials".format(len(trial_starts)))
         for trial_start, trial_stop in zip(trial_starts, trial_stops):
-            self.add_blocks(trial_start + self.trial_start_offset, 
-                trial_stop, old_samples, old_markers)
+            self.add_trial(trial_start, trial_stop,
+                old_samples, old_markers)
         # now lets add breaks
         log.info("Adding {:d} breaks".format(len(trial_starts) - 1))
         for break_start, break_stop in zip(trial_stops[:-1], trial_starts[1:]):
