@@ -352,7 +352,7 @@ class BatchWiseCntTrainer(object):
             # Remember values as backup in case of NaNs
             model_param_vals_before = lasagne.layers.get_all_param_values(self.exp.final_layer)
             train_param_vals_before = [p.get_value() for p in self.train_params]
-            all_blocks = np.concatenate(self.data_batches, axis=0)
+            
             all_y_blocks = np.concatenate(self.y_batches, axis=0)
             # reshape to per block
             # assuming right now targets are simply labels
@@ -377,12 +377,36 @@ class BatchWiseCntTrainer(object):
             # Renormalize probabilities
             block_probs = block_probs / np.sum(block_probs)
             
-            assert len(all_blocks) == len(all_y_blocks)
+            
+            # Create mapping from super crop nr -> data batch nr, row nr
+            
+            n_rows_per_batch = [len(b) for b in self.data_batches]
+            n_total_supercrops = np.sum(n_rows_per_batch)
+            assert n_total_supercrops == len(all_y_blocks)
+            i_supercrop_to_batch_and_row = np.zeros((n_total_supercrops, 2), dtype=np.int32)
+            i_batch = 0
+            i_batch_row = 0
+            for i_supercrop in xrange(n_total_supercrops):
+                if i_batch_row == n_rows_per_batch[i_batch]:
+                    i_batch_row = 0
+                    i_batch += 1
+                i_supercrop_to_batch_and_row[i_supercrop][0] = i_batch
+                i_supercrop_to_batch_and_row[i_supercrop][1]= i_batch_row
+                i_batch_row += 1
+            
+            assert i_batch == len(n_rows_per_batch) - 1
+            assert i_batch_row == n_rows_per_batch[-1]
+            
             for _ in xrange(self.n_updates_per_break):
-                i_blocks = self.rng.choice(len(all_y_blocks),
+                i_supercrops = self.rng.choice(n_total_supercrops,
                     size=self.batch_size, p=block_probs)
-                this_y = np.concatenate(all_y_blocks[i_blocks], axis=0)
-                this_topo = all_blocks[i_blocks]
+                this_y = np.concatenate(all_y_blocks[i_supercrops], axis=0)
+                this_topo = np.zeros((len(i_supercrops), ) + 
+                    self.data_batches[0].shape[1:], dtype=np.float32)
+                for i_batch_row, i_supercrop in enumerate(i_supercrops):
+                    i_global_batch, i_global_row = i_supercrop_to_batch_and_row[i_supercrop]
+                    supercrop_data = self.data_batches[i_global_batch][i_global_row]
+                    this_topo[i_batch_row] = supercrop_data
                 self.train_func(this_topo, this_y)
 
             # Check for Nans and if necessary reset to old values
