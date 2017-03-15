@@ -64,6 +64,12 @@
             valid_set_fraction: $valid_set_fraction,
         },
      
+        markers_right_feet_rot_word_rest: {'Right Hand': [1], 'Feet': [2],
+            'Rotation': [3], 'Words': [4], 'Rest': [5]},
+        end_markers_right_feet_rot_word_rest: {'Right Hand': [10], 'Feet': [20],
+            'Rotation': [30], 'Words': [40], 'Rest': [50],},
+        classes_right_feet_rot_word_rest: ['Right Hand',  'Feet', 'Rotation', 'Words', 'Rest'],
+        
         markers_right_feet_rot_word: {'Right Hand': [1], 'Feet': [2],
             'Rotation': [3], 'Words': [4]},
         end_markers_right_feet_rot_word: {'Right Hand': [10], 'Feet': [20],
@@ -89,6 +95,16 @@
                 marker_def: $markers_right_feet_rot_word,
                 end_marker_def: $end_markers_right_feet_rot_word,
                 trial_classes: $classes_right_feet_rot_word,
+            },
+        },
+        niri_13_15_args: {
+             'data/robot-hall/NiRiNBD13-15/': 
+            {
+                marker_def: $markers_right_feet_rot_word,
+                end_marker_def: $end_markers_right_feet_rot_word,
+                trial_classes: $classes_right_feet_rot_word,
+                min_break_length_ms: [3700],
+                max_break_length_ms: [3900],
             },
         },
         nico_sensors: ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AF4', 'AF8', 'F7',
@@ -157,24 +173,54 @@
         variants: [
         [
         {
+            folder_name_to_extra_args: ['[$niri_13_15_args]'],#'[]'],
             folder_names: [[
-                'data/robot-hall/HaWe/HaWeNBD3/',
+                'data/robot-hall/NiRiNBD13-15/',
                 'data/robot-hall/HaWe/HaWeNBD4/',
                 'data/robot-hall/HaWe/HaWeNBD5/',
                 'data/robot-hall/HaWe/HaWeNBD7/'
                 ]],
         },
         {
-            folder_name_to_extra_args: ['[]'],
+            folder_name_to_extra_args: ['[$niri_13_15_args]'],
             folder_names: [[
-                'data/robot-hall/HaWe/HaWeNBD3/',
+                'data/robot-hall/NiRiNBD13-15/',
                 'data/robot-hall/HaWe/HaWeNBD4/',
                 'data/robot-hall/HaWe/HaWeNBD5/',
                 'data/robot-hall/HaWe/HaWeNBD7/',
                 'data/robot-hall/HaWe/HaWeNBD7/'
                 ]],
         },
+#        {
+#            folder_names: [[
+#                'data/robot-hall/HaWe/HaWeNBD3/',
+#                'data/robot-hall/HaWe/HaWeNBD4/',
+#                'data/robot-hall/HaWe/HaWeNBD5/',
+#                'data/robot-hall/HaWe/HaWeNBD7/'
+#                ]],
+#        },
+#        {
+#            folder_name_to_extra_args: ['[]'],
+#            folder_names: [[
+#                'data/robot-hall/HaWe/HaWeNBD3/',
+#                'data/robot-hall/HaWe/HaWeNBD4/',
+#                'data/robot-hall/HaWe/HaWeNBD5/',
+#                'data/robot-hall/HaWe/HaWeNBD7/',
+#                'data/robot-hall/HaWe/HaWeNBD7/'
+#                ]],
+#        },
+        ],
+        [
+        {},
+        {
+            pool_time_stride: [2],
+            final_dense_length:  [7],
+            s_filter_time_length: [32],
+            s_pool_time_stride: [12],
+            s_final_dense_length: [14],
+        }
         ]],
+        
         ignore_unused: [['drop_p', 
              'load_sensor_names',
             'conv_norm', 'final_norm', 'pool_type',

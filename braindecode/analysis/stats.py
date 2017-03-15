@@ -327,6 +327,9 @@ def cov_and_var_to_corr(this_cov, var_x, var_y):
     return this_cov / divisor
 
 def cov(x,y):
+    """
+    Assumes x and y are features x samples
+    """
     # Difference to numpy:
     # Covariance only between terms of x and y
     # not between x and x or y and y

@@ -123,18 +123,19 @@ def plot_per_sub_val_range(df, col_name, val_fn, **fig_kw):
     else:
         mask = ~np.isnan(df[col_name])
     reduced_df = df[mask]
-    _, axes = plt.subplots(1,3,sharey=True, sharex=True, **fig_kw)
+    subject_ids = df.subject_id.unique()
+    _, axes = plt.subplots(1,len(subject_ids),sharey=True, sharex=True, **fig_kw)
     all_param_vals = []
     all_vals =[]
-    for subject_id in (1,2,3):
+    for i_subject, subject_id in enumerate(subject_ids):
         this_df = reduced_df[reduced_df.subject_id == subject_id].sort_values(
             by=col_name)
         if len(this_df) == 0:
             continue
         vals = val_fn(this_df)
         param_vals = this_df[col_name]
-        axes[subject_id-1].plot(param_vals, vals, marker='o', linestyle='None',
-                                color=seaborn.color_palette()[subject_id-1])
+        axes[i_subject].plot(param_vals, vals, marker='o', linestyle='None',
+                                color=seaborn.color_palette()[i_subject])
         all_vals.extend(np.array(vals))
         all_param_vals.extend(np.array(param_vals))
         
@@ -143,7 +144,8 @@ def plot_per_sub_val_range(df, col_name, val_fn, **fig_kw):
     
 def get_per_sub_dfs(dfs):
     # shd be (subject1, firstdf), (subject1, seconddf), ... (subject2, firstdf),...
-    return [d[d.subject_id == sid] for sid in (1,2,3) for d in dfs ]
+    subject_ids = dfs[0].subject_id.unique()
+    return [d[d.subject_id == sid] for sid in subject_ids for d in dfs ]
     
 def plot_per_sub_unique_vals(df, col_name, values_fn=lambda df: df.test,
         matched=False):

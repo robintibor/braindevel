@@ -10,5 +10,6 @@ def to_4d_time_array(array):
 
 def equal_without_nans(a,b):
     return np.all(np.logical_or(a == b, np.logical_and(np.isnan(a), np.isnan(b))))
+
 def allclose_without_nans(a,b):
     return np.all(np.logical_or(np.isclose(a,b), np.logical_and(np.isnan(a), np.isnan(b))))

@@ -12,6 +12,7 @@ import logging
 from lasagne.nonlinearities import identity
 from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
 from copy import deepcopy
+import pandas as pd
 log = logging.getLogger(__name__)
 
 def rand_diff(amplitudes, rng, with_blocks, deviation_func=median_absolute_deviation):
@@ -69,6 +70,12 @@ def create_all_amplitude_perturbation_corrs(folder_name, params,
               with_blocks=False, 
               deviation_func=np.std)),
          )
+    elif perturbations == 'simple_no_scale':
+        perturbations = (
+        ('no_dev', FuncAndArgs(rand_diff,
+              with_blocks=False, #just return 1
+              deviation_func=lambda arr,axis,keepdims: 1)),
+        )
     assert not (with_square and with_square_cov)
     res_pool = ResultPool()
     res_pool.load_results(folder_name, params=params)
@@ -90,6 +97,7 @@ def create_amplitude_perturbation_corrs(basename,
         with_square, with_square_cov, after_softmax,
         n_samples, perturbations):
     assert not (with_square and with_square_cov)
+    log.info("Load experiment and create theano prediction function...")
     exp, pred_fn = load_exp_pred_fn(basename, after_softmax=after_softmax)
     log.info("Create fft trials...")
     trials, amplitudes, phases, targets = create_trials_and_do_fft(exp)
@@ -142,6 +150,7 @@ def load_exp_pred_fn(basename, after_softmax):
             model.nonlinearity.func_name == 'safe_softmax')
         model.nonlinearity = identity
     # load dataset
+    log.info("Load dataset")
     exp.dataset.load()
     log.info("Create prediction function...")
     pred_fn = create_pred_fn(model)
@@ -182,6 +191,7 @@ def create_perturbed_preds_covs(amplitudes, phases, all_preds,
     rng = RandomState(3874638746)
     if with_square:
         amplitudes = np.square(amplitudes)
+    # unclear waht next line is for.... maybe delete?
     dummy_diff_amp = perturb_fn(amplitudes, RandomState(34534))
     all_covs = []
     all_var_preds = []
@@ -246,6 +256,88 @@ def compute_class_amp_sensor_covs(pred_diffs, amp_diffs):
     vars_amp = np.var(amp_diffs, axis=0, ddof=1) # sensors x freqs
     return wanted_coeffs, vars_preds, vars_amp 
 
+def create_batch_inputs_targets_amplitude_phase(exp):
+    train_set = exp.dataset_provider.get_train_merged_valid_test(
+        exp.dataset)['train']
+    batches = list(exp.iterator.get_batches(train_set, shuffle=False))
+    batches = batches[:-1]
+    inputs, targets = zip(*batches)
+    inputs = np.array(inputs)
+    targets = np.array(targets)
+    
+    ffted = np.fft.rfft(inputs, axis=3)
+    amplitudes = np.abs(ffted)
+    phases = np.angle(ffted)
+    return inputs, targets, amplitudes, phases
+
+def compute_amp_pred_diffs(amplitudes, phases, all_orig_preds, pred_fn, with_square, rng):
+    amp_diffs = rng.randn(*amplitudes.shape)
+    # clip in case diff would move amplitudes to negative region
+    # min over batches and empty dim
+    amp_diffs = np.maximum(-np.min(amplitudes, axis=(1,4), keepdims=True),
+        amp_diffs)
+    new_amp = amplitudes + amp_diffs 
+    if with_square:
+        # invert square from above...
+        new_amp = np.sqrt(new_amp)
+    new_fft = amplitude_phase_to_complex(new_amp, phases)
+    new_inputs = np.fft.irfft(new_fft, axis=3).astype(np.float32)
+    new_preds = np.array([pred_fn(batch_in) for batch_in in new_inputs])
+    pred_diffs =  new_preds - all_orig_preds
+    return amp_diffs, pred_diffs 
+
+def compute_amp_pred_covs_vars(pred_diffs, amp_diffs, batch_size):
+    # diff amp is batches x batch size x sensors x freqs x 1
+    amp_diffs = amp_diffs.squeeze()
+
+    # now (batches * batch size ) x (sensors x freqs)
+    amp_diff_for_cov  = amp_diffs.reshape(((amp_diffs.shape[0] * amp_diffs.shape[1]),
+                                          (amp_diffs.shape[2] * amp_diffs.shape[3])))
+    
+    # pred diffs is batches x (batch size * samples) x classes
+    # now to batches x batch size  x samples x classes
+    pred_diffs_per_super_crop = pred_diffs.reshape((pred_diffs.shape[0], batch_size, -1, pred_diffs.shape[2]))
+    # now to batches x batch size x classes
+    pred_diffs_per_super_crop = np.mean(pred_diffs_per_super_crop, 2)
+    # now to (batches * batch size) x classes
+    pred_diffs_per_super_crop = pred_diffs_per_super_crop.reshape((-1, pred_diffs_per_super_crop.shape[2]))
+
+    cov_amp_pred = cov(pred_diffs_per_super_crop.T, amp_diff_for_cov.T)
+
+    pred_sensor_freq_cov = cov_amp_pred.reshape((cov_amp_pred.shape[0],
+        amp_diffs.shape[2], amp_diffs.shape[3]))
+    sensor_freq_pred_cov = pred_sensor_freq_cov.transpose(1,2,0)
+    vars_preds = np.var(pred_diffs_per_super_crop, axis=0)
+    vars_amp = np.var(amp_diff_for_cov, axis=0)
+    return sensor_freq_pred_cov, vars_amp, vars_preds 
+
+def perturb_and_compute_covariances(inputs, amplitudes, phases, all_orig_preds,
+    batch_size,  pred_fn, n_samples, with_square, with_square_cov,
+    rng=None):
+    log.info("Compute original predictions")
+    if rng is None:
+        rng = RandomState(3948342)  
+    
+    if with_square:
+        amplitudes = np.square(amplitudes)
+    
+    results = pd.DataFrame()
+    for i_sample in xrange(n_samples):
+        log.info("Compute sample {:d} of {:d}".format(i_sample + 1,
+            n_samples))
+        amp_diffs, pred_diffs  = compute_amp_pred_diffs(amplitudes, phases,
+            all_orig_preds, pred_fn, with_square, rng)
+        if with_square_cov:
+            new_amp = amplitudes + amp_diffs 
+            amp_diffs = np.square(new_amp) - np.square(amplitudes)
+        sensor_freq_pred_cov, vars_amp, vars_preds  = compute_amp_pred_covs_vars(
+            pred_diffs=pred_diffs, amp_diffs=amp_diffs, batch_size=batch_size)
+        results = results.append(dict(all_covs=sensor_freq_pred_cov, all_var_amps=vars_amp,
+                                     all_var_preds=vars_preds),ignore_index=True)
+    all_covs = np.array([a for a in results.all_covs])
+    all_var_amps = np.array([a for a in results.all_var_amps])
+    all_var_preds = np.array([a for a in results.all_var_preds])
+    return [all_covs, all_var_amps, all_var_preds]
 
 def setup_logging():
     """ Set up a root logger so that other modules can use logging

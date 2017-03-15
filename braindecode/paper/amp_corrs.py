@@ -112,6 +112,17 @@ def transform_to_corrs(this_covs, this_pred_vars, this_amp_vars):
     all_corrs = np.array(all_flat_corrs).reshape(this_covs.shape)
     return all_corrs
 
+def transform_to_corrs_preds_last(this_covs, this_amp_vars, this_pred_vars):
+    """expects sensors x freqs x classes shape from this_covs"""
+    this_covs = np.array([a for a in this_covs])
+    all_flat_corrs = []
+    for one_cov, one_pred_var, one_amp_var in zip(this_covs, this_pred_vars, this_amp_vars):
+        flat_cov = one_cov.reshape(-1, one_cov.shape[2])
+        flat_corr = cov_and_var_to_corr(flat_cov, one_amp_var, one_pred_var)
+        all_flat_corrs.append(flat_corr)
+    all_corrs = np.array(all_flat_corrs).reshape(this_covs.shape)
+    return all_corrs
+
 def load_meaned_amp_pred_corrs(prefix='',
         folder='data/models/paper/ours/cnt/deep4/car/',
         params='default',

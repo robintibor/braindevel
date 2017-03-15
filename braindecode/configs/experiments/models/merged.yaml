@@ -118,5 +118,7 @@
         later_pool_nonlin: [$identity],
         batch_norm_alpha: [0.1], 
         final_nonlin: [$safe_softmax],
+        
+        
     }]]
 }
