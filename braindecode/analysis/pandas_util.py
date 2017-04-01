@@ -245,7 +245,7 @@ def dataset_averaged_frame(data_frame, ignorable_keys=(),
     # weird this len(parma_keys)>0 shd always be true unsure of this
     if len(param_keys) > 0:
         grouped = data_frame.groupby(param_keys)
-        # Check for dup
+        # Check for duplicates
         for name, group in grouped:
             if filename_key is None:
                 filename_key = ('filename' if 'filename' in data_frame.keys() 

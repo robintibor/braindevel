@@ -412,8 +412,8 @@ class Conv2DAllColsLayer(Conv2DLayer):
 
 def reshape_for_stride_only_reshape(topo_var, topo_shape, n_stride, 
         invalid_fill_value=0):
-    assert topo_shape[3] == 1, ("Not tested for nonempty third dim, "
-        "might work though")
+    #assert topo_shape[3] == 1, ("Not tested for nonempty third dim, "
+    #    "might work though")
     if topo_shape[2] % n_stride != 0:
         n_vals_to_add = (n_stride - (topo_shape[2] % n_stride))
         # this whole function was tested in numpy :)))
@@ -455,7 +455,8 @@ def get_output_shape_after_stride(input_shape, n_stride):
     else:
         trials_after = int(input_shape[0] * n_stride)
         
-    output_shape = (trials_after, input_shape[1], time_length_after, 1)
+    output_shape = (trials_after, input_shape[1], time_length_after,
+        input_shape[3])
     return output_shape
 
 class StrideReshapeLayer(lasagne.layers.Layer):
@@ -471,7 +472,6 @@ class StrideReshapeLayer(lasagne.layers.Layer):
             invalid_fill_value=self.invalid_fill_value)
 
     def get_output_shape_for(self, input_shape):
-        assert input_shape[3] == 1, "Not tested for nonempty last dim"
         return get_output_shape_after_stride(input_shape, self.n_stride)
     
 
