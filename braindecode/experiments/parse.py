@@ -165,7 +165,7 @@ class ConfigParser(object):
             for param in ignore_unused:
                 try:
                     variant.pop(param)
-                except KeyError, exc:
+                except KeyError as exc:
                     additional_message = ' (when removing unused params})'
                     add_message_to_exception(exc, additional_message)
                     raise
@@ -364,7 +364,7 @@ def process_templates(templates, parameters):
             template_string = Template(template_string).substitute(
                 templates_and_parameters)
             processed_templates[template_name] = template_string
-        except KeyError, exc:
+        except KeyError as exc:
             additional_message = ' (when substituting variables in template {:s})'.format(
                 template_name)
             add_message_to_exception(exc, additional_message)
