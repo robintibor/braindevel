@@ -1,7 +1,7 @@
 import numpy as np
 from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
 from braindecode.mywyrm.processing import create_cnt_y,\
-    create_new_class_to_old_class
+    create_old_class_to_new_class
 import logging
 log = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
     all_end_marker_vals = np.concatenate(start_to_end_value.values())
     
     if trial_classes is not None:
-        old_class_to_new_class = create_new_class_to_old_class(start_marker_def,
+        old_class_to_new_class = create_old_class_to_new_class(start_marker_def,
             trial_classes)
     y = np.zeros((cnt.data.shape[0], len(all_start_marker_vals)), dtype= np.int32)
     i_marker = 0
@@ -40,10 +40,23 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
             start_marker_ms = cnt.markers[i_marker][0]
             start_marker_val = cnt.markers[i_marker][1]
             # find end marker
+            i_marker += 1 # advance one past start marker already
             while ((i_marker < len(cnt.markers)) and 
                 (cnt.markers[i_marker][1] not in all_end_marker_vals)):
+                # Check if there is a new start marker already
+                if cnt.markers[i_marker][1]  in all_start_marker_vals:
+                    log.warn("New start marker  {:.0f} at {:.3f} sec found, "
+                        "no end marker for earlier start marker {:.0f} "
+                        "at {:.3f} sec found.".format(
+                            cnt.markers[i_marker][1], cnt.markers[i_marker][0] / 1000.0,
+                            start_marker_val, start_marker_ms / 1000.0))
+                    start_marker_ms = cnt.markers[i_marker][0]
+                    start_marker_val = cnt.markers[i_marker][1]
                 i_marker += 1
-            assert i_marker < len(cnt.markers), "There should be an end marker for each start marker(?)"
+            if i_marker == len(cnt.markers):
+                log.warn(("No end marker for start marker code {:d} "
+                    "at {:.3f} sec found.").format(start_marker_val, start_marker_ms /1000.0))
+                break
             end_marker_ms = cnt.markers[i_marker][0]
             end_marker_val = cnt.markers[i_marker][1]
             assert end_marker_val in start_to_end_value[start_marker_val]

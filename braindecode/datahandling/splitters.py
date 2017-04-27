@@ -250,7 +250,7 @@ class PreprocessedSplitter(object):
             # below without the splitting
             self.preprocessor.apply(this_datasets['valid'], can_fit=False)
             log.info("Done.")
-        _, valid_set = self.split_sets(train_valid_set, 
+        _, valid_set = split_sets_after_preproc_merge(train_valid_set, 
             n_train_set_trials, len(this_datasets['valid'].y))
         
         # In case you stored removed_ys, restore them for recovered valid set
@@ -259,50 +259,87 @@ class PreprocessedSplitter(object):
         # train valid is the new train set!!
         return {'train': train_valid_set, 'valid': valid_set, 
             'test': test_set}
-
     
-    def split_sets(self, full_set, split_index, split_to_end_num):
-        """Assumes that full set may be doubled or tripled in size
-        and split index refers to original size. So
-        if we originally had 100 trials (set1) + 20 trials (set2)
-        merged to 120 trials, we get a split index of 100.
-        If we later have 360 trials we assume that the 360 trials
-        consist of:
-        100 trials set1 + 20 trials set2 + 100 trials set1 + 20 trials set2
-        + 100 trials set1 + 20 trials set2
-        (and not 300 trials set1 + 60 trials set2)
-        """
-        full_topo = full_set.get_topological_view()
-        full_y = full_set.y
-        original_full_len = split_index + split_to_end_num
-        topo_first = full_topo[:split_index]
-        y_first = full_y[:split_index]
-        topo_second = full_topo[split_index:original_full_len]
-        y_second = full_y[split_index:original_full_len]
-        next_start = original_full_len
-        # Go through possibly appended transformed copies of dataset
-        # If preprocessors did not change dataset size, this is not 
-        # necessary
-        for next_split in xrange(next_start + split_index, 
-                len(full_set.y), original_full_len):
-            assert False, "Please check/test this code again if you need it"
-            next_end = next_split + split_to_end_num
-            topo_first = np.concatenate((topo_first, 
-                full_topo[next_start:next_split]))
-            y_first = np.concatenate((y_first, full_y[next_start:next_split]))
-            topo_second = np.concatenate((topo_second, 
-                full_topo[next_split:next_end]))
-            y_second =  np.concatenate((y_second, full_y[next_split:next_end]))
-            next_start = next_end
-        first_set = DenseDesignMatrixWrapper(
-            topo_view=topo_first,
-            y=y_first,
-            axes=full_set.view_converter.axes)
-        second_set = DenseDesignMatrixWrapper(
-            topo_view=topo_second,
-            y=y_second,
-            axes=full_set.view_converter.axes)
-        return first_set, second_set
+def split_sets_after_preproc_merge(full_set, split_index, split_to_end_num):
+    """Assumes that full set may be doubled or tripled in size
+    and split index refers to original size. So
+    if we originally had 100 trials (set1) + 20 trials (set2)
+    merged to 120 trials, we get a split index of 100.
+    If we later have 360 trials we assume that the 360 trials
+    consist of:
+    100 trials set1 + 20 trials set2 + 100 trials set1 + 20 trials set2
+    + 100 trials set1 + 20 trials set2
+    (and not 300 trials set1 + 60 trials set2)
+    """
+    full_topo = full_set.get_topological_view()
+    full_y = full_set.y
+    original_full_len = split_index + split_to_end_num
+    topo_first = full_topo[:split_index]
+    y_first = full_y[:split_index]
+    topo_second = full_topo[split_index:original_full_len]
+    y_second = full_y[split_index:original_full_len]
+    next_start = original_full_len
+    # Go through possibly appended transformed copies of dataset
+    # If preprocessors did not change dataset size, this is not 
+    # necessary
+    for next_split in xrange(next_start + split_index, 
+            len(full_set.y), original_full_len):
+        assert False, "Please check/test this code again if you need it"
+        next_end = next_split + split_to_end_num
+        topo_first = np.concatenate((topo_first, 
+            full_topo[next_start:next_split]))
+        y_first = np.concatenate((y_first, full_y[next_start:next_split]))
+        topo_second = np.concatenate((topo_second, 
+            full_topo[next_split:next_end]))
+        y_second =  np.concatenate((y_second, full_y[next_split:next_end]))
+        next_start = next_end
+    first_set = DenseDesignMatrixWrapper(
+        topo_view=topo_first,
+        y=y_first,
+        axes=full_set.view_converter.axes)
+    second_set = DenseDesignMatrixWrapper(
+        topo_view=topo_second,
+        y=y_second,
+        axes=full_set.view_converter.axes)
+    return first_set, second_set
+
+def get_merged_train_valid_test(dataset, splitter, preprocessor):
+    dataset.ensure_is_loaded()
+    this_datasets = splitter.split_into_train_valid_test(dataset)
+    if dataset.reloadable:
+            dataset.free_memory()
+    train_valid_set = concatenate_sets(this_datasets['train'],
+        this_datasets['valid'])
+    test_set = this_datasets['test']
+    #preprocessing of train only so that later split is correct...
+    if preprocessor is not None:
+        log.info("Preprocessing original train to make sure split is correct")
+        preprocessor.apply(this_datasets['train'], can_fit=False)
+    n_train_set_trials = len(this_datasets['train'].y)
+    del this_datasets['train']
+    if preprocessor is not None:
+        log.info("Preprocessing...")
+        # lets make copy of test set just to be sure
+        # probably unnecessary...
+        # train_valid set should already be a new object
+        # after concatenation call above...
+        test_set = deepcopy(test_set)
+        preprocessor.apply(train_valid_set, can_fit=True)
+        preprocessor.apply(test_set, can_fit=False)
+        #preprocessing of valid only so that later split is correct...
+        # todelay: think if this is smart or maybe better just use valid set
+        # below without the splitting
+        preprocessor.apply(this_datasets['valid'], can_fit=False)
+        log.info("Done.")
+    _, valid_set = split_sets_after_preproc_merge(train_valid_set, 
+        n_train_set_trials, len(this_datasets['valid'].y))
+    
+    # In case you stored removed_ys, restore them for recovered valid set
+    if hasattr(this_datasets['valid'], 'removed_ys'):
+        valid_set.removed_ys = this_datasets['valid'].removed_ys
+    # train valid is the new train set!!
+    return {'train': train_valid_set, 'valid': valid_set, 
+        'test': test_set}
 
 class KaggleTrainValidTestSplitter(TrainValidTestSplitter):
     def __init__(self, use_test_as_valid=False):

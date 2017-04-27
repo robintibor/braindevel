@@ -338,7 +338,9 @@ def recompute_shapes(final_layer):
 def set_input_window_length(final_layer, input_time_length):
     all_layers = lasagne.layers.get_all_layers(final_layer)
     input_layer = all_layers[0]
-    input_layer.shape[2] = input_time_length
+    new_shape = list(input_layer.shape)
+    new_shape[2] = input_time_length
+    input_layer.shape = tuple(new_shape)
     recompute_shapes(final_layer)
 
 def create_suitable_theano_input_var(layer):

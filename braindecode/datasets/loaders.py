@@ -4,6 +4,7 @@ import numpy as np
 import h5py
 import wyrm.types
 import logging
+from braindecode.mywyrm.processing import resample_cnt
 log = logging.getLogger(__name__)
 from braindecode.datasets.sensor_positions import sort_topologically
 from wyrm.processing import append_cnt
@@ -65,9 +66,9 @@ class BBCIDataset(object):
                 len(EEG_sensor_names) == 16), (
                 "Recheck this code if you have different sensors...")
             # sort sensors topologically to allow networks to exploit topology
-            # no longer sort topologically...
-            #self.load_sensor_names = sort_topologically(EEG_sensor_names)
-            self.load_sensor_names = EEG_sensor_names
+            # this is kpe there to ensure reproducibility,
+            # rerunning of old results only
+            self.load_sensor_names = sort_topologically(EEG_sensor_names)
         chan_inds = self.determine_chan_inds(all_sensor_names, 
             self.load_sensor_names)
         return chan_inds, self.load_sensor_names
@@ -212,6 +213,13 @@ class BBCIDataset(object):
                 pass
             elif len(event_times_in_ms) ==  len(all_class_names):
                 pass # weird neuroone(?) logic where class names have event classes
+            elif (all_class_names == ['Right_hand_stimulus_onset', 
+                'Feet_stimulus_onset', 'Rotation_stimulus_onset', 
+                'Words_stimulus_onset', 'Right_hand_stimulus_offset',
+                'Feet_stimulus_offset', 'Rotation_stimulus_offset', 'Words_stimulus_offset']):
+                pass
+            #elif (all_class_names == ['Right hand', 'Feet', 'Rotation', 'Words']):
+            #    pass
             else:
                 # remove this whole if else stuffs?
                 log.warn("Unknown class names {:s}".format(
@@ -433,7 +441,19 @@ class MultipleSetLoader(object):
     def load(self):
         cnt = self.set_loaders[0].load()
         for loader in self.set_loaders[1:]:
-            cnt = append_cnt(cnt, loader.load())
+            next_cnt = loader.load()
+            # always sample down to lowest common denominator
+            if next_cnt.fs > cnt.fs:
+                log.warn("Next set has larger sampling rate ({:d}) "
+                    "than before ({:d}), resampling next set".format(
+                        next_cnt.fs, cnt.fs))
+                next_cnt = resample_cnt(next_cnt, cnt.fs)
+            if next_cnt.fs < cnt.fs:
+                log.warn("Next set has smaller sampling rate ({:d}) "
+                    "than before ({:d}), resampling set so far".format(
+                        next_cnt.fs, cnt.fs))
+                cnt = resample_cnt(cnt, next_cnt.fs)
+            cnt = append_cnt(cnt, next_cnt)
         return cnt
     
 class MultipleBBCIDataset(object):

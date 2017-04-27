@@ -367,3 +367,11 @@ def running_mean(arr, window_len, axis=0):
     moving_average = (later_sums - earlier_sums) / float(window_len)
     return moving_average
 
+def padded_running_mean(data, window_len, axis=0):
+    assert window_len % 2 == 1
+    # only repeat correct axis
+    tilings = np.ones(data.ndim, dtype=np.int32)
+    tilings[axis] = window_len // 2
+    padding = np.tile(data.take([0], axis=axis), tuple(tilings))
+    padded_data = np.concatenate((padding, data, padding), axis=axis)
+    return running_mean(padded_data, window_len=window_len, axis=axis)

@@ -480,7 +480,8 @@ def transform_batches_of_trials(batches, n_sample_preds,
     trial_batches = np.append(trial_batches, batches[:,-1,:,-legitimate_last_preds:],axis=2)
     return trial_batches
 
-def inputs_per_trial(train_inputs, y, n_sample_preds, input_time_length):
+def inputs_per_trial(train_inputs, y, n_sample_preds, input_time_length,
+        concatenate_crops=True, remove_overlap=True):
     """Helper function to transform train batch inputs into
     inputs per trial. Used in a notebook once.
 
@@ -494,15 +495,20 @@ def inputs_per_trial(train_inputs, y, n_sample_preds, input_time_length):
         
     input_time_length :
         
+    concatenate_crops :
+        
+    remove_overlap :
+        
 
     Returns
     -------
-
+    train_inputs_per_trial : 
     """
     i_trial_starts, i_trial_ends = compute_trial_start_end_samples(y,
         check_trial_lengths_equal=False, input_time_length=input_time_length)
     train_inputs_per_forward_pass = np.concatenate(train_inputs)
-    train_inputs_per_forward_pass = train_inputs_per_forward_pass[:,:,-n_sample_preds:,]
+    if remove_overlap:
+        train_inputs_per_forward_pass = train_inputs_per_forward_pass[:,:,-n_sample_preds:,]
     i_pred_block = 0
     train_inputs_per_trial = []
     for i_trial in xrange(len(i_trial_starts)):
@@ -512,17 +518,25 @@ def inputs_per_trial(train_inputs, y, n_sample_preds, input_time_length):
         needed_samples = (i_trial_ends[i_trial] - i_trial_starts[i_trial]) + 1
         train_inputs_this_trial = []
         while needed_samples > 0:
-            # - needed_samples: only has an effect
+            if remove_overlap:
+                n_used_samples = needed_samples
+            else:
+                n_used_samples = train_inputs_per_forward_pass.shape[2]
+            # needed_samples: only has an effect
             # in case there are more samples than we actually still need
             # in the block
             # That can happen since final block of a trial can overlap
             # with block before so we can have some redundant preds 
-            train_samples = train_inputs_per_forward_pass[i_pred_block, :,-needed_samples:]
+            train_samples = train_inputs_per_forward_pass[i_pred_block, :,-n_used_samples:]
             train_inputs_this_trial.append(train_samples)
-            needed_samples -= train_samples.shape[1]
+            # min with n_sample_preds is needed in case of remove overlap=False
+            needed_samples -= min(train_samples.shape[1], n_sample_preds)
             i_pred_block += 1
 
-        train_inputs_this_trial = np.concatenate(train_inputs_this_trial, axis=1)
+        if concatenate_crops:
+            train_inputs_this_trial = np.concatenate(train_inputs_this_trial, axis=1)
+        else:
+            train_inputs_this_trial = np.array(train_inputs_this_trial)
         train_inputs_per_trial.append(train_inputs_this_trial)
     assert i_pred_block == len(train_inputs_per_forward_pass) , ("Expect that all "
         "forward passes are needed, used {:d}, existing {:d}".format(

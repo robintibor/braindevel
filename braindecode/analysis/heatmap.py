@@ -7,7 +7,7 @@ import sklearn.preprocessing
 import matplotlib.pyplot as plt
 from numpy.random import RandomState
 from braindecode.veganlasagne.layers import get_input_shape, \
-    StrideReshapeLayer
+    StrideReshapeLayer, FinalReshapeLayer
 from braindecode.veganlasagne.batch_norm import BatchNormLayer
 import logging
 log = logging.getLogger(__name__)
@@ -110,6 +110,9 @@ def create_heatmap(out_relevances, input_trials, all_layers,
                 layer.W, rule=rule, min_in=min_in, max_in=max_in,
                 a=a,b=b,bias=bias)
         elif isinstance(layer, StrideReshapeLayer):
+            out_relevances = relevance_back_by_grad(out_relevances,
+                in_activations, layer)
+        elif isinstance(layer, FinalReshapeLayer):
             out_relevances = relevance_back_by_grad(out_relevances,
                 in_activations, layer)
         elif isinstance(layer, lasagne.layers.DimshuffleLayer):
@@ -232,7 +235,7 @@ def relevance_conv_z(out_relevances, inputs, weights, bias=None):
         norms_for_relevances +=  bias.dimshuffle('x',0,'x','x')
     # stabilize
     # prevent division by 0 and division by small numbers
-    eps = 1e-4
+    eps = 1e-3
     norms_for_relevances += (T.sgn(norms_for_relevances) * eps)
     norms_for_relevances += (T.eq(norms_for_relevances, 0) * eps)
     

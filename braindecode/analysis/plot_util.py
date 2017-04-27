@@ -169,17 +169,21 @@ def show_misclass_scatter_plot(first_misclasses, second_misclasses, figsize=(4,4
     plt.xlim(20,100)
     return fig
 
-def plot_heatmap(trial, relevances, sensor_names, sensor_map, figsize=(14, 10)):
+def plot_heatmap(trial, relevances, sensor_names, sensor_map, figsize=(14, 10),
+        cmap=cm.Reds):
     fig = plot_head_signals_tight(trial,
                                   sensor_names,
                                   sensor_map=sensor_map,
                                   figsize=figsize)
-    vmin = np.min(relevances)
-    vmax = np.max(relevances)
+    if np.min(relevances) < 0:
+        vmin = -np.max(np.abs(relevances))
+    else:
+        vmin = 0
+    vmax = np.max(np.abs(relevances))
     for i_chan, ax in enumerate(fig.axes):
         chan_relevance = relevances[i_chan].squeeze()
         plotlim = [ax.get_xlim()[0] - 0.5, ax.get_xlim()[1] + 0.5] + list(ax.get_ylim())
-        ax.imshow([chan_relevance], cmap=cm.Reds, interpolation='nearest',
+        ax.imshow([chan_relevance], cmap=cmap, interpolation='nearest',
             extent=plotlim, aspect='auto',
                  vmin=vmin, vmax=vmax)
     return fig
@@ -740,7 +744,8 @@ def plot_chan_matrices(matrices, sensor_names, figname='', figure=None,
     correctness_matrices=None, colormap=cm.coolwarm,
     sensor_map=cap_positions, vmax=None, vmin=None,
     share_y_axes=True):
-    """ figsize ignored if figure given """
+    """ Chan matrices in [chan x row x col] order.
+    figsize ignored if figure given """
     assert len(matrices) == len(sensor_names), "need sensor names for all sensor matrices"
     if figure is None:
         figure = plt.figure(figsize=figsize)

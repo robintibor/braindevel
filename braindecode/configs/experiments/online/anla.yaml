@@ -1,0 +1,174 @@
+{
+    extends: [
+        'configs/experiments/defaults.yaml',
+        'configs/experiments/paper/shallow.yaml',
+        'configs/experiments/paper/cnt.yaml',
+        'configs/experiments/models/merged.yaml',
+        ],
+    templates: {
+        bandpass_subsample_standardize: 
+        [
+            [
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
+                {'low_cut_hz': $low_cut_hz,
+                'high_cut_hz': $high_cut_hz,
+                 filt_order: $filt_order}
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.subsample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+            ],
+        ],
+            
+        combined_cnt_set: !!python/object/apply:braindecode.datasets.combined.construct_folder_combined_set {
+            kwds: {
+            folder_names: $folder_names,
+            sensor_names: $sensor_names, 
+            cnt_preprocessors: $cnt_preprocessors,
+            marker_def: $marker_def,
+            end_marker_def: $end_marker_def,
+            trial_classes: $trial_classes,
+            trial_start_offset_ms: $trial_start_offset_ms,
+            trial_stop_offset_ms: $trial_stop_offset_ms,
+            min_break_length_ms: $min_break_length_ms,
+            max_break_length_ms: $max_break_length_ms,
+            break_start_offset_ms: $break_start_offset_ms,
+            break_stop_offset_ms: $break_stop_offset_ms,
+            last_set_split_trial: $last_set_split_trial,
+            add_trial_breaks: $add_trial_breaks,
+            folder_name_to_extra_args: !!python/object/apply:braindecode.util.merge_dicts {
+                args: $folder_name_to_extra_args,
+            },
+           }
+        },
+        cnt_iterator: !obj:braindecode.datahandling.batch_iteration.CntWindowTrialIterator {
+            batch_size: $batch_size,
+            input_time_length: $input_time_length,
+            n_sample_preds: $n_sample_preds,
+            check_preds_smaller_trial_len: $check_preds_smaller_trial_len,
+        },
+        balanced_cnt_iterator: !obj:braindecode.datahandling.batch_iteration.BalancedCntWindowTrialIterator {
+            batch_size: $batch_size,
+            input_time_length: $input_time_length,
+            n_sample_preds: $n_sample_preds,
+            check_preds_smaller_trial_len: $check_preds_smaller_trial_len,
+        },
+                
+        
+        several_sets_splitter: !obj:braindecode.datahandling.splitters.SeveralSetsSplitter {
+            use_test_as_valid: $use_test_as_valid,
+            valid_set_fraction: $valid_set_fraction,
+        },
+     
+        markers_right_feet_rot_word_gui: {'Right Hand': [1], 'Feet': [4],
+            'Rotation': [8], 'Words': [10]},
+        # since mistakes can happen, all end markers are possible
+        # + for unknown reasons also 20 as end marker
+        end_markers_right_feet_rot_word_gui: {'Right Hand': [20,21,22,23,24,28,30], 
+        'Feet': [20,21,22,23,24,28,30],
+            'Rotation': [20,21,22,23,24,28,30], 'Words': [20,21,22,23,24,28,30],},
+        classes_right_feet_rot_word_gui: ['Right Hand',  'Feet', 'Rotation', 'Words'],
+        nico_sensors: ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AF4', 'AF8', 'F7',
+         'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5', 'FC3',
+         'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'M1', 'T7', 'C5', 'C3',
+         'C1', 'Cz', 'C2', 'C4', 'C6', 'T8', 'M2', 'TP7', 'CP5', 'CP3',
+         'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1',
+         'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POz', 'PO4',
+         'PO6', 'PO8', 'O1', 'Oz', 'O2'],
+        without_frontal: ['FT7', 'FC5', 'FC3',
+         'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'M1', 'T7', 'C5', 'C3',
+         'C1', 'Cz', 'C2', 'C4', 'C6', 'T8', 'M2', 'TP7', 'CP5', 'CP3',
+         'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1',
+         'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POz', 'PO4',
+         'PO6', 'PO8', 'O1', 'Oz', 'O2'],
+         nico_C_sensors: ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6',
+          'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz',
+          'CP2', 'CP4', 'CP6'],
+    },
+    variants: [[{ 
+        save_path: ['data/models/online/cnt/anla/'],
+        
+        last_set_split_trial: ['null'],
+        sensor_names: [$nico_sensors],
+        marker_def: [$markers_right_feet_rot_word_gui],
+        end_marker_def: [$end_markers_right_feet_rot_word_gui],
+        trial_classes: [$classes_right_feet_rot_word_gui],
+        min_break_length_ms: [6000],
+        max_break_length_ms: [8000],
+        break_start_offset_ms: [1000],
+        break_stop_offset_ms: [-500], # unknown problems wiht 0.. -1000
+        trial_start_offset_ms: [500],
+        trial_stop_offset_ms: [0],
+        add_trial_breaks: [True],
+        check_preds_smaller_trial_len: [False],
+        
+        # Remove from params basically..
+        dataset_splitter: [$several_sets_splitter],
+        pool_mode: ['average_exc_pad'],
+        loss_expression: [$categorical_crossentropy],
+        cnt_preprocessors: [$bandpass_subsample_standardize],
+        resample_fs: [250],
+        #load_sensor_names: [$dry_sensors],
+        #sensor_names: ["null"],
+        dataset: [$combined_cnt_set],
+        low_cut_hz: ['null'],
+        high_cut_hz: [40],
+        filt_order: [20],#30
+        run_after_early_stop: [true],
+        n_classes: [5],
+        batch_size: [60], # make it faster(?)
+        n_sample_preds: [200], # will be overwritten anyways
+        input_time_length: [760],
+        layers: [$merged_net],
+
+        max_increasing_epochs: [80],
+        max_epochs: [200],
+        valid_set_fraction: [0.2],
+        preprocessor:  ['null'],
+        last_set_split_trial: ['null'], #150
+        folder_name_to_extra_args: ['[]'],
+        use_test_as_valid: [False],
+        max_epochs: [100],
+        iterator: [$balanced_cnt_iterator],
+        
+        variants: [
+        [
+        {
+            folder_names: [[
+                'data/robot-hall/AnLa/AnLaNBD1R01-8/',
+                'data/robot-hall/AnLa/AnLaNBD1R09-10/',
+                ]],
+        },
+        {
+            folder_names: [[
+                'data/robot-hall/AnLa/AnLaNBD1/',
+                'data/robot-hall/AnLa/AnLaNBD1R09-10/',
+                ]],
+        },
+        ],
+        [
+        {},
+        {
+            pool_time_stride: [2],
+            final_dense_length:  [7],
+            s_filter_time_length: [32],
+            s_pool_time_stride: [12],
+            s_final_dense_length: [14],
+        }
+        ]],
+        
+        ignore_unused: [['drop_p', 
+             'load_sensor_names',
+            'conv_norm', 'final_norm', 'pool_type',
+            'num_filters', 
+            'post_pool_nonlin', 'pool_mode', 'layer_modifier',
+             'i_test_fold', 'trial_start', 'num_split_folds',
+            'misclass_monitor', 'trial_stop']],
+        
+        }
+        ]]
+}

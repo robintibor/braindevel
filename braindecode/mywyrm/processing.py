@@ -265,7 +265,7 @@ def create_cnt_y(cnt, segment_ival, marker_def=None, timeaxis=-2,
             event_samples_and_classes[i_marker][1] = new_class
     
     if trial_classes is not None:
-        old_class_to_new_class = create_new_class_to_old_class(marker_def,
+        old_class_to_new_class = create_old_class_to_new_class(marker_def,
             trial_classes)
         for i_marker in xrange(len(event_samples_and_classes)):
             old_class = event_samples_and_classes[i_marker][1]
@@ -276,7 +276,9 @@ def create_cnt_y(cnt, segment_ival, marker_def=None, timeaxis=-2,
                        n_classes=n_classes, segment_ival=segment_ival,
                        fs=cnt.fs)
     
-def create_new_class_to_old_class(marker_def, trial_classes):
+def create_old_class_to_new_class(marker_def, trial_classes):
+    """Maps marker codes to class indices according to the order given
+    by trial classes."""
     old_class_to_new_class = dict()
     for new_class, class_name in enumerate(trial_classes):
         old_class = marker_def[class_name]
@@ -923,15 +925,15 @@ def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     """Bandpass cnt signal using butterworth filter.
     Uses lowpass in case low cut hz is exactly zero."""
     if (low_cut_hz == 0 or low_cut_hz == None) and (
-        high_cut_hz == None):
+        high_cut_hz == None or high_cut_hz == cnt.fs):
         log.info("Not doing any bandpass, since low 0 or None and "
-            "high None")
+            "high None or current fs")
         return cnt.copy()
     if low_cut_hz == 0 or low_cut_hz == None:
         log.info("Using lowpass filter since low cut hz is 0 or None")
         return lowpass_cnt(cnt, high_cut_hz, filt_order=filt_order)
-    if high_cut_hz == None:
-        log.info("Using highpass filter since high cut hz is None")
+    if high_cut_hz == None or high_cut_hz == cnt.fs:
+        log.info("Using highpass filter since high cut hz is None or current fs")
         return highpass_cnt(cnt, low_cut_hz, filt_order=filt_order)
         
     nyq_freq = 0.5 * cnt.fs
@@ -941,6 +943,7 @@ def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     assert filter_is_stable(a), "Filter should be stable..."
     cnt_bandpassed = lfilter(cnt,b,a)
     return cnt_bandpassed
+
 
 def bandstop_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     nyq_freq = 0.5 * cnt.fs
