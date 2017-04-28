@@ -8,7 +8,6 @@ import lasagne
 from pylearn2.config import yaml_parse
 from pprint import pprint
 import numpy as np
-import fasteners
 import re
 from braindecode.scripts.print_results import ResultPrinter
 from braindecode.experiments.experiment import Experiment, ExperimentCrossValidation,\
@@ -102,6 +101,7 @@ class ExperimentsRunner:
         self._all_train_strs = clean_all_train_strs
     
     def _determine_base_save_paths_and_create_lock_files(self):
+        import fasteners
         self._base_save_paths = []
         self._folder_paths = [] # will be set inside function for later result printing
         

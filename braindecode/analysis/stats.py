@@ -339,6 +339,10 @@ def cov(x,y):
     return this_cov
     
 def wrap_reshape_topo(stat_fn, topo_a, topo_b, axis_a, axis_b):
+    if not hasattr(axis_a, '__len__'):
+        axis_a = [axis_a]
+    if not hasattr(axis_b, '__len__'):
+        axis_b = [axis_b]
     other_axis_a = [i for i in xrange(topo_a.ndim) if i not in axis_a]
     other_axis_b = [i for i in xrange(topo_b.ndim) if i not in axis_b]
     transposed_topo_a = topo_a.transpose(tuple(other_axis_a) + tuple(axis_a))
