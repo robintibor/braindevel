@@ -160,9 +160,6 @@ def ax_scalp(v, channels,
                 zz[i_y,i_x] = f(xx[i_x], yy[i_y])
                 #zz[i_x,i_y] = f(xx[i_x], yy[i_y])
         assert not np.any(np.isnan(zz))
-
-        
-            
     
     # plot map
     image = ax.imshow(zz, vmin=vmin, vmax=vmax, cmap=colormap,

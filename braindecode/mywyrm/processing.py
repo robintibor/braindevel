@@ -899,32 +899,48 @@ def running_standardize_epo(epo, factor_new=0.9, init_block_size=50):
     return epo.copy(data=standardized_epo_data)
 
 def highpass_cnt(cnt, low_cut_off_hz, filt_order=3):
-    if low_cut_off_hz is None:
+    if (low_cut_off_hz is None) or (low_cut_off_hz == 0):
+        log.info("Not doing any highpass, since low 0 or None")
         return cnt.copy()
-    b,a = scipy.signal.butter(filt_order, low_cut_off_hz/(cnt.fs/2.0),btype='highpass')
+    b,a = scipy.signal.butter(filt_order, low_cut_off_hz/(cnt.fs/2.0),
+        btype='highpass')
     assert filter_is_stable(a)
     cnt_highpassed = lfilter(cnt,b,a)
     return cnt_highpassed
 
+def highpass_filt_filt_cnt(cnt, low_cut_off_hz, filt_order=3):
+    if (low_cut_off_hz is None) or (low_cut_off_hz == 0):
+        log.info("Not doing any highpass, since low 0 or None")
+        return cnt.copy()
+    b,a = scipy.signal.butter(filt_order, low_cut_off_hz/(cnt.fs/2.0),
+        btype='highpass')
+    assert filter_is_stable(a)
+    cnt_highpassed = filtfilt(cnt,b,a)
+    return cnt_highpassed
+
 def lowpass_cnt(cnt, high_cut_off_hz, filt_order=3):
+    if (high_cut_off_hz is None) or (high_cut_off_hz == cnt.fs):
+        log.info("Not doing any lowpass, since ince high cut hz is None or current fs")
+        return cnt.copy()
     b,a = scipy.signal.butter(filt_order, high_cut_off_hz/(cnt.fs/2.0),
         btype='lowpass')
     assert filter_is_stable(a)
     cnt_lowpassed = lfilter(cnt,b,a)
     return cnt_lowpassed
 
-
-def highpass_filt_filt_cnt(cnt, low_cut_off_hz, filt_order=3):
-    b,a = scipy.signal.butter(filt_order, low_cut_off_hz/(cnt.fs/2.0),btype='highpass')
+def lowpass_filt_filt_cnt(cnt, high_cut_off_hz, filt_order=3):
+    if (high_cut_off_hz is None) or (high_cut_off_hz == cnt.fs):
+        log.info("Not doing any lowpass, since ince high cut hz is None or current fs")
+    b,a = scipy.signal.butter(filt_order, high_cut_off_hz/(cnt.fs/2.0),
+        btype='lowpass')
     assert filter_is_stable(a)
-    cnt_highpassed = filtfilt(cnt,b,a)
-    return cnt_highpassed
-
+    cnt_lowpassed = filtfilt(cnt,b,a)
+    return cnt_lowpassed
 
 def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     """Bandpass cnt signal using butterworth filter.
     Uses lowpass in case low cut hz is exactly zero."""
-    if (low_cut_hz == 0 or low_cut_hz == None) and (
+    if (low_cut_hz == 0 or low_cut_hz is None) and (
         high_cut_hz == None or high_cut_hz == cnt.fs):
         log.info("Not doing any bandpass, since low 0 or None and "
             "high None or current fs")
@@ -942,6 +958,30 @@ def bandpass_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
     b, a = scipy.signal.butter(filt_order, [low, high], btype='bandpass')
     assert filter_is_stable(a), "Filter should be stable..."
     cnt_bandpassed = lfilter(cnt,b,a)
+    return cnt_bandpassed
+
+
+def bandpass_filt_filt_cnt(cnt, low_cut_hz, high_cut_hz, filt_order=3):
+    """Bandpass cnt signal using butterworth filter.
+    Uses lowpass in case low cut hz is exactly zero."""
+    if (low_cut_hz == 0 or low_cut_hz == None) and (
+        high_cut_hz == None or high_cut_hz == cnt.fs):
+        log.info("Not doing any bandpass, since low 0 or None and "
+            "high None or current fs")
+        return cnt.copy()
+    if low_cut_hz == 0 or low_cut_hz == None:
+        log.info("Using lowpass filter since low cut hz is 0 or None")
+        return lowpass_filt_filt_cnt(cnt, high_cut_hz, filt_order=filt_order)
+    if high_cut_hz == None or high_cut_hz == cnt.fs:
+        log.info("Using highpass filter since high cut hz is None or current fs")
+        return highpass_filt_filt_cnt(cnt, low_cut_hz, filt_order=filt_order)
+        
+    nyq_freq = 0.5 * cnt.fs
+    low = low_cut_hz / nyq_freq
+    high = high_cut_hz / nyq_freq
+    b, a = scipy.signal.butter(filt_order, [low, high], btype='bandpass')
+    assert filter_is_stable(a), "Filter should be stable..."
+    cnt_bandpassed = filtfilt(cnt,b,a)
     return cnt_bandpassed
 
 

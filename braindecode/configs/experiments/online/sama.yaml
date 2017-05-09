@@ -6,8 +6,13 @@
         'configs/experiments/models/merged.yaml',
         ],
     templates: {
-        bandpass_subsample_standardize: 
+        bandpass_subsample_standardize:
         [
+            [
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $first_low_cut_hz,
+                 filt_order: $first_low_filt_order}
+            ],
             [
                 !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
                 {'low_cut_hz': $low_cut_hz,
@@ -23,6 +28,33 @@
                 { }
             ],
         ],
+        bandpass_subsample_car_standardize:
+        [
+            [
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $first_low_cut_hz,
+                 filt_order: $first_low_filt_order}
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
+                {'low_cut_hz': $low_cut_hz,
+                'high_cut_hz': $high_cut_hz,
+                 filt_order: $filt_order}
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.subsample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
+                {},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+            ],
+        ],
+
             
         combined_cnt_set: !!python/object/apply:braindecode.datasets.combined.construct_folder_combined_set {
             kwds: {
@@ -90,7 +122,7 @@
           'CP2', 'CP4', 'CP6'],
     },
     variants: [[{ 
-        save_path: ['data/models/online/cnt/sama/'],
+        save_path: ['data/models/online/cnt/sama/with-highpass/'],
         
         last_set_split_trial: ['null'],
         sensor_names: [$nico_sensors],
@@ -110,14 +142,17 @@
         dataset_splitter: [$several_sets_splitter],
         pool_mode: ['average_exc_pad'],
         loss_expression: [$categorical_crossentropy],
-        cnt_preprocessors: [$bandpass_subsample_standardize],
+        cnt_preprocessors: [$bandpass_subsample_standardize,
+            $bandpass_subsample_car_standardize],
         resample_fs: [250],
         #load_sensor_names: [$dry_sensors],
         #sensor_names: ["null"],
         dataset: [$combined_cnt_set],
         low_cut_hz: ['null'],
-        high_cut_hz: [40],
+        high_cut_hz: [40, 'null'],
         filt_order: [20],#30
+        first_low_cut_hz: ['null', 6],
+        first_low_filt_order: [10],
         run_after_early_stop: [true],
         n_classes: [5],
         batch_size: [60], # make it faster(?)
@@ -137,34 +172,34 @@
         
         variants: [
         [
+#        {
+#            folder_names: [[
+#                'data/robot-hall/SaMa/SaMaNBD1R01-5/',
+#                'data/robot-hall/SaMa/SaMaNBD1R06/',
+#                ]],
+#        },
         {
             folder_names: [[
                 'data/robot-hall/SaMa/SaMaNBD1R01-5/',
-                'data/robot-hall/SaMa/SaMaNBD1R06/',
+                'data/robot-hall/SaMa/SaMaNBD1R06-7/',
                 ]],
         },
-        {
-            folder_names: [[
-                'data/robot-hall/SaMa/SaMaNBD1R01-6/',
-                'data/robot-hall/SaMa/SaMaNBD1R07/',
-                ]],
-        },
-        {
-            folder_names: [[
-                'data/robot-hall/SaMa/SaMaNBD1/',
-                'data/robot-hall/SaMa/SaMaNBD1R07/',
-                ]],
-        },
+#        {
+#            folder_names: [[
+#                'data/robot-hall/SaMa/SaMaNBD1/',
+#                'data/robot-hall/SaMa/SaMaNBD1R07/',
+#                ]],
+#        },
         ],
         [
         {},
-        {
-            pool_time_stride: [2],
-            final_dense_length:  [7],
-            s_filter_time_length: [32],
-            s_pool_time_stride: [12],
-            s_final_dense_length: [14],
-        }
+#        {
+#            pool_time_stride: [2],
+#            final_dense_length:  [7],
+#            s_filter_time_length: [32],
+#            s_pool_time_stride: [12],
+#            s_final_dense_length: [14],
+#        }
         ]],
         
         ignore_unused: [['drop_p', 

@@ -390,11 +390,12 @@ def plot_conf_mat(conf_mat, p_val_vs_csp, p_val_vs_other_net, label,
                  rotate_row_labels=90,
                  rotate_col_labels=0,
                  with_f1_score=False):
+    import seaborn
     fig = plot_confusion_matrix_paper(conf_mat, p_val_vs_csp, p_val_vs_other_net,
                                 figsize=figsize, 
                                 class_names=class_names, 
                                       #colormap=seaborn.cubehelix_palette(8, as_cmap=True),#, start=.5, rot=-.75),
-                                      colormap=cm.OrRd,
+                                      colormap=cm.coolwarm,
                            vmin=vmin, vmax=vmax,
                            rotate_row_labels=rotate_row_labels,
                            rotate_col_labels=rotate_col_labels,

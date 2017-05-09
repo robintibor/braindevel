@@ -404,7 +404,7 @@ class ExperimentsRunner:
         
         result_file_name = self._get_result_save_path(experiment_index)
         
-        log.info("Saving result...")
+        log.info("Saving result to {:s}...".format(result_file_name))
         with open(result_file_name, 'w') as resultfile:
             pickle.dump(result_or_results, resultfile)
         

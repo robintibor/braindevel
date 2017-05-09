@@ -6,13 +6,8 @@
         'configs/experiments/models/merged.yaml',
         ],
     templates: {
-        bandpass_subsample_standardize:
+        bandpass_subsample_standardize: 
         [
-            [
-                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
-                {'low_cut_off_hz': $first_low_cut_hz,
-                 filt_order: $first_low_filt_order}
-            ],
             [
                 !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
                 {'low_cut_hz': $low_cut_hz,
@@ -22,32 +17,6 @@
             [
                 !!python/name:braindecode.mywyrm.processing.subsample_cnt , 
                 {'newfs': $resample_fs},
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
-                { }
-            ],
-        ],
-        bandpass_subsample_car_standardize:
-        [
-            [
-                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
-                {'low_cut_off_hz': $first_low_cut_hz,
-                 filt_order: $first_low_filt_order}
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.bandpass_cnt , 
-                {'low_cut_hz': $low_cut_hz,
-                'high_cut_hz': $high_cut_hz,
-                 filt_order: $filt_order}
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.subsample_cnt , 
-                {'newfs': $resample_fs},
-            ],
-            [
-                !!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
-                {},
             ],
             [
                 !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
@@ -95,49 +64,14 @@
             valid_set_fraction: $valid_set_fraction,
         },
      
-        markers_right_feet_rot_word_rest: {'Right Hand': [1], 'Feet': [2],
-            'Rotation': [3], 'Words': [4], 'Rest': [5]},
-        end_markers_right_feet_rot_word_rest: {'Right Hand': [10], 'Feet': [20],
-            'Rotation': [30], 'Words': [40], 'Rest': [50],},
-        classes_right_feet_rot_word_rest: ['Right Hand',  'Feet', 'Rotation', 'Words', 'Rest'],
-        
-        markers_right_feet_rot_word: {'Right Hand': [1], 'Feet': [2],
-            'Rotation': [3], 'Words': [4]},
-        end_markers_right_feet_rot_word: {'Right Hand': [10], 'Feet': [20],
-            'Rotation': [30], 'Words': [40]},
-        classes_right_feet_rot_word: ['Right Hand',  'Feet', 'Rotation', 'Words'],
-
         markers_right_feet_rot_word_gui: {'Right Hand': [1], 'Feet': [4],
             'Rotation': [8], 'Words': [10]},
         # since mistakes can happen, all end markers are possible
-        end_markers_right_feet_rot_word_gui: {'Right Hand': [21,24,28,30], 
-        'Feet': [21,24,28,30],
-            'Rotation': [21,24,28,30], 'Words': [21,24,28,30],},
+        # + for unknown reasons also 20 as end marker
+        end_markers_right_feet_rot_word_gui: {'Right Hand': [20,21,22,23,24,28,30], 
+        'Feet': [20,21,22,23,24,28,30],
+            'Rotation': [20,21,22,23,24,28,30], 'Words': [20,21,22,23,24,28,30],},
         classes_right_feet_rot_word_gui: ['Right Hand',  'Feet', 'Rotation', 'Words'],
-        non_gui_args: {
-            'data/robot-hall/HaWe/HaWeNBD1/': 
-            {
-                marker_def: $markers_right_feet_rot_word,
-                end_marker_def: $end_markers_right_feet_rot_word,
-                trial_classes: $classes_right_feet_rot_word,
-            },
-             'data/robot-hall/HaWe/HaWeNBD2/': 
-            {
-                marker_def: $markers_right_feet_rot_word,
-                end_marker_def: $end_markers_right_feet_rot_word,
-                trial_classes: $classes_right_feet_rot_word,
-            },
-        },
-        niri_13_15_args: {
-             'data/robot-hall/NiRiNBD13-15/': 
-            {
-                marker_def: $markers_right_feet_rot_word,
-                end_marker_def: $end_markers_right_feet_rot_word,
-                trial_classes: $classes_right_feet_rot_word,
-                min_break_length_ms: [3700],
-                max_break_length_ms: [3900],
-            },
-        },
         nico_sensors: ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AF4', 'AF8', 'F7',
          'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5', 'FC3',
          'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'M1', 'T7', 'C5', 'C3',
@@ -156,7 +90,7 @@
           'CP2', 'CP4', 'CP6'],
     },
     variants: [[{ 
-        save_path: ['data/models/online/cnt/hawe/with-highpass/'],
+        save_path: ['data/models/online/cnt/lufi-chinese-demo/'],
         
         last_set_split_trial: ['null'],
         sensor_names: [$nico_sensors],
@@ -176,16 +110,13 @@
         dataset_splitter: [$several_sets_splitter],
         pool_mode: ['average_exc_pad'],
         loss_expression: [$categorical_crossentropy],
-        cnt_preprocessors: [$bandpass_subsample_standardize,
-            $bandpass_subsample_car_standardize],
+        cnt_preprocessors: [$bandpass_subsample_standardize],
         resample_fs: [250],
         #load_sensor_names: [$dry_sensors],
         #sensor_names: ["null"],
         dataset: [$combined_cnt_set],
         low_cut_hz: ['null'],
-        high_cut_hz: [40, 'null'],
-        first_low_cut_hz: [6],#'null', 
-        first_low_filt_order: [10],
+        high_cut_hz: [40],
         filt_order: [20],#30
         run_after_early_stop: [true],
         n_classes: [5],
@@ -193,56 +124,62 @@
         n_sample_preds: [200], # will be overwritten anyways
         input_time_length: [760],
         layers: [$merged_net],
-                
+
         max_increasing_epochs: [80],
-        max_epochs: [200],
         valid_set_fraction: [0.2],
         preprocessor:  ['null'],
         last_set_split_trial: ['null'], #150
         folder_name_to_extra_args: ['[]'],
         use_test_as_valid: [False],
-        max_epochs: [100],
+        max_epochs: [45],
         iterator: [$balanced_cnt_iterator],
         
         variants: [
         [
-#        {
-#            folder_name_to_extra_args: ['[$niri_13_15_args]'],#'[]'],
-#            folder_names: [[
-#                'data/robot-hall/NiRiNBD13-15/',
-#                'data/robot-hall/HaWe/HaWeNBD4/',
-#                'data/robot-hall/HaWe/HaWeNBD5/',
-#                'data/robot-hall/HaWe/HaWeNBD7/'
-#                ]],
-#        },
-#        {
-#            folder_name_to_extra_args: ['[$niri_13_15_args]'],
-#            folder_names: [[
-#                'data/robot-hall/NiRiNBD13-15/',
-#                'data/robot-hall/HaWe/HaWeNBD4/',
-#                'data/robot-hall/HaWe/HaWeNBD5/',
-#                'data/robot-hall/HaWe/HaWeNBD7/',
-#                'data/robot-hall/HaWe/HaWeNBD7/'
-#                ]],
-#        },
         {
             folder_names: [[
-                'data/robot-hall/HaWe/HaWeNBD3/',
-                'data/robot-hall/HaWe/HaWeNBD4/',
-                'data/robot-hall/HaWe/HaWeNBD5/',
-                'data/robot-hall/HaWe/HaWeNBD7/'
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R1',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R2',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R3',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R4',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R5',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R6',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R7',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R8',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R9',
                 ]],
         },
-#        {
-#            folder_name_to_extra_args: ['[]'],
-#            folder_names: [[
-#                'data/robot-hall/HaWe/HaWeNBD3/',
-#                'data/robot-hall/HaWe/HaWeNBD4/',
-#                'data/robot-hall/HaWe/HaWeNBD5/',
-#                'data/robot-hall/HaWe/HaWeNBD7/',
-#                'data/robot-hall/HaWe/HaWeNBD7/'
-#                ]],
-#        },
+        {
+            folder_names: [[
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R1',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R2',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R3',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R4',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R5',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R6',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R7',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R8',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R9',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R9',
+                ]],
+        },
+        {
+            folder_names: [[
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R6',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R7',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R8',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R9',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R9',
+                ]],
+        },
+        {
+            folder_names: [[
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R6',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R7',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R8',
+                '/home/schirrmr/data/robot-hall/LuFi/LuFiNBD1R9',
+                ]],
+        },
         ],
         [
         {},
