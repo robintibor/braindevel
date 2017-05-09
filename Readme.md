@@ -1,3 +1,18 @@
+# Citation
+If you use any of this code in a scientific publication, please cite:
+
+>  Schirrmeister, R. T., Springenberg, J. T., Fiederer, L. D. J., Glasstetter, M., Eggensperger, K., Tangermann, M., ... & Ball, T. (2017). Deep learning with convolutional neural networks for brain mapping and decoding of movement-related information from the human EEG. arXiv preprint arXiv:1703.05051.
+
+```
+@article{schirrmeister2017deep,
+  title={Deep learning with convolutional neural networks for brain mapping and decoding of movement-related information from the human EEG},
+  author={Schirrmeister, Robin Tibor and Springenberg, Jost Tobias and Fiederer, Lukas Dominique Josef and Glasstetter, Martin and Eggensperger, Katharina and Tangermann, Michael and Hutter, Frank and Burgard, Wolfram and Ball, Tonio},
+  journal={arXiv preprint arXiv:1703.05051},
+  year={2017},
+  url={https://arxiv.org/abs/1703.05051}
+}
+```
+
 # Installation
 
 ## Basics
