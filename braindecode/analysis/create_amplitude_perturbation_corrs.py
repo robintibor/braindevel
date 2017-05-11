@@ -257,6 +257,7 @@ def compute_class_amp_sensor_covs(pred_diffs, amp_diffs):
     return wanted_coeffs, vars_preds, vars_amp 
 
 def create_batch_inputs_targets_amplitude_phase(exp):
+    """From train set."""
     train_set = exp.dataset_provider.get_train_merged_valid_test(
         exp.dataset)['train']
     batches = list(exp.iterator.get_batches(train_set, shuffle=False))

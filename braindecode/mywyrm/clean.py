@@ -215,6 +215,27 @@ class MaxAbsCleaner(object):
             rejected_max_min=rejected_trials, # lets just put it under maxmin
             rejected_var=[])
         return clean_result
+    
+class BCICompetitionIV2ABArtefactMaskCleaner(object):
+    def __init__(self, marker_def):
+        self.marker_def = marker_def
+        
+        
+    def clean(self, cnt, ignore_chans=False):
+        # Segment into trials and take all! :)
+        # Segment just to select markers and kick out out of bounds
+        # trials
+        # chans ignored always anyways... so ignore_chans parameter does not
+        # matter
+        assert hasattr(cnt, 'artefact_trial_mask')
+        clean_trials = np.flatnonzero(cnt.artefact_trial_mask == 0)
+        rejected_trials = np.flatnonzero(cnt.artefact_trial_mask == 1)
+        clean_result = CleanResult(rejected_chan_names=[],
+            rejected_trials=rejected_trials,
+            clean_trials=clean_trials,
+            rejected_max_min=rejected_trials, # lets just put it under maxmin
+            rejected_var=[])
+        return clean_result
 
 
 class Cleaner(object):

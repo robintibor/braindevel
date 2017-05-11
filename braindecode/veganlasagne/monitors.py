@@ -1,10 +1,11 @@
 from abc import ABCMeta, abstractmethod
 import time
+from copy import deepcopy
 import numpy as np
 import theano
 from sklearn.metrics import roc_auc_score
-from copy import deepcopy
 from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples
+from sklearn.metrics import cohen_kappa_score
 
 class Monitor(object):
     __metaclass__ = ABCMeta
@@ -332,3 +333,44 @@ def compute_preds_per_trial(y, all_preds, all_batch_sizes, input_time_length):
         "prediction forward passes are needed, used {:d}, existing {:d}".format(
             i_pred_block, len(preds_per_forward_pass)))
     return preds_per_trial
+
+class KappaMonitor(Monitor):
+    def __init__(self, input_time_length, chan_name='kappa', mode='mean'):
+        self.chan_name = chan_name
+        self.input_time_length = input_time_length
+        self.mode = mode
+
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans):
+        return
+
+    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
+            all_batch_sizes, targets, dataset):
+        
+        preds_per_trial = compute_preds_per_trial(dataset.y, 
+            all_preds, all_batch_sizes, self.input_time_length)
+
+        targets_per_trial = compute_preds_per_trial(dataset.y, 
+            targets, all_batch_sizes, self.input_time_length)
+    
+        preds_per_trial = np.array(preds_per_trial)
+        targets_per_trial = np.array(targets_per_trial)
+        assert np.allclose(np.sum(preds_per_trial, axis=2), 1)
+        assert np.all(np.sum(targets_per_trial, axis=2) == 1) 
+        pred_labels_per_timepoint_per_trial = np.argmax(preds_per_trial, axis=2)
+        labels_per_timepoint_per_trial = np.argmax(targets_per_trial, axis=2)
+        kappa_timecourse = np.array([cohen_kappa_score(p,t) for p,t in zip(pred_labels_per_timepoint_per_trial.T,
+                                      labels_per_timepoint_per_trial.T)])
+        if self.mode == 'mean':
+            kappa = np.mean(kappa_timecourse)
+        else:
+            assert self.mode == 'max'
+            kappa = np.max(kappa_timecourse)
+        
+        monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+        monitor_chans[monitor_key].append(-float(kappa))

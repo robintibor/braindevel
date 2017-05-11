@@ -121,7 +121,7 @@
           'CP2', 'CP4', 'CP6'],
     },
     variants: [[{ 
-        save_path: ['data/models/online/cnt/lufi/'],
+        save_path: ['data/models/online/cnt/lufi/with-highpass/'],
         
         last_set_split_trial: ['null'],
         sensor_names: [$nico_sensors],
@@ -171,18 +171,18 @@
         
         variants: [
         [
-#        {
-#            folder_names: [[
-#                'data/robot-hall/LuFi/LuFiNBD1R01-9/',
-#                'data/robot-hall/LuFi/LuFiNBD1R10-11/',
-#                ]],
-#        },
         {
             folder_names: [[
-                'data/robot-hall/LuFi/LuFiNBD1/',
+                'data/robot-hall/LuFi/LuFiNBD1R01-9/',
                 'data/robot-hall/LuFi/LuFiNBD1R10-11/',
                 ]],
         },
+#        {
+#            folder_names: [[
+#                'data/robot-hall/LuFi/LuFiNBD1/',
+#                'data/robot-hall/LuFi/LuFiNBD1R10-11/',
+#                ]],
+#        },
         ],
         [
         {},

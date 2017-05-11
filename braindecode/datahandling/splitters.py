@@ -6,6 +6,8 @@ from numpy.random import RandomState
 from braindecode.datasets.pylearn import DenseDesignMatrixWrapper
 from copy import deepcopy
 import logging
+from braindecode.datahandling.batch_iteration import compute_trial_start_end_samples,\
+    get_balanced_batches
 log = logging.getLogger(__name__)
 
 class TrainValidTestSplitter(object):
@@ -405,4 +407,49 @@ class AllSubjectsKaggleTrainValidTestSplitter(TrainValidTestSplitter):
         return OrderedDict([('train', train_set),
             ('valid', valid_set), 
             ('test',  test_set)])
+    
+    
+def convert_to_sample_inds(fold_trial_inds, ends):
+    ends = np.concatenate(([0], ends))
+    # +2 instead of +1 to make sure that there is also a 0 after the 1 after
+    # last trial to prevent confusion by other functions extracting trials
+    sample_inds = []
+    for i_trial in fold_trial_inds:
+        sample_inds.extend(range(ends[i_trial - 1] + 2,
+                                ends[i_trial] + 2))
+    return np.array(sample_inds)
+
+class CntTrialSingleFoldSplitter(TrainValidTestSplitter):
+    def __init__(self, n_folds=10, i_test_fold=-1, shuffle=False,
+            seed=729387987):
+        self.n_folds = n_folds
+        self.i_test_fold = i_test_fold
+        self.shuffle = shuffle
+        self.seed = seed
+
+    def split_into_train_valid_test(self, dataset):
+        """Split into train valid test by splitting
+        dataset into num folds, test fold nr should be given,
+        valid fold will be the one immediately before the test fold,
+        train folds the remaining 8 folds
+        """
+        # also works in case test fold nr is 0 as it will just take -1 
+        # which is fine last fold)
+        i_valid_fold = self.i_test_fold - 1
+        starts, ends = compute_trial_start_end_samples(dataset.y, check_trial_lengths_equal=False)
+        n_trials = len(starts)
+        rng = RandomState(self.seed)
+        assert self.shuffle == True
+        print("hi")
+        folds = get_balanced_batches(n_trials, rng, shuffle=self.shuffle,
+            n_batches=self.n_folds)
+        test_fold = folds[self.i_test_fold]
+        valid_fold = folds[i_valid_fold]
+        test_inds = convert_to_sample_inds(test_fold, ends)
+        valid_inds = convert_to_sample_inds(valid_fold, ends)
+        train_inds = np.setdiff1d(np.arange(len(dataset.y)),
+                    np.concatenate((valid_inds, test_inds)))
+        datasets = split_set_by_indices(dataset, train_inds, valid_inds,
+                    test_inds)
+        return datasets
     

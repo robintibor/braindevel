@@ -5,6 +5,7 @@ import h5py
 import wyrm.types
 import logging
 from braindecode.mywyrm.processing import resample_cnt
+from scipy.io.matlab.mio import loadmat
 log = logging.getLogger(__name__)
 from braindecode.datasets.sensor_positions import sort_topologically
 from wyrm.processing import append_cnt
@@ -241,7 +242,6 @@ class BBCIDataset(object):
     
 class BCICompetition4Set2A(object):
     def __init__(self, filename, load_sensor_names=None):
-        """ Constructor will not call superclass constructor yet"""
         self.__dict__.update(locals())
         del self.self
 
@@ -308,6 +308,7 @@ class BCICompetition4Set2A(object):
                         ['ms', '#'])
             cnt.fs = fs
             cnt.markers = markers
+            cnt.artefact_trial_mask = h5file['header']['ArtifactSelection'][:].squeeze()
         return cnt
     
 def convert_test_files_add_markers():
@@ -465,3 +466,108 @@ class MultipleBBCIDataset(object):
         bbci_sets = [BBCIDataset(fname, load_sensor_names=self.load_sensor_names)
                      for fname in self.filenames]
         return MultipleSetLoader(bbci_sets).load()
+    
+class BCICompetition4Set2B(object):
+    def __init__(self, filename, load_sensor_names=None, labels_filename=None):
+        assert load_sensor_names is None
+        self.__dict__.update(locals())
+        del self.self
+        
+    
+    def load(self):
+        with h5py.File(self.filename, 'r') as h5file:
+            eeg_signal, chan_names = extract_EEG_signal_and_chan_names(h5file)
+            markers, marker_times, artefact_mask = extract_markers_and_times_and_artefact_mask(
+                h5file, labels_filename=self.labels_filename)
+            fs = h5file['header']['SampleRate'][0,0]
+            samplenumbers = np.array(range(eeg_signal.shape[0]))
+            timesteps_in_ms = samplenumbers * 1000.0 / fs
+            cnt = wyrm.types.Data(eeg_signal, 
+                        [timesteps_in_ms, chan_names],
+                        ['time', 'channel'], 
+                        ['ms', '#'])
+            cnt.markers = zip(marker_times, markers)
+            cnt.fs = fs
+            cnt.artefact_trial_mask = artefact_mask
+        return cnt
+
+def extract_EEG_signal_and_chan_names(h5file):
+    chan_names = get_strings_from_refs(h5file, h5file['header']['Label'][:])
+    assert np.array_equal(['EEG:C3          ',
+         'EEG:Cz          ',
+         'EEG:C4          ',
+         'EOG:ch01        ',
+         'EOG:ch02        ',
+         'EOG:ch03        '],
+         chan_names), (
+        "first 3 should be EEG Chans")
+    EEG_signal = h5file['signal'][:3,:]
+    EEG_signal = EEG_signal.T
+    # replace nans  by means of corresponding chans
+    for i_chan in xrange(EEG_signal.shape[1]):
+        chan_signal = EEG_signal[:, i_chan]
+        chan_signal[np.isnan(chan_signal)] = np.nanmean(chan_signal)
+        EEG_signal[:, i_chan] = chan_signal
+    return EEG_signal, ['C3', 'Cz', 'C4']
+
+def get_strings_from_refs(h5file,refs):
+    refs = refs.squeeze()
+    strings = [''.join(chr(c) for c in h5file[obj_ref]) for obj_ref in refs]
+    return strings
+
+    
+def extract_markers_and_times_and_artefact_mask(h5file, labels_filename=None):
+    codes = h5file['header']['EVENT']['TYP'][:].squeeze()
+    sample_inds = h5file['header']['EVENT']['POS'][:].squeeze()
+    fs = h5file['header']['SampleRate'][0,0]
+    assert fs == 250.0
+    times_in_ms = (sample_inds * 1000.0) / fs
+    wanted_inds = ((codes == 769) | (codes == 770) | (codes == 783))
+    assert (np.sum(wanted_inds) == 120) or (np.sum(wanted_inds) == 160) or (
+        np.sum(wanted_inds) == 140), (
+        "Got {:d} markers".format(np.sum(wanted_inds)))
+    markers = codes[wanted_inds]
+    markers = markers - 768 # now markers are 1,2
+    # possibly overwrite markers from labels file
+    if labels_filename is not None:
+        markers = loadmat(labels_filename)['classlabel'].squeeze()
+    marker_times = times_in_ms[wanted_inds]
+    assert np.array_equal([1,2],np.unique(markers))
+    artefact_mask = h5file['header']['ArtifactSelection'][:].squeeze()
+    assert artefact_mask.shape == (len(markers),)
+    return markers, marker_times, artefact_mask
+
+class MultipleBCICompetition4Set2B(object):
+    def __init__(self, subject_id, session_ids, data_folder):
+        self.subject_id = subject_id
+        self.session_ids = session_ids
+        self.data_folder = data_folder
+    def load(self):
+        signal_folder = os.path.join(self.data_folder, 'signal')
+        labels_folder = os.path.join(self.data_folder, 'labels')
+        all_cnts = []
+        for session_id in self.session_ids:
+            labels_file_path = create_labels_file_path(self.subject_id,
+                session_id, labels_folder)
+            signal_file_path = create_signal_file_path(self.subject_id,
+                session_id, signal_folder)
+            all_cnts.append(BCICompetition4Set2B(signal_file_path,
+                labels_filename=labels_file_path).load())
+        artefact_masks = [cnt.artefact_trial_mask for cnt in all_cnts]
+        merged_cnt = reduce(append_cnt, all_cnts[1:], all_cnts[0])
+        merged_cnt.artefact_trial_mask = np.concatenate(artefact_masks)
+        assert merged_cnt.data.shape[0] == np.sum([cnt.data.shape[0] for cnt in all_cnts])
+        assert len(merged_cnt.artefact_trial_mask) == len(merged_cnt.markers)
+        return merged_cnt
+
+def create_signal_file_path(subject_id, session_id, signal_folder):
+    train_or_eval = ("T" if session_id <= 3 else "E")
+    filename = "B{:02d}{:02d}{:s}.hdf5".format(subject_id, session_id, train_or_eval)
+    file_path = os.path.join(signal_folder, filename)
+    return file_path
+
+def create_labels_file_path(subject_id, session_id, labels_folder):
+    train_or_eval = ("T" if session_id <= 3 else "E")
+    filename = "B{:02d}{:02d}{:s}.mat".format(subject_id, session_id, train_or_eval)
+    file_path = os.path.join(labels_folder, filename)
+    return file_path
