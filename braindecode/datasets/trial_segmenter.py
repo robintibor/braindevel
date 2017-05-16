@@ -137,14 +137,14 @@ class AddTrialBreaks(object):
     def __init__(self, min_length_ms, max_length_ms,
             start_offset_ms, stop_offset_ms,
             start_marker_def, end_marker_def=None, trial_to_break_ms=None):
-        assert (not end_marker_def is None) and (trial_to_break_ms is None)
-        assert trial_to_break_ms is None, "Not implemented yet"
+        assert not((end_marker_def is None) and (trial_to_break_ms is None))
         self.start_marker_def = start_marker_def
         self.end_marker_def = end_marker_def
         self.min_length_ms = min_length_ms
         self.max_length_ms = max_length_ms
         self.start_offset_ms = start_offset_ms
         self.stop_offset_ms = stop_offset_ms
+        self.trial_to_break_ms = trial_to_break_ms
         
     def segment(self, cnt, y, class_names):
         if 'Rest' not in class_names:
@@ -154,8 +154,12 @@ class AddTrialBreaks(object):
             class_names = class_names + ['Rest']
         else:
             i_class = class_names.index('Rest')
-        break_start_ends_ms = compute_break_start_ends_ms(cnt.markers,
-            self.start_marker_def, self.end_marker_def)
+        if self.end_marker_def is not None:
+            break_start_ends_ms = compute_break_start_ends_ms(cnt.markers,
+                self.start_marker_def, self.end_marker_def)
+        else:
+            break_start_ends_ms = compute_break_start_ends_ms_without_end_marker(
+                cnt.markers, self.start_marker_def, self.trial_to_break_ms)
         start_offset = ms_to_i_sample(self.start_offset_ms, cnt.fs)
         stop_offset = ms_to_i_sample(self.stop_offset_ms, cnt.fs)
         n_breaks_added = 0
@@ -193,3 +197,14 @@ def compute_break_start_ends_ms(markers, start_marker_def, end_marker_def):
     # so lets only take time now
     break_start_end = np.array(break_start_end)[:,:,0]
     return break_start_end
+
+def compute_break_start_ends_ms_without_end_marker(markers, start_marker_def,
+    trial_to_break_ms):
+    assert np.all([len(v) == 1 for v in start_marker_def.values()])
+    start_vals = [v[0] for v in start_marker_def.values()]
+    start_mrk_ms = [m[0] for m in markers if m[1] in start_vals]
+    start_mrk_ms = np.array(start_mrk_ms)
+    end_trial_ms = start_mrk_ms + trial_to_break_ms
+    assert np.all(start_mrk_ms[1:] > end_trial_ms[:-1])
+    return zip(end_trial_ms[:-1], start_mrk_ms[1:])
+    

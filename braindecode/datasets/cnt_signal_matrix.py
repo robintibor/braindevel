@@ -85,6 +85,7 @@ class CntSignalMatrix(DenseDesignMatrix):
         del self.X
         
 class SetWithMarkers(DenseDesignMatrix):
+    reloadable = False
     def __init__(self, set_loader, cnt_preprocessors, trial_segmenter):
         self.set_loader = set_loader
         self.cnt_preprocessors = cnt_preprocessors

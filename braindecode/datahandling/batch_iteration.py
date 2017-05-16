@@ -542,3 +542,91 @@ def inputs_per_trial(train_inputs, y, n_sample_preds, input_time_length,
         "forward passes are needed, used {:d}, existing {:d}".format(
             i_pred_block, len(train_inputs_per_forward_pass)))
     return train_inputs_per_trial
+
+
+class CntWindowTrialCntTestIterator(object):
+    """Cut out windows for several predictions from a continous dataset
+     with a trial marker y signal.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    def __init__(self, batch_size, input_time_length, n_sample_preds,
+            check_preds_smaller_trial_len=True):
+        self.batch_size = batch_size
+        self.input_time_length = input_time_length
+        self.n_sample_preds = n_sample_preds
+        self.check_preds_smaller_trial_len = check_preds_smaller_trial_len
+        self.rng = RandomState(328774)
+        
+    def reset_rng(self):
+        self.rng = RandomState(328774)
+
+    def get_batches(self, dataset, shuffle):
+        if shuffle:
+            i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
+                dataset.y, check_trial_lengths_equal=False,
+                input_time_length=self.input_time_length)
+        else:
+            i_trial_starts = [self.input_time_length - self.n_sample_preds]
+            i_trial_ends = [len(dataset.X) - 1]
+        if self.check_preds_smaller_trial_len:
+            self.check_trial_bounds(i_trial_starts, i_trial_ends)
+        start_end_blocks_per_trial = self.compute_start_end_block_inds(
+            i_trial_starts, i_trial_ends)
+
+        topo = dataset.get_topological_view()
+        y = dataset.y
+
+        return self.yield_block_batches(topo, y, start_end_blocks_per_trial, shuffle=shuffle)
+
+    def check_trial_bounds(self, i_trial_starts, i_trial_ends):
+        for start, end in zip(i_trial_starts, i_trial_ends):
+            assert end - start + 1 >= self.n_sample_preds, (
+                "Trial should be longer or equal than number of sample preds, "
+                "Trial length: {:d}, sample preds {:d}...".
+                format(end - start + 1, self.n_sample_preds))
+
+    def compute_start_end_block_inds(self, i_trial_starts, i_trial_ends):
+        # create start stop indices for all batches still 2d trial -> start stop
+        start_end_blocks_per_trial = []
+        for i_trial in xrange(len(i_trial_starts)):
+            trial_start = i_trial_starts[i_trial]
+            trial_end = i_trial_ends[i_trial]
+            start_end_blocks = get_start_end_blocks_for_trial(trial_start,
+                trial_end, self.input_time_length, self.n_sample_preds)
+        
+            if self.check_preds_smaller_trial_len:
+                # check that block is correct, all predicted samples should be the trial samples
+                all_predicted_samples = [range(start_end[1] - self.n_sample_preds + 1, 
+                    start_end[1]+1) for start_end in start_end_blocks]
+                # this check takes about 50 ms in performance test
+                # whereas loop itself takes only 5 ms.. deactivate it if not necessary
+                assert np.array_equal(range(i_trial_starts[i_trial], i_trial_ends[i_trial] + 1), 
+                               np.unique(np.concatenate(all_predicted_samples)))
+
+            start_end_blocks_per_trial.append(start_end_blocks)
+        return start_end_blocks_per_trial
+
+    def yield_block_batches(self, topo, y, start_end_blocks_per_trial, shuffle):
+        start_end_blocks_flat = np.concatenate(start_end_blocks_per_trial)
+        if shuffle:
+            self.rng.shuffle(start_end_blocks_flat)
+
+        for i_block in xrange(0, len(start_end_blocks_flat), self.batch_size):
+            i_block_stop = min(i_block + self.batch_size, len(start_end_blocks_flat))
+            start_end_blocks = start_end_blocks_flat[i_block:i_block_stop]
+            batch = create_batch(topo,y, start_end_blocks, self.n_sample_preds)
+            yield batch
+
+class CntWindowTrialBCICompIVSet1Iterator(CntWindowTrialIterator):
+    def get_batches(self, dataset, shuffle):
+        batch_gen = super(CntWindowTrialBCICompIVSet1Iterator, self).get_batches(dataset, shuffle)
+        for batch in batch_gen:
+            batch_y = batch[1]
+            batch_y = batch_y[:,1] - batch_y[:,0]
+            yield (batch[0], batch_y[:,None])

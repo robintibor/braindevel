@@ -28,6 +28,7 @@ from braindecode.veganlasagne.objectives import tied_neighbours_cnt_model,\
     sum_of_losses
 from braindecode.util import FuncAndArgs
 from braindecode.mywyrm.clean import NoCleaner, BCICompetitionIV2ABArtefactMaskCleaner
+from braindecode.veganlasagne.clip import ClipLayer
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ def get_templates():
 def get_grid_param_list():
     dictlistprod = cartesian_dict_of_lists_product
     default_params = [{ 
-        'save_folder': './data/models/sacred/paper/bcic-iv-2b/cv/',
+        'save_folder': './data/models/sacred/paper/bcic-iv-2b/cv-proper-sets/',
         'only_return_exp': False,
         'n_chans': 3,
         }]
@@ -53,16 +54,16 @@ def get_grid_param_list():
     })
     
     exp_params = dictlistprod({
-        'run_after_early_stop': [True, False],})
+        'run_after_early_stop': [True,],})
     stop_params = dictlistprod({
-        'stop_chan': ['kappa', 'misclass']})#, 
+        'stop_chan': ['misclass']})#, 
     
     loss_params = dictlistprod({
-        'loss_expression': ['$categorical_crossentropy', '$tied_loss']})#'misclass', 
+        'loss_expression': ['$tied_loss']})#'misclass', 
     preproc_params = dictlistprod({
         'filt_order': [3,],#10
-        'low_cut_hz': [0,4],
-        'sets_like_fbcsp_paper': [True, False]})
+        'low_cut_hz': [4],
+        'sets_like_fbcsp_paper': [False, True]})
 
     grid_params = product_of_list_of_lists_of_dicts([
         default_params,
@@ -90,18 +91,20 @@ def run(ex, data_folder, subject_id, n_chans,
     # network with 2000ms receptive field
     # 1500 means the first receptive field goes from -500 to 1500
     train_segment_ival = [1500,4000]
-    test_segment_ival = [0,4000]
+    test_segment_ival = [1500,4000]
     
     
-    session_ids = [1,2,3]
+    add_additional_set = True
+    session_ids = [1,2,]
     if sets_like_fbcsp_paper:
         if subject_id in [4,5,6,7,8,9]:
-            session_ids = [3]
+            session_ids = [3] # dummy
+            add_additional_set = False
         elif subject_id == 1:
-            session_ids = [1,3]
+            session_ids = [1,]
         else:
             assert subject_id in [2,3]
-            session_ids = [1,2,3]
+            session_ids = [1,2]
     
     train_loader = MultipleBCICompetition4Set2B(subject_id,
         session_ids=session_ids, data_folder=data_folder)
@@ -140,7 +143,9 @@ def run(ex, data_folder, subject_id, n_chans,
     if not only_return_exp:
         combined_set.load()
         # only need train set actually, split is done later per fold
-        combined_set = combined_set.train_set
+        combined_set = combined_set.test_set
+        if add_additional_set:
+            combined_set.additional_set = train_set
         
     in_chans = train_set.get_topological_view().shape[1]
     input_time_length = 1000 # implies how many crops are processed in parallel, does _not_ determine receptive field size
@@ -189,13 +194,15 @@ def run(ex, data_folder, subject_id, n_chans,
                  drop_in_prob=drop_in_prob, drop_prob=drop_prob, batch_norm_alpha=batch_norm_alpha,
                  double_time_convs=double_time_convs,  split_first_layer=split_first_layer, batch_norm=batch_norm)
         final_layer = d5net.get_layers()[-1]
+        final_layer = ClipLayer(final_layer, 1e-4, 1-1e-4)
         dataset_splitter = CntTrialSingleFoldSplitter(n_folds=10, i_test_fold=i_fold,
             shuffle=True)
         iterator = CntWindowTrialIterator(batch_size=45,input_time_length=input_time_length,
                                          n_sample_preds=get_n_sample_preds(final_layer))
             
         monitors = [LossMonitor(), CntTrialMisclassMonitor(input_time_length=input_time_length),
-            KappaMonitor(input_time_length=iterator.input_time_length), RuntimeMonitor()]
+            KappaMonitor(input_time_length=iterator.input_time_length,
+                mode='max'), RuntimeMonitor()]
         
         
         #n_no_decrease_max_epochs = 2

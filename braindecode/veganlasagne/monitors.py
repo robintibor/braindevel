@@ -300,15 +300,22 @@ class CntTrialMisclassMonitor(Monitor):
         all_target_labels = np.array(all_target_labels)
         return all_pred_labels, all_target_labels
 
+
 def compute_preds_per_trial(y, all_preds, all_batch_sizes, input_time_length):
     i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
         y, check_trial_lengths_equal=False,
         input_time_length=input_time_length)
+    return compute_preds_per_trial_from_start_end(
+        all_preds, all_batch_sizes, i_trial_starts, i_trial_ends)
+
+
+def compute_preds_per_trial_from_start_end(
+        all_preds, all_batch_sizes, i_trial_starts, i_trial_ends):
     i_pred_block = 0
     n_sample_preds = all_preds[0].shape[0] / all_batch_sizes[0]
     all_preds_arr = np.concatenate(all_preds, axis=0)
     preds_per_forward_pass = np.reshape(all_preds_arr, (-1, n_sample_preds,
-        all_preds_arr.shape[1]))
+                                                        all_preds_arr.shape[1]))
     preds_per_trial = []
     for i_trial in xrange(len(i_trial_starts)):
         # + 1 since end is inclusive
@@ -321,17 +328,18 @@ def compute_preds_per_trial(y, all_preds, all_batch_sizes, input_time_length):
             # in case there are more samples thatn we actually still need
             # in the block
             # That can happen since final block of a trial can overlap
-            # with block before so we can have some redundant preds 
-            pred_samples = preds_per_forward_pass[i_pred_block, -needed_samples:]
+            # with block before so we can have some redundant preds
+            pred_samples = preds_per_forward_pass[i_pred_block,
+                           -needed_samples:]
             preds_this_trial.append(pred_samples)
             needed_samples -= len(pred_samples)
             i_pred_block += 1
-            
+
         preds_this_trial = np.concatenate(preds_this_trial, axis=0)
         preds_per_trial.append(preds_this_trial)
-    assert i_pred_block == len(preds_per_forward_pass) , ("Expect that all "
-        "prediction forward passes are needed, used {:d}, existing {:d}".format(
-            i_pred_block, len(preds_per_forward_pass)))
+    assert i_pred_block == len(preds_per_forward_pass), ("Expect that all "
+                                                         "prediction forward passes are needed, used {:d}, existing {:d}".format(
+        i_pred_block, len(preds_per_forward_pass)))
     return preds_per_trial
 
 class KappaMonitor(Monitor):
@@ -360,7 +368,8 @@ class KappaMonitor(Monitor):
     
         preds_per_trial = np.array(preds_per_trial)
         targets_per_trial = np.array(targets_per_trial)
-        assert np.allclose(np.sum(preds_per_trial, axis=2), 1)
+        #assert np.allclose(np.sum(preds_per_trial, axis=2), 1,rtol=0.01,
+        #    atol=0.01)
         assert np.all(np.sum(targets_per_trial, axis=2) == 1) 
         pred_labels_per_timepoint_per_trial = np.argmax(preds_per_trial, axis=2)
         labels_per_timepoint_per_trial = np.argmax(targets_per_trial, axis=2)
@@ -374,3 +383,187 @@ class KappaMonitor(Monitor):
         
         monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
         monitor_chans[monitor_key].append(-float(kappa))
+
+
+class MeanSquaredErrorMonitor(Monitor):
+    def __init__(self,chan_name='mse',
+            out_factor=1, demean_preds=False):
+        self.chan_name = chan_name
+        self.out_factor = out_factor
+        self.demean_preds = demean_preds
+
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans):
+        return
+
+    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
+            all_batch_sizes, targets, dataset):
+        
+        all_preds_arr = np.concatenate(all_preds)
+        if self.demean_preds:
+            if setname == 'train':
+                self._pred_mean = np.mean(all_preds_arr)
+            all_preds_arr = all_preds_arr - self._pred_mean
+        all_preds_arr = all_preds_arr * self.out_factor
+        all_preds_arr = np.clip(all_preds_arr, -self.out_factor, self.out_factor)
+        all_targets_arr = np.concatenate(targets)
+        
+        mse = np.mean(np.square(all_preds_arr - all_targets_arr))
+        monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+        monitor_chans[monitor_key].append(mse)
+
+class CorrelationMonitor(Monitor):
+    def __init__(self,chan_name='corr'):
+        self.chan_name = chan_name
+
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans):
+        return
+
+    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
+            all_batch_sizes, targets, dataset):
+        all_preds_arr = np.concatenate(all_preds).squeeze()
+        all_targets_arr = np.concatenate(targets).squeeze()
+        corr = np.corrcoef(all_preds_arr, all_targets_arr)[0,1]
+        monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+        monitor_chans[monitor_key].append(-corr)
+
+
+class MeanSquaredErrorClassMonitor(Monitor):
+    def __init__(self, out_factor=1, demean_preds=False, chan_name='mse'):
+        self.out_factor = out_factor
+        self.chan_name = chan_name
+        self.demean_preds = demean_preds
+
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans):
+        return
+
+    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
+            all_batch_sizes, targets, dataset):
+        all_preds_arr = np.concatenate(all_preds)
+        if self.demean_preds:
+            if setname == 'train':
+                self._pred_mean = np.mean(all_preds_arr)
+            all_preds_arr = all_preds_arr - self._pred_mean
+
+        all_targets_arr = np.concatenate(targets)
+        
+        target_label = np.zeros(len(all_targets_arr))
+        target_label[all_targets_arr[:,0] == 1] = -1
+        target_label[all_targets_arr[:,1] == 1] = 1
+        
+        single_pred = (all_preds_arr[:,1] - all_preds_arr[:,0]) * (
+            1 - all_preds_arr[:,2]) * self.out_factor
+        
+        mse = np.mean(np.square(target_label - single_pred))
+        
+        monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+        monitor_chans[monitor_key].append(mse)
+
+class CorrelationClassMonitor(Monitor):
+    def __init__(self,chan_name='corr'):
+        self.chan_name = chan_name
+
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans):
+        return
+
+    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
+            all_batch_sizes, targets, dataset):
+        all_preds_arr = np.concatenate(all_preds)
+        all_targets_arr = np.concatenate(targets)
+        target_label = np.zeros(len(all_targets_arr))
+        target_label[all_targets_arr[:,0] == 1] = -1
+        target_label[all_targets_arr[:,1] == 1] = 1
+        single_pred = (all_preds_arr[:,1] - all_preds_arr[:,0]) * (
+            1 - all_preds_arr[:,2])
+        corr = np.corrcoef(target_label, single_pred)[0,1]
+        monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+        monitor_chans[monitor_key].append(-corr)
+
+""" OLD DELETE:
+class MeanSquaredErrorMonitor(Monitor):
+    def __init__(self,chan_name='mse'):
+        self.chan_name = chan_name
+
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans):
+        return
+
+    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
+            all_batch_sizes, targets, dataset):
+        
+        all_preds_arr = np.concatenate(all_preds)
+        n_missing_preds = dataset.y.shape[0] - all_preds_arr.shape[0]
+        padded_preds = np.concatenate((np.zeros((n_missing_preds, all_preds_arr.shape[1])), all_preds_arr), axis=0)
+        assert dataset.y.shape == padded_preds.shape
+        
+        target_label = np.zeros(len(dataset.y))
+        target_label[dataset.y[:,0] == 1] = -1
+        target_label[dataset.y[:,1] == 1] = 1
+        
+        single_pred = padded_preds[:,1] - padded_preds[:,0]
+        
+        mse = np.mean(np.square(target_label - single_pred))
+        
+        monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+        monitor_chans[monitor_key].append(mse)
+
+class CorrelationMonitor(Monitor):
+    def __init__(self,chan_name='corr'):
+        self.chan_name = chan_name
+
+    def setup(self, monitor_chans, datasets):
+        for setname in datasets:
+            assert setname in ['train', 'valid', 'test']
+            monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+            monitor_chans[monitor_key] = []
+
+    def monitor_epoch(self, monitor_chans):
+        return
+
+    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
+            all_batch_sizes, targets, dataset):
+        
+        all_preds_arr = np.concatenate(all_preds)
+        n_missing_preds = dataset.y.shape[0] - all_preds_arr.shape[0]
+        padded_preds = np.concatenate((np.zeros((n_missing_preds, all_preds_arr.shape[1])), all_preds_arr), axis=0)
+        assert dataset.y.shape == padded_preds.shape
+        
+        target_label = np.zeros(len(dataset.y))
+        target_label[dataset.y[:,0] == 1] = -1
+        target_label[dataset.y[:,1] == 1] = 1
+        
+        single_pred = padded_preds[:,1] - padded_preds[:,0]
+        
+        corr = np.corrcoef(target_label, single_pred)[0,1]
+        
+        monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
+        monitor_chans[monitor_key].append(-corr)
+"""

@@ -8,6 +8,8 @@ from braindecode.mywyrm.processing import resample_cnt
 from scipy.io.matlab.mio import loadmat
 log = logging.getLogger(__name__)
 from braindecode.datasets.sensor_positions import sort_topologically
+from braindecode.datahandling.batch_iteration import (
+    compute_trial_start_end_samples)
 from wyrm.processing import append_cnt
 
 class BBCIDataset(object):
@@ -571,3 +573,291 @@ def create_labels_file_path(subject_id, session_id, labels_folder):
     filename = "B{:02d}{:02d}{:s}.mat".format(subject_id, session_id, train_or_eval)
     file_path = os.path.join(labels_folder, filename)
     return file_path
+
+
+class BCICompetition4Set1(object):
+    def __init__(self, subject_id, train_or_test, folder, load_sensor_names=None):
+        assert load_sensor_names is None
+        self.__dict__.update(locals())
+        del self.self
+        
+    def load(self):
+        if self.train_or_test == 'train':
+            train_folder = os.path.join(self.folder,'signal/train/')
+
+            filename = 'BCICIV_calib_ds1{:s}_1000Hz.mat'.format(self.subject_id)
+            file_path = os.path.join(train_folder, filename)
+            label_file_path = None
+        else:
+            test_folder = os.path.join(self.folder,'signal/test/')
+            filename = 'BCICIV_eval_ds1{:s}_1000Hz.mat'.format(self.subject_id)
+            file_path = os.path.join(test_folder, filename)
+            label_folder = os.path.join(self.folder,'labels/')
+            label_filename = 'BCICIV_eval_ds1{:s}_1000Hz_true_y.mat'.format(
+                self.subject_id)
+            label_file_path = os.path.join(label_folder, label_filename)
+
+        return BCICompetition4Set1FromFile(
+            file_path, label_file_path=label_file_path).load()
+
+
+class BCICompetition4Set1FromFile(object):
+    expected_chan_names = [u'AF3', u'AF4', u'F5', u'F3', u'F1', u'Fz', u'F2',
+                       u'F4', u'F6', u'FC5', u'FC3', u'FC1', u'FCz', u'FC2',
+                       u'FC4', u'FC6', u'CFC7', u'CFC5', u'CFC3', u'CFC1', u'CFC2',
+                       u'CFC4', u'CFC6', u'CFC8', u'T7', u'C5', u'C3', u'C1', u'Cz',
+                       u'C2', u'C4', u'C6', u'T8', u'CCP7', u'CCP5', u'CCP3', u'CCP1',
+                       u'CCP2', u'CCP4', u'CCP6', u'CCP8', u'CP5', u'CP3', u'CP1',
+                       u'CPz', u'CP2', u'CP4', u'CP6', u'P5', u'P3', u'P1', u'Pz',
+                       u'P2', u'P4', u'P6', u'PO1', u'PO2', u'O1', u'O2']
+
+    def __init__(self, filename, label_file_path=None, load_sensor_names=None):
+        assert load_sensor_names is None
+        self.__dict__.update(locals())
+        del self.self
+        
+    def load(self):
+        matfile = loadmat(self.filename)
+        cnt, fs = self.load_signal(matfile)
+
+        # load markers
+        if self.label_file_path is None:
+            mrk_in_ms, mrk_codes = self.load_markers_from_signal_file(
+                matfile, fs)
+        else:
+            mrk_in_ms, mrk_codes = self.load_markers_from_label_file(
+                self.label_file_path, fs)
+
+        cnt.markers = zip(mrk_in_ms, mrk_codes)
+        assert fs == 1000
+        cnt.fs = fs
+        return cnt
+
+    def load_signal(self, matfile):
+        fs = float(matfile['nfo']['fs'][0,0].squeeze())
+        # load signal
+        eeg_signal = matfile['cnt']
+        samplenumbers = np.array(range(eeg_signal.shape[0]))
+        timesteps_in_ms = samplenumbers * 1000.0 / fs
+        chan_names = [chan_name[0] for chan_name in matfile['nfo']['clab'][0][0][0]]
+        assert np.array_equal(self.expected_chan_names, chan_names)
+        cnt = wyrm.types.Data(eeg_signal,
+                    [timesteps_in_ms, chan_names],
+                    ['time', 'channel'],
+                    ['ms', '#'])
+        return cnt, fs
+
+    @staticmethod
+    def load_markers_from_signal_file(matfile, fs):
+        mrk_in_samples = matfile['mrk']['pos'][0, 0].squeeze()
+        mrk_in_ms = mrk_in_samples * 1000.0 / fs
+        mrk_code = matfile['mrk']['y'][0, 0].squeeze()
+        mrk_code = ((mrk_code + 1) / 2) + 1
+        return mrk_in_ms, mrk_code
+
+    @staticmethod
+    def load_markers_from_label_file(label_file_path, fs):
+        labelfile = loadmat(label_file_path)
+        y_signal = labelfile['true_y'].squeeze()
+        modified_y_signal = y_signal.copy()
+        modified_y_signal[np.isnan(modified_y_signal)] = 0
+
+        one_hot_y_signal = np.zeros((len(modified_y_signal), 2), dtype=np.int32)
+        one_hot_y_signal[modified_y_signal == -1, 0] = 1
+        one_hot_y_signal[modified_y_signal == 1, 1] = 1
+
+        starts, ends = compute_trial_start_end_samples(one_hot_y_signal,
+                                                       check_trial_lengths_equal=False)
+        mrk_codes = []
+        mrk_ms = []
+        for start, end in zip(starts, ends):
+            assert np.isnan(y_signal[start - 1])
+            assert not np.isnan(y_signal[start])
+            assert np.isnan(y_signal[end + 1])
+            assert not np.isnan(y_signal[end])
+            mrk_codes.append(((y_signal[start] + 1) / 2) + 1)
+            eval_start = start * 1000.0 / fs
+            mrk_ms.append(eval_start - 1000) # first 1000 ms removed from eval..
+            mrk_codes.append(((y_signal[end] + 1) / 2) + 11) # -> 11,12 for end
+            mrk_ms.append(end * 1000.0 / fs)
+        return mrk_ms, mrk_codes
+
+
+class BCICompetition3Set4aFromFile(object):
+    expected_chan_names = [
+        'Fp1', 'AFp1', 'Fpz', 'AFp2', 'Fp2', 'AF7', 'AF3', 'AF4', 'AF8', 'FAF5',
+        'FAF1', 'FAF2', 'FAF6', 'F7', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6',
+        'F8', 'FFC7', 'FFC5', 'FFC3', 'FFC1', 'FFC2', 'FFC4', 'FFC6', 'FFC8',
+        'FT9', 'FT7', 'FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8',
+        'FT10', 'CFC7', 'CFC5', 'CFC3', 'CFC1', 'CFC2', 'CFC4', 'CFC6', 'CFC8',
+        'T7', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'T8', 'CCP7', 'CCP5',
+        'CCP3', 'CCP1', 'CCP2', 'CCP4', 'CCP6', 'CCP8', 'TP9', 'TP7', 'CP5',
+        'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 'TP8', 'TP10', 'PCP7', 'PCP5',
+        'PCP3', 'PCP1', 'PCP2', 'PCP4', 'PCP6', 'PCP8', 'P9', 'P7', 'P5', 'P3',
+        'P1', 'Pz', 'P2', 'P4', 'P6', 'P8', 'P10', 'PPO7', 'PPO5', 'PPO1',
+        'PPO2', 'PPO6', 'PPO8', 'PO7', 'PO3', 'PO1', 'POz', 'PO2', 'PO4', 'PO8',
+        'OPO1', 'OPO2', 'O1', 'Oz', 'O2', 'OI1', 'OI2', 'I1', 'I2']
+    def __init__(self, filename, label_file_path, load_sensor_names=None):
+        assert load_sensor_names is None
+        self.__dict__.update(locals())
+        del self.self
+
+    def load(self):
+        matfile = loadmat(self.filename)
+        cnt, fs = self.load_signal(matfile)
+
+        # load markers
+        mrk_in_ms, mrk_codes = self.load_markers(
+            matfile, self.label_file_path, fs)
+
+        cnt.markers = zip(mrk_in_ms, mrk_codes)
+        assert fs == 1000
+        cnt.fs = fs
+        return cnt
+
+    def load_signal(self, matfile):
+        fs = float(matfile['nfo']['fs'][0, 0].squeeze())
+        # load signal
+        eeg_signal = matfile['cnt']
+        samplenumbers = np.array(range(eeg_signal.shape[0]))
+        timesteps_in_ms = samplenumbers * 1000.0 / fs
+        chan_names = [chan_name[0] for chan_name in matfile['nfo']['clab'][0][0][0]]
+        assert np.array_equal(self.expected_chan_names, chan_names)
+        cnt = wyrm.types.Data(eeg_signal,
+                              [timesteps_in_ms, chan_names],
+                              ['time', 'channel'],
+                              ['ms', '#'])
+        return cnt, fs
+
+    @staticmethod
+    def load_markers(matfile, label_file_path, fs):
+        mrk_in_samples = matfile['mrk']['pos'][0, 0].squeeze()
+        mrk_in_ms = mrk_in_samples * 1000.0 / fs
+        mrk_code = matfile['mrk']['y'][0, 0].squeeze()
+        labels = loadmat(label_file_path)
+        true_y = labels['true_y'].squeeze()
+        assert len(true_y) == len(mrk_code)
+        mrk_code = true_y
+        return mrk_in_ms, mrk_code
+
+
+class BCICompetition3Set4a(object):
+    def __init__(self, subject_id, folder, load_sensor_names=None):
+        assert load_sensor_names is None
+        self.__dict__.update(locals())
+        del self.self
+
+    def load(self):
+        signal_folder = os.path.join(self.folder, 'signal/')
+        filename = 'data_set_IVa_a{:s}.mat'.format(self.subject_id)
+        file_path = os.path.join(signal_folder, filename)
+        label_folder = os.path.join(self.folder, 'labels/')
+        label_filename = 'true_labels_a{:s}.mat'.format(self.subject_id)
+        label_file_path = os.path.join(label_folder, label_filename)
+        return BCICompetition3Set4aFromFile(
+            file_path, label_file_path=label_file_path).load()
+
+
+class BCICompetition3Set5(object):
+    def __init__(self, subject_id, folder, train_or_test, load_sensor_names=None):
+        assert load_sensor_names is None
+        self.__dict__.update(locals())
+        del self.self
+
+    def load(self):
+        signal_folder = os.path.join(self.folder, 'signal/')
+        if self.train_or_test == 'train':
+            label_file_path = None
+            all_sets = []
+            for i_session in range(1,4):
+                filename = 'train_subject{:d}_raw0{:d}.mat'.format(
+                    self.subject_id, i_session)
+                file_path = os.path.join(signal_folder, filename)
+                all_sets.append(BCICompetition3Set5FromFile(
+                    file_path, label_file_path=label_file_path,
+                    load_sensor_names=self.load_sensor_names))
+            return MultipleSetLoader(all_sets).load()
+        else:
+            assert self.train_or_test == 'test'
+            label_folder = os.path.join(self.folder, 'labels/')
+            filename = 'test_subject{:d}_raw04.mat'.format(self.subject_id)
+            file_path = os.path.join(signal_folder, filename)
+            label_file_name = 'labels8_subject{:d}_raw.asc'.format(
+                self.subject_id)
+            label_file_path = os.path.join(label_folder, label_file_name)
+            return BCICompetition3Set5FromFile(
+                filename=file_path, label_file_path=label_file_path,
+                load_sensor_names=self.load_sensor_names).load()
+
+
+class BCICompetition3Set5FromFile(object):
+    expected_chan_names = ['Fp1', 'AF3', 'F7', 'F3', 'FC1', 'FC5', 'T7', 'C3',
+                           'CP1', 'CP5', 'P7', 'P3', 'Pz', 'PO3', 'O1', 'Oz', 'O2',
+                           'PO4', 'P4', 'P8', 'CP6', 'CP2', 'C4', 'T8', 'FC6',
+                           'FC2', 'F4', 'F8', 'AF4', 'Fp2', 'Fz', 'Cz']
+
+    def __init__(self, filename, label_file_path, load_sensor_names=None):
+        assert load_sensor_names is None
+        self.__dict__.update(locals())
+        del self.self
+
+    def load(self):
+        matfile = loadmat(self.filename)
+        cnt, fs = self.load_signal(matfile)
+
+        # load markers
+        mrk_in_ms, mrk_codes = self.load_markers(
+            matfile, self.label_file_path, fs, len(cnt.data))
+
+        cnt.markers = zip(mrk_in_ms, mrk_codes)
+        assert fs == 512
+        cnt.fs = fs
+        return cnt
+
+    def load_signal(self, matfile):
+        signal = matfile['X']
+        fs = float(matfile['nfo']['fs'][0, 0][0, 0])
+        samplenumbers = np.array(range(signal.shape[0]))
+        timesteps_in_ms = samplenumbers * 1000.0 / fs
+        chan_names = [str(s[0])
+                      for s in matfile['nfo']['clab'][0,0].squeeze()]
+        assert np.array_equal(self.expected_chan_names, chan_names)
+        cnt = wyrm.types.Data(signal,
+                              [timesteps_in_ms, chan_names],
+                              ['time', 'channel'],
+                              ['ms', '#'])
+        return cnt, fs
+
+    @staticmethod
+    def load_markers(matfile, label_file_path, fs, signal_len):
+        """Signal len necessary for label file path...
+        Otherwise end will not be correct"""
+        if label_file_path is not None:
+            y = np.loadtxt(label_file_path).astype(np.int32).squeeze()
+            # have to repeat since given only eery 500ms= every 256 samples
+            y = np.repeat(y, 256)
+            # some y may be missing at end of signal, but we don't
+            # need to pad since anyways signal len is added below
+            # as final boundary...
+        else:
+            y = matfile['Y'].squeeze()
+        boundaries = np.flatnonzero(np.diff(y)) + 1
+        boundaries = np.concatenate((boundaries,  [signal_len]))
+        start = 0
+        mrk_code = []
+        mrk_ms = []
+        for next_start in boundaries:
+            # add start marker
+            if start > 0:
+                assert y[start - 1] != y[start]
+            if next_start < len(y):
+                assert y[next_start] != y[next_start-1]
+            assert np.all(y[start:next_start] == y[start])
+            mrk_code.append(y[start])
+            mrk_ms.append(start * 1000.0 / fs)
+            # add end marker
+            mrk_code.append(y[start] + 10)
+            end_ms = (next_start - 1) * 1000.0 / fs
+            mrk_ms.append(end_ms)
+            start = next_start
+        return mrk_ms, mrk_code

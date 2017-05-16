@@ -55,7 +55,7 @@
         dataset: [$cleaned_combined_set],
         marker_def: [$markers_4_class],
         dataset_splitter: [$several_sets_splitter],
-        valid_set_fraction: [0.2],
+        valid_set_fraction: [0.1],
         use_test_as_valid: [False],
         preprocessor: ["null"],
         rejection_var_ival: [[0,4000]],

@@ -15,7 +15,8 @@ class TrainValidTestSplitter(object):
     @abstractmethod
     def split_into_train_valid_test(self, dataset):
         raise NotImplementedError("Subclass needs to implement this")
-    
+
+
 class SeveralSetsSplitter(TrainValidTestSplitter):
     """
     Split multiple sets, last set as test, second last (if exists) as valid,
@@ -30,7 +31,7 @@ class SeveralSetsSplitter(TrainValidTestSplitter):
     def __init__(self, valid_set_fraction=0.1,
         use_test_as_valid=False):
         self.use_test_as_valid = use_test_as_valid
-        self.valid_set_fraction = 0.1
+        self.valid_set_fraction = valid_set_fraction
 
     def split_into_train_valid_test(self, sets_container):
         # Otherwise rewrite code should not be too hard..
@@ -71,6 +72,7 @@ class SeveralSetsSplitter(TrainValidTestSplitter):
                 last_set_fraction=self.valid_set_fraction)
             test = sets_container.sets[i_test_set]
         return OrderedDict([('train', train), ('valid',valid),('test', test)])
+
 
 def split_into_two_sets(full_set, last_set_fraction):
     topo = full_set.get_topological_view()
@@ -196,8 +198,8 @@ def concatenate_sets(first_set, second_set):
     #assert first_set.view_converter.axes[0] == 'b', ("Expect batch axis "
     #    "as first axis")
     merged_topo_view = np.concatenate((first_set.get_topological_view(),
-        second_set.get_topological_view()))
-    merged_y = np.concatenate((first_set.y, second_set.y)) 
+        second_set.get_topological_view()), axis=0)
+    merged_y = np.concatenate((first_set.y, second_set.y), axis=0) 
     merged_set = DenseDesignMatrixWrapper(
         topo_view=merged_topo_view,
         y=merged_y,
@@ -419,6 +421,7 @@ def convert_to_sample_inds(fold_trial_inds, ends):
                                 ends[i_trial] + 2))
     return np.array(sample_inds)
 
+
 class CntTrialSingleFoldSplitter(TrainValidTestSplitter):
     def __init__(self, n_folds=10, i_test_fold=-1, shuffle=False,
             seed=729387987):
@@ -439,8 +442,6 @@ class CntTrialSingleFoldSplitter(TrainValidTestSplitter):
         starts, ends = compute_trial_start_end_samples(dataset.y, check_trial_lengths_equal=False)
         n_trials = len(starts)
         rng = RandomState(self.seed)
-        assert self.shuffle == True
-        print("hi")
         folds = get_balanced_batches(n_trials, rng, shuffle=self.shuffle,
             n_batches=self.n_folds)
         test_fold = folds[self.i_test_fold]
@@ -451,5 +452,78 @@ class CntTrialSingleFoldSplitter(TrainValidTestSplitter):
                     np.concatenate((valid_inds, test_inds)))
         datasets = split_set_by_indices(dataset, train_inds, valid_inds,
                     test_inds)
+        if hasattr(dataset, 'additional_set'):
+            datasets['train'] = concatenate_sets(dataset.additional_set,
+                datasets['train'],)
         return datasets
-    
+
+
+class CntTrialSeveralSetsSplitter(TrainValidTestSplitter):
+    """
+    Here for sets containing trials
+    Split multiple sets, last set as test, second last (if exists) as valid,
+    first as training. In case of only two sets, split off part of first set
+    as valid set.
+    Parameters
+    ----------
+    valid_set_fraction : int
+        In case of only two sets, how much of the
+        first (training set) should be split off for validation.
+    """
+
+    def __init__(self, valid_set_fraction=0.1,
+                 use_test_as_valid=False):
+        self.use_test_as_valid = use_test_as_valid
+        self.valid_set_fraction = valid_set_fraction
+
+    def split_into_train_valid_test(self, sets_container):
+        # Otherwise rewrite code should not be too hard..
+        assert len(sets_container.sets) > 1, "Expect atleast 2 sets here..."
+        # merge all sets before last into one...
+        # left out, final set, is test set
+        # if we have more than 2 sets use secondlastset as valid set
+
+        # remember python indexing is 0-based..
+        i_test_set = len(sets_container.sets) - 1
+        # in case of just 2 sets valid will get splitted in train and valid
+        # in else clause later
+        if self.use_test_as_valid:
+            i_valid_set = i_test_set
+        else:
+            i_valid_set = i_test_set - 1
+        if len(sets_container.sets) > 2 or self.use_test_as_valid:
+            # can split off train and valid as individual sets
+            topos = [s.get_topological_view() for s in
+                     sets_container.sets[:i_valid_set]]
+            ys = [s.y for s in sets_container.sets[:i_valid_set]]
+            train_topo = np.concatenate(topos, axis=0)
+            train_y = np.concatenate(ys, axis=0)
+            train = DenseDesignMatrixWrapper(
+                topo_view=train_topo, y=train_y,
+                axes=sets_container.sets[0].view_converter.axes)
+            valid = sets_container.sets[i_valid_set]
+            test = sets_container.sets[i_test_set]
+        else:
+            n_folds = int(np.round(1.0 / self.valid_set_fraction))
+            # have to split off valid from first=train set
+            topos = [s.get_topological_view() for s in
+                     sets_container.sets[:i_valid_set + 1]]
+            ys = [s.y for s in sets_container.sets[:i_valid_set + 1]]
+            full_topo = np.concatenate(topos, axis=0)
+            full_y = np.concatenate(ys, axis=0)
+            train_valid_set = DenseDesignMatrixWrapper(
+                topo_view=full_topo, y=full_y,
+                axes=sets_container.sets[0].view_converter.axes)
+            train_valid_splitter = CntTrialSingleFoldSplitter(n_folds=n_folds,
+                                                              i_test_fold=-1,
+                                                              shuffle=False)
+            # test fold splitted apart from training is the validation fold...
+            train_splitted_sets = (
+                train_valid_splitter.split_into_train_valid_test(
+                    train_valid_set))
+            train = concatenate_sets(train_splitted_sets['train'],
+                                     train_splitted_sets['valid'])
+            valid = train_splitted_sets['test']
+            test = sets_container.sets[i_test_set]
+        return OrderedDict(
+            [('train', train), ('valid', valid), ('test', test)])

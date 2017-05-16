@@ -12,14 +12,15 @@ from braindecode.veganlasagne.nonlinearities import square, safe_log
 from hyperoptim.parse import cartesian_dict_of_lists_product,\
     product_of_list_of_lists_of_dicts
 from hyperoptim.util import save_npy_artifact, save_pkl_artifact
-from braindecode.datasets.combined import CombinedCleanedSet
+from braindecode.datasets.combined import CombinedCleanedSet, CombinedSet
 from braindecode.mywyrm.processing import resample_cnt, bandpass_cnt, exponential_standardize_cnt
 from braindecode.datasets.cnt_signal_matrix import CntSignalMatrix
 from braindecode.datasets.signal_processor import SignalProcessor
 from braindecode.datasets.loaders import BCICompetition4Set2A
 from braindecode.models.deep5 import Deep5Net
 from braindecode.veganlasagne.layer_util import print_layers
-from braindecode.datahandling.splitters import SeveralSetsSplitter
+from braindecode.datahandling.splitters import SeveralSetsSplitter, \
+    concatenate_sets
 from braindecode.datahandling.batch_iteration import CntWindowTrialIterator
 from braindecode.veganlasagne.layers import get_n_sample_preds
 from braindecode.veganlasagne.monitors import CntTrialMisclassMonitor, LossMonitor, RuntimeMonitor,\
@@ -51,7 +52,7 @@ def get_templates():
 def get_grid_param_list():
     dictlistprod = cartesian_dict_of_lists_product
     default_params = [{ 
-        'save_folder': './data/models/sacred/paper/bcic-iv-2a/low-cut-fix/',
+        'save_folder': './data/models/sacred/paper/bcic-iv-2a-cross/start/',
         'only_return_exp': False,
         'n_chans': 22
         }]
@@ -64,8 +65,11 @@ def get_grid_param_list():
     preproc_params = dictlistprod({
         'filt_order': [3,],#10
         'clean_train': [False],
-        'low_cut_hz': [4],
+        'low_cut_hz': [0,4],
         'train_start_ms': [1500]})
+    model_params = dictlistprod({
+        'network': ['shallow'] #deep
+    })
     eval_params = dictlistprod({
         'kappa_mode': ['max']})
 
@@ -74,6 +78,7 @@ def get_grid_param_list():
         subject_folder_params,
         preproc_params,
         loss_params,
+        model_params,
         eval_params,
         ])
     
@@ -136,8 +141,9 @@ def create_deep_net(in_chans, input_time_length):
     final_layer = ClipLayer(final_layer, 1e-4, 1 - 1e-4)
     return final_layer
 
+
 def create_shallow_net(in_chans, input_time_length):
-    n_classes = 2
+    n_classes = 4
     # ensure reproducibility by resetting lasagne/theano random generator
     lasagne.random.set_rng(RandomState(34734))
 
@@ -159,64 +165,102 @@ def create_shallow_net(in_chans, input_time_length):
     final_layer = ClipLayer(final_layer, 1e-4, 1 - 1e-4)
     return final_layer
 
-def run(ex, data_folder, subject_id, n_chans, clean_train,
-        low_cut_hz, train_start_ms,kappa_mode, loss_expression,
-        filt_order,
-        only_return_exp,):
-    start_time = time.time()
-    assert (only_return_exp is False) or (n_chans is not None) 
-    ex.info['finished'] = False
+
+def create_dataset(data_folder, subject_id, train_start_ms, low_cut_hz,
+                   filt_order, clean_train):
     load_sensor_names = None
     train_filename = 'A{:02d}T.mat'.format(subject_id)
     test_filename = 'A{:02d}E.mat'.format(subject_id)
     train_filepath = os.path.join(data_folder, train_filename)
     test_filepath = os.path.join(data_folder, test_filename)
-    
+
     # trial ivan in milliseconds
-    # these are the samples that will be predicted, so for a 
+    # these are the samples that will be predicted, so for a
     # network with 2000ms receptive field
     # 1500 means the first receptive field goes from -500 to 1500
-    train_segment_ival = [train_start_ms,4000]
-    test_segment_ival = [0,4000]
-    
-    train_loader = BCICompetition4Set2A(train_filepath, load_sensor_names=load_sensor_names)
-    test_loader = BCICompetition4Set2A(test_filepath, load_sensor_names=load_sensor_names)
-    
+    train_segment_ival = [train_start_ms, 4000]
+    test_segment_ival = [train_start_ms, 4000]
+
+    train_loader = BCICompetition4Set2A(train_filepath,
+                                        load_sensor_names=load_sensor_names)
+    test_loader = BCICompetition4Set2A(test_filepath,
+                                       load_sensor_names=load_sensor_names)
+
     # Preprocessing pipeline in [(function, {args:values)] logic
     cnt_preprocessors = [
-        (resample_cnt , {'newfs': 250.0}),
+        (resample_cnt, {'newfs': 250.0}),
         (bandpass_cnt, {
             'low_cut_hz': low_cut_hz,
             'high_cut_hz': 38,
             'filt_order': filt_order,
-         }),
-         (exponential_standardize_cnt, {})
+        }),
+        (exponential_standardize_cnt, {})
     ]
-    
-    marker_def = {'1- Right Hand': [1],  '2 - Left Hand': [2], '3 - Rest': [3],
-                                                   '4 - Feet': [4]}
-    
+
+    marker_def = {'1- Right Hand': [1], '2 - Left Hand': [2], '3 - Rest': [3],
+                  '4 - Feet': [4]}
+
     train_signal_proc = SignalProcessor(set_loader=train_loader,
-        segment_ival=train_segment_ival,
-                                       cnt_preprocessors=cnt_preprocessors,
-                                       marker_def=marker_def)
-    train_set = CntSignalMatrix(signal_processor=train_signal_proc, sensor_names='all')
-    
+                                        segment_ival=train_segment_ival,
+                                        cnt_preprocessors=cnt_preprocessors,
+                                        marker_def=marker_def)
+    train_set = CntSignalMatrix(signal_processor=train_signal_proc,
+                                sensor_names='all')
+
     test_signal_proc = SignalProcessor(set_loader=test_loader,
-        segment_ival=test_segment_ival,
+                                       segment_ival=test_segment_ival,
                                        cnt_preprocessors=cnt_preprocessors,
                                        marker_def=marker_def)
-    test_set = CntSignalMatrix(signal_processor=test_signal_proc, sensor_names='all')
-    
+    test_set = CntSignalMatrix(signal_processor=test_signal_proc,
+                               sensor_names='all')
+
     if clean_train:
-        train_cleaner = BCICompetitionIV2ABArtefactMaskCleaner(marker_def=marker_def)
+        train_cleaner = BCICompetitionIV2ABArtefactMaskCleaner(
+            marker_def=marker_def)
     else:
         train_cleaner = NoCleaner()
     test_cleaner = BCICompetitionIV2ABArtefactMaskCleaner(marker_def=marker_def)
-    combined_set = CombinedCleanedSet(train_set, test_set,train_cleaner, test_cleaner)
+    combined_set = CombinedCleanedSet(train_set, test_set, train_cleaner,
+                                      test_cleaner)
+    return combined_set
+
+
+def run(ex, data_folder, subject_id, n_chans, clean_train,
+        low_cut_hz, train_start_ms,kappa_mode, loss_expression,
+        network,
+        filt_order,
+        only_return_exp,):
+    start_time = time.time()
+    assert (only_return_exp is False) or (n_chans is not None) 
+    ex.info['finished'] = False
+
+    valid_subject_id = subject_
+    other_subject_ids = range(1,subject_id) + range(subject_id+1, 10)
+
+
+    other_sets = [create_dataset(
+        data_folder, other_sid, train_start_ms, low_cut_hz,
+        filt_order, clean_train) for other_sid in other_subject_ids]
+    test_set = create_dataset(
+        data_folder, subject_id, train_start_ms, low_cut_hz,
+        filt_order, clean_train)
+
+    combined_set = other_sets + [test_set]
+
+    def merge_train_test(single_combined_set):
+        return concatenate_sets(single_combined_set.train_set,
+                                    single_combined_set.test_set)
+
     if not only_return_exp:
-        combined_set.load()
-        in_chans = train_set.get_topological_view().shape[1]
+        for i_set, this_set in enumerate(combined_set):
+            log.info("Loading {:d} of {:d}".format(i_set + 1,
+                                                   len(combined_set)))
+            this_set.load()
+
+        merged_sets = [merge_train_test(s) for s in combined_set]
+
+        combined_set = CombinedSet(merged_sets)
+        in_chans = merged_sets[0].get_topological_view().shape[1]
     else:
         in_chans = n_chans
     input_time_length = 1000 # implies how many crops are processed in parallel, does _not_ determine receptive field size
@@ -224,10 +268,15 @@ def run(ex, data_folder, subject_id, n_chans, clean_train,
 
     # ensure reproducibility by resetting lasagne/theano random generator
     lasagne.random.set_rng(RandomState(34734))
-    final_layer = create_deep_net(in_chans, input_time_length)
+    if network == 'deep':
+        final_layer = create_deep_net(in_chans, input_time_length)
+    else:
+        assert network == 'shallow'
+        final_layer = create_shallow_net(in_chans, input_time_length)
+
     print_layers(final_layer)
     
-    dataset_splitter = SeveralSetsSplitter(valid_set_fraction=0.2, use_test_as_valid=False)
+    dataset_splitter = SeveralSetsSplitter(valid_set_fraction=0.1, use_test_as_valid=False)
     iterator = CntWindowTrialIterator(batch_size=45,input_time_length=input_time_length,
                                      n_sample_preds=get_n_sample_preds(final_layer))
         

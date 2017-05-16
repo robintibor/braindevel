@@ -77,7 +77,7 @@ def use_same_input_layer(networks):
                 assert l.__class__.__name__ == "InputLayer"
 
 def replace_dense_softmax_by_dense_linear(all_layers, n_features,
-        nonlin_before_merge, batch_norm_before_merge):
+        nonlin_to before_merge, batch_norm_before_merge):
     """Replace dense/conv (n_classes) -> reshape -> softmax
     by         dense/conv (n_features) -> reshape"""
     
