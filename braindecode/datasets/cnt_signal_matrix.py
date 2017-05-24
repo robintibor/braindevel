@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 from wyrm.processing import select_channels
 from braindecode.datasets.sensor_positions import sort_topologically
@@ -98,6 +99,8 @@ class SetWithMarkers(DenseDesignMatrix):
     def load(self):
         self.load_cnt()
         self.preprocess()
+        print("hj")
+        self.remember_sensor_names()
         self.segment()
         self.create_dense_design_matrix()
         self.remove_cnt()
@@ -111,6 +114,9 @@ class SetWithMarkers(DenseDesignMatrix):
         for func, kwargs in self.cnt_preprocessors:
             log.info("\tApplying {:s} with {:s}".format(str(func), str(kwargs)))
             self.cnt = func(self.cnt, **kwargs)
+
+    def remember_sensor_names(self):
+        self.sensor_names = deepcopy(self.cnt.axes[1])
 
     def segment(self):
         log.info("Compute trial segmentation...")

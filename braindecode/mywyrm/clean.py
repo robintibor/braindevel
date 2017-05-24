@@ -1,4 +1,7 @@
 import numpy as np
+
+import itertools
+
 from braindecode.mywyrm.processing import (bandpass_cnt, segment_dat_fast,
     highpass_cnt, lowpass_cnt, select_marker_classes, select_marker_epochs)
 from wyrm.processing import select_channels
@@ -34,16 +37,19 @@ def clean_train_test_cnt(train_cnt, test_cnt, train_cleaner, test_cleaner,
     assert len(test_clean_result.rejected_chan_names) == 0, (
         "There should be no rejected channels on test set, instead got "
         "{:s}".format(test_clean_result.rejected_chan_names))
-    
-    
+
     log.info("Create Cleaned Cnt Sets...")
-    clean_train_cnt = restrict_cnt(train_cnt,
-        train_cleaner.marker_def.values(),
+    train_markers = list(itertools.chain(*train_cleaner.marker_def.values()))
+    clean_train_cnt = restrict_cnt(
+        train_cnt,
+        train_markers,
         train_clean_result.clean_trials,
         train_clean_result.rejected_chan_names,
         copy_data=copy_data)
-    clean_test_cnt = restrict_cnt(test_cnt, 
-        test_cleaner.marker_def.values(),
+    test_markers = list(itertools.chain(*test_cleaner.marker_def.values()))
+    clean_test_cnt = restrict_cnt(
+        test_cnt,
+        test_markers,
         test_clean_result.clean_trials,
         test_clean_result.rejected_chan_names,
         copy_data=copy_data)

@@ -229,6 +229,18 @@ class CSPExperiment(object):
         assert filterbank_is_stable(self.filterbands, self.filt_order, 
             self.cnt.fs), (
                 "Expect filter bank to be stable given filter order.")
+        # check if number of selected features is not too large
+        if self.n_selected_features is not None:
+            n_spatial_filters = self.n_top_bottom_csp_filters
+            if n_spatial_filters is None:
+                n_spatial_filters = len(self.sensor_names)
+            n_max_features = len(self.filterbands) * n_spatial_filters
+            assert n_max_features >= self.n_selected_features, (
+                "Cannot select more features than will be originally created "
+                "Originally: {:d}, requested: {:d}".format(
+                    n_max_features, self.n_selected_features)
+            )
+
         n_classes = len(self.marker_def)
         self.class_pairs = list(itertools.combinations(range(n_classes),2))
         # use only number of clean trials to split folds
@@ -425,8 +437,23 @@ class TwoFileCSPExperiment(CSPExperiment):
         assert filterbank_is_stable(self.filterbands, self.filt_order, 
             self.cnt.fs), (
                 "Expect filter bank to be stable given filter order.")
+        # check if number of selected features is not too large
+
+        if self.n_selected_features is not None:
+            n_spatial_filters = self.n_top_bottom_csp_filters
+            if n_spatial_filters is None:
+                n_spatial_filters = len(self.sensor_names)
+            n_max_features = len(self.filterbands) * n_spatial_filters
+            assert n_max_features >= self.n_selected_features, (
+                "Cannot select more features than will be originally created "
+                "Originally: {:d}, requested: {:d}".format(
+                    n_max_features, self.n_selected_features)
+            )
         n_classes = len(self.marker_def)
         self.class_pairs = list(itertools.combinations(range(n_classes),2))
+        # check that markers are all for trials
+        for _, mrk_code in self.cnt.markers + self.test_cnt.markers:
+            assert mrk_code in list(itertools.chain(*self.marker_def.values()))
         train_fold = range(len(self.cnt.markers))
         test_fold = np.arange(len(self.test_cnt.markers)) + len(train_fold)
         self.folds = [{'train': train_fold, 'test': test_fold}]

@@ -34,14 +34,14 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
     while i_marker < len(cnt.markers):
         # first find start marker
         while ((i_marker < len(cnt.markers)) and 
-            (cnt.markers[i_marker][1] not in all_start_marker_vals)):
+              (cnt.markers[i_marker][1] not in all_start_marker_vals)):
             i_marker += 1
-        if (i_marker < len(cnt.markers)):
+        if i_marker < len(cnt.markers):
             start_marker_ms = cnt.markers[i_marker][0]
             start_marker_val = cnt.markers[i_marker][1]
             # find end marker
             i_marker += 1 # advance one past start marker already
-            while ((i_marker < len(cnt.markers)) and 
+            while ((i_marker < len(cnt.markers)) and
                 (cnt.markers[i_marker][1] not in all_end_marker_vals)):
                 # Check if there is a new start marker already
                 if cnt.markers[i_marker][1]  in all_start_marker_vals:
@@ -60,9 +60,10 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
             end_marker_ms = cnt.markers[i_marker][0]
             end_marker_val = cnt.markers[i_marker][1]
             assert end_marker_val in start_to_end_value[start_marker_val]
-            
+
             first_index = np.searchsorted(cnt.axes[timeaxis], start_marker_ms + segment_ival[0])
-            last_index = np.searchsorted(cnt.axes[timeaxis], end_marker_ms+segment_ival[1])
+            # +1 should be correct since last index not part... but maybe recheck?
+            last_index = np.searchsorted(cnt.axes[timeaxis], end_marker_ms+segment_ival[1]) + 1
             if trial_classes is not None:
                 # -1 because before is 1-based matlab-indexing(!)
                 i_class = int(old_class_to_new_class[int(start_marker_val)] - 1)
@@ -88,7 +89,9 @@ class MarkerSegmenter(object):
         self.end_marker_def = end_marker_def
         self.trial_classes = trial_classes
         
-    def segment(self, cnt):
+    def segment(self, cnt, y=None, class_names=None):
+        assert y is None
+        assert class_names is None
         # marker segmenter, dann restrict range, dann restrict classes, dann evtl. add breaks
         assert np.all([len(labels) == 1 for labels in 
                 self.marker_def.values()]), (
@@ -190,13 +193,54 @@ def compute_break_start_ends_ms(markers, start_marker_def, end_marker_def):
     assert np.all([len(v) == 1 for v in start_marker_def.values()])
     start_vals = [v[0] for v in start_marker_def.values()]
     end_vals = np.concatenate(end_marker_def.values())
-    break_start_end = [(m, next_m) for m, next_m in zip(markers[:-1], markers[1:])
-                   if (m[1] in end_vals) and (next_m[1] in start_vals)]
-    # now break_start_end is
-    # breaks x 2 (start,end) x 2 (time, markercode)
-    # so lets only take time now
-    break_start_end = np.array(break_start_end)[:,:,0]
+    break_starts, break_stops = extract_break_start_stops_ms(markers, start_vals,
+                                                   end_vals,)
+    break_start_end = zip(break_starts, break_stops)
     return break_start_end
+
+def extract_break_start_stops_ms(markers, all_start_marker_vals,
+                                 all_end_marker_vals,):
+    break_starts = []
+    break_stops = []
+    i_marker = 0
+    while i_marker < len(markers):
+        # first find start marker
+        while ((i_marker < len(markers)) and
+                   (markers[i_marker][1] not in all_end_marker_vals)):
+            i_marker += 1
+
+        if i_marker < len(markers):
+            end_marker_ms = markers[i_marker][0]
+            end_marker_val = markers[i_marker][1]
+            # find start marker
+            i_marker += 1  # advance one past end marker already
+            while ((i_marker < len(markers)) and
+                       (markers[i_marker][1] not in all_start_marker_vals)):
+                # Check if there is a new start marker already
+                if markers[i_marker][1] in all_end_marker_vals:
+                    log.warn("New end marker  {:.0f} at {:.3f} sec found, "
+                             "no start marker for earlier end marker {:.0f} "
+                             "at {:.3f} sec found.".format(
+                        markers[i_marker][1],
+                        markers[i_marker][0] / 1000.0,
+                        end_marker_val, end_marker_ms / 1000.0))
+                    end_marker_ms = markers[i_marker][0]
+                    end_marker_val = markers[i_marker][1]
+                i_marker += 1
+            if i_marker == len(markers):
+                log.warn(("No start marker for end marker code {:.0f} "
+                          "at {:.3f} sec found.").format(end_marker_val,
+                                                         end_marker_ms / 1000.0))
+                break
+            start_marker_ms = markers[i_marker][0]
+            start_marker_val = markers[i_marker][1]
+            assert start_marker_val in all_start_marker_vals
+            # + window_stride should only create maximum one extra window at the end
+            #  to account for fact there may be extra data which does not fill a whole window
+            # at the end
+            break_starts.append(end_marker_ms)
+            break_stops.append(start_marker_ms)
+    return break_starts, break_stops
 
 def compute_break_start_ends_ms_without_end_marker(markers, start_marker_def,
     trial_to_break_ms):
@@ -207,4 +251,22 @@ def compute_break_start_ends_ms_without_end_marker(markers, start_marker_def,
     end_trial_ms = start_mrk_ms + trial_to_break_ms
     assert np.all(start_mrk_ms[1:] > end_trial_ms[:-1])
     return zip(end_trial_ms[:-1], start_mrk_ms[1:])
+
+
+class FilterTrialLength(object):
+    """Never used, except once in notebook, but why not :)"""
+    def __init__(self, min_length_ms):
+        self.min_length_ms = min_length_ms
+
+    def segment(self, cnt, y, class_names):
+        print("fs", cnt.fs)
+        n_min_samples = int(self.min_length_ms * cnt.fs / 1000.0)
+        starts, ends = compute_trial_start_end_samples(y, check_trial_lengths_equal=False,)
+        n_removed_trials = 0
+        for i_sample_start, i_sample_end in zip(starts, ends):
+            n_samples_in_trial = i_sample_end - i_sample_start + 1
+            if  n_samples_in_trial < n_min_samples:
+                y[i_sample_start:i_sample_end+1] = 0
+                n_removed_trials += 1
+        return y, class_names
     

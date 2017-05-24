@@ -147,15 +147,17 @@ def get_dfs_for_matched_exps_with_different_vals(df, key):
         dfs.append(this_df)
     return dfs, possible_vals
 
+
 def add_valid_test(df):
     df['valid']  = extract_valid(df)
     df['valtest'] = (df['valid'] + df.test) / 2.0
-    
-def pairwise_compare_frame(df, with_p_vals=False):
+
+
+def pairwise_compare_frame(df, with_p_vals=False, result_cols=('test', 'time', 'train',
+        'test_sample', 'train_sample'), compare_col='test'):
     table_vals = []
     table_indices = []
-    param_keys = set(df.keys()) - set(['test', 'time', 'train',
-        'test_sample', 'train_sample'])
+    param_keys = set(df.keys()) - set(list(result_cols))
     for key in param_keys:
         if key == 'dataset_filename' or key == 'test_filename' or key == 'subject_id':
             continue
@@ -170,9 +172,9 @@ def pairwise_compare_frame(df, with_p_vals=False):
                 joined_frame = frame_1.merge(frame_2, on=other_param_keys)
                 if joined_frame.size == 0:
                     continue
-                accuracies_a = np.array(joined_frame.test_x,
+                accuracies_a = np.array(joined_frame[compare_col + '_x'],
                     dtype=np.float64)
-                accuracies_b = np.array(joined_frame.test_y,
+                accuracies_b = np.array(joined_frame[compare_col + '_y'],
                     dtype=np.float64)
                 mean_a = np.mean(accuracies_a)
                 mean_b = np.mean(accuracies_b)

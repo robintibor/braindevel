@@ -1,14 +1,15 @@
+from copy import deepcopy
+import logging
+import itertools
 from wyrm.processing import (select_epochs, select_classes,
     lda_apply, append_epo, select_ival)
-from braindecode.mywyrm.processing import ( 
+from braindecode.mywyrm.processing import (
     lda_train_scaled, segment_dat_fast, apply_csp_var_log, bandpass_cnt,
     calculate_csp, exponential_standardize_cnt)
 import numpy as np
 from braindecode.csp.feature_selection import select_features
-from copy import deepcopy
 from sklearn.cross_validation import KFold
 from braindecode.mywyrm.processing import online_standardize_epo
-import logging 
 log = logging.getLogger(__name__)
 
 class BinaryCSP(object):
@@ -37,7 +38,7 @@ class BinaryCSP(object):
             epo = segment_dat_fast(bandpassed_cnt, 
                 marker_def=self.marker_def, 
                 ival=self.segment_ival)
-            
+
             for fold_nr in xrange(len(self.folds)):
                 self.run_fold(epo, bp_nr, fold_nr)
     
@@ -57,7 +58,6 @@ class BinaryCSP(object):
         for pair_nr in xrange(len(self.class_pairs)):
             self.run_pair(epo_train, epo_test, bp_nr, fold_nr, pair_nr)
             
-
     def run_pair(self, epo_train, epo_test, bp_nr, fold_nr, pair_nr):
         class_pair = self.class_pairs[pair_nr]
         self.print_class_pair(class_pair)
@@ -65,6 +65,7 @@ class BinaryCSP(object):
         ### Run Training
         epo_train_pair = select_classes(epo_train, class_pair)
         epo_test_pair = select_classes(epo_test, class_pair)
+
         if self.ival_optimizer is not None:
             best_segment_ival = self.ival_optimizer.optimize(epo_train_pair)
             log.info("Ival {:.0f}ms - {:.0f}ms".format(*best_segment_ival))
@@ -299,8 +300,8 @@ class FilterbankCSP(object):
     @staticmethod
     def select_best_filters_best_filterbands(features, max_features,
             forward_steps, backward_steps, stop_when_no_improvement):
-        assert max_features is not None, ("For now not dealing with the case "
-            "that max features is unlimited")
+        assert max_features is not None, (
+            "For now not dealing with the case that max features is unlimited")
         assert features[0].data.shape[1] % 2 == 0
         n_filterbands = len(features)
         n_filters_per_fb = features[0].data.shape[1] / 2
@@ -471,7 +472,9 @@ class MultiClassWeightedVoting(object):
         self.class_pairs = class_pairs
         
     def run(self):
-        n_classes = 4 # for now hardcoded
+        # determine number of classes by number of unique classes
+        # appearing in class pairs
+        n_classes = len(np.unique(list(itertools.chain(*self.class_pairs))))
         n_folds = len(self.train_labels)
         self.train_class_sums = np.empty(n_folds, dtype=object)
         self.test_class_sums = np.empty(n_folds, dtype=object)

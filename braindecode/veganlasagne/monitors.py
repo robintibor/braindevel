@@ -342,6 +342,7 @@ def compute_preds_per_trial_from_start_end(
         i_pred_block, len(preds_per_forward_pass)))
     return preds_per_trial
 
+
 class KappaMonitor(Monitor):
     def __init__(self, input_time_length, chan_name='kappa', mode='mean'):
         self.chan_name = chan_name

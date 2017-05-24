@@ -283,7 +283,7 @@ def construct_folder_combined_set(folder_names, sensor_names, cnt_preprocessors,
         if this_args['add_trial_breaks']:
             segmenters.append(trial_break_adder)
         segmenter  = PipelineSegmenter(segmenters)
-        filenames = glob(os.path.join(folder_name, '*.BBCI.mat'))
+        filenames = sorted(glob(os.path.join(folder_name, '*.BBCI.mat')))
         cnt_set = SetWithMarkers(MultipleBBCIDataset(filenames,
                               load_sensor_names=this_args['sensor_names']),
                   this_args['cnt_preprocessors'],

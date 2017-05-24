@@ -39,7 +39,8 @@ class OnlineModel(object):
         self.train_fn(topo, y)
         return
 
-def OnlineCntModel(object):
+
+class OnlineCntModel(object):
     def __init__(self, model):
         self.model = model
 

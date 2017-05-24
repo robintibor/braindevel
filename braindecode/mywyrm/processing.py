@@ -1,7 +1,7 @@
 from wyrm.processing import lfilter, filtfilt, select_ival, select_epochs
 import numpy as np
 from copy import deepcopy
-from braindecode.datahandling.preprocessing import (exponential_running_mean, 
+from braindecode.datahandling.preprocessing_funcs import (exponential_running_mean,
     exponential_running_var_from_demeaned,
     exponential_running_standardize, online_standardize,
     exponential_running_demean)
@@ -159,6 +159,7 @@ def select_marker_epoch_range(cnt, start, stop, copy_data=False):
     epoch_inds = range(start,stop)
     return select_marker_epochs(cnt, epoch_inds, copy_data)
 
+
 def select_marker_classes(cnt, classes, copy_data=False):
     needed_markers = [m for m in cnt.markers if m[1] in classes]
     if copy_data:
@@ -168,6 +169,7 @@ def select_marker_classes(cnt, classes, copy_data=False):
         copied_cnt = copy(cnt)
         copied_cnt.markers = needed_markers
         return copied_cnt
+
 
 def select_marker_epochs(cnt, epoch_inds, copy_data=False):
     # Restrict markers to only the correct epoch inds..

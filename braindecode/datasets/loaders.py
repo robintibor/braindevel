@@ -297,7 +297,8 @@ class BCICompetition4Set2A(object):
             trial_mask = np.array([ev in [769, 770, 771, 772, 783] for ev in event_types])
             if not np.any(event_types == 783): # chekc labels correct
                 assert np.array_equal(event_types[trial_mask] - 768, classes)
-            start_samples = h5file['header']['EVENT']['POS'][0,:].astype(np.int64)
+            # -1 to account for matlab 1-based indexing
+            start_samples = h5file['header']['EVENT']['POS'][0,:].astype(np.int64) - 1
             trial_start_samples = start_samples[trial_mask]
             trial_start_times = trial_start_samples * (1000.0 / fs) 
             markers = zip(trial_start_times, classes)
@@ -520,7 +521,8 @@ def get_strings_from_refs(h5file,refs):
     
 def extract_markers_and_times_and_artefact_mask(h5file, labels_filename=None):
     codes = h5file['header']['EVENT']['TYP'][:].squeeze()
-    sample_inds = h5file['header']['EVENT']['POS'][:].squeeze()
+    # -1 to account for matlab 1-based idnexing
+    sample_inds = h5file['header']['EVENT']['POS'][:].squeeze() - 1
     fs = h5file['header']['SampleRate'][0,0]
     assert fs == 250.0
     times_in_ms = (sample_inds * 1000.0) / fs

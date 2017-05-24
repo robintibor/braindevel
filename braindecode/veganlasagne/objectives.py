@@ -122,6 +122,24 @@ def tied_neighbours(preds, n_sample_preds, n_classes):
     loss = categorical_crossentropy(earlier_neighbours, later_neighbours)
     return loss
 
+def tied_neighbours_cnt_model_masked(preds, targets, final_layer):
+    n_sample_preds = get_n_sample_preds(final_layer)
+    n_classes = final_layer.output_shape[1]
+    eps = 1e-8
+    # preds = T.clip(preds, eps, 1-eps)
+    preds_per_trial_row = preds.reshape((-1, n_sample_preds, n_classes))
+
+
+    earlier_neighbours = preds_per_trial_row[:, :-1]
+    later_neighbours = preds_per_trial_row[:, 1:]
+    earlier_neighbours = (T.gt(earlier_neighbours, eps) * earlier_neighbours +
+        T.le(earlier_neighbours, eps) * earlier_neighbours + eps)
+    loss = categorical_crossentropy(earlier_neighbours, later_neighbours)
+    # now mask out loss where there is no active target
+    targets_per_trial_row = targets.reshape((-1, n_sample_preds, n_classes))
+    # :-1] assumies empty targets are at the start not at end
+    loss = loss * T.gt(T.sum(targets_per_trial_row, axis=2), 0)[:,:-1]
+    return loss
 
 def tied_neighbours_cnt_model_custom_loss(preds, targets, final_layer, loss_fn):
     n_sample_preds = get_n_sample_preds(final_layer)
@@ -147,3 +165,33 @@ def distance_capped_categorical_crossentropy(preds, targets, distance):
     loss = categorical_crossentropy(preds, targets)
     mask = T.gt(T.mean(T.abs_(preds - targets), axis=1), distance)
     return loss * mask
+
+
+# Not used anymore but needed for loading old models
+def tied_neighbours_cnt_model_logdomain(preds, targets, final_layer):
+    n_sample_preds = get_n_sample_preds(final_layer)
+    n_classes = final_layer.output_shape[1]
+    # just for checkup
+    # TODOREMOVE!!
+    #return categorical_crossentropy_logdomain(preds, targets)
+    return tied_neighbours_logdomain(preds, n_sample_preds, n_classes)
+
+
+def tied_neighbours_logdomain(preds, n_sample_preds, n_classes):
+    preds_per_trial_row = preds.reshape((-1, n_sample_preds, n_classes))
+    earlier_neighbours = preds_per_trial_row[:,:-1]
+    later_neighbours = preds_per_trial_row[:,1:]
+    # TODOREMOVE? now using kl divergence...
+    # have to exponentiate later neighbours that have role of
+    # targets in categorical crossentropy (and are therefore assumed
+    # to not have been logarithmized)
+    loss = categorical_crossentropy_logdomain(earlier_neighbours,
+        T.exp(later_neighbours))
+    loss = T.sum(T.exp(earlier_neighbours) * (earlier_neighbours - later_neighbours),
+        axis=1)
+    return loss
+
+
+def categorical_crossentropy_logdomain(log_predictions, targets):
+    """From https://github.com/Lasagne/Lasagne/issues/332#issuecomment-122328992"""
+    return -T.sum(targets * log_predictions, axis=1)

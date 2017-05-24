@@ -161,13 +161,12 @@
         layers: [$merged_net],
                 
         max_increasing_epochs: [80],
-        max_epochs: [200],
+        max_epochs: [100],
         valid_set_fraction: [0.2],
         preprocessor:  ['null'],
         last_set_split_trial: ['null'], #150
         folder_name_to_extra_args: ['[]'],
         use_test_as_valid: [False],
-        max_epochs: [100],
         iterator: [$balanced_cnt_iterator],
         
         variants: [
