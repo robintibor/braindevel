@@ -243,9 +243,6 @@ def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
     #    axis=0).astype(float)
     # norm by all targets
     normed_conf_mat = confusion_mat / np.float32(np.sum(confusion_mat, axis=norm_axes, keepdims=True))
-    augmented_conf_mat = deepcopy(normed_conf_mat)
-    augmented_conf_mat = np.vstack([augmented_conf_mat, [np.nan] * n_classes])
-    augmented_conf_mat = np.hstack([augmented_conf_mat, [[np.nan]] * (n_classes + 1)])
 
     fig = plt.figure(figsize=figsize)
     plt.clf()
@@ -264,8 +261,12 @@ def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
         return brightened_x
 
     brightened_cmap = cmap_map(brighten, colormap) #colormap #
-    ax.imshow(np.array(augmented_conf_mat), cmap=brightened_cmap,
+    ax.imshow(np.array(normed_conf_mat), cmap=brightened_cmap,
               interpolation='nearest', vmin=vmin, vmax=vmax)
+
+    # make space for precision and sensitivity
+    plt.xlim(-0.5, normed_conf_mat.shape[0]+0.5)
+    plt.ylim(normed_conf_mat.shape[1] + 0.5, -0.5)
     width = len(confusion_mat)
     height = len(confusion_mat[0])
     for x in xrange(width):
