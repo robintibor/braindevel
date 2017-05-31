@@ -214,6 +214,8 @@ def cmap_map(function, cmap, name='colormap_mod', N=None, gamma=None):
     # Build the new colormap (overwriting step_dict):
     for iclr, clr in enumerate(['red', 'green', 'blue']):
         step_dict[clr] = np.vstack((step_list, y0[:, iclr], y1[:, iclr])).T
+    # Remove alpha, otherwise crashes...
+    step_dict.pop('alpha', None)
     return lsc(name, step_dict, N=N, gamma=gamma)
 
 
@@ -258,9 +260,10 @@ def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
     # brighten so that black text remains readable
     # used alpha=0.6 before
     def brighten(x, ):
-        return 1 - ((1 - np.array(x)) * 0.4)
+        brightened_x = 1 - ((1 - np.array(x)) * 0.4)
+        return brightened_x
 
-    brightened_cmap = colormap # cmap_map(brighten, colormap)
+    brightened_cmap = cmap_map(brighten, colormap) #colormap #
     ax.imshow(np.array(augmented_conf_mat), cmap=brightened_cmap,
               interpolation='nearest', vmin=vmin, vmax=vmax)
     width = len(confusion_mat)
@@ -295,8 +298,10 @@ def plot_confusion_matrix_paper(confusion_mat, p_val_vs_csp,
                         color=textcolor,
                         fontweight=this_font_weight)
             if x != y or (not with_f1_score):
-                ax.annotate("\n\n{:4.1f}%".format(
-                    (confusion_mat[x][y] / float(np.sum(confusion_mat))) * 100),
+                ax.annotate(
+                    "\n\n{:4.1f}%".format(
+                        normed_conf_mat[x][y] * 100),
+                    #(confusion_mat[x][y] / float(np.sum(confusion_mat))) * 100),
                     xy=(y, x),
                     horizontalalignment='center',
                     verticalalignment='center', fontsize=10,
@@ -428,7 +433,7 @@ def plot_conf_mat(conf_mat, p_val_vs_csp, p_val_vs_other_net, label,
         fig.axes[1].cla()
         fig.axes[1].axis('off')
 
-    None
+    return fig, cbar
 
 
 def scalp_with_circles(v, channels,

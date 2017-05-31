@@ -109,7 +109,7 @@ def exponential_running_var_from_demeaned(demeaned_data, factor_new,
     In any case one var per datapoint in axis 0 is returned.
     If axis is None, no mean is computed but trial is simply used as is."""
     # TODELAY: split out if and else case into different functions
-    # i.e. split apart a common function hjaving a start value (basically the loop)
+    # i.e. split apart a common function having a start value (basically the loop)
     # and then split if and else into different functions
     factor_old = 1 - factor_new
     # first preallocate the shape for the running vars for performance (otherwise much slower)

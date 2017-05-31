@@ -99,7 +99,6 @@ class SetWithMarkers(DenseDesignMatrix):
     def load(self):
         self.load_cnt()
         self.preprocess()
-        print("hj")
         self.remember_sensor_names()
         self.segment()
         self.create_dense_design_matrix()
