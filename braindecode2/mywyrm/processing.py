@@ -1,27 +1,335 @@
-from wyrm.processing import lfilter, filtfilt, select_ival, select_epochs
-import numpy as np
-from copy import deepcopy
-from braindecode.datahandling.preprocessing_funcs import (exponential_running_mean,
-    exponential_running_var_from_demeaned,
-    exponential_running_standardize, online_standardize,
-    exponential_running_demean)
-from sklearn.covariance import LedoitWolf as LW
-import scikits.samplerate
 import re
-import wyrm.types
 from copy import copy
-import scipy.signal
+from copy import deepcopy
 import logging
-from braindecode.datasets.generate_filterbank import filter_is_stable
+import numpy as np
+import pandas as pd
+import xarray as xr
+import scipy.signal
 import scipy as sp
+from sklearn.covariance import LedoitWolf as LW
+import resampy
+from braindecode2.datahandling.preprocessing_funcs import (online_standardize,)
+from braindecode2.datasets.generate_filterbank import filter_is_stable
+from braindecode2.util import deepcopy_xarr
+
 log = logging.getLogger(__name__)
 
-def set_channel_to_zero(cnt, chan_name):
-    assert chan_name in cnt.axes[1]
-    data = cnt.data.copy()
-    i_chan = cnt.axes[1].tolist().index(chan_name)
-    data[:,i_chan] = 0
-    return cnt.copy(data=data)
+
+def concatenate_cnt(cnt1, cnt2):
+    """
+    Concatenate two continous datasets, shift times of second set.
+    Times of second set are shifted to start one time-sampling step
+    after the end of the first set.
+    Events are shifted accordingly as well.
+    Sampling rates must be identical for both sets.
+    Parameters
+    ----------
+    cnt1
+    cnt2
+
+    Returns
+    -------
+    concatenated: DateArray
+        DateArray with second set appended to first set.
+
+    """
+    assert cnt1.attrs['fs'] == cnt2.attrs['fs']
+    assert np.array_equal(cnt1.channels, cnt2.channels)
+    cnt1 = deepcopy_xarr(cnt1)
+    cnt2 = deepcopy_xarr(cnt2)
+
+    # make next series appear exactly one time step after old series
+    time_offset = -cnt2.time.data[0] + cnt1.time.data[-1] + 1000.0 / cnt2.fs
+
+    cnt2.time.data += time_offset
+    concatenated = xr.concat((cnt1, cnt2), dim='time')
+    cnt2.attrs['events'][:, 0] += time_offset
+    concat_events = np.concatenate((cnt1.attrs['events'],
+                                    cnt2.attrs['events']))
+    concatenated.attrs['events'] = concat_events
+    return concatenated
+
+
+def select_classes(epo, class_inds):
+    """Select classes from an epoched data object.
+
+    This method selects the classes with the specified indices.
+
+    Parameters
+    ----------
+    dat : Data
+        epoched Data object
+    indices : array of ints
+        The indices of the classes to select.
+    invert : Boolean, optional
+        if true keep all classes except the ones defined by ``indices``.
+    classaxis : int, optional
+        the axis along which the classes are selected
+
+    Returns
+    -------
+    dat : Data
+        a copy of the epoched data with only the selected classes
+        included.
+
+    Raises
+    ------
+    AssertionError
+        if ``dat`` has no ``.class_names`` attribute.
+
+    See Also
+    --------
+    remove_classes
+
+    Examples
+    --------
+
+    Get the classes 1 and 2.
+
+    >>> dat.axes[0]
+    [0, 0, 1, 2, 2]
+    >>> dat = select_classes(dat, [1, 2])
+    >>> dat.axes[0]
+    [1, 2, 2]
+
+    Remove class 2
+
+    >>> dat.axes[0]
+    [0, 0, 1, 2, 2]
+    >>> dat = select_classes(dat, [2], invert=True)
+    >>> dat.axes[0]
+    [0, 0, 1]
+
+    """
+
+    trial_inds = np.flatnonzero(np.in1d(epo.trials.data, class_inds))
+    epo = epo.isel(trials=trial_inds)
+    return epo
+
+
+def select_channels(dat, regexp_list, invert=False):
+    """Select channels from data.
+
+    The matching is case-insensitive and locale-aware (as in
+    ``re.IGNORECASE`` and ``re.LOCALE``). The regular expression always
+    has to match the whole channel name string
+
+    Parameters
+    ----------
+    dat : Data
+    regexp_list : list of regular expressions
+        The regular expressions provided, are used directly by Python's
+        :mod:`re` module, so all regular expressions which are understood
+        by this module are allowed.
+
+        Internally the :func:`re.match` method is used, additionally to
+        check for a match (which also matches substrings), it is also
+        checked if the whole string matched the pattern.
+    invert : Boolean, optional
+        If True the selection is inverted. Instead of selecting specific
+        channels, you are removing the channels. (default: False)
+    chanaxis : int, optional
+        the index of the channel axis in ``dat`` (default: -1)
+
+    Returns
+    -------
+    dat : Data
+        A copy of ``dat`` with the channels, matched by the list of
+        regular expressions.
+
+    Examples
+    --------
+    Select all channels Matching 'af.*' or 'fc.*'
+
+    >>> dat_new = select_channels(dat, ['af.*', 'fc.*'])
+
+    Remove all channels Matching 'emg.*' or 'eog.*'
+
+    >>> dat_new = select_channels(dat, ['emg.*', 'eog.*'], invert=True)
+
+    Even if you only provide one Regular expression, it has to be in an
+    array:
+
+    >>> dat_new = select_channels(dat, ['af.*'])
+
+    See Also
+    --------
+    remove_channels : Remove Channels
+    re : Python's Regular Expression module for more information about
+        regular expressions.
+
+    """
+    all_channels = dat.channels.data
+    matched_channels = []
+    for c in all_channels:
+        for regexp in regexp_list:
+            matched = re.match(regexp, c, re.IGNORECASE | re.LOCALE)
+            if matched and matched.group() == c:
+                matched_channels.append(c)
+                # no need to look any further for matches for this channel
+                break
+    if not invert:
+        wanted_channels = [c for c in all_channels if c in matched_channels]
+    else:
+        wanted_channels = [c for c in all_channels if c not in matched_channels]
+
+    return dat.sel(channels=wanted_channels)
+
+
+def resample_cnt(cnt, new_fs):
+    cnt = deepcopy_xarr(cnt)
+    if new_fs == cnt.attrs['fs']:
+        log.info(
+            "Just copying data, no resampling, since new sampling rate same.")
+        return deepcopy_xarr(cnt)
+    log.warn("This is not causal, uses future data....")
+    log.info("Resampling from {:f} to {:f} Hz.".format(
+        cnt.attrs['fs'], new_fs
+    ))
+
+    time_axis = list(cnt.dims).index('time')
+    new_data = resampy.resample(cnt.data, cnt.attrs['fs'],
+                                new_fs, axis=time_axis, filter='kaiser_fast')
+    # take times starting backwards to take rather later timestamps
+    # so any offset is towards the back not towards the start
+    inds = np.linspace(len(cnt.time.data),
+                       0, new_data.shape[time_axis], endpoint=False)[::-1]
+    new_times = np.interp(inds, np.arange(len(cnt.time.data)), cnt.time.data)
+    cnt = xr.DataArray(new_data,
+                       coords={'channels': cnt.channels, 'time': new_times},
+                       dims=cnt.dims,
+                       attrs=cnt.attrs)
+    cnt.attrs['fs'] = new_fs
+    return cnt
+
+
+def lfilter(dat, b, a, zi=None):
+    """Filter data using the filter defined by the filter coefficients.
+
+    This method mainly delegates the call to
+    :func:`scipy.signal.lfilter`.
+
+    Parameters
+    ----------
+    dat : Data
+        the data to be filtered
+    b : 1-d array
+        the numerator coefficient vector
+    a : 1-d array
+        the denominator coefficient vector
+    zi : nd array, optional
+        the initial conditions for the filter delay. If zi is ``None``
+        or not given, initial rest is assumed.
+    timeaxis : int, optional
+        the axes in ``data`` to filter along to
+
+    Returns
+    -------
+    dat : Data
+        the filtered output
+
+    See Also
+    --------
+    :func:`lfilter_zi`, :func:`filtfilt`, :func:`scipy.signal.lfilter`,
+    :func:`scipy.signal.butter`, :func:`scipy.signal.butterord`
+
+    Examples
+    --------
+
+    Generate and use a Butterworth bandpass filter for complete
+    (off-line data):
+
+    >>> # the sampling frequency of our data in Hz
+    >>> dat.fs
+    100
+    >>> # calculate the nyquist frequency
+    >>> fn = dat.fs / 2
+    >>> # the desired low and high frequencies in Hz
+    >>> f_low, f_high = 2, 13
+    >>> # the order of the filter
+    >>> butter_ord = 4
+    >>> # calculate the filter coefficients
+    >>> b, a = signal.butter(butter_ord, [f_low / fn, f_high / fn], btype='band')
+    >>> filtered = lfilter(dat, b, a)
+
+    """
+    dat = deepcopy_xarr(dat)
+    time_axis = list(dat.dims).index('time')
+    if zi is None:
+        new_data = scipy.signal.lfilter(b, a, dat.data, axis=time_axis)
+    else:
+        new_data, zo = scipy.signal.lfilter(b, a, dat.data, zi=zi, axis=time_axis)
+
+    new_dat = xr.DataArray(new_data,
+                       coords={'channels': dat.channels, 'time': dat.time},
+                       dims=dat.dims,
+                       attrs=dat.attrs)
+    if zi is None:
+        return new_dat
+    else:
+        return new_dat, zo
+
+
+def exponential_standardize_cnt(cnt, init_block_size=1000, factor_new=1e-3,
+        eps=1e-4):
+    cnt = deepcopy_xarr(cnt)
+    cnt_data = cnt.data
+    time_axis = list(cnt.dims).index('time')
+    cnt_data = cnt_data.swapaxes(0, time_axis)
+    standardized_data = exponential_running_standardize(cnt_data,
+        factor_new=factor_new, init_block_size=init_block_size,eps=eps)
+    standardized_data = standardized_data.swapaxes(0, time_axis)
+    cnt.data = standardized_data
+    return cnt
+
+
+def exponential_demean_cnt(cnt, init_block_size=1000, factor_new=1e-3):
+    cnt = deepcopy_xarr(cnt)
+    cnt_data = cnt.data
+    time_axis = list(cnt.dims).index('time')
+    cnt_data = cnt_data.swapaxes(0, time_axis)
+    demeaned_data = exponential_running_demean(cnt_data,
+        factor_new=factor_new, init_block_size=init_block_size)
+    demeaned_data = demeaned_data.swapaxes(0, time_axis)
+    cnt.data = demeaned_data
+    return cnt
+
+
+def exponential_running_standardize(data, factor_new=0.001,
+                                    init_block_size=None, eps=1e-4):
+    df = pd.DataFrame(data)
+    meaned = df.ewm(alpha=factor_new).mean()
+    demeaned = df - meaned
+    squared = demeaned * demeaned
+    square_ewmed = squared.ewm(alpha=factor_new).mean()
+    standardized = demeaned / np.maximum(eps, np.sqrt(np.array(square_ewmed)))
+    standardized = np.array(standardized)
+    if init_block_size is not None:
+        other_axis = tuple(range(1, len(data.shape)))
+        init_mean = np.mean(data[0:init_block_size], axis=other_axis,
+                            keepdims=True)
+        init_std = np.std(data[0:init_block_size], axis=other_axis,
+                          keepdims=True)
+        init_block_standardized = (data[0:init_block_size] - init_mean) / \
+                                  np.maximum(eps, init_std)
+        standardized[0:init_block_size] = init_block_standardized
+    return standardized
+
+
+
+def exponential_running_demean(data, factor_new=0.001, init_block_size=None):
+    df = pd.DataFrame(data)
+    meaned = df.ewm(alpha=factor_new).mean()
+    demeaned = df - meaned
+    demeaned = np.array(demeaned)
+    if init_block_size is not None:
+        other_axis = tuple(range(1, len(data.shape)))
+        init_mean = np.mean(data[0:init_block_size], axis=other_axis,
+                            keepdims=True)
+        demeaned[0:init_block_size] = (data[0:init_block_size] - init_mean)
+    return demeaned
+
 
 def calculate_csp(epo, classes=None):
     """Calculate the Common Spatial Pattern (CSP) for two classes.
@@ -77,26 +385,28 @@ def calculate_csp(epo, classes=None):
     ----------
     http://en.wikipedia.org/wiki/Common_spatial_pattern
     """
-    n_channels = epo.data.shape[-1]
+    n_channels = len(epo.channels.data)
     if classes is None:
         # automagically find the first two different classidx
         # we don't use uniq, since it sorts the classidx first
         # first check if we have a least two diffeent idxs:
-        assert len(np.unique(epo.axes[0])) >= 2
-        cidx1 = epo.axes[0][0]
-        cidx2 = epo.axes[0][epo.axes[0] != cidx1][0]
+        unique_classes = np.unique(epo.trials.data)
+        assert len(unique_classes) == 2
+        cidx1 = unique_classes[0]
+        cidx2 = unique_classes[1]
     else:
-        assert (len(classes) >= 2 and
-            classes[0] in epo.axes[0] and
-            classes[1] in epo.axes[0])
+        assert (len(classes) == 2 and
+            classes[0] in epo.trials.data and
+            classes[1] in epo.trials.data)
         cidx1 = classes[0]
         cidx2 = classes[1]
-    epoc1 = select_epochs(epo, np.nonzero(epo.axes[0] == cidx1)[0], classaxis=0)
-    epoc2 = select_epochs(epo, np.nonzero(epo.axes[0] == cidx2)[0], classaxis=0)
+    epoc1 = select_classes(epo, [cidx1])
+    epoc2 = select_classes(epo, [cidx2])
     # we need a matrix of the form (observations, channels) so we stack trials
     # and time per channel together
-    x1 = epoc1.data.reshape(-1, n_channels)
-    x2 = epoc2.data.reshape(-1, n_channels)
+
+    x1 = epoc1.transpose('trials', 'time', 'channels').data.reshape(-1, n_channels)
+    x2 = epoc2.transpose('trials', 'time', 'channels').data.reshape(-1, n_channels)
     # compute covariance matrices of the two classes
     c1 = np.cov(x1.transpose())
     c2 = np.cov(x2.transpose())
@@ -145,6 +455,185 @@ def calculate_csp(epo, classes=None):
     a = sp.linalg.solve(source_cov.T, v_with_cov.T).T
     return v, a, d
 
+
+def apply_csp_fast(epo, filt, columns=[0, -1]):
+    """Apply the CSP filter.
+
+    Apply the spacial CSP filter to the epoched data.
+
+    Parameters
+    ----------
+    epo : epoched ``Data`` object
+        this method relies on the ``epo`` to have three dimensions in
+        the following order: class, time, channel
+    filt : 2d array
+        the CSP filter (i.e. the ``v`` return value from
+        :func:`calculate_csp`)
+    columns : array of ints, optional
+        the columns of the filter to use. The default is the first and
+        the last one.
+
+    Returns
+    -------
+    epo : epoched ``Data`` object
+        The channels from the original have been replaced with the new
+        virtual CSP channels.
+
+    Examples
+    --------
+
+    >>> w, a, d = calculate_csp(epo)
+    >>> epo = apply_csp_fast(epo, w)
+
+    See Also
+    --------
+    :func:`calculate_csp`
+    :func:`apply_csp`
+
+    """
+    epo = deepcopy_xarr(epo)
+    assert epo.dims == ('trials', 'time', 'channels')
+    f = filt[:, columns]
+    data = np.empty((epo.data.shape[0], epo.data.shape[1], f.shape[1]))
+    for trial_i in range(epo.data.shape[0]):
+        data[trial_i] = np.dot(epo.data[trial_i], f)
+
+    csp_filter_names = np.array(['csp %i' % i for i in range(data.shape[-1])])
+
+    epo = xr.DataArray(data,
+                       coords={'trials': epo.trials, 'time': epo.time,
+                               'channels': csp_filter_names,},
+                       dims=('trials', 'time','channels',),
+                       attrs=epo.attrs)
+
+    return epo
+
+
+def apply_csp_var_log(epo, filters, columns):
+    csp_filtered = apply_csp_fast(epo, filters, columns)
+    assert csp_filtered.dims == ('trials', 'time','channels',)
+    feature_data = np.log(np.var(csp_filtered.data, axis=1))
+    csp_filter_names = np.array(['csp %i' % i
+                                 for i in range(feature_data.shape[-1])])
+    features = xr.DataArray(feature_data,
+                       coords={'trials': csp_filtered.trials,
+                               'CSP filter': csp_filter_names,},
+                       dims=('trials', 'CSP filter',),
+                       attrs=csp_filtered.attrs)
+    return features
+
+
+def lda_train_scaled(fv, shrink=False):
+    """Train the LDA classifier.
+
+    Parameters
+    ----------
+    fv : ``Data`` object
+        the feature vector must have 2 dimensional data, the first
+        dimension being the class axis. The unique class labels must be
+        0 and 1 otherwise a ``ValueError`` will be raised.
+    shrink : Boolean, optional
+        use shrinkage
+
+    Returns
+    -------
+    w : 1d array
+    b : float
+
+    Raises
+    ------
+    ValueError : if the class labels are not exactly 0s and 1s
+
+    Examples
+    --------
+
+    >>> clf = lda_train(fv_train)
+    >>> out = lda_apply(fv_test, clf)
+
+    See Also
+    --------
+    lda_apply
+
+    """
+    assert shrink is True
+    assert fv.dims[0] == 'trials'
+    assert len(fv.dims) == 2
+    x = fv.data
+    y = fv.trials.data
+    if len(np.unique(y)) != 2:
+        raise ValueError('Should only have two unique class labels, instead got'
+            ': {labels}'.format(labels=np.unique(y)))
+    # Use sorted labels
+    labels = np.sort(np.unique(y))
+    mu1 = np.mean(x[y == labels[0]], axis=0)
+    mu2 = np.mean(x[y == labels[1]], axis=0)
+    # x' = x - m
+    m = np.empty(x.shape)
+    m[y == labels[0]] = mu1
+    m[y == labels[1]] = mu2
+    x2 = x - m
+    # w = cov(x)^-1(mu2 - mu1)
+    if shrink:
+        estimator = LW()
+        covm = estimator.fit(x2).covariance_
+    else:
+        covm = np.cov(x2.T)
+    w = np.dot(np.linalg.pinv(covm), (mu2 - mu1))
+
+    #  From matlab bbci toolbox:
+    # https://github.com/bbci/bbci_public/blob/fe6caeb549fdc864a5accf76ce71dd2a926ff12b/classification/train_RLDAshrink.m#L133-L134
+    #C.w= C.w/(C.w'*diff(C_mean, 1, 2))*2;
+    #C.b= -C.w' * mean(C_mean,2);
+    w = (w / np.dot(w.T, (mu2 - mu1))) * 2
+    b = np.dot(-w.T, np.mean((mu1, mu2), axis=0))
+    assert not np.any(np.isnan(w))
+    assert not np.isnan(b)
+    return w, b
+
+
+def lda_apply(fv, clf):
+    """Apply feature vector to LDA classifier.
+
+    Parameters
+    ----------
+    fv : ``Data`` object
+        the feature vector must have a 2 dimensional data, the first
+        dimension being the class axis.
+    clf : (1d array, float)
+
+    Returns
+    -------
+
+    out : 1d array
+        The projection of the data on the hyperplane.
+
+    Examples
+    --------
+
+    >>> clf = lda_train(fv_train)
+    >>> out = lda_apply(fv_test, clf)
+
+
+    See Also
+    --------
+    lda_train
+
+    """
+    assert fv.dims[0] == 'trials'
+    x = fv.data
+    w, b = clf
+    return np.dot(x, w) + b
+
+
+
+
+#### OLD
+def set_channel_to_zero(cnt, chan_name):
+    assert chan_name in cnt.axes[1]
+    data = cnt.data.copy()
+    i_chan = cnt.axes[1].tolist().index(chan_name)
+    data[:,i_chan] = 0
+    return cnt.copy(data=data)
 
 def select_marker_classes_epoch_range(cnt, classes, start,stop,copy_data=False):
     cnt = select_marker_classes(cnt, classes, copy_data)
@@ -302,6 +791,7 @@ def get_event_samples_and_classes(cnt, timeaxis=-2):
 
     return event_samples_and_classes
 
+
 def get_y_signal(event_samples_and_classes, n_samples, n_classes, segment_ival, fs):
     i_samples, labels = zip(*event_samples_and_classes)
     """ Expects classes in event_samples_and_classes to be from
@@ -328,19 +818,7 @@ def get_y_signal(event_samples_and_classes, n_samples, n_classes, segment_ival, 
                 i_class] = 1
     return y
 
-def exponential_standardize_cnt(cnt, init_block_size=1000, factor_new=1e-3,
-        eps=1e-4):
-    cnt_data = cnt.data
-    standardized_data = exponential_running_standardize(cnt_data, 
-        factor_new=factor_new, init_block_size=init_block_size, axis=None, 
-        eps=eps)
-    return cnt.copy(data=standardized_data)
 
-def exponential_demean_cnt(cnt, init_block_size=1000, factor_new=1e-3):
-    cnt_data = cnt.data
-    demeaned_data = exponential_running_demean(cnt_data, 
-        factor_new=factor_new, init_block_size=init_block_size, axis=None)
-    return cnt.copy(data=demeaned_data)
 
 def online_standardize_epo(epo_train, epo_test):
     # standard dim inds are trials and samples
@@ -432,70 +910,7 @@ def select_channels_epo(epo, regexp_list, invert=False, chanaxis=-1):
     axes[chanaxis] = channels
     return epo.copy(data=data, axes=axes)
 
-def lda_train_scaled(fv, shrink=False):
-    """Train the LDA classifier.
 
-    Parameters
-    ----------
-    fv : ``Data`` object
-        the feature vector must have 2 dimensional data, the first
-        dimension being the class axis. The unique class labels must be
-        0 and 1 otherwise a ``ValueError`` will be raised.
-    shrink : Boolean, optional
-        use shrinkage
-
-    Returns
-    -------
-    w : 1d array
-    b : float
-
-    Raises
-    ------
-    ValueError : if the class labels are not exactly 0s and 1s
-
-    Examples
-    --------
-
-    >>> clf = lda_train(fv_train)
-    >>> out = lda_apply(fv_test, clf)
-
-    See Also
-    --------
-    lda_apply
-
-    """
-    assert shrink is True
-    x = fv.data
-    y = fv.axes[0]
-    if len(np.unique(y)) != 2:
-        raise ValueError('Should only have two unique class labels, instead got'
-            ': {labels}'.format(labels=np.unique(y)))
-    # Use sorted labels
-    labels = np.sort(np.unique(y))
-    mu1 = np.mean(x[y == labels[0]], axis=0)
-    mu2 = np.mean(x[y == labels[1]], axis=0)
-    # x' = x - m
-    m = np.empty(x.shape)
-    m[y == labels[0]] = mu1
-    m[y == labels[1]] = mu2
-    x2 = x - m
-    # w = cov(x)^-1(mu2 - mu1)
-    if shrink:
-        estimator = LW()
-        covm = estimator.fit(x2).covariance_
-    else:
-        covm = np.cov(x2.T)
-    w = np.dot(np.linalg.pinv(covm), (mu2 - mu1))
-
-    #  From matlab bbci toolbox:
-    # https://github.com/bbci/bbci_public/blob/fe6caeb549fdc864a5accf76ce71dd2a926ff12b/classification/train_RLDAshrink.m#L133-L134
-    #C.w= C.w/(C.w'*diff(C_mean, 1, 2))*2;
-    #C.b= -C.w' * mean(C_mean,2);
-    w = (w / np.dot(w.T, (mu2 - mu1))) * 2
-    b = np.dot(-w.T, np.mean((mu1, mu2), axis=0))
-    assert not np.any(np.isnan(w))
-    assert not np.isnan(b)
-    return w, b
 
 
 
@@ -546,60 +961,7 @@ def apply_csp_one_dot(epo, filt, columns=[0, -1]):
     dat = epo.copy(data=data, axes=axes, names=names)
     return dat
 
-def apply_csp_fast(epo, filt, columns=[0, -1]):
-    """Apply the CSP filter.
 
-    Apply the spacial CSP filter to the epoched data.
-
-    Parameters
-    ----------
-    epo : epoched ``Data`` object
-        this method relies on the ``epo`` to have three dimensions in
-        the following order: class, time, channel
-    filt : 2d array
-        the CSP filter (i.e. the ``v`` return value from
-        :func:`calculate_csp`)
-    columns : array of ints, optional
-        the columns of the filter to use. The default is the first and
-        the last one.
-
-    Returns
-    -------
-    epo : epoched ``Data`` object
-        The channels from the original have been replaced with the new
-        virtual CSP channels.
-
-    Examples
-    --------
-
-    >>> w, a, d = calculate_csp(epo)
-    >>> epo = apply_csp_fast(epo, w)
-
-    See Also
-    --------
-    :func:`calculate_csp`
-    :func:`apply_csp`
-
-    """
-    f = filt[:, columns]
-    data = np.empty((epo.data.shape[0], epo.data.shape[1], f.shape[1]))
-    for trial_i in range(epo.data.shape[0]):
-        data[trial_i] = np.dot(epo.data[trial_i], f)
-    axes = epo.axes[:]
-    axes[-1] = np.array(['csp %i' % i for i in range(data.shape[-1])])
-    names = epo.names[:]
-    names[-1] = 'CSP Channel'
-    dat = epo.copy(data=data, axes=axes, names=names)
-    return dat
-
-def apply_csp_var_log(epo,filters, columns):
-    feature = apply_csp_fast(epo, filters, columns)
-    feature_data = np.log(np.var(feature.data, axis=1))
-    feature = wyrm.types.Data(feature_data, axes = [feature.axes[0], columns], 
-        names=['class', 'CSP filter'], units=['#', 'logvarHz'])
-    assert feature.data.ndim == 2, ("Feature should only have "
-        "one dimension for trials and another for features")
-    return feature
 
 def common_average_reference_cnt(cnt):
     assert cnt.data.ndim == 2
@@ -613,20 +975,6 @@ def rereference_to(cnt, sensor_name):
     newdata = cnt.data - cnt.data[:,sensor_ind:sensor_ind+1]
     return cnt.copy(data=newdata)
 
-def resample_cnt(cnt, newfs, timeaxis=-2):
-    if newfs == cnt.fs:
-        log.info("Just copying data, no resampling, since new sampling rate same.")
-        return cnt.copy()
-    resampled_data = scikits.samplerate.resample(cnt.data, newfs/float(cnt.fs), 
-        type='sinc_fastest')
-    # add sensor dim if only having one sensor...
-    if resampled_data.ndim == 1:
-        resampled_data = resampled_data[:, np.newaxis]
-    newaxes= deepcopy(cnt.axes)
-    timesteps = scikits.samplerate.resample(cnt.axes[timeaxis], 
-        newfs/float(cnt.fs), type='linear')
-    newaxes[timeaxis] = timesteps
-    return cnt.copy(data=resampled_data, fs=newfs, axes=newaxes)
 
 
 def subsample_cnt(cnt, newfs, timeaxis=-2):
@@ -642,180 +990,6 @@ def subsample_cnt(cnt, newfs, timeaxis=-2):
     newaxes[timeaxis] = timesteps
     return cnt.copy(data=resampled_data, fs=newfs, axes=newaxes)
 
-def segment_dat_fast(dat, marker_def, ival, newsamples=None, timeaxis=-2):
-    """Convert a continuous data object to an epoched one.
-
-    Given a continuous data object, a definition of classes, and an
-    interval, this method looks for markers as defined in ``marker_def``
-    and slices the dat according to the time interval given with
-    ``ival`` along the ``timeaxis``. The returned ``dat`` object stores
-    those slices and the class each slice belongs to.
-
-    Epochs that are too close to the borders and thus too short are
-    ignored.
-
-    If the segmentation does not result in any epochs (i.e. the markers
-    in ``marker_def`` could not be found in ``dat``, the resulting
-    dat.data will be an empty array.
-
-    This method is also suitable for **online processing**, please read
-    the documentation for the ``newsamples`` parameter and have a look
-    at the Examples below.
-
-    Parameters
-    ----------
-    dat : Data
-        the data object to be segmented
-    marker_def : dict
-        The keys are class names, the values are lists of markers
-    ival : [int, int]
-        The interval in milliseconds to cut around the markers. I.e. to
-        get the interval starting with the marker plus the remaining
-        100ms define the interval like [0, 100]. The start point is
-        included, the endpoint is not (like: ``[start, end)``).  To get
-        200ms before the marker until 100ms after the marker do:
-        ``[-200, 100]`` Only negative or positive values are possible
-        (i.e. ``[-500, -100]``)
-    newsamples : int, optional
-        consider the last ``newsamples`` samples as new data and only
-        return epochs which are possible with the old **and** the new
-        data (i.e. don't include epochs which where possible without the
-        new data).
-
-        If this parameter is ``None`` (default) ``segment_dat`` will
-        always process the whole ``dat``, this is what you want for
-        offline experiments where you process the whole data from a file
-        at once. In online experiments however one usually gets the data
-        incrementally, stores it in a ringbuffer to get the last n
-        milliseconds. Consequently ``segment_dat`` gets overlapping data
-        in each iteration (the amount of overlap is exactly the data -
-        the new samples. To make sure each epoch appears only once
-        within all iterations, ``segment_dat`` needs to know the number
-        of new samples.
-
-
-    timeaxis : int, optional
-        the axis along which the segmentation will take place
-
-    Returns
-    -------
-    dat : Data
-        a copy of the resulting epoched data.
-
-    Raises
-    ------
-    AssertionError
-        * if ``dat`` has not ``.fs`` or ``.markers`` attribute or if
-          ``ival[0] > ival[1]``.
-        * if ``newsamples`` is not ``None`` or positive
-
-    Examples
-    --------
-
-    Offline Experiment
-
-    >>> # Define the markers belonging to class 1 and 2
-    >>> md = {'class 1': ['S1', 'S2'],
-    ...       'class 2': ['S3', 'S4']
-    ...      }
-    >>> # Epoch the data -500ms and +700ms around the markers defined in
-    >>> # md
-    >>> epo = segment_dat(cnt, md, [-500, 700])
-
-    Online Experiment
-
-    >>> # Define the markers belonging to class 1 and 2
-    >>> md = {'class 1': ['S1', 'S2'],
-    ...       'class 2': ['S3', 'S4']
-    ...      }
-    >>> # define the interval to epoch around a marker
-    >>> ival = [0, 300]
-    >>> while 1:
-    ...     dat, mrk = amp.get_data()
-    ...     newsamples = len(dat)
-    ...     # the ringbuffer shall keep the last 2000 milliseconds,
-    ...     # which is way bigger than our ival...
-    ...     ringbuffer.append(dat, mrk)
-    ...     cnt, mrk = ringbuffer.get()
-    ...     # cnt contains now data up to 2000 millisecons, to make sure
-    ...     # we don't see old markers again and again until they where
-    ...     # pushed out of the ringbuffer, we need to tell segment_dat
-    ...     # how many samples of cnt are actually new
-    ...     epo = segment_dat(cnt, md, ival, newsamples=newsamples)
-
-    """
-    assert hasattr(dat, 'fs')
-    assert hasattr(dat, 'markers')
-    assert ival[0] <= ival[1]
-    if newsamples is not None:
-        assert newsamples >= 0
-        # the times of the `newsamples`
-        new_sample_times = dat.axes[timeaxis][-newsamples:] if newsamples > 0 else []
-    # the expected length of each cnt in the resulted epo
-    # round up, as it will as searchsorted later will
-    # give you the index left of the next bigger or equal
-    # timepoint(!)
-    # e.g. for ival 0-4000 and sampling rate 500
-    # the next bigger or equal timepoint will be at 2000, left of it is 1999
-    # so you get samples from 0-1999 (2000 samples)
-    # for ival 4001, next bigger or equal timepoint will be at 2001, left
-    # of it is 2000
-    # so you get samples from 0-2000 (2001 samples)
-    expected_samples = int(np.ceil(dat.fs * (ival[1] - ival[0]) / 1000.0))
-    data = []
-    classes = []
-    class_names = sorted(marker_def.keys())
-    masks = []
-    for t, m in dat.markers:
-        for class_idx, classname in enumerate(class_names):
-            if m in marker_def[classname]:
-                first_index = np.searchsorted(dat.axes[timeaxis], t+ival[0])
-                # as at last index will already be sth bigger or equal,
-                # mask should be exclusive this index!
-                last_index = np.searchsorted(dat.axes[timeaxis], t+ival[1])
-                mask = range(first_index, last_index)
-                if len(mask) != expected_samples:
-                    # result is too short or too long, ignore it
-                    log.warn("ignoring trial")
-                    log.warn("expected samples in trial segmentation {:d}".format(
-                        expected_samples))
-                    log.warn("actual samples {:d}".format(len(mask)))
-                    continue
-                # check if the new cnt shares at least one timepoint
-                # with the new samples. attention: we don't only have to
-                # check the ival but also the marker if it is on the
-                # right side of the ival!
-                if newsamples is not None:
-                    times = dat.axes[timeaxis].take(mask)
-                    if newsamples == 0:
-                        continue
-                    if (len(np.intersect1d(times, new_sample_times)) == 0 and
-                        t < new_sample_times[0]):
-                        continue
-                masks.append(mask)
-                classes.append(class_idx)
-    if len(masks) == 0:
-        data = np.array([])
-    else:
-        # np.take inserts a new dimension at `axis`...
-        data = dat.data.take(masks, axis=timeaxis)
-        # we want that new dimension at axis 0 so we have to swap it.
-        # before that we have to convert the netagive axis indices to
-        # their equivalent positive one, otherwise swapaxis will be one
-        # off.
-        if timeaxis < 0:
-            timeaxis = dat.data.ndim + timeaxis
-        data = data.swapaxes(0, timeaxis)
-    axes = dat.axes[:]
-    time = np.linspace(ival[0], ival[1], float(ival[1] - ival[0]) / 1000 * dat.fs, endpoint=False)
-    axes[timeaxis] = time
-    classes = np.array(classes)
-    axes.insert(0, classes)
-    names = dat.names[:]
-    names.insert(0, 'class')
-    units = dat.units[:]
-    units.insert(0, '#')
-    return dat.copy(data=data, axes=axes, names=names, units=units, class_names=class_names)
 
 
 def lda_train(fv, shrink=False):

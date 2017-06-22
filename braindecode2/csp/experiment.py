@@ -1,31 +1,21 @@
-from wyrm.processing import select_channels, append_cnt
-from braindecode.mywyrm.processing import (
+from wyrm.processing import append_cnt
+from braindecode2.mywyrm.processing import (
     resample_cnt, common_average_reference_cnt, exponential_standardize_cnt,
-    set_channel_to_zero)
-from braindecode.mywyrm.clean import (NoCleaner, clean_train_test_cnt)
+    set_channel_to_zero, select_channels)
+from braindecode2.mywyrm.clean import (NoCleaner, clean_train_test_cnt)
 import itertools
 from sklearn.cross_validation import KFold
-from braindecode.csp.pipeline import (BinaryCSP, FilterbankCSP,
-    MultiClassWeightedVoting)
+from braindecode2.csp.binary import BinaryCSP
+from braindecode2.csp.filterbank import FilterbankCSP
+from braindecode2.csp.multiclass import    MultiClassWeightedVoting
 import numpy as np
 from copy import deepcopy
-from pylearn2.utils import serial
-from pylearn2.config import yaml_parse
 from numpy.random import RandomState
-from braindecode.datasets.sensor_positions import sort_topologically
-from braindecode.datasets.generate_filterbank import generate_filterbank,\
+from braindecode2.datasets.sensor_positions import sort_topologically
+from braindecode2.datasets.generate_filterbank import generate_filterbank,\
     filterbank_is_stable
 import logging
 log = logging.getLogger(__name__)
-
-def create_csp_experiment(yaml_filename):
-    """Utility function to create csp experiment from yaml file"""
-    # used to be called standardize, now called standardize_epo
-    content = open(yaml_filename, 'r').read()
-    content = content.replace('standardize:', 'standardize_epo:')
-
-    train_dict = yaml_parse.load(content)
-    return train_dict['csp_train']
 
 class CSPExperiment(object):
     """
@@ -121,7 +111,9 @@ class CSPExperiment(object):
             Dictionary mapping class names to marker numbers, e.g.
             {'1 - Correct': [31], '2 - Error': [32]}
     """
-    def __init__(self,set_loader, 
+    def __init__(
+            self,
+            set_loader,
             cleaner=None,
             sensor_names=None,
             resample_fs=None,
@@ -135,7 +127,7 @@ class CSPExperiment(object):
             high_overlap=0,
             filt_order=3,
             standardize_filt_cnt=False,
-            segment_ival=[0,4000], 
+            segment_ival=(0, 4000),
             standardize_epo=True,
             n_folds=5,
             n_top_bottom_csp_filters=None,
@@ -157,20 +149,21 @@ class CSPExperiment(object):
         self.__dict__.update(local_vars)
         # remember params for later result printing etc
         # maybe delete this again?
-        self.original_params = deepcopy(local_vars)
-        if self.original_params['cleaner'] is not None:
-            self.original_params['cleaner'] = self.original_params['cleaner'].__class__.__name__
-        if self.original_params['set_loader'] is not None:
-            self.original_params['set_loader'] = self.original_params['set_loader'].__class__.__name__
-        if self.original_params['ival_optimizer'] is not None:
-            self.original_params['ival_optimizer'] = self.original_params['ival_optimizer'].__class__.__name__
         # Default marker def is form our EEG 3-4 sec motor imagery dataset
         if self.marker_def is None:
-            self.marker_def = {'1 - Right Hand': [1], '2 - Left Hand': [2], 
-                    '3 - Rest': [3], '4 - Feet': [4]}
+            self.marker_def = {'1 - Right Hand': [1], '2 - Left Hand': [2],
+                               '3 - Rest': [3], '4 - Feet': [4]}
         if self.cleaner is None:
             self.cleaner = NoCleaner(segment_ival=self.segment_ival,
-                marker_def=self.marker_def)
+                                     marker_def=self.marker_def)
+        self.filterbank_csp = None
+        self.binary_csp = None
+        self.cnt = None
+        self.sensor_names = None
+        self.filterbands = None
+        self.rejected_chan_names = None
+        self.clean_trials = None
+        self.rejected_trials = None
 
     def run(self):
         log.info("Loading set...")
@@ -199,7 +192,7 @@ class CSPExperiment(object):
         # only remove rejected channels now so that clean function can
         # be called multiple times without changing cleaning results
         self.cnt = select_channels(self.cnt, self.rejected_chan_names,
-            invert=True)
+                                   invert=True)
         if self.sensor_names is not None:
             # Note this does not respect order of sensor names,
             # it selects chans form given sensor names
@@ -218,16 +211,18 @@ class CSPExperiment(object):
     def remember_sensor_names(self):
         """ Just to be certain have correct sensor names, take them
         from cnt signal"""
-        self.sensor_names = self.cnt.axes[1]
+        self.sensor_names = self.cnt.channels.data
 
     def init_training_vars(self):
-        self.filterbands = generate_filterbank(min_freq=self.min_freq,
+        self.filterbands = generate_filterbank(
+            min_freq=self.min_freq,
             max_freq=self.max_freq, last_low_freq=self.last_low_freq, 
             low_width=self.low_width, low_overlap=self.low_overlap,
             high_width=self.high_width, high_overlap=self.high_overlap,
             low_bound=self.low_bound)
-        assert filterbank_is_stable(self.filterbands, self.filt_order, 
-            self.cnt.fs), (
+        assert filterbank_is_stable(
+            self.filterbands, self.filt_order,
+            self.cnt.attrs['fs']), (
                 "Expect filter bank to be stable given filter order.")
         # check if number of selected features is not too large
         if self.n_selected_features is not None:
@@ -292,6 +287,7 @@ class CSPExperiment(object):
                                     self.class_pairs)
         self.multi_class.run()
 
+
 class CSPRetrain():
     """ CSP Retraining on existing filters computed previously."""
     def __init__(self, trainer_filename, n_selected_features="asbefore",
@@ -306,7 +302,7 @@ class CSPRetrain():
 
     def run(self):
         log.info("Loading trainer...")
-        self.trainer = serial.load(self.trainer_filename)
+        self.trainer = np.load(self.trainer_filename)
         if self.n_selected_features == "asbefore":
             self.n_selected_features = self.trainer.filterbank_csp.n_features
         if self.n_selected_filterbands == "asbefore":
@@ -435,7 +431,7 @@ class TwoFileCSPExperiment(CSPExperiment):
             high_width=self.high_width, high_overlap=self.high_overlap,
             low_bound=self.low_bound)
         assert filterbank_is_stable(self.filterbands, self.filt_order, 
-            self.cnt.fs), (
+            self.cnt.attrs['fs']), (
                 "Expect filter bank to be stable given filter order.")
         # check if number of selected features is not too large
 

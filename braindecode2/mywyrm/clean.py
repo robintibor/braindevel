@@ -2,10 +2,12 @@ import numpy as np
 
 import itertools
 
-from braindecode.mywyrm.processing import (bandpass_cnt, segment_dat_fast,
+from braindecode2.trial_segment import segment_dat
+
+from braindecode2.mywyrm.processing import (bandpass_cnt,
     highpass_cnt, lowpass_cnt, select_marker_classes, select_marker_epochs)
 from wyrm.processing import select_channels
-from braindecode.datasets.signal_processor import SignalProcessor
+from braindecode2.datasets.signal_processor import SignalProcessor
 from collections import namedtuple
 import logging 
 log = logging.getLogger(__name__)
@@ -74,7 +76,7 @@ class ChanMaxAbsVarCleaner(object):
 
     def clean(self, cnt, ignore_chans=False):
         highpassed_cnt = highpass_cnt(cnt, low_cut_off_hz=0.1, filt_order=4)
-        epo = segment_dat_fast(highpassed_cnt, marker_def=self.marker_def, 
+        epo = segment_dat(highpassed_cnt, marker_def=self.marker_def,
            ival=self.segment_ival)
         if not ignore_chans:
             max_abs_vals_per_chan = np.max(np.abs(epo.data), axis=(0,1))
@@ -114,7 +116,7 @@ class NoCleaner():
         # trials
         # chans ignored always anyways... so ignore_chans parameter does not
         # matter
-        epo = segment_dat_fast(cnt, marker_def=self.marker_def, 
+        epo = segment_dat(cnt, marker_def=self.marker_def,
            ival=self.segment_ival)
         clean_trials = range(epo.data.shape[0])
         
@@ -208,7 +210,7 @@ class MaxAbsCleaner(object):
         # trials
         # chans ignored always anyways... so ignore_chans parameter does not
         # matter
-        epo = segment_dat_fast(cnt, marker_def=self.marker_def, 
+        epo = segment_dat(cnt, marker_def=self.marker_def,
            ival=self.segment_ival)
         # max abs over samples and channels
         trial_max = np.max(np.abs(epo.data), axis=(1,2))
@@ -279,7 +281,7 @@ class Cleaner(object):
             assert self.low_cut_hz is None and self.high_cut_hz is None
 
         # Finally create trials        
-        self.epo = segment_dat_fast(self.cnt, marker_def=self.marker_def,
+        self.epo = segment_dat(self.cnt, marker_def=self.marker_def,
             ival=self.rejection_var_ival)
         del self.cnt # No longer needed
             

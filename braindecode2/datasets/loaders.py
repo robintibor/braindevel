@@ -1,16 +1,17 @@
 import os.path
 import re
+from functools import reduce
 import numpy as np
+import xarray as xr
 import h5py
-import wyrm.types
 import logging
-from braindecode.mywyrm.processing import resample_cnt
 from scipy.io.matlab.mio import loadmat
+import mne
+from braindecode2.datasets.sensor_positions import sort_topologically
+from braindecode2.mywyrm.processing import concatenate_cnt
+
 log = logging.getLogger(__name__)
-from braindecode.datasets.sensor_positions import sort_topologically
-from braindecode.datahandling.batch_iteration import (
-    compute_trial_start_end_samples)
-from wyrm.processing import append_cnt
+
 
 class BBCIDataset(object):
     def __init__(self, filename, load_sensor_names=None):
@@ -19,8 +20,8 @@ class BBCIDataset(object):
         del self.self
 
     def load(self):
-        """ This function actually loads the data. Will be called by the 
-        get dataset lazy loading function""" 
+        """ This function actually loads the data. Will be called by the
+        get dataset lazy loading function"""
         # TODELAY: Later switch to a wrapper dataset for all files
         cnt = self.load_continuous_signal()
         self.add_markers(cnt)
@@ -30,56 +31,66 @@ class BBCIDataset(object):
         wanted_chan_inds, wanted_sensor_names = self.determine_sensors()
         fs = self.determine_samplingrate()
         with h5py.File(self.filename, 'r') as h5file:
-            samples = int(h5file['nfo']['T'][0,0])
+            samples = int(h5file['nfo']['T'][0, 0])
             cnt_signal_shape = (samples, len(wanted_chan_inds))
-            continuous_signal = np.ones(cnt_signal_shape, dtype=np.float32) * np.nan
-            for chan_ind_arr, chan_ind_set  in enumerate(wanted_chan_inds):
+            continuous_signal = np.ones(cnt_signal_shape,
+                                        dtype=np.float32) * np.nan
+            for chan_ind_arr, chan_ind_set in enumerate(wanted_chan_inds):
                 # + 1 because matlab/this hdf5-naming logic
                 # has 1-based indexing
                 # i.e ch1,ch2,....
                 chan_set_name = 'ch' + str(chan_ind_set + 1)
                 # first 0 to unpack into vector, before it is 1xN matrix
-                chan_signal = h5file[chan_set_name][:].squeeze() # already load into memory
+                chan_signal = h5file[chan_set_name][
+                              :].squeeze()  # already load into memory
                 continuous_signal[:, chan_ind_arr] = chan_signal
             samplenumbers = np.array(range(continuous_signal.shape[0]))
             timesteps_in_ms = samplenumbers * 1000.0 / fs
-            assert not np.any(np.isnan(continuous_signal)), "No NaNs expected in signal"
-        cnt = wyrm.types.Data(continuous_signal, 
-            [timesteps_in_ms, wanted_sensor_names],
-            ['time', 'channel'], 
-            ['ms', '#'])
-        cnt.fs = fs
+            assert not np.any(
+                np.isnan(continuous_signal)), "No NaNs expected in signal"
+
+        cnt = xr.DataArray(continuous_signal,
+                           coords={'time': timesteps_in_ms,
+                                   'channels': wanted_sensor_names, },
+                           dims=('time', 'channels'))
+        cnt.attrs['fs'] = fs
         return cnt
 
     def determine_sensors(self):
-        #TODELAY: change to only taking filename? maybe more 
+        # TODELAY: change to only taking filename? maybe more
         # clarity where file is opened
         all_sensor_names = self.get_all_sensors(self.filename, pattern=None)
         if self.load_sensor_names is None:
+            print("hi hi")
             # if no sensor names given, take all EEG-chans
-            EEG_sensor_names = all_sensor_names
-            EEG_sensor_names = filter(lambda s: not s.startswith('BIP'), EEG_sensor_names)
-            EEG_sensor_names = filter(lambda s: not s.startswith('E'), EEG_sensor_names)
-            EEG_sensor_names = filter(lambda s: not s.startswith('Microphone'), EEG_sensor_names)
-            EEG_sensor_names = filter(lambda s: not s.startswith('Breath'), EEG_sensor_names)
-            EEG_sensor_names = filter(lambda s: not s.startswith('GSR'), EEG_sensor_names)
-            assert (len(EEG_sensor_names) == 128 or
-                len(EEG_sensor_names) == 64 or
-                len(EEG_sensor_names) == 32 or 
-                len(EEG_sensor_names) == 16), (
+            eeg_sensor_names = all_sensor_names
+            eeg_sensor_names = filter(lambda s: not s.startswith('BIP'),
+                                      eeg_sensor_names)
+            eeg_sensor_names = filter(lambda s: not s.startswith('E'),
+                                      eeg_sensor_names)
+            eeg_sensor_names = filter(lambda s: not s.startswith('Microphone'),
+                                      eeg_sensor_names)
+            eeg_sensor_names = filter(lambda s: not s.startswith('Breath'),
+                                      eeg_sensor_names)
+            eeg_sensor_names = filter(lambda s: not s.startswith('GSR'),
+                                      eeg_sensor_names)
+            eeg_sensor_names = list(eeg_sensor_names)
+            assert (len(eeg_sensor_names) == 128 or
+                    len(eeg_sensor_names) == 64 or
+                    len(eeg_sensor_names) == 32 or
+                    len(eeg_sensor_names) == 16), (
                 "Recheck this code if you have different sensors...")
             # sort sensors topologically to allow networks to exploit topology
             # this is kpe there to ensure reproducibility,
             # rerunning of old results only
-            self.load_sensor_names = sort_topologically(EEG_sensor_names)
-        chan_inds = self.determine_chan_inds(all_sensor_names, 
-            self.load_sensor_names)
+            self.load_sensor_names = sort_topologically(eeg_sensor_names)
+        chan_inds = self.determine_chan_inds(all_sensor_names,
+                                             self.load_sensor_names)
         return chan_inds, self.load_sensor_names
 
-    
     def determine_samplingrate(self):
         with h5py.File(self.filename, 'r') as h5file:
-            fs =  h5file['dat']['fs'][0,0]
+            fs = h5file['dat']['fs'][0, 0]
             assert isinstance(fs, int) or fs.is_integer()
             fs = int(fs)
         return fs
@@ -89,29 +100,32 @@ class BBCIDataset(object):
         assert sensor_names is not None
         chan_inds = [all_sensor_names.index(s) for s in sensor_names]
         assert len(chan_inds) == len(sensor_names), ("All"
-            "sensors should be there.")
+                                                     "sensors should be there.")
         assert len(set(chan_inds)) == len(chan_inds), ("No"
-            "duplicated sensors wanted.")
+                                                       "duplicated sensors wanted.")
         return chan_inds
-    
+
     def add_markers(self, cnt):
         with h5py.File(self.filename, 'r') as h5file:
             event_times_in_ms = h5file['mrk']['time'][:].squeeze()
             event_classes = h5file['mrk']['event']['desc'][:].squeeze()
-            
+
             # Check whether class names known and correct order
             class_name_set = h5file['nfo']['className'][:].squeeze()
-            all_class_names = [''.join(chr(c) for c in h5file[obj_ref]) 
-                for obj_ref in class_name_set]
+            all_class_names = [''.join(chr(c) for c in h5file[obj_ref])
+                               for obj_ref in class_name_set]
             if all_class_names == ['Right Hand', 'Left Hand', 'Rest', 'Feet']:
                 pass
-            elif ((all_class_names == ['1', '10', '11', '111', '12', '13', '150',
-                '2', '20', '22', '3', '30', '33', '4', '40', '44', '99']) or 
-                  (all_class_names == ['1', '10', '11', '12', '13', '150', 
-                       '2', '20', '22', '3', '30', '33', '4', '40', '44', '99']) or
-                  (all_class_names == ['1', '2', '3', '4'])):
-                pass # Semantic classes
-            elif  all_class_names == ['Rest', 'Feet', 'Left Hand', 'Right Hand']:
+            elif ((all_class_names == ['1', '10', '11', '111', '12', '13',
+                                       '150',
+                                       '2', '20', '22', '3', '30', '33', '4',
+                                       '40', '44', '99']) or
+                      (all_class_names == ['1', '10', '11', '12', '13', '150',
+                                           '2', '20', '22', '3', '30', '33',
+                                           '4', '40', '44', '99']) or
+                      (all_class_names == ['1', '2', '3', '4'])):
+                pass  # Semantic classes
+            elif all_class_names == ['Rest', 'Feet', 'Left Hand', 'Right Hand']:
                 # Have to swap from
                 # ['Rest', 'Feet', 'Left Hand', 'Right Hand']
                 # to
@@ -125,122 +139,294 @@ class BBCIDataset(object):
                 event_classes[rest_mask] = 3
                 event_classes[feet_mask] = 4
             elif all_class_names == ['Right Hand Start', 'Left Hand Start',
-                'Rest Start', 'Feet Start', 'Right Hand End',
-                'Left Hand End', 'Rest End', 'Feet End']:
+                                     'Rest Start', 'Feet Start',
+                                     'Right Hand End',
+                                     'Left Hand End', 'Rest End', 'Feet End']:
                 pass
             elif all_class_names == ['Right Hand', 'Left Hand', 'Rest',
-                'Feet', 'Face', 'Navigation', 'Music', 'Rotation',
-                'Subtraction', 'Words']:
-                pass # robot hall 10 class decoding
+                                     'Feet', 'Face', 'Navigation', 'Music',
+                                     'Rotation',
+                                     'Subtraction', 'Words']:
+                pass  # robot hall 10 class decoding
             elif (all_class_names == ['RightHand', 'Feet', 'Rotation', 'Words',
-                '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                'RightHand_End', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                'Feet_End', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                'Rotation_End', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                'Words_End'] or
-                all_class_names == ['RightHand', 'Feet', 'Rotation', 'Words',
-                    'Rest', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                    'RightHand_End', '\x00\x00', '\x00\x00', '\x00\x00',
-                    '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                    '\x00\x00', 'Feet_End', '\x00\x00', '\x00\x00', '\x00\x00',
-                    '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                    '\x00\x00', 'Rotation_End', '\x00\x00', '\x00\x00',
-                    '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                    '\x00\x00', '\x00\x00', 'Words_End', '\x00\x00', '\x00\x00',
-                    '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00', '\x00\x00',
-                    '\x00\x00', '\x00\x00', 'Rest_End']):
-                pass # weird stuff when we recorded cursor in robot hall
-                    # on 2016-09-14 and 2016-09-16 :D
-            
+                                      '\x00\x00', '\x00\x00', '\x00\x00',
+                                      '\x00\x00', '\x00\x00',
+                                      'RightHand_End', '\x00\x00', '\x00\x00',
+                                      '\x00\x00', '\x00\x00',
+                                      '\x00\x00', '\x00\x00', '\x00\x00',
+                                      '\x00\x00', '\x00\x00',
+                                      'Feet_End', '\x00\x00', '\x00\x00',
+                                      '\x00\x00', '\x00\x00',
+                                      '\x00\x00', '\x00\x00', '\x00\x00',
+                                      '\x00\x00', '\x00\x00',
+                                      'Rotation_End', '\x00\x00', '\x00\x00',
+                                      '\x00\x00', '\x00\x00',
+                                      '\x00\x00', '\x00\x00', '\x00\x00',
+                                      '\x00\x00', '\x00\x00',
+                                      'Words_End'] or
+                          all_class_names == ['RightHand', 'Feet', 'Rotation',
+                                              'Words',
+                                              'Rest', '\x00\x00', '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              'RightHand_End', '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00',
+                                              '\x00\x00', 'Feet_End',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00',
+                                              '\x00\x00', 'Rotation_End',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              'Words_End', '\x00\x00',
+                                              '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              '\x00\x00',
+                                              '\x00\x00', '\x00\x00',
+                                              'Rest_End']):
+                pass  # weird stuff when we recorded cursor in robot hall
+                # on 2016-09-14 and 2016-09-16 :D
+
             elif (all_class_names == ['0004', '0016', '0032', '0056', '0064',
-                '0088', '0095', '0120']):
+                                      '0088', '0095', '0120']):
                 pass
             elif (all_class_names == ['0004', '0056', '0088', '0120']):
                 pass
             elif (all_class_names == ['0004', '0016', '0032', '0048', '0056',
-                '0064', '0080', '0088', '0095', '0120']):
+                                      '0064', '0080', '0088', '0095', '0120']):
                 pass
             elif (all_class_names == ['0004', '0016', '0056', '0088', '0120',
-                '__']):
+                                      '__']):
                 pass
             elif (all_class_names == ['0004', '0056', '0088', '0120', '__']):
                 pass
             elif (all_class_names == ['0004', '0032', '0048', '0056', '0064',
-                '0080', '0088', '0095', '0120', '__']):
+                                      '0080', '0088', '0095', '0120', '__']):
                 pass
             elif (all_class_names == ['0004', '0056', '0080', '0088', '0096',
-                '0120', '__']):
+                                      '0120', '__']):
                 pass
             elif (all_class_names == ['0004', '0032', '0056', '0064', '0080',
-                '0088', '0095', '0120']):
+                                      '0088', '0095', '0120']):
                 pass
             elif (all_class_names == ['0004', '0032', '0048', '0056', '0064',
-                '0080', '0088', '0095', '0120']):
+                                      '0080', '0088', '0095', '0120']):
                 pass
             elif (all_class_names == ['0004', '0016', '0032', '0048', '0056',
-                '0064', '0080', '0088', '0095', '0096', '0120']):
+                                      '0064', '0080', '0088', '0095', '0096',
+                                      '0120']):
                 pass
             elif (all_class_names == ['4', '16', '32', '56', '64', '88', '95',
-                '120']):
+                                      '120']):
                 pass
             elif (all_class_names == ['4', '56', '88', '120']):
                 pass
             elif (all_class_names == ['4', '16', '32', '48', '56',
-                '64', '80', '88', '95', '120']):
+                                      '64', '80', '88', '95', '120']):
                 pass
             elif (all_class_names == ['0', '4', '56', '88', '120']):
                 pass
             elif (all_class_names == ['0', '4', '16', '56', '88', '120']):
                 pass
             elif (all_class_names == ['0', '4', '32', '48', '56', '64', '80',
-                '88', '95', '120']):
+                                      '88', '95', '120']):
                 pass
             elif (all_class_names == ['0', '4', '56', '80', '88', '96', '120']):
                 pass
-            elif (all_class_names == ['4', '32', '56', '64', '80', '88', '95', '120']):
+            elif (all_class_names == ['4', '32', '56', '64', '80', '88', '95',
+                                      '120']):
                 pass
             elif (all_class_names == ['One', 'Two', 'Three', 'Four']):
                 pass
-            elif (all_class_names == ['1', '10', '11', '12', '2', '20', '3', '30', '4', '40']):
+            elif (
+                all_class_names == ['1', '10', '11', '12', '2', '20', '3', '30',
+                                    '4', '40']):
                 pass
-            elif (all_class_names == ['1', '10', '12', '13', '2', '20', '3', '30', '4', '40']):
+            elif (
+                all_class_names == ['1', '10', '12', '13', '2', '20', '3', '30',
+                                    '4', '40']):
                 pass
-            elif (all_class_names == ['1', '10', '13', '2', '20', '3', '30', '4', '40', '99']):
+            elif (
+                all_class_names == ['1', '10', '13', '2', '20', '3', '30', '4',
+                                    '40', '99']):
                 pass
-            elif (all_class_names == ['1', '10', '11', '14', '18', '20', '21', '24', '251', '252', '28', '30', '4', '8']):
+            elif (all_class_names == ['1', '10', '11', '14', '18', '20', '21',
+                                      '24', '251', '252', '28', '30', '4',
+                                      '8']):
                 pass
-            elif (all_class_names == ['1', '10', '11', '14', '18', '20', '21', '24', '252', '253', '28', '30', '4', '8']):
+            elif (all_class_names == ['1', '10', '11', '14', '18', '20', '21',
+                                      '24', '252', '253', '28', '30', '4',
+                                      '8']):
                 pass
-            elif len(event_times_in_ms) ==  len(all_class_names):
-                pass # weird neuroone(?) logic where class names have event classes
-            elif (all_class_names == ['Right_hand_stimulus_onset', 
-                'Feet_stimulus_onset', 'Rotation_stimulus_onset', 
-                'Words_stimulus_onset', 'Right_hand_stimulus_offset',
-                'Feet_stimulus_offset', 'Rotation_stimulus_offset', 'Words_stimulus_offset']):
+            elif len(event_times_in_ms) == len(all_class_names):
+                pass  # weird neuroone(?) logic where class names have event classes
+            elif (all_class_names == ['Right_hand_stimulus_onset',
+                                      'Feet_stimulus_onset',
+                                      'Rotation_stimulus_onset',
+                                      'Words_stimulus_onset',
+                                      'Right_hand_stimulus_offset',
+                                      'Feet_stimulus_offset',
+                                      'Rotation_stimulus_offset',
+                                      'Words_stimulus_offset']):
                 pass
-            #elif (all_class_names == ['Right hand', 'Feet', 'Rotation', 'Words']):
+            # elif (all_class_names == ['Right hand', 'Feet', 'Rotation', 'Words']):
             #    pass
             else:
                 # remove this whole if else stuffs?
                 log.warn("Unknown class names {:s}".format(
                     all_class_names))
-            
-        cnt.markers =  zip(event_times_in_ms, event_classes)
-        cnt.class_names = all_class_names
+
+        cnt.attrs['events'] = np.array(
+            list(zip(event_times_in_ms, event_classes)))
 
     @staticmethod
     def get_all_sensors(filename, pattern):
         # TODELAY: split into two methods?
         with h5py.File(filename, 'r') as h5file:
             clab_set = h5file['dat']['clab'][:].squeeze()
-            all_sensor_names = [''.join(chr(c) for c in h5file[obj_ref]) for obj_ref in clab_set]
+            all_sensor_names = [''.join(chr(c) for c in h5file[obj_ref]) for
+                                obj_ref in clab_set]
             if pattern is not None:
-                all_sensor_names = filter(lambda sname: re.search(pattern, sname), 
+                all_sensor_names = filter(
+                    lambda sname: re.search(pattern, sname),
                     all_sensor_names)
         return all_sensor_names
+
+
+# for checks, remove:
+#from braindecode.datasets.loaders import BCICompetition4Set2B as BCICompetition4Set2BOld
+#cnt_old = BCICompetition4Set2BOld('/home/schirrmr/data/bci-competition-iv/2b/signal/B0101T.hdf5').load()
+#cnt_new = BCICompetition4Set2B(filename=filename).load()
+#np.allclose(cnt_old.data, cnt_new.data)
+class BCICompetition4Set2B(object):
+    def __init__(self, filename, load_sensor_names=None, labels_filename=None):
+        assert load_sensor_names is None
+        self.__dict__.update(locals())
+        del self.self
+
+    def load(self):
+        raw_edf = mne.io.read_raw_edf(self.filename)
+        cnt = self.extract_data(raw_edf)
+        cnt.attrs['fs'] = 250.0
+        events, artifact_trial_mask = self.extract_events(raw_edf)
+        cnt.attrs['events'] = events
+        cnt.attrs['artifact_trial_mask'] = artifact_trial_mask
+        return cnt
+
+    @staticmethod
+    def extract_data(raw_edf):
+        cnt = xr.DataArray(raw_edf.get_data().T,
+                           coords={'time': raw_edf.times * 1000.0,
+                                   'channels': raw_edf.ch_names, },
+                           # pd.to_timedelta(raw_edf.times,unit='s')},
+                           dims=('time', 'channels'))
+        cnt = cnt.sel(channels=['EEG:C3', 'EEG:Cz', 'EEG:C4'])
+
+        # correct NaN Values ...
+        # are set to lowest negative number
+        data = cnt.values
+        for i_chan in range(data.shape[1]):
+            # first set to nan, than replace nans by nanmean.
+            this_chan = data[:, i_chan]
+            data[:, i_chan] = np.where(this_chan == np.min(this_chan),
+                                 np.nan, this_chan)
+            mask = np.isnan(data[:, i_chan])
+            chan_mean = np.nanmean(data[:, i_chan])
+            data[mask, i_chan] = chan_mean
+        # somehow for correct units as before when loading from matlab,
+        # need multiplication by 1e6...
+        cnt.values = data * 1e6
+        return cnt
+
+    def extract_events(self, raw_edf):
+        # all events
+        events = np.array(list(zip(
+            raw_edf.get_gdf_events()[1] * 1000.0 / 250.0,
+            raw_edf.get_gdf_events()[2])))
+
+        # only trial onset events
+        trial_events = events[(events[:, 1] == 769) | (events[:, 1] == 770) |
+                        (events[:, 1] == 783)]
+        assert (len(trial_events) == 120) or (len(trial_events) == 160) or (
+            len(trial_events) == 140), (
+            "Got {:d} markers".format(len(trial_events)))
+        # event markers 769,770 -> 1,2
+        trial_events[:, 1] = trial_events[:, 1] - 768
+        # possibly overwrite with markers from labels file
+        if self.labels_filename is not None:
+            classes = loadmat(self.labels_filename)['classlabel'].squeeze()
+            trial_events[:, 1] = classes
+        unique_classes = np.unique(trial_events[:, 1])
+        assert np.array_equal([1, 2], unique_classes), (
+            "Expect only 1 and 2 as class labels, got {:s}".format(
+                str(unique_classes))
+        )
+        # now also create 0-1 vector for rejected trials
+        trial_start_events = events[events[:,1] == 768]
+        assert len(trial_start_events) == len(trial_events)
+        artifact_trial_mask = np.zeros(len(trial_events), dtype=np.uint8)
+        artifact_events = events[events[:,1] == 1023]
+        for artifact_time in artifact_events[:,0]:
+            i_trial = trial_start_events[:,0].tolist().index(artifact_time)
+            artifact_trial_mask[i_trial] = 1
+
+        return trial_events, artifact_trial_mask
+
+
+class MultipleBCICompetition4Set2B(object):
+    def __init__(self, subject_id, session_ids, data_folder):
+        self.subject_id = subject_id
+        self.session_ids = session_ids
+        self.data_folder = data_folder
+
+    def load(self):
+        signal_folder = os.path.join(self.data_folder, 'signal')
+        labels_folder = os.path.join(self.data_folder, 'labels')
+        all_cnts = []
+        for session_id in self.session_ids:
+            labels_file_path = self.create_labels_file_path(self.subject_id,
+                                                            session_id,
+                                                            labels_folder)
+            signal_file_path = self.create_signal_file_path(self.subject_id,
+                                                            session_id,
+                                                            signal_folder)
+            all_cnts.append(BCICompetition4Set2B(
+                signal_file_path,labels_filename=labels_file_path).load())
+        artifact_masks = [cnt.attrs['artifact_trial_mask'] for cnt in all_cnts]
+        merged_cnt = reduce(concatenate_cnt, all_cnts[1:], all_cnts[0])
+        merged_cnt.attrs['artifact_trial_mask'] = np.concatenate(artifact_masks)
+        assert merged_cnt.data.shape[0] == np.sum(
+            [cnt.data.shape[0] for cnt in all_cnts])
+        assert len(merged_cnt.attrs['artifact_trial_mask']) == len(
+            merged_cnt.attrs['events'])
+        return merged_cnt
+
+    @staticmethod
+    def create_signal_file_path(subject_id, session_id, signal_folder):
+        train_or_eval = ("T" if session_id <= 3 else "E")
+        filename = "B{:02d}{:02d}{:s}.gdf".format(subject_id, session_id,
+                                                  train_or_eval)
+        file_path = os.path.join(signal_folder, filename)
+        return file_path
+
+    @staticmethod
+    def create_labels_file_path(subject_id, session_id, labels_folder):
+        train_or_eval = ("T" if session_id <= 3 else "E")
+        filename = "B{:02d}{:02d}{:s}.mat".format(subject_id, session_id,
+                                                  train_or_eval)
+        file_path = os.path.join(labels_folder, filename)
+        return file_path
+
+
+### old code
     
 class BCICompetition4Set2A(object):
     def __init__(self, filename, load_sensor_names=None):
@@ -469,112 +655,14 @@ class MultipleBBCIDataset(object):
         bbci_sets = [BBCIDataset(fname, load_sensor_names=self.load_sensor_names)
                      for fname in self.filenames]
         return MultipleSetLoader(bbci_sets).load()
-    
-class BCICompetition4Set2B(object):
-    def __init__(self, filename, load_sensor_names=None, labels_filename=None):
-        assert load_sensor_names is None
-        self.__dict__.update(locals())
-        del self.self
-        
-    
-    def load(self):
-        with h5py.File(self.filename, 'r') as h5file:
-            eeg_signal, chan_names = extract_EEG_signal_and_chan_names(h5file)
-            markers, marker_times, artefact_mask = extract_markers_and_times_and_artefact_mask(
-                h5file, labels_filename=self.labels_filename)
-            fs = h5file['header']['SampleRate'][0,0]
-            samplenumbers = np.array(range(eeg_signal.shape[0]))
-            timesteps_in_ms = samplenumbers * 1000.0 / fs
-            cnt = wyrm.types.Data(eeg_signal, 
-                        [timesteps_in_ms, chan_names],
-                        ['time', 'channel'], 
-                        ['ms', '#'])
-            cnt.markers = zip(marker_times, markers)
-            cnt.fs = fs
-            cnt.artefact_trial_mask = artefact_mask
-        return cnt
-
-def extract_EEG_signal_and_chan_names(h5file):
-    chan_names = get_strings_from_refs(h5file, h5file['header']['Label'][:])
-    assert np.array_equal(['EEG:C3          ',
-         'EEG:Cz          ',
-         'EEG:C4          ',
-         'EOG:ch01        ',
-         'EOG:ch02        ',
-         'EOG:ch03        '],
-         chan_names), (
-        "first 3 should be EEG Chans")
-    EEG_signal = h5file['signal'][:3,:]
-    EEG_signal = EEG_signal.T
-    # replace nans  by means of corresponding chans
-    for i_chan in xrange(EEG_signal.shape[1]):
-        chan_signal = EEG_signal[:, i_chan]
-        chan_signal[np.isnan(chan_signal)] = np.nanmean(chan_signal)
-        EEG_signal[:, i_chan] = chan_signal
-    return EEG_signal, ['C3', 'Cz', 'C4']
 
 def get_strings_from_refs(h5file,refs):
     refs = refs.squeeze()
     strings = [''.join(chr(c) for c in h5file[obj_ref]) for obj_ref in refs]
     return strings
 
-    
-def extract_markers_and_times_and_artefact_mask(h5file, labels_filename=None):
-    codes = h5file['header']['EVENT']['TYP'][:].squeeze()
-    # -1 to account for matlab 1-based idnexing
-    sample_inds = h5file['header']['EVENT']['POS'][:].squeeze() - 1
-    fs = h5file['header']['SampleRate'][0,0]
-    assert fs == 250.0
-    times_in_ms = (sample_inds * 1000.0) / fs
-    wanted_inds = ((codes == 769) | (codes == 770) | (codes == 783))
-    assert (np.sum(wanted_inds) == 120) or (np.sum(wanted_inds) == 160) or (
-        np.sum(wanted_inds) == 140), (
-        "Got {:d} markers".format(np.sum(wanted_inds)))
-    markers = codes[wanted_inds]
-    markers = markers - 768 # now markers are 1,2
-    # possibly overwrite markers from labels file
-    if labels_filename is not None:
-        markers = loadmat(labels_filename)['classlabel'].squeeze()
-    marker_times = times_in_ms[wanted_inds]
-    assert np.array_equal([1,2],np.unique(markers))
-    artefact_mask = h5file['header']['ArtifactSelection'][:].squeeze()
-    assert artefact_mask.shape == (len(markers),)
-    return markers, marker_times, artefact_mask
 
-class MultipleBCICompetition4Set2B(object):
-    def __init__(self, subject_id, session_ids, data_folder):
-        self.subject_id = subject_id
-        self.session_ids = session_ids
-        self.data_folder = data_folder
-    def load(self):
-        signal_folder = os.path.join(self.data_folder, 'signal')
-        labels_folder = os.path.join(self.data_folder, 'labels')
-        all_cnts = []
-        for session_id in self.session_ids:
-            labels_file_path = create_labels_file_path(self.subject_id,
-                session_id, labels_folder)
-            signal_file_path = create_signal_file_path(self.subject_id,
-                session_id, signal_folder)
-            all_cnts.append(BCICompetition4Set2B(signal_file_path,
-                labels_filename=labels_file_path).load())
-        artefact_masks = [cnt.artefact_trial_mask for cnt in all_cnts]
-        merged_cnt = reduce(append_cnt, all_cnts[1:], all_cnts[0])
-        merged_cnt.artefact_trial_mask = np.concatenate(artefact_masks)
-        assert merged_cnt.data.shape[0] == np.sum([cnt.data.shape[0] for cnt in all_cnts])
-        assert len(merged_cnt.artefact_trial_mask) == len(merged_cnt.markers)
-        return merged_cnt
 
-def create_signal_file_path(subject_id, session_id, signal_folder):
-    train_or_eval = ("T" if session_id <= 3 else "E")
-    filename = "B{:02d}{:02d}{:s}.hdf5".format(subject_id, session_id, train_or_eval)
-    file_path = os.path.join(signal_folder, filename)
-    return file_path
-
-def create_labels_file_path(subject_id, session_id, labels_folder):
-    train_or_eval = ("T" if session_id <= 3 else "E")
-    filename = "B{:02d}{:02d}{:s}.mat".format(subject_id, session_id, train_or_eval)
-    file_path = os.path.join(labels_folder, filename)
-    return file_path
 
 
 class BCICompetition4Set1(object):

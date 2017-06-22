@@ -1,6 +1,34 @@
 import os
 import errno
 import numpy as np
+from copy import deepcopy
+
+
+def deepcopy_xarr(xarr):
+    """
+    Deepcopy for xarray that makes sure coords and attrs
+    are properly deepcopied.
+    With normal copy method from xarray, when i mutated
+    xarr.coords[coord].data it would also mutate in the copy
+    and vice versa.
+    Parameters
+    ----------
+    xarr: DateArray
+
+    Returns
+    -------
+    xcopy: DateArray
+        Deep copy of xarr
+    """
+    xcopy = xarr.copy(deep=True)
+
+    for dim in xcopy.coords:
+        xcopy.coords[dim].data = np.copy(xcopy.coords[dim].data)
+    xcopy.attrs = deepcopy(xcopy.attrs)
+    for attr in xcopy.attrs:
+        xcopy.attrs[attr] = deepcopy(xcopy.attrs[attr])
+    return xcopy
+
 
 class FuncAndArgs(object):
     """Container for a function and its arguments. 
