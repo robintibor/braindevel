@@ -1,5 +1,8 @@
+import logging
 import numpy as np
 import xarray as xr
+
+log = logging.getLogger(__name__)
 
 
 def create_target_series(cnt, marker_def, ival):
@@ -36,11 +39,14 @@ def create_target_series(cnt, marker_def, ival):
                 n_samples = last_index - first_index
                 if n_samples != expected_samples:
                     # result is too short or too long, ignore it
-                    log.warn("ignoring trial")
+                    log.warn("Ignoring trial:")
                     log.warn(
-                        "expected samples in trial segmentation {:d}".format(
+                        "Expected samples in trial segmentation: {:d}".format(
                             expected_samples))
-                    log.warn("actual samples {:d}".format(n_samples))
+                    log.warn("Actual samples: {:d}".format(n_samples))
+                    log.warn("Epoch ival is from {:f} to {:f} ms".format(
+                        t + ival[0], t + ival[1]
+                    ))
                     continue
                 targets[first_index:last_index, class_idx] = 1
     return targets

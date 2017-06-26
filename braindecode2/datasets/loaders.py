@@ -284,6 +284,7 @@ class BBCIDataset(object):
                 log.warn("Unknown class names {:s}".format(
                     all_class_names))
 
+        #event_times_in_samples = np.uint32(np.round())
         cnt.attrs['events'] = np.array(
             list(zip(event_times_in_ms, event_classes)))
 

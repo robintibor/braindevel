@@ -87,39 +87,8 @@ class LossMonitor(Monitor):
         mean_loss = total_loss / float(num_trials)
         monitor_key = "{:s}_loss".format(setname)
         monitor_chans[monitor_key].append(mean_loss)
-        
-class MisclassMonitor(Monitor):
-    def __init__(self, chan_name='misclass'):
-        self.chan_name = chan_name
 
-    def setup(self, monitor_chans, datasets):
-        for setname in datasets:
-            assert setname in ['train', 'valid', 'test']
-            monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
-            monitor_chans[monitor_key] = []
 
-    def monitor_epoch(self, monitor_chans):
-        return
-
-    def monitor_set(self, monitor_chans, setname, all_preds, losses, 
-            all_batch_sizes, targets, dataset):
-        all_pred_labels = []
-        all_target_labels = []
-        for i_batch in range(len(all_batch_sizes)):
-            preds = all_preds[i_batch]
-            pred_labels = np.argmax(preds, axis=1)
-            all_pred_labels.extend(pred_labels)
-            all_target_labels.extend(targets[i_batch])
-        all_pred_labels = np.array(all_pred_labels)
-        all_target_labels = np.array(all_target_labels)
-        
-        # in case of one hot encoding convert back to scalar class numbers
-        if all_target_labels.ndim == 2:
-            all_target_labels = np.argmax(all_target_labels, axis=1)
-        misclass = 1 - (np.sum(all_pred_labels == all_target_labels) / 
-            float(len(all_target_labels)))
-        monitor_key = "{:s}_{:s}".format(setname, self.chan_name)
-        monitor_chans[monitor_key].append(float(misclass))
 
 class WindowMisclassMonitor(Monitor):
     def setup(self, monitor_chans, datasets):

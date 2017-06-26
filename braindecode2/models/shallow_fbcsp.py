@@ -1,8 +1,10 @@
 from torch import nn
 from braindecode2.modules.expression import Expression
+from braindecode2.torchext.functions import safe_log, square
 
 
 class ShallowFBCSPNet(object):
+    # TODO: auto final dense length for shallow
     def __init__(self, in_chans,
                  n_classes,
                  n_filters_time=40,
