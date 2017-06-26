@@ -122,6 +122,7 @@ def tied_neighbours(preds, n_sample_preds, n_classes):
     loss = categorical_crossentropy(earlier_neighbours, later_neighbours)
     return loss
 
+
 def tied_neighbours_cnt_model_masked(preds, targets, final_layer):
     n_sample_preds = get_n_sample_preds(final_layer)
     n_classes = final_layer.output_shape[1]
@@ -140,6 +141,7 @@ def tied_neighbours_cnt_model_masked(preds, targets, final_layer):
     # :-1] assumies empty targets are at the start not at end
     loss = loss * T.gt(T.sum(targets_per_trial_row, axis=2), 0)[:,:-1]
     return loss
+
 
 def tied_neighbours_cnt_model_custom_loss(preds, targets, final_layer, loss_fn):
     n_sample_preds = get_n_sample_preds(final_layer)
