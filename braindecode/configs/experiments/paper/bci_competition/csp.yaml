@@ -8,7 +8,7 @@
         cleaner: [$no_cleaner],#$, , train_normal_cleaner
         test_cleaner: [$no_cleaner],
         n_selected_features: [20],#10,
-        trial_stop: [4000],#2500,
+        trial_stop: [2500],#4000#2500,
         filt_order: [3],
         
         standardize_cnt: [False],
@@ -50,23 +50,23 @@
 #            last_low_freq: [14],
 #            low_overlap: [3],
 #        },
-        {
-            min_freq: [1],
-            max_freq: [34],
-            low_width: [6],
-            high_width: [8],
-            high_overlap: [4],
-            last_low_freq: [10],
-            low_overlap: [3],
-        },
 #        {
-#            min_freq: [7],
+#            min_freq: [1],
 #            max_freq: [34],
 #            low_width: [6],
 #            high_width: [8],
 #            high_overlap: [4],
 #            last_low_freq: [10],
 #            low_overlap: [3],
+#        },
+        {
+            min_freq: [7],
+            max_freq: [34],
+            low_width: [6],
+            high_width: [8],
+            high_overlap: [4],
+            last_low_freq: [10],
+            low_overlap: [3],
 #            variants: [[
 #            {
 #            },
@@ -74,7 +74,7 @@
 #                trial_start: [500],
 #                trial_stop: [2500],
 #            }]],
-#        },
+        },
 #        {
 #            resample_fs: [100],
 #            min_freq: [0.5],
