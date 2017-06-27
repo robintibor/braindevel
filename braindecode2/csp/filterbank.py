@@ -1,12 +1,23 @@
 from copy import deepcopy
 import logging
+import numpy as np
 import xarray as xr
+from sklearn.cross_validation import KFold
 from braindecode2.mywyrm.processing import (
     lda_train_scaled, lda_apply)
-import numpy as np
 from braindecode2.csp.feature_selection import select_features
-from sklearn.cross_validation import KFold
+from braindecode2.util import deepcopy_xarr
+
+
 log = logging.getLogger(__name__)
+
+
+def deepcopy_xarr_list(list_of_xarr):
+    new_list = []
+    for item in list_of_xarr:
+        new_list.append(deepcopy_xarr(item))
+    return new_list
+
 
 class FilterbankCSP(object):
     def __init__(self, binary_csp, n_features=None, n_filterbands=None,
@@ -33,7 +44,7 @@ class FilterbankCSP(object):
     def select_filterbands(self):
         n_all_filterbands = len(self.binary_csp.filterbands)
         if self.n_filterbands is None:
-            self.selected_filter_inds = range(n_all_filterbands)
+            self.selected_filter_inds = list(range(n_all_filterbands))
         else:
             # Select the filterbands with the highest mean accuracy on the
             # training sets
@@ -98,17 +109,18 @@ class FilterbankCSP(object):
         self.selected_filters_per_filterband = np.empty(result_shape, dtype=object)
         for fold_i in range(n_folds):
             for class_pair_i in range(n_class_pairs):
-                bin_csp_train_features = deepcopy(bincsp.train_feature[
-                                                      self.selected_filter_inds, fold_i, class_pair_i])
-                bin_csp_train_features_full_fold = deepcopy(
+                bin_csp_train_features = deepcopy_xarr_list(
+                    bincsp.train_feature[
+                        self.selected_filter_inds, fold_i, class_pair_i].squeeze())
+                bin_csp_train_features_full_fold = deepcopy_xarr_list(
                     bincsp.train_feature_full_fold[
                         self.selected_filter_inds,
                         fold_i, class_pair_i])
-                bin_csp_test_features = deepcopy(bincsp.test_feature[
-                                                     self.selected_filter_inds, fold_i, class_pair_i])
-                bin_csp_test_features_full_fold = deepcopy(
+                bin_csp_test_features = deepcopy_xarr_list(bincsp.test_feature[
+                    self.selected_filter_inds, fold_i, class_pair_i].squeeze())
+                bin_csp_test_features_full_fold = deepcopy_xarr_list(
                     bincsp.test_feature_full_fold[
-                        self.selected_filter_inds, fold_i, class_pair_i])
+                        self.selected_filter_inds, fold_i, class_pair_i].squeeze())
                 selected_filters_per_filt = self.select_best_filters_best_filterbands(
                     bin_csp_train_features, max_features=self.n_features,
                     forward_steps=self.forward_steps,
@@ -145,7 +157,7 @@ class FilterbankCSP(object):
         # Run until no improvement or max features reached
         selection_finished = False
         while (not selection_finished):
-            for _ in xrange(forward_steps):
+            for _ in range(forward_steps):
                 best_accuracy = -1  # lets try always taking a feature in each iteration
                 for filt_i in range(n_filterbands):
                     this_filt_per_fb = deepcopy(selected_filters_per_band)
@@ -160,7 +172,7 @@ class FilterbankCSP(object):
                         best_accuracy = test_accuracy
                         best_selected_filters_per_filterband = this_filt_per_fb
                 selected_filters_per_band = best_selected_filters_per_filterband
-            for _ in xrange(backward_steps):
+            for _ in range(backward_steps):
                 best_accuracy = -1  # lets try always taking a feature in each iteration
                 for filt_i in range(n_filterbands):
                     this_filt_per_fb = deepcopy(selected_filters_per_band)
@@ -186,19 +198,31 @@ class FilterbankCSP(object):
 
     @staticmethod
     def collect_features_for_filter_selection(features, filters_for_filterband):
-        n_filters_per_fb = features[0].data.shape[1] / 2
+        n_filters_per_fb = features[0].data.shape[1] // 2
         n_filterbands = len(features)
-        first_features = deepcopy(features[0])
+        # start with filters of first filterband...
+        # then add others all together
+        first_features = deepcopy_xarr(features[0])
         first_n_filters = filters_for_filterband[0]
-        first_features.data = first_features.data[:, range(first_n_filters) + range(-first_n_filters, 0)]
+        if first_n_filters == 0:
+            first_features = first_features[:,0:0]
+        else:
+            first_features = first_features[:, list(range(first_n_filters)) +
+               list(range(-first_n_filters, 0))]
 
         all_features = first_features
         for i in range(1, n_filterbands):
             this_n_filters = min(n_filters_per_fb, filters_for_filterband[i])
-            if (this_n_filters > 0):
-                next_features = deepcopy(features[i])
-                next_features.data = next_features.data[:, range(this_n_filters) + range(-this_n_filters, 0)]
-                all_features = append_epo(all_features, next_features, classaxis=1)
+            if this_n_filters > 0:
+                next_features = deepcopy_xarr(features[i])
+                if this_n_filters == 0:
+                    next_features = next_features[0:0]
+                else:
+                    next_features = next_features[
+                     :, list(range(this_n_filters)) +
+                        list(range(-this_n_filters, 0))]
+                all_features = xr.concat((all_features, next_features),
+                                         dim='CSP filter')
         return all_features
 
     @staticmethod
@@ -206,14 +230,16 @@ class FilterbankCSP(object):
         folds = KFold(features.data.shape[0], n_folds=5, shuffle=False)
         test_accuracies = []
         for train_inds, test_inds in folds:
-            train_features = features.copy(data=features.data[train_inds], axes=[features.axes[0][train_inds]])
-            test_features = features.copy(data=features.data[test_inds], axes=[features.axes[0][test_inds]])
+            train_features = features[train_inds]
+            test_features = features[test_inds]
             clf = lda_train_scaled(train_features, shrink=True)
             test_out = lda_apply(test_features, clf)
-            second_class_test = test_features.axes[0] == np.max(test_features.axes[0])
-            predicted_2nd_class_test = test_out >= 0
-            test_accuracy = (sum(second_class_test == predicted_2nd_class_test) /
-                             float(len(predicted_2nd_class_test)))
+
+            higher_class = np.max(test_features.trials.data)
+            true_0_1_labels_test = test_features.trials.data == higher_class
+
+            predicted_test = test_out >= 0
+            test_accuracy = np.mean(true_0_1_labels_test == predicted_test)
             test_accuracies.append(test_accuracy)
         return np.mean(test_accuracies)
 
@@ -225,8 +251,8 @@ class FilterbankCSP(object):
                                          dtype=np.int) * -1
 
         # Determine best features
-        for fold_nr in xrange(n_folds):
-            for pair_nr in xrange(n_pairs):
+        for fold_nr in range(n_folds):
+            for pair_nr in range(n_pairs):
                 features = self.train_feature[fold_nr][pair_nr]
                 this_feature_inds = select_features(features.axes[0],
                                                     features.data, n_features=n_features)
@@ -234,8 +260,8 @@ class FilterbankCSP(object):
         assert np.all(self.selected_features >= 0) and np.all(self.selected_features <
                                                               self.train_feature[0][0].data.shape[1])
         # Only retain selected best features
-        for fold_nr in xrange(n_folds):
-            for pair_nr in xrange(n_pairs):
+        for fold_nr in range(n_folds):
+            for pair_nr in range(n_pairs):
                 this_feature_inds = self.selected_features[fold_nr][pair_nr]
                 for feature_type in ['train_feature', 'train_feature_full_fold',
                                      'test_feature', 'test_feature_full_fold']:

@@ -24,31 +24,30 @@ def create_target_series(cnt, marker_def, ival):
     """
     assert 'fs' in cnt.attrs
     assert 'events' in cnt.attrs
-    assert ival[0] <= ival[1]
-    expected_samples = int(
-        np.ceil(cnt.attrs['fs'] * (ival[1] - ival[0]) / 1000.0))
+    assert ival[0] < ival[1]
+    sample_ival = cnt.attrs['fs'] * np.array(ival) / 1000.0
+    sample_ival = np.int32(np.round(sample_ival))
+    assert sample_ival[0] < sample_ival[1]
+
+
     class_names = marker_def.keys()
     targets = np.zeros((len(cnt.data), len(class_names)), dtype=np.int32)
-    for t, m in cnt.attrs['events']:
+    for i_sample, m in cnt.attrs['events']:
         for class_idx, classname in enumerate(class_names):
             if m in marker_def[classname]:
-                first_index = np.searchsorted(cnt.coords['time'], t + ival[0])
-                # as at last index will already be sth bigger or equal,
-                # mask should be exclusive this index!
-                last_index = np.searchsorted(cnt.coords['time'], t + ival[1])
-                n_samples = last_index - first_index
-                if n_samples != expected_samples:
-                    # result is too short or too long, ignore it
-                    log.warn("Ignoring trial:")
-                    log.warn(
-                        "Expected samples in trial segmentation: {:d}".format(
-                            expected_samples))
-                    log.warn("Actual samples: {:d}".format(n_samples))
-                    log.warn("Epoch ival is from {:f} to {:f} ms".format(
-                        t + ival[0], t + ival[1]
-                    ))
-                    continue
-                targets[first_index:last_index, class_idx] = 1
+                start_index = i_sample + sample_ival[0]
+                stop_index = i_sample + sample_ival[1]
+                assert stop_index > start_index
+                if start_index >= 0 and stop_index <= len(cnt.coords['time']):
+                    targets[start_index:stop_index, class_idx] = 1
+                elif start_index < 0:
+                    log.warn("Ignoring trial, start index < 0: {:d}".format(
+                        start_index))
+                else:
+                    assert stop_index > len(cnt.coords['time'])
+                    log.warn("Ignoring trial, start index > n_samples:"
+                        "{:d} > {:d} ".format(
+                        stop_index, len(cnt.coords['time'])))
     return targets
 
 
@@ -185,7 +184,7 @@ def segment_dat(cnt, marker_def, ival):
         # off.
         data = data.swapaxes(0, timeaxis)
     time = np.linspace(ival[0], ival[1],
-                       int(cnt.attrs['fs'] * float(ival[1] - ival[0]) / 1000.0),
+                       data.shape[1], # assume timeaxis now on 1
                        endpoint=False)
     epo = xr.DataArray(data,
                        coords={'trials': classes, 'time': time,

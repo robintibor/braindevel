@@ -61,7 +61,6 @@ class BBCIDataset(object):
         # clarity where file is opened
         all_sensor_names = self.get_all_sensors(self.filename, pattern=None)
         if self.load_sensor_names is None:
-            print("hi hi")
             # if no sensor names given, take all EEG-chans
             eeg_sensor_names = all_sensor_names
             eeg_sensor_names = filter(lambda s: not s.startswith('BIP'),
@@ -284,9 +283,9 @@ class BBCIDataset(object):
                 log.warn("Unknown class names {:s}".format(
                     all_class_names))
 
-        #event_times_in_samples = np.uint32(np.round())
+        event_times_in_samples = np.uint32(np.round(event_times_in_samples))
         cnt.attrs['events'] = np.array(
-            list(zip(event_times_in_ms, event_classes)))
+            list(zip(event_times_in_samples, event_classes)))
 
     @staticmethod
     def get_all_sensors(filename, pattern):
@@ -350,8 +349,8 @@ class BCICompetition4Set2B(object):
     def extract_events(self, raw_edf):
         # all events
         events = np.array(list(zip(
-            raw_edf.get_gdf_events()[1] * 1000.0 / 250.0,
-            raw_edf.get_gdf_events()[2])))
+            raw_edf.get_edf_events()[1],
+            raw_edf.get_edf_events()[2])))
 
         # only trial onset events
         trial_events = events[(events[:, 1] == 769) | (events[:, 1] == 770) |
@@ -427,16 +426,104 @@ class MultipleBCICompetition4Set2B(object):
         return file_path
 
 
-### old code
-    
 class BCICompetition4Set2A(object):
+    def __init__(self, filename, load_sensor_names=None,
+                 labels_filename=None):
+        assert load_sensor_names is None
+        self.__dict__.update(locals())
+        del self.self
+
+    def load(self):
+        raw_edf = mne.io.read_raw_edf(self.filename)
+        cnt = self.extract_data(raw_edf)
+        cnt.attrs['fs'] = 250.0
+        events, artifact_trial_mask = self.extract_events(raw_edf)
+        cnt.attrs['events'] = events
+        cnt.attrs['artifact_trial_mask'] = artifact_trial_mask
+        return cnt
+
+    @staticmethod
+    def extract_data(raw_edf):
+        cnt = xr.DataArray(raw_edf.get_data().T,
+                           coords={'time': raw_edf.times * 1000.0,
+                                   'channels': raw_edf.ch_names, },
+                           # pd.to_timedelta(raw_edf.times,unit='s')},
+                           dims=('time', 'channels'))
+        assert np.array_equal(
+            ['EEG-Fz', 'EEG-0', 'EEG-1', 'EEG-2', 'EEG-3', 'EEG-4', 'EEG-5',
+             'EEG-C3', 'EEG-6', 'EEG-Cz', 'EEG-7', 'EEG-C4', 'EEG-8',
+             'EEG-9',
+             'EEG-10', 'EEG-11', 'EEG-12', 'EEG-13', 'EEG-14', 'EEG-Pz',
+             'EEG-15', 'EEG-16', 'EOG-left', 'EOG-central', 'EOG-right',
+             'STI 014'], raw_edf.ch_names)
+        cnt = cnt.sel(channels=[
+            'EEG-Fz', 'EEG-0', 'EEG-1', 'EEG-2', 'EEG-3', 'EEG-4', 'EEG-5',
+            'EEG-C3', 'EEG-6', 'EEG-Cz', 'EEG-7', 'EEG-C4', 'EEG-8',
+            'EEG-9', 'EEG-10', 'EEG-11', 'EEG-12', 'EEG-13', 'EEG-14',
+            'EEG-Pz', 'EEG-15', 'EEG-16',])
+
+
+        # correct NaN Values ...
+        # are set to lowest negative number
+        data = cnt.values
+        for i_chan in range(data.shape[1]):
+            # first set to nan, than replace nans by nanmean.
+            this_chan = data[:, i_chan]
+            data[:, i_chan] = np.where(this_chan == np.min(this_chan),
+                                       np.nan, this_chan)
+            mask = np.isnan(data[:, i_chan])
+            chan_mean = np.nanmean(data[:, i_chan])
+            data[mask, i_chan] = chan_mean
+        # somehow for correct units as before when loading from matlab,
+        # need multiplication by 1e6...
+        cnt.values = data * 1e6
+        return cnt
+
+    def extract_events(self, raw_edf):
+        # all events
+        events = np.array(list(zip(
+            raw_edf.get_edf_events()[1],
+            raw_edf.get_edf_events()[2])))
+
+        # only trial onset events
+        trial_mask = [ev_code in [769, 770, 771, 772, 783]
+                      for ev_code in events[:,1]]
+        trial_events = events[trial_mask]
+        assert (len(trial_events) == 288), (
+            "Got {:d} markers".format(len(trial_events)))
+        # event markers 769,770 -> 1,2
+        trial_events[:, 1] = trial_events[:, 1] - 768
+        # possibly overwrite with markers from labels file
+        if self.labels_filename is not None:
+            classes = loadmat(self.labels_filename)['classlabel'].squeeze()
+            trial_events[:, 1] = classes
+        unique_classes = np.unique(trial_events[:, 1])
+        assert np.array_equal([1, 2, 3 ,4], unique_classes), (
+            "Expect 1,2,3,4 as class labels, got {:s}".format(
+                str(unique_classes))
+        )
+        # now also create 0-1 vector for rejected trials
+        trial_start_events = events[events[:, 1] == 768]
+        assert len(trial_start_events) == len(trial_events)
+        artifact_trial_mask = np.zeros(len(trial_events), dtype=np.uint8)
+        artifact_events = events[events[:, 1] == 1023]
+        for artifact_time in artifact_events[:, 0]:
+            i_trial = trial_start_events[:, 0].tolist().index(artifact_time)
+            artifact_trial_mask[i_trial] = 1
+
+        return trial_events, artifact_trial_mask
+
+### old code
+
+
+"""class BCICompetition4Set2A(object):
     def __init__(self, filename, load_sensor_names=None):
         self.__dict__.update(locals())
         del self.self
 
     def load(self):
-        """ This function actually loads the data. Will be called by the 
-        get dataset lazy loading function""" 
+        This function actually loads the data. Will be called by the 
+        get dataset lazy loading function
         with h5py.File(self.filename, 'r') as h5file:
             cnt_signal = np.float32(h5file['signal'])
             chan_names = [''.join(chr(c) for c in h5file[obj_ref]) for 
@@ -454,11 +541,7 @@ class BCICompetition4Set2A(object):
                 wanted_signal = eeg_signal
                 wanted_sensor_names = chan_names[:last_eeg_chan]
             else:
-                assert (np.array_equal(['EOG-left', 'EOG-central', 'EOG-right'],
-                    self.load_sensor_names) or
-                    np.array_equal(['C3', 'C4', 'Cz'],
-                    self.load_sensor_names)), ("Only implemented loading eeg "
-                        " or debug eeg or EOG sensors for now")
+                raise ValueError ("Only implemented loading all sensors")
                 if np.array_equal(self.load_sensor_names, ['C3', 'C4', 'Cz']):
                     self.load_sensor_names = ['EEG-C3', 'EEG-C4', 'EEG-Cz']
                 chan_inds = [chan_names.index(name)
@@ -499,7 +582,7 @@ class BCICompetition4Set2A(object):
             cnt.fs = fs
             cnt.markers = markers
             cnt.artefact_trial_mask = h5file['header']['ArtifactSelection'][:].squeeze()
-        return cnt
+        return cnt"""
     
 def convert_test_files_add_markers():
     """ Just for documentation purposes put this here ..."""

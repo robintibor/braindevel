@@ -1,7 +1,7 @@
 from torch import nn
 from braindecode2.modules.expression import Expression
 from braindecode2.torchext.functions import safe_log, square
-
+from torch.nn import init
 
 class ShallowFBCSPNet(object):
     # TODO: auto final dense length for shallow
@@ -24,7 +24,6 @@ class ShallowFBCSPNet(object):
         del self.self
 
     def create_network(self):
-        # todo: check if dropout or dropout2d is better
         pool_class = dict(max=nn.MaxPool2d, mean=nn.AvgPool2d)[self.pool_mode]
         model = nn.Sequential()
         if self.split_first_layer:
@@ -56,9 +55,21 @@ class ShallowFBCSPNet(object):
                          pool_class(kernel_size=(self.pool_time_length, 1),
                                     stride=(self.pool_time_stride, 1)))
         model.add_module('pool_nonlin', Expression(self.pool_nonlin))
-        model.add_module('drop', nn.Dropout2d(p=self.drop_prob))
+        model.add_module('drop', nn.Dropout(p=self.drop_prob))
         model.add_module('conv_classifier',
                          nn.Conv2d(n_filters_conv, self.n_classes,
-                                   (self.final_dense_length, 1)), )
+                                   (self.final_dense_length, 1), bias=True))
         model.add_module('softmax', nn.LogSoftmax())
+
+        init.xavier_uniform(model.conv_time.weight, gain=1)
+        # maybe no bias in case of no split layer and batch norm
+        if self.split_first_layer or (not self.batch_norm):
+            init.constant(model.conv_time.bias, 0)
+        if self.split_first_layer:
+            init.xavier_uniform(model.conv_spat.weight, gain=1)
+            if not self.batch_norm:
+                init.constant(model.conv_spat.bias, 0)
+        init.xavier_uniform(model.conv_classifier.weight, gain=1)
+        init.constant(model.conv_classifier.bias, 0)
+
         return model

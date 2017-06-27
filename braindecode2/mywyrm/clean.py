@@ -5,9 +5,12 @@ import itertools
 from braindecode2.trial_segment import segment_dat
 
 from braindecode2.mywyrm.processing import (bandpass_cnt,
-    highpass_cnt, lowpass_cnt, select_marker_classes, select_marker_epochs)
-from wyrm.processing import select_channels
-from braindecode2.datasets.signal_processor import SignalProcessor
+                                            highpass_cnt, lowpass_cnt,
+                                            select_marker_classes,
+                                            select_marker_epochs,
+                                            select_channels)
+#from wyrm.processing import select_channels
+#from braindecode2.datasets.signal_processor import SignalProcessor
 from collections import namedtuple
 import logging 
 log = logging.getLogger(__name__)
@@ -58,7 +61,8 @@ def clean_train_test_cnt(train_cnt, test_cnt, train_cleaner, test_cleaner,
     return clean_train_cnt, clean_test_cnt
 
 def log_clean_result(clean_result):
-    log.info("Rejected channels: {:s}".format(clean_result.rejected_chan_names))
+    log.info("Rejected channels: {:s}".format(
+        str(clean_result.rejected_chan_names)))
     log.info("#Clean trials:     {:d}".format(len(clean_result.clean_trials)))
     log.info("#Rejected trials:  {:d}".format(len(clean_result.rejected_trials)))
     log.info("Fraction Clean:    {:.1f}%".format(

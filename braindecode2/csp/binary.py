@@ -8,6 +8,7 @@ import numpy as np
 from braindecode2.mywyrm.processing import online_standardize_epo
 log = logging.getLogger(__name__)
 
+
 class BinaryCSP(object):
     def __init__(self, cnt, filterbands, filt_order, folds,
             class_pairs, segment_ival, n_filters,
@@ -31,7 +32,7 @@ class BinaryCSP(object):
                 marker_def=self.marker_def, 
                 ival=self.segment_ival)
 
-            for fold_nr in xrange(len(self.folds)):
+            for fold_nr in range(len(self.folds)):
                 self.run_fold(epo, bp_nr, fold_nr)
     
     def run_fold(self, epo, bp_nr, fold_nr):  
@@ -47,7 +48,7 @@ class BinaryCSP(object):
         self.train_labels_full_fold[fold_nr] = epo_train.trials.data
         self.test_labels_full_fold[fold_nr] = epo_test.trials.data
         
-        for pair_nr in xrange(len(self.class_pairs)):
+        for pair_nr in range(len(self.class_pairs)):
             self.run_pair(epo_train, epo_test, bp_nr, fold_nr, pair_nr)
             
     def run_pair(self, epo_train, epo_test, bp_nr, fold_nr, pair_nr):
@@ -70,10 +71,10 @@ class BinaryCSP(object):
         if self.n_filters is not None:
             # take topmost and bottommost filters, e.g.
             # for n_filters=3 0,1,2,-3,-2,-1
-            columns = range(0, self.n_filters) + \
-                range(-self.n_filters, 0)
+            columns = (list(range(0, self.n_filters)) +
+                list(range(-self.n_filters, 0)))
         else: # take all possible filters
-            columns = range(len(filters))
+            columns = list(range(len(filters)))
         train_feature = apply_csp_var_log(epo_train_pair, filters, 
             columns)
 

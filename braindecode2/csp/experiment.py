@@ -1,7 +1,6 @@
-from wyrm.processing import append_cnt
 from braindecode2.mywyrm.processing import (
     resample_cnt, common_average_reference_cnt, exponential_standardize_cnt,
-    set_channel_to_zero, select_channels)
+    set_channel_to_zero, select_channels, concatenate_cnt)
 from braindecode2.mywyrm.clean import (NoCleaner, clean_train_test_cnt)
 import itertools
 from sklearn.cross_validation import KFold
@@ -202,7 +201,7 @@ class CSPExperiment(object):
         if self.set_cz_to_zero is True:
             self.cnt = set_channel_to_zero(self.cnt, 'Cz')
         if self.resample_fs is not None:
-            self.cnt = resample_cnt(self.cnt, newfs=self.resample_fs)
+            self.cnt = resample_cnt(self.cnt, new_fs=self.resample_fs)
         if self.common_average_reference is True:
             self.cnt = common_average_reference_cnt(self.cnt)
         if self.standardize_cnt is True:
@@ -416,7 +415,7 @@ class TwoFileCSPExperiment(CSPExperiment):
         if self.set_cz_to_zero is True:
             self.test_cnt = set_channel_to_zero(self.test_cnt, 'Cz')
         if self.resample_fs is not None:
-            self.test_cnt = resample_cnt(self.test_cnt, newfs=self.resample_fs)
+            self.test_cnt = resample_cnt(self.test_cnt, new_fs=self.resample_fs)
         if self.common_average_reference is True:
             self.test_cnt = common_average_reference_cnt(self.test_cnt)
         if self.standardize_cnt is True:
@@ -448,16 +447,19 @@ class TwoFileCSPExperiment(CSPExperiment):
         n_classes = len(self.marker_def)
         self.class_pairs = list(itertools.combinations(range(n_classes),2))
         # check that markers are all for trials
-        for _, mrk_code in self.cnt.markers + self.test_cnt.markers:
+        for mrk_code in np.concatenate((
+            self.cnt.attrs['events'][:,1],
+            self.test_cnt.attrs['events'][:,1])):
             assert mrk_code in list(itertools.chain(*self.marker_def.values()))
-        train_fold = range(len(self.cnt.markers))
-        test_fold = np.arange(len(self.test_cnt.markers)) + len(train_fold)
+        train_fold = list(range(len(self.cnt.attrs['events'])))
+        test_fold = np.arange(len(self.test_cnt.attrs['events'])) + (
+            len(train_fold))
         self.folds = [{'train': train_fold, 'test': test_fold}]
         assert np.intersect1d(self.folds[0]['test'], 
             self.folds[0]['train']).size == 0
-
         # merge cnts!!
-        self.cnt = append_cnt(self.cnt, self.test_cnt)
+        self.cnt = concatenate_cnt(self.cnt, self.test_cnt)
+
 
 def recreate_filterbank(train_csp_obj, n_features, n_filterbands,
         forward_steps, backward_steps, stop_when_no_improvement):
@@ -466,6 +468,7 @@ def recreate_filterbank(train_csp_obj, n_features, n_filterbands,
             forward_steps=forward_steps,
             backward_steps=backward_steps,
             stop_when_no_improvement=stop_when_no_improvement)
+
 
 def recreate_multi_class(train_csp_obj):
     """ Assumes filterbank + possibly binary csp was rerun and

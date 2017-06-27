@@ -1,7 +1,9 @@
 import numpy as np
 
 def select_features(labels, trials, num_features, k=0.5):
+    # TODO: delete this?
     """Trials in #trialsx#features format."""
+    assert False, "rewrite or delete"
     assert num_features <= trials.shape[1], ("Cannot select more features "
         "than existing features")
     selected_feature_mask = np.array([False] * trials.shape[1])

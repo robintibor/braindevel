@@ -44,7 +44,7 @@ def concatenate_cnt(cnt1, cnt2):
 
     cnt2.time.data += time_offset
     concatenated = xr.concat((cnt1, cnt2), dim='time')
-    cnt2.attrs['events'][:, 0] += time_offset
+    cnt2.attrs['events'][:, 0] += len(cnt1.data)
     concat_events = np.concatenate((cnt1.attrs['events'],
                                     cnt2.attrs['events']))
     concatenated.attrs['events'] = concat_events
@@ -160,6 +160,7 @@ def select_channels(dat, regexp_list, invert=False):
         regular expressions.
 
     """
+    dat = deepcopy_xarr(dat)
     all_channels = dat.channels.data
     matched_channels = []
     for c in all_channels:
@@ -200,6 +201,11 @@ def resample_cnt(cnt, new_fs):
                        coords={'channels': cnt.channels, 'time': new_times},
                        dims=cnt.dims,
                        attrs=cnt.attrs)
+    old_fs = cnt.attrs['fs']
+    event_samples_old = cnt.attrs['events'][:,0]
+    event_samples = event_samples_old * new_fs / float(old_fs)
+    event_samples = np.uint32(np.ceil(event_samples))
+    cnt.attrs['events'][:,0] = event_samples
     cnt.attrs['fs'] = new_fs
     return cnt
 
@@ -625,6 +631,28 @@ def lda_apply(fv, clf):
     return np.dot(x, w) + b
 
 
+def select_marker_classes(cnt, classes, copy_data=False):
+    if copy_data is True:
+        cnt = deepcopy_xarr(cnt)
+
+    event_mask = [(ev_code in classes) for ev_code in cnt.attrs['events'][:,1]]
+    cnt.attrs['events'] = cnt.attrs['events'][event_mask]
+    return cnt
+
+
+def select_marker_epochs(cnt, epoch_inds, copy_data=False):
+    # Restrict markers to only the correct epoch inds..
+    # use list comprehension and not conversion to numpy array
+    # + indexing to preserve types (type of first part of each marker,
+    # the time can be different from type of second part, the label)
+    # transforming to numpy array
+    # can lead to upcasting of labels from int to float for example....
+    if copy_data is True:
+        cnt = deepcopy_xarr(cnt)
+    event_mask = [(i in epoch_inds) for i in range(len(cnt.attrs['events']))]
+
+    cnt.attrs['events'] = cnt.attrs['events'][event_mask]
+    return cnt
 
 
 #### OLD
@@ -647,34 +675,6 @@ def select_marker_epoch_range(cnt, start, stop, copy_data=False):
         stop = len(cnt.markers)
     epoch_inds = range(start,stop)
     return select_marker_epochs(cnt, epoch_inds, copy_data)
-
-
-def select_marker_classes(cnt, classes, copy_data=False):
-    needed_markers = [m for m in cnt.markers if m[1] in classes]
-    if copy_data:
-        return cnt.copy(markers=needed_markers)
-    else:
-        # shallow copy only
-        copied_cnt = copy(cnt)
-        copied_cnt.markers = needed_markers
-        return copied_cnt
-
-
-def select_marker_epochs(cnt, epoch_inds, copy_data=False):
-    # Restrict markers to only the correct epoch inds..
-    # use list comprehension and not conversion to numpy array
-    # + indexing to preserve types (type of first part of each marker,
-    # the time can be different from type of second part, the label)
-    # transforming to numpy array
-    # can lead to upcasting of labels from int to float for example....
-    needed_markers = [m for i,m in enumerate(cnt.markers) if i in epoch_inds]
-    if copy_data:
-        return cnt.copy(markers=needed_markers)
-    else:
-        # shallow copy only
-        copied_cnt = copy(cnt)
-        copied_cnt.markers = needed_markers
-        return copied_cnt
 
 def select_ival_with_markers(cnt, segment_ival):
     """Select the ival of the data that has markers inside.

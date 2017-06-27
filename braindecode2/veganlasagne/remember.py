@@ -1,10 +1,10 @@
 import logging
 log = logging.getLogger(__name__)
 
-"""Classes that remember parameters during training, e.g.,
- remember best model so far"""
 
 class RememberBest():
+    """Classes that remember parameters during training, e.g.,
+     remember best model so far"""
     def  __init__(self, chan_name):
         self.chan_name = chan_name
         self.best_epoch = 0
