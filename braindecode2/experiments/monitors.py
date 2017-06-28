@@ -50,6 +50,7 @@ class LossMonitor(object):
         return {column_name: mean_loss}
 
 
+
 class CntTrialMisclassMonitor(object):
     def __init__(self, input_time_length=None):
         self.input_time_length = input_time_length
@@ -97,6 +98,40 @@ class CntTrialMisclassMonitor(object):
         return all_pred_labels, all_target_labels
 
 
+class CroppedTrialMisclassMonitor(object):
+    def __init__(self, input_time_length=None):
+        self.input_time_length = input_time_length
+
+    def monitor_epoch(self,):
+        return
+
+    def monitor_set(self, setname, all_preds, all_losses,
+                    all_batch_sizes, all_targets, dataset):
+        """Assuming one hot encoding for now"""
+        assert self.input_time_length is not None, "Need to know input time length..."
+        all_pred_labels = self.compute_pred_labels(dataset, all_preds)
+        assert all_pred_labels.shape == dataset.y.shape
+        misclass = 1 - np.mean(all_pred_labels == dataset.y)
+        column_name = "{:s}_misclass".format(setname)
+        return {column_name: float(misclass)}
+
+    def compute_pred_labels(self, dataset, all_preds,):
+        n_preds_per_input = all_preds[0].shape[2]
+        n_receptive_field = self.input_time_length - n_preds_per_input + 1
+
+        i_trial_starts = [0] * len(dataset.y)
+        i_trial_ends = [trial.shape[1] - n_receptive_field
+                        for trial in dataset.X]
+        preds_per_trial = compute_preds_per_trial_from_start_end(
+            all_preds, i_trial_starts, i_trial_ends)
+        all_pred_labels = [np.argmax(np.mean(p, axis=1))
+                           for p in preds_per_trial]
+
+        all_pred_labels = np.array(all_pred_labels)
+        assert all_pred_labels.shape == dataset.y.shape
+        return all_pred_labels
+
+
 def compute_preds_per_trial(y, all_preds, input_time_length):
     """
     Parameters
@@ -120,6 +155,8 @@ def compute_preds_per_trial(y, all_preds, input_time_length):
 
 def compute_preds_per_trial_from_start_end(
         all_preds, i_trial_starts, i_trial_ends):
+    # TODO: change to just accept trial lengths. or call n_preds_per_trial
+    # and dont foget to remove  +1 from needed_samples line if you really use len
     i_pred_block = 0
     all_preds_arr = np.concatenate(all_preds, axis=0)
     #all_preds_arr has shape forward_passes x classes x time

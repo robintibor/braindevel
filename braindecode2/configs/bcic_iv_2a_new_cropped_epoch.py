@@ -15,12 +15,12 @@ from braindecode2.datasets.loaders import BCICompetition4Set2A
 from braindecode2.datasets.signal_target import SignalAndTarget
 from braindecode2.experiments.experiment import Experiment
 from braindecode2.torchext.losses import log_categorical_crossentropy
-from braindecode2.trial_segment import create_target_series
+from braindecode2.trial_segment import segment_dat
 from braindecode2.experiments.monitors import (LossMonitor, MisclassMonitor,
                                                RuntimeMonitor,
-                                               CntTrialMisclassMonitor)
+                                               CroppedTrialMisclassMonitor)
 from braindecode2.experiments.stopcriteria import MaxEpochs, NoDecrease, Or
-from braindecode2.iterators import CntWindowTrialIterator
+from braindecode2.iterators import CropsFromTrialsIterator
 from braindecode2.models.shallow_fbcsp import ShallowFBCSPNet
 from braindecode2.modules.expression import Expression
 from braindecode2.mywyrm.processing import exponential_standardize_cnt, \
@@ -40,7 +40,7 @@ def get_templates():
 def get_grid_param_list():
     dictlistprod = cartesian_dict_of_lists_product
     default_params = [{ 
-        'save_folder': './data/models/pytorch/bcic-iv-2a/shallow/cnt-eps-fixed/',
+        'save_folder': './data/models/pytorch/bcic-iv-2a/shallow/cnt-epoched/',
         'only_return_exp': False,
         'n_chans': 22
         }]
@@ -89,24 +89,24 @@ def run(ex, data_folder, subject_id, n_chans,
 
     marker_def = OrderedDict([('Left Hand', [1]), ('Right Hand', [2],),
                               ('Foot', [3]), ('Tongue', [4])])
+    ival = [-476, 4000]
+    train_epo = segment_dat(train_cnt, marker_def, ival=ival)
+    test_epo = segment_dat(test_cnt, marker_def, ival=ival)
 
-    ival = [1500, 4000]
+    train_set = SignalAndTarget(
+        train_epo.data.astype(np.float32).swapaxes(1, 2)[:, :, :, None],
+        y=train_epo.trials.data.astype(np.int64))
+    test_set = SignalAndTarget(
+        test_epo.data.astype(np.float32).swapaxes(1, 2)[:, :, :, None],
+        y=test_epo.trials.data.astype(np.int64))
 
-
-
-    train_y = create_target_series(train_cnt, marker_def, ival)
-    train_set = SignalAndTarget(train_cnt.data.astype(np.float32),
-                                y=train_y.astype(np.int64))
-    test_y = create_target_series(test_cnt, marker_def, ival)
-    test_set = SignalAndTarget(test_cnt.data.astype(np.float32),
-                               y=test_y.astype(np.int64))
     train_set, valid_set = split_into_two_sets(train_set,
                                                first_set_fraction=0.8)
 
 
     set_random_seeds(seed=3984734, cuda=True)
 
-    n_classes = train_set.y.shape[1]
+    n_classes = int(np.max(train_set.y) + 1)
     n_chans = train_set.X.shape[1]
     # final_dense_length=69 for full trial length at -500,4000
     input_time_length = 1000
@@ -122,7 +122,7 @@ def run(ex, data_folder, subject_id, n_chans,
         np.ones((2, n_chans, input_time_length, 1), dtype=np.float32)).cuda())
     n_preds_per_input = out.cpu().data.numpy().shape[2]
 
-    iterator = CntWindowTrialIterator(batch_size=60,
+    iterator = CropsFromTrialsIterator(batch_size=60,
                                       input_time_length=input_time_length,
                                       n_preds_per_input=n_preds_per_input)
 
@@ -137,9 +137,11 @@ def run(ex, data_folder, subject_id, n_chans,
 
     stop_criterion = Or([MaxEpochs(800),
                          NoDecrease('valid_misclass', 80)])
-    monitors = [LossMonitor(), MisclassMonitor(exponentiate_preds=True,
-                                               col_suffix='sample_misclass'),
-                CntTrialMisclassMonitor(input_time_length=input_time_length), RuntimeMonitor()]
+    monitors = [LossMonitor(),
+                MisclassMonitor(exponentiate_preds=True,
+                                col_suffix='sample_misclass'),
+                CroppedTrialMisclassMonitor(input_time_length),
+                RuntimeMonitor()]
     model_constraint = MaxNormDefaultConstraint()
 
     exp = Experiment(model, train_set, valid_set, test_set, iterator=iterator,
