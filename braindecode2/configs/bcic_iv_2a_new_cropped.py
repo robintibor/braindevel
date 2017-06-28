@@ -137,7 +137,8 @@ def run(ex, data_folder, subject_id, n_chans,
 
     stop_criterion = Or([MaxEpochs(800),
                          NoDecrease('valid_misclass', 80)])
-    monitors = [LossMonitor(), MisclassMonitor(exponentiate_preds=True,col_suffix='sample_misclass'),
+    monitors = [LossMonitor(), MisclassMonitor(exponentiate_preds=True,
+                                               col_suffix='sample_misclass'),
                 CntTrialMisclassMonitor(input_time_length=input_time_length), RuntimeMonitor()]
     model_constraint = MaxNormDefaultConstraint()
 
