@@ -84,73 +84,6 @@ class BalancedBatchSizeIterator(object):
         self.rng = RandomState(328774)
 
 
-#TODO: rename to CropsFromCntWithTrialsIterator
-class CntWindowTrialIterator(object):
-    """Cut out windows for several predictions from a continous dataset
-     with a trial marker y signal.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
-    """
-
-    def __init__(self, batch_size, input_time_length, n_preds_per_input,
-                 check_preds_smaller_trial_len=True):
-        """
-        
-        Parameters
-        ----------
-        batch_size: int
-        input_time_length: int
-            Input time length of the ConvNet, determines size of batches in
-            3rd dimension.
-        n_preds_per_input: int
-            Number of predictions ConvNet makes per one input. Can be computed
-            by making a forward pass with the given input time length, the
-            output length in 3rd dimension is n_preds_per_input.
-        check_preds_smaller_trial_len: bool
-        """
-        self.batch_size = batch_size
-        self.input_time_length = input_time_length
-        self.n_preds_per_input = n_preds_per_input
-        self.check_preds_smaller_trial_len = check_preds_smaller_trial_len
-        self.rng = RandomState((2017,6,28))
-
-    def reset_rng(self):
-        self.rng = RandomState((2017,6,28))
-
-    def get_batches(self, dataset, shuffle):
-        i_trial_starts, i_trial_ends = compute_trial_start_end_samples(
-            dataset.y, check_trial_lengths_equal=False,
-            input_time_length=self.input_time_length)
-        if self.check_preds_smaller_trial_len:
-            check_trial_bounds(i_trial_starts, i_trial_ends,
-                               self.n_preds_per_input)
-        start_end_blocks_per_trial = compute_start_end_block_inds(
-            i_trial_starts, i_trial_ends, self.input_time_length,
-        self.n_preds_per_input)
-
-        return self.yield_block_batches(dataset.X, dataset.y,
-                                        start_end_blocks_per_trial,
-                                        shuffle=shuffle)
-
-
-    def yield_block_batches(self, X, y, start_end_blocks_per_trial, shuffle):
-        start_end_blocks_flat = np.concatenate(start_end_blocks_per_trial)
-        if shuffle:
-            self.rng.shuffle(start_end_blocks_flat)
-
-        for i_block in range(0, len(start_end_blocks_flat), self.batch_size):
-            i_block_stop = min(i_block + self.batch_size,
-                               len(start_end_blocks_flat))
-            start_end_blocks = start_end_blocks_flat[i_block:i_block_stop]
-            batch = create_batch_from_start_end_blocks(X, y, start_end_blocks, self.n_preds_per_input)
-            yield batch
-
-
 class CropsFromTrialsIterator(object):
     def __init__(self, batch_size, input_time_length, n_preds_per_input,
                  check_preds_smaller_trial_len=True):
@@ -193,7 +126,6 @@ class CropsFromTrialsIterator(object):
         for i_trial, trial_blocks in enumerate(start_end_blocks_per_trial):
             assert trial_blocks[0][0] == 0
             assert trial_blocks[-1][1] == i_trial_ends[i_trial]
-
 
         return self.yield_block_batches(dataset.X, dataset.y,
                                         start_end_blocks_per_trial,
@@ -264,19 +196,6 @@ def get_start_end_blocks_for_trial(trial_start, trial_end, input_time_length,
         start_end_blocks.append((i_window_start, i_adjusted_end))
 
     return start_end_blocks
-
-
-def create_batch_from_start_end_blocks(X, y, start_end_blocks, n_preds_per_input):
-    for i_extra_dim in range(X.ndim, 4):
-        X = X[:, :, None]
-    batch_y = [y[end-n_preds_per_input+1:end+1]
-        for _, end in start_end_blocks]
-    batch_X = [X[start:end + 1].swapaxes(0, 2)
-                  for start, end in start_end_blocks]
-    # from row x time x class to row x class x time (that is output of net)
-    batch_y = np.array(batch_y).swapaxes(1,2)
-    batch_X = np.concatenate(batch_X).astype(np.float32)
-    return batch_X, batch_y
 
 
 def create_batch_from_i_trial_start_end_blocks(X, y, i_trial_start_end_block,

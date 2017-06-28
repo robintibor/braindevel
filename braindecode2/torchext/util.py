@@ -1,18 +1,18 @@
-import torch
+import torch as th
 from torch.autograd import Variable
 import numpy as np
 import random
 
 
 def to_net_in_output(X):
-    return Variable(torch.from_numpy(X), requires_grad=False)
+    return Variable(th.from_numpy(X), requires_grad=False)
 
 
 def set_random_seeds(seed, cuda):
     random.seed(seed)
-    torch.manual_seed(seed)
+    th.manual_seed(seed)
     if cuda:
-        torch.cuda.manual_seed_all(seed)
+        th.cuda.manual_seed_all(seed)
     np.random.seed(seed)
 
 

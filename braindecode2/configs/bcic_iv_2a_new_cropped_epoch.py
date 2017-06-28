@@ -72,7 +72,6 @@ def run(ex, data_folder, subject_id, n_chans,
     train_label_filepath = train_filepath.replace('.gdf', '.mat')
     test_label_filepath = test_filepath.replace('.gdf', '.mat')
 
-    
     train_loader = BCICompetition4Set2A(
         train_filepath, labels_filename=train_label_filepath)
     test_loader = BCICompetition4Set2A(

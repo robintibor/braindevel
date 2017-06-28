@@ -1,4 +1,4 @@
-import torch
+import torch as th
 
 def square(x):
     return x * x
@@ -6,4 +6,4 @@ def square(x):
 
 def safe_log(x, eps=1e-6):
     """ Prevents log(0) by using max of eps and given x."""
-    return torch.log(torch.clamp(x, min=eps))
+    return th.log(th.clamp(x, min=eps))
