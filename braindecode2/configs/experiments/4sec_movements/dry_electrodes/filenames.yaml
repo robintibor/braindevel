@@ -1,8 +1,0 @@
-variants: [[{
-        dataset_filename: [
-            'data/BBCI-dry-electrodes/offline-execution/MartinS001R01_1-11BBCI.mat',
-            'data/BBCI-dry-electrodes/offline-imagery/MartinS001R01_1-11BBCI.mat',
-        ],
-        loader_type: [BBCIDataset],
-        #trial_stop
-    }]]

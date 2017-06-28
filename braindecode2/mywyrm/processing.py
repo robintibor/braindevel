@@ -1,7 +1,7 @@
 import re
-from copy import copy
 from copy import deepcopy
 import logging
+
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -9,8 +9,8 @@ import scipy.signal
 import scipy as sp
 from sklearn.covariance import LedoitWolf as LW
 import resampy
-from braindecode2.datahandling.preprocessing_funcs import (online_standardize,)
-from braindecode2.datasets.generate_filterbank import filter_is_stable
+
+from braindecode2.csp.generate_filterbank import filter_is_stable
 from braindecode2.util import deepcopy_xarr
 
 log = logging.getLogger(__name__)

@@ -1,5 +1,6 @@
 class SignalAndTarget(object):
     def __init__(self, X, y):
+        assert len(X) == len(y)
         self.X = X
         self.y = y
 

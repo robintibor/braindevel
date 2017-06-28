@@ -11,7 +11,7 @@ import numpy as np
 from copy import deepcopy
 from numpy.random import RandomState
 from braindecode2.datasets.sensor_positions import sort_topologically
-from braindecode2.datasets.generate_filterbank import generate_filterbank,\
+from braindecode2.csp.generate_filterbank import generate_filterbank,\
     filterbank_is_stable
 import logging
 log = logging.getLogger(__name__)

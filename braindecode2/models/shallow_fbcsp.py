@@ -1,18 +1,23 @@
+import numpy as np
 from torch import nn
+from torch.nn import init
+
 from braindecode2.modules.expression import Expression
 from braindecode2.torchext.functions import safe_log, square
-from torch.nn import init
+from braindecode2.torchext.util import to_net_in_output
+
 
 class ShallowFBCSPNet(object):
     # TODO: auto final dense length for shallow
     def __init__(self, in_chans,
                  n_classes,
+                 input_time_length=None,
                  n_filters_time=40,
                  filter_time_length=25,
                  n_filters_spat=40,
                  pool_time_length=75,
                  pool_time_stride=15,
-                 final_dense_length=30,
+                 final_conv_length=30,
                  conv_nonlin=square,
                  pool_mode='mean',
                  pool_nonlin=safe_log,
@@ -20,6 +25,8 @@ class ShallowFBCSPNet(object):
                  batch_norm=True,
                  batch_norm_alpha=0.1,
                  drop_prob=0.5):
+        if final_conv_length == 'full':
+            assert input_time_length is not None
         self.__dict__.update(locals())
         del self.self
 
@@ -56,11 +63,17 @@ class ShallowFBCSPNet(object):
                                     stride=(self.pool_time_stride, 1)))
         model.add_module('pool_nonlin', Expression(self.pool_nonlin))
         model.add_module('drop', nn.Dropout(p=self.drop_prob))
+        if self.final_conv_length == 'full':
+            out = model(to_net_in_output(np.ones(
+                (1,22,self.input_time_length,1), dtype=np.float32)))
+            n_out_time = out.cpu().data.numpy().shape[2]
+            self.final_conv_length = n_out_time
         model.add_module('conv_classifier',
-                         nn.Conv2d(n_filters_conv, self.n_classes,
-                                   (self.final_dense_length, 1), bias=True))
+                             nn.Conv2d(n_filters_conv, self.n_classes,
+                                       (self.final_conv_length, 1), bias=True))
         model.add_module('softmax', nn.LogSoftmax())
 
+        # Initialization, xavier is same as in paper...
         init.xavier_uniform(model.conv_time.weight, gain=1)
         # maybe no bias in case of no split layer and batch norm
         if self.split_first_layer or (not self.batch_norm):
