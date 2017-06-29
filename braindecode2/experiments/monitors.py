@@ -73,7 +73,7 @@ class CroppedTrialMisclassMonitor(object):
 
         n_preds_per_trial = [trial.shape[1] - n_receptive_field + 1
                         for trial in dataset.X]
-        preds_per_trial = compute_preds_per_trial_from_start_end(
+        preds_per_trial = compute_preds_per_trial_from_n_preds_per_trial(
             all_preds, n_preds_per_trial)
         all_pred_labels = [np.argmax(np.mean(p, axis=1))
                            for p in preds_per_trial]
@@ -83,16 +83,13 @@ class CroppedTrialMisclassMonitor(object):
         return all_pred_labels
 
 
-def compute_preds_per_trial_from_start_end(
+def compute_preds_per_trial_from_n_preds_per_trial(
         all_preds, n_preds_per_trial):
     # all_preds_arr has shape forward_passes x classes x time
     all_preds_arr = np.concatenate(all_preds, axis=0)
     preds_per_trial = []
     i_pred_block = 0
     for i_trial in range(len(n_preds_per_trial)):
-        # + 1 since end is inclusive
-        # so if trial end is 1 and trial start is 0
-        # need two samples (0 and 1)
         n_needed_preds = n_preds_per_trial[i_trial]
         preds_this_trial = []
         while n_needed_preds > 0:

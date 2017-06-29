@@ -43,17 +43,17 @@ def get_balanced_batches(n_trials, rng, shuffle, n_batches=None,
     all_inds = np.array(range(n_trials))
     if shuffle:
         rng.shuffle(all_inds)
-    i_trial = 0
-    end_trial = 0
+    i_start_trial = 0
+    i_stop_trial = 0
     batches = []
     for i_batch in range(n_batches):
-        end_trial += min_batch_size
+        i_stop_trial += min_batch_size
         if i_batch < n_batches_with_extra_trial:
-            end_trial += 1
-        batch_inds = all_inds[range(i_trial, end_trial)]
+            i_stop_trial += 1
+        batch_inds = all_inds[range(i_start_trial, i_stop_trial)]
         batches.append(batch_inds)
-        i_trial = end_trial
-    assert i_trial == n_trials
+        i_start_trial = i_stop_trial
+    assert i_start_trial == n_trials
     return batches
 
 
@@ -115,99 +115,100 @@ class CropsFromTrialsIterator(object):
         # start at end of receptive field
         n_receptive_field = self.input_time_length - self.n_preds_per_input + 1
         i_trial_starts = [n_receptive_field - 1] * len(dataset.X)
-        i_trial_ends = [trial.shape[1] - 1 for trial in dataset.X]
+        i_trial_stops = [trial.shape[1] for trial in dataset.X]
 
         if self.check_preds_smaller_trial_len:
-            check_trial_bounds(i_trial_starts, i_trial_ends,
+            check_trial_bounds(i_trial_starts, i_trial_stops,
                                self.n_preds_per_input)
-        start_end_blocks_per_trial = compute_start_end_block_inds(
-            i_trial_starts, i_trial_ends, self.input_time_length,
+        start_stop_blocks_per_trial = compute_start_stop_block_inds(
+            i_trial_starts, i_trial_stops, self.input_time_length,
             self.n_preds_per_input, self.check_preds_smaller_trial_len)
-        for i_trial, trial_blocks in enumerate(start_end_blocks_per_trial):
+        for i_trial, trial_blocks in enumerate(start_stop_blocks_per_trial):
             assert trial_blocks[0][0] == 0
-            assert trial_blocks[-1][1] == i_trial_ends[i_trial]
+            assert trial_blocks[-1][1] == i_trial_stops[i_trial]
 
         return self.yield_block_batches(dataset.X, dataset.y,
-                                        start_end_blocks_per_trial,
+                                        start_stop_blocks_per_trial,
                                         shuffle=shuffle)
 
-    def yield_block_batches(self, X, y, start_end_blocks_per_trial, shuffle):
-        # add trial nr to start end blocks and flatten at same time
-        i_trial_start_end_block = [(i_trial, start, end)
-                                      for i_trial, block in enumerate(start_end_blocks_per_trial)
-                                      for (start, end) in block]
+    def yield_block_batches(self, X, y, start_stop_blocks_per_trial, shuffle):
+        # add trial nr to start stop blocks and flatten at same time
+        i_trial_start_stop_block = [(i_trial, start, stop)
+                                      for i_trial, block in
+                                          enumerate(start_stop_blocks_per_trial)
+                                      for (start, stop) in block]
         if shuffle:
-            self.rng.shuffle(i_trial_start_end_block)
+            self.rng.shuffle(i_trial_start_stop_block)
 
-        for i_block in range(0, len(i_trial_start_end_block), self.batch_size):
+        for i_block in range(0, len(i_trial_start_stop_block), self.batch_size):
             i_block_stop = min(i_block + self.batch_size,
-                               len(i_trial_start_end_block))
-            start_end_blocks = i_trial_start_end_block[i_block:i_block_stop]
-            batch = create_batch_from_i_trial_start_end_blocks(
-                X, y, start_end_blocks, self.n_preds_per_input)
+                               len(i_trial_start_stop_block))
+            start_stop_blocks = i_trial_start_stop_block[i_block:i_block_stop]
+            batch = create_batch_from_i_trial_start_stop_blocks(
+                X, y, start_stop_blocks, self.n_preds_per_input)
             yield batch
 
 
-def check_trial_bounds(i_trial_starts, i_trial_ends, n_preds_per_input):
-    for start, end in zip(i_trial_starts, i_trial_ends):
-        assert end - start + 1 >= n_preds_per_input, (
+def check_trial_bounds(i_trial_starts, i_trial_stops, n_preds_per_input):
+    for start, stop in zip(i_trial_starts, i_trial_stops):
+        assert stop - start >= n_preds_per_input, (
             "Trial should be longer or equal than number of sample preds, "
             "Trial length: {:d}, sample preds {:d}...".
-                format(end - start + 1, n_preds_per_input))
+                format(stop - start, n_preds_per_input))
 
 
-# Todo: Remove all references to "end" and use "stop" instead?
-def compute_start_end_block_inds(i_trial_starts, i_trial_ends,
+def compute_start_stop_block_inds(i_trial_starts, i_trial_stops,
                                  input_time_length, n_preds_per_input,
                                  check_preds_smaller_trial_len):
     # create start stop indices for all batches still 2d trial -> start stop
-    start_end_blocks_per_trial = []
+    start_stop_blocks_per_trial = []
     for i_trial in range(len(i_trial_starts)):
         trial_start = i_trial_starts[i_trial]
-        trial_end = i_trial_ends[i_trial]
-        start_end_blocks = get_start_end_blocks_for_trial(
-            trial_start, trial_end, input_time_length,
+        trial_stop = i_trial_stops[i_trial]
+        start_stop_blocks = get_start_stop_blocks_for_trial(
+            trial_start, trial_stop, input_time_length,
             n_preds_per_input)
 
         if check_preds_smaller_trial_len:
-            # check that block is correct, all predicted samples should be the trial samples
+            # check that block is correct, all predicted samples together
+            # should be the trial samples
             all_predicted_samples = [
-                range(start_end[1] - n_preds_per_input + 1,
-                      start_end[1] + 1) for start_end in start_end_blocks]
+                range(stop - n_preds_per_input,
+                      stop) for _,stop in start_stop_blocks]
             # this check takes about 50 ms in performance test
             # whereas loop itself takes only 5 ms.. deactivate it if not necessary
             assert np.array_equal(
-                range(i_trial_starts[i_trial], i_trial_ends[i_trial] + 1),
+                range(i_trial_starts[i_trial], i_trial_stops[i_trial]),
                 np.unique(np.concatenate(all_predicted_samples)))
 
-        start_end_blocks_per_trial.append(start_end_blocks)
-    return start_end_blocks_per_trial
+        start_stop_blocks_per_trial.append(start_stop_blocks)
+    return start_stop_blocks_per_trial
 
 
-def get_start_end_blocks_for_trial(trial_start, trial_end, input_time_length,
+def get_start_stop_blocks_for_trial(trial_start, trial_stop, input_time_length,
                                    n_preds_per_input):
-    start_end_blocks = []
-    i_window_end = trial_start - 1  # now when we add sample preds in loop,
+    start_stop_blocks = []
+    i_window_stop = trial_start  # now when we add sample preds in loop,
     # first sample of trial corresponds to first prediction
-    while i_window_end < trial_end:
-        i_window_end += n_preds_per_input
-        i_adjusted_end = min(i_window_end, trial_end)
-        i_window_start = i_adjusted_end - input_time_length + 1
-        start_end_blocks.append((i_window_start, i_adjusted_end))
+    while i_window_stop < trial_stop:
+        i_window_stop += n_preds_per_input
+        i_adjusted_stop = min(i_window_stop, trial_stop)
+        i_window_start = i_adjusted_stop - input_time_length
+        start_stop_blocks.append((i_window_start, i_adjusted_stop))
 
-    return start_end_blocks
+    return start_stop_blocks
 
 
-def create_batch_from_i_trial_start_end_blocks(X, y, i_trial_start_end_block,
+def create_batch_from_i_trial_start_stop_blocks(X, y, i_trial_start_stop_block,
                                                n_preds_per_input):
     for i_extra_dim in range(X.ndim, 4):
         X = X[:, :, None]
     n_classes = np.max(y) + 1
     Xs = []
     ys = []
-    for i_trial, start, end in i_trial_start_end_block:
+    for i_trial, start, stop in i_trial_start_stop_block:
         # one-hot-encode
-        Xs.append(X[i_trial,:,start:end+1])
+        Xs.append(X[i_trial,:,start:stop])
         block_y = np.zeros((n_classes, n_preds_per_input), dtype=np.float32)
         block_y[y[i_trial]] = 1
         ys.append(block_y)
