@@ -167,10 +167,10 @@ def segment_dat(cnt, marker_def, ival):
     y = create_target_series(cnt, marker_def, ival=ival)
     # Create classes per trial
     # and sample inds per trial from the target series
-    starts, ends = compute_trial_start_end_samples(y)
+    starts, stops = compute_trial_start_stop_samples(y)
     classes = [np.argmax(y[i_s]) for i_s in starts]
-    sample_inds_per_trial = [range(i_s, i_e + 1) for (i_s, i_e) in
-                             zip(starts, ends)]
+    sample_inds_per_trial = [list(range(i_start, i_stop))
+                             for (i_start, i_stop) in zip(starts, stops)]
 
     if len(sample_inds_per_trial) == 0:
         assert "No epochs not tested yet"
