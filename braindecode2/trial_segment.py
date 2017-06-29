@@ -51,7 +51,7 @@ def create_target_series(cnt, marker_def, ival):
     return targets
 
 
-def compute_trial_start_end_samples(y, check_trial_lengths_equal=True,
+def compute_trial_start_stop_samples(y, check_trial_lengths_equal=True,
                                     input_time_length=None):
     """Computes trial start and end samples (end is inclusive) from
     one-hot encoded y-matrix.
@@ -70,34 +70,35 @@ def compute_trial_start_end_samples(y, check_trial_lengths_equal=True,
     -------
 
     """
+    #TODO: change to start stop
     trial_part = np.sum(y, 1) == 1
     boundaries = np.diff(trial_part.astype(np.int32))
     i_trial_starts = np.flatnonzero(boundaries == 1) + 1
-    i_trial_ends = np.flatnonzero(boundaries == -1)
+    i_trial_stops = np.flatnonzero(boundaries == -1) + 1
     # it can happen that a trial is only partially there since the
     # cnt signal was split in the middle of a trial
     # for now just remove these
     # use that start marker should always be before or equal to end marker
-    if i_trial_starts[0] > i_trial_ends[0]:
+    if i_trial_starts[0] >= i_trial_stops[0]:
         # cut out first trial which only has end marker
-        i_trial_ends = i_trial_ends[1:]
-    if i_trial_starts[-1] > i_trial_ends[-1]:
+        i_trial_stops = i_trial_stops[1:]
+    if i_trial_starts[-1] >= i_trial_stops[-1]:
         # cut out last trial which only has start marker
         i_trial_starts = i_trial_starts[:-1]
 
-    assert (len(i_trial_starts) == len(i_trial_ends))
-    assert (np.all(i_trial_starts <= i_trial_ends))
+    assert (len(i_trial_starts) == len(i_trial_stops))
+    assert (np.all(i_trial_starts < i_trial_stops))
     # possibly remove first trials if they are too early
     if input_time_length is not None:
         while i_trial_starts[0] < (input_time_length - 1):
             i_trial_starts = i_trial_starts[1:]
-            i_trial_ends = i_trial_ends[1:]
+            i_trial_stops = i_trial_stops[1:]
     if check_trial_lengths_equal:
         # just checking that all trial lengths are equal
-        all_trial_lens = np.array(i_trial_ends) - np.array(i_trial_starts)
+        all_trial_lens = np.array(i_trial_stops) - np.array(i_trial_starts)
         assert all(all_trial_lens == all_trial_lens[0]), (
             "All trial lengths should be equal...")
-    return i_trial_starts, i_trial_ends
+    return i_trial_starts, i_trial_stops
 
 
 def segment_dat(cnt, marker_def, ival):

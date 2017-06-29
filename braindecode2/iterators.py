@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.random import RandomState
 
-from braindecode2.trial_segment import compute_trial_start_end_samples
+from braindecode2.trial_segment import compute_trial_start_stop_samples
 
 
 def get_balanced_batches(n_trials, rng, shuffle, n_batches=None,
@@ -147,6 +147,129 @@ class CropsFromTrialsIterator(object):
             batch = create_batch_from_i_trial_start_stop_blocks(
                 X, y, start_stop_blocks, self.n_preds_per_input)
             yield batch
+
+
+class CropsFromTrialsInTimeSeriesIterator(object):
+    """Cut out windows for several predictions from a continous dataset
+     with a trial marker y signal.
+    Parameters
+    ----------
+    Returns
+    -------
+    """
+
+    def __init__(self, batch_size, input_time_length, n_preds_per_input,
+                 check_preds_smaller_trial_len=True):
+        """
+
+        Parameters
+        ----------
+        batch_size: int
+        input_time_length: int
+            Input time length of the ConvNet, determines size of batches in
+            3rd dimension.
+        n_preds_per_input: int
+            Number of predictions ConvNet makes per one input. Can be computed
+            by making a forward pass with the given input time length, the
+            output length in 3rd dimension is n_preds_per_input.
+        check_preds_smaller_trial_len: bool
+        """
+        self.batch_size = batch_size
+        self.input_time_length = input_time_length
+        self.n_preds_per_input = n_preds_per_input
+        self.check_preds_smaller_trial_len = check_preds_smaller_trial_len
+        self.rng = RandomState((2017, 6, 28))
+
+    def reset_rng(self):
+        self.rng = RandomState((2017, 6, 28))
+
+    def get_batches(self, dataset, shuffle):
+        # TODO: convert rest to stop from end
+        i_trial_starts, i_trial_stops = compute_trial_start_stop_samples(
+            dataset.y, check_trial_lengths_equal=False,
+            input_time_length=self.input_time_length)
+        if self.check_preds_smaller_trial_len:
+            check_trial_bounds(i_trial_starts, i_trial_stops,
+                               self.n_preds_per_input)
+        start_end_blocks_per_trial = compute_start_end_block_inds(
+            i_trial_starts, i_trial_stops-1, self.input_time_length,
+            self.n_preds_per_input,
+        self.check_preds_smaller_trial_len)
+
+        return self.yield_block_batches(dataset.X, dataset.y,
+                                        start_end_blocks_per_trial,
+                                        shuffle=shuffle)
+
+    def yield_block_batches(self, X, y, start_end_blocks_per_trial, shuffle):
+        start_end_blocks_flat = np.concatenate(start_end_blocks_per_trial)
+        if shuffle:
+            self.rng.shuffle(start_end_blocks_flat)
+
+        for i_block in range(0, len(start_end_blocks_flat), self.batch_size):
+            i_block_stop = min(i_block + self.batch_size,
+                               len(start_end_blocks_flat))
+            start_end_blocks = start_end_blocks_flat[i_block:i_block_stop]
+            batch = create_batch_from_start_end_blocks(X, y, start_end_blocks,
+                                                       self.n_preds_per_input)
+
+
+            yield batch
+
+
+def compute_start_end_block_inds(i_trial_starts, i_trial_stops,
+                                 input_time_length, n_preds_per_input,
+                                 check_preds_smaller_trial_len):
+    # create start stop indices for all batches still 2d trial -> start stop
+    start_end_blocks_per_trial = []
+    for i_trial in range(len(i_trial_starts)):
+        trial_start = i_trial_starts[i_trial]
+        trial_end = i_trial_stops[i_trial] - 1
+        start_end_blocks = get_start_end_blocks_for_trial(
+            trial_start, trial_end, input_time_length,
+            n_preds_per_input)
+
+        if check_preds_smaller_trial_len:
+            # check that block is correct, all predicted samples should be the trial samples
+            all_predicted_samples = [
+                range(start_end[1] - n_preds_per_input + 1,
+                      start_end[1] + 1) for start_end in start_end_blocks]
+            # this check takes about 50 ms in performance test
+            # whereas loop itself takes only 5 ms.. deactivate it if not necessary
+            assert np.array_equal(
+                range(i_trial_starts[i_trial], i_trial_stops[i_trial]),
+                np.unique(np.concatenate(all_predicted_samples)))
+
+        start_end_blocks_per_trial.append(start_end_blocks)
+    return start_end_blocks_per_trial
+
+
+def get_start_end_blocks_for_trial(trial_start, trial_end, input_time_length,
+                                   n_preds_per_input):
+    start_end_blocks = []
+    i_window_end = trial_start - 1  # now when we add sample preds in loop,
+    # first sample of trial corresponds to first prediction
+    while i_window_end < trial_end:
+        i_window_end += n_preds_per_input
+        i_adjusted_end = min(i_window_end, trial_end)
+        i_window_start = i_adjusted_end - input_time_length + 1
+        start_end_blocks.append((i_window_start, i_adjusted_end))
+
+    return start_end_blocks
+
+
+
+
+def create_batch_from_start_end_blocks(X, y, start_end_blocks, n_preds_per_input):
+    for i_extra_dim in range(X.ndim, 4):
+        X = X[:, :, None]
+    batch_y = [y[end-n_preds_per_input+1:end+1]
+        for _, end in start_end_blocks]
+    batch_X = [X[start:end + 1].swapaxes(0, 2)
+                  for start, end in start_end_blocks]
+    # from row x time x class to row x class x time (that is output of net)
+    batch_y = np.array(batch_y).swapaxes(1,2)
+    batch_X = np.concatenate(batch_X).astype(np.float32)
+    return batch_X, batch_y
 
 
 def check_trial_bounds(i_trial_starts, i_trial_stops, n_preds_per_input):

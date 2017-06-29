@@ -1,7 +1,7 @@
 import numpy as np
 import time
 
-from braindecode2.trial_segment import compute_trial_start_end_samples
+from braindecode2.trial_segment import compute_trial_start_stop_samples
 
 
 class MisclassMonitor(object):
@@ -81,6 +81,55 @@ class CroppedTrialMisclassMonitor(object):
         all_pred_labels = np.array(all_pred_labels)
         assert all_pred_labels.shape == dataset.y.shape
         return all_pred_labels
+
+
+class CroppedTrialInTimeSeriesMisclassMonitor(object):
+    # Maybe remove entire class?
+    def __init__(self, input_time_length=None):
+        self.input_time_length = input_time_length
+
+    def monitor_epoch(self,):
+        return
+
+    def monitor_set(self, setname, all_preds, all_losses,
+                    all_batch_sizes, all_targets, dataset):
+        """Assuming one hot encoding for now"""
+        assert self.input_time_length is not None, "Need to know input time length..."
+        all_pred_labels, all_target_labels = self.compute_pred_and_target_labels(
+            dataset, all_preds)
+        misclass = 1 - np.mean(all_pred_labels == all_target_labels)
+        column_name = "{:s}_misclass".format(setname)
+        return {column_name: float(misclass)}
+
+    def compute_pred_and_target_labels(self, dataset, all_preds,):
+        all_target_labels = []
+
+        i_trial_starts, i_trial_stops = compute_trial_start_stop_samples(
+            dataset.y, check_trial_lengths_equal=False,
+            input_time_length=self.input_time_length)
+        n_preds_per_trial = i_trial_stops - i_trial_starts
+        preds_per_trial = compute_preds_per_trial_from_n_preds_per_trial(
+            all_preds, n_preds_per_trial)
+        all_pred_labels = [np.argmax(np.mean(p, axis=1))
+                           for p in preds_per_trial]
+        for i_trial, (start, stop) in enumerate(
+                zip(i_trial_starts, i_trial_stops)):
+            targets = dataset.y[start:stop]  # end is not inclusive
+            assert len(targets) == preds_per_trial[i_trial].shape[1]
+            # max would have several 1s for different classes
+            # if there are any two different classes with 1s
+            # in all samples
+            assert np.sum(np.max(targets, axis=0)) == 1, ("Trial should only "
+                                                          "have one class")
+            assert np.sum(targets) == len(targets), ("Every sample should have "
+                                                     "one positive marker")
+            target_label = np.argmax(np.max(targets, axis=0))
+            all_target_labels.append(target_label)
+
+        all_pred_labels = np.array(all_pred_labels)
+        all_target_labels = np.array(all_target_labels)
+        assert all_pred_labels.shape == all_target_labels.shape
+        return all_pred_labels, all_target_labels
 
 
 def compute_preds_per_trial_from_n_preds_per_trial(
