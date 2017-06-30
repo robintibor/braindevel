@@ -4,7 +4,7 @@ from torch.nn import init
 
 from braindecode2.modules.expression import Expression
 from braindecode2.torchext.functions import safe_log, square
-from braindecode2.torchext.util import to_net_in_output
+from braindecode2.torchext.util import np_to_var
 
 
 class ShallowFBCSPNet(object):
@@ -63,15 +63,17 @@ class ShallowFBCSPNet(object):
                                     stride=(self.pool_time_stride, 1)))
         model.add_module('pool_nonlin', Expression(self.pool_nonlin))
         model.add_module('drop', nn.Dropout(p=self.drop_prob))
-        if self.final_conv_length == 'full':
-            out = model(to_net_in_output(np.ones(
-                (1,22,self.input_time_length,1), dtype=np.float32)))
+        if self.final_conv_length == 'auto':
+            out = model(np_to_var(np.ones(
+                (1, self.in_chans, self.input_time_length,1),
+                dtype=np.float32)))
             n_out_time = out.cpu().data.numpy().shape[2]
             self.final_conv_length = n_out_time
         model.add_module('conv_classifier',
                              nn.Conv2d(n_filters_conv, self.n_classes,
                                        (self.final_conv_length, 1), bias=True))
         model.add_module('softmax', nn.LogSoftmax())
+        model.add_module('squeeze',  Expression(lambda x: x.squeeze()))
 
         # Initialization, xavier is same as in paper...
         init.xavier_uniform(model.conv_time.weight, gain=1)

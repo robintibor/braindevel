@@ -1,9 +1,6 @@
 import numpy as np
 from numpy.random import RandomState
 
-from braindecode2.trial_segment import compute_trial_start_stop_samples
-
-
 def get_balanced_batches(n_trials, rng, shuffle, n_batches=None,
                          batch_size=None):
     """Create indices for batches balanced in size (batches will have maximum size difference of 1).
@@ -202,18 +199,16 @@ def get_start_stop_blocks_for_trial(trial_start, trial_stop, input_time_length,
 
 def create_batch_from_i_trial_start_stop_blocks(X, y, i_trial_start_stop_block,
                                                n_preds_per_input):
-    for i_extra_dim in range(X.ndim, 4):
-        X = X[:, :, None]
-    n_classes = np.max(y) + 1
     Xs = []
     ys = []
     for i_trial, start, stop in i_trial_start_stop_block:
-        # one-hot-encode
-        Xs.append(X[i_trial,:,start:stop])
-        block_y = np.zeros((n_classes, n_preds_per_input), dtype=np.float32)
-        block_y[y[i_trial]] = 1
-        ys.append(block_y)
-        #ys.append(y[i_trial])
+        Xs.append(X[i_trial][:,start:stop])
+        # one-hot-encode targets
+        #block_y = np.zeros((n_classes, n_preds_per_input), dtype=np.float32)
+        #block_y[y[i_trial]] = 1
+        #block_y = np.ones((n_preds_per_input), dtype=np.int64) * y[i_trial]
+        #ys.append(block_y)
+        ys.append(y[i_trial])
     batch_X = np.array(Xs)
     batch_y = np.array(ys)
     return batch_X, batch_y

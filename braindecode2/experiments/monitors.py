@@ -82,6 +82,18 @@ class CroppedTrialMisclassMonitor(object):
         assert all_pred_labels.shape == dataset.y.shape
         return all_pred_labels
 
+
+def compute_preds_per_trial_for_set(all_preds, input_time_length,
+                                        dataset, ):
+        n_preds_per_input = all_preds[0].shape[2]
+        n_receptive_field = input_time_length - n_preds_per_input + 1
+        n_preds_per_trial = [trial.shape[1] - n_receptive_field + 1
+                             for trial in dataset.X]
+        preds_per_trial = compute_preds_per_trial_from_n_preds_per_trial(
+            all_preds, n_preds_per_trial)
+        return preds_per_trial
+
+
 def compute_preds_per_trial_from_n_preds_per_trial(
         all_preds, n_preds_per_trial):
     # all_preds_arr has shape forward_passes x classes x time

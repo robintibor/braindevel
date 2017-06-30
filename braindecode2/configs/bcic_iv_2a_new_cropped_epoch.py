@@ -27,8 +27,8 @@ from braindecode2.mywyrm.processing import exponential_standardize_cnt, \
     bandpass_cnt
 from braindecode2.splitters import split_into_two_sets
 from braindecode2.torchext.constraints import MaxNormDefaultConstraint
-from braindecode2.torchext.util import (set_random_seeds,to_net_in_output,
-    convert_to_dense_prediction_model)
+from braindecode2.torchext.util import (set_random_seeds, np_to_var,
+                                        to_dense_prediction_model)
 
 log = logging.getLogger(__name__)
 
@@ -113,11 +113,11 @@ def run(ex, data_folder, subject_id, n_chans,
                             input_time_length=input_time_length,
                             final_conv_length=30).create_network()
     model.cuda()
-    convert_to_dense_prediction_model(model)
+    to_dense_prediction_model(model)
 
     model.add_module('squeeze', Expression(lambda x: x.squeeze()))
 
-    out = model(to_net_in_output(
+    out = model(np_to_var(
         np.ones((2, n_chans, input_time_length, 1), dtype=np.float32)).cuda())
     n_preds_per_input = out.cpu().data.numpy().shape[2]
 

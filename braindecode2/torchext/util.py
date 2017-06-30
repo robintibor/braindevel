@@ -4,8 +4,12 @@ import numpy as np
 import random
 
 
-def to_net_in_output(X):
-    return Variable(th.from_numpy(X), requires_grad=False)
+def np_to_var(X, requires_grad=False, **var_kwargs):
+    return Variable(th.from_numpy(X), requires_grad=requires_grad, **var_kwargs)
+
+
+def var_to_np(var):
+    return var.cpu().data.numpy()
 
 
 def set_random_seeds(seed, cuda):
@@ -16,7 +20,7 @@ def set_random_seeds(seed, cuda):
     np.random.seed(seed)
 
 
-def convert_to_dense_prediction_model(model):
+def to_dense_prediction_model(model):
     stride_so_far = np.array([1, 1])
     for module in model.modules():
         if hasattr(module, 'stride'):

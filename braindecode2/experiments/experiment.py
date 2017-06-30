@@ -6,7 +6,7 @@ import numpy as np
 
 from braindecode2.splitters import concatenate_sets
 from braindecode2.experiments.stopcriteria import MaxEpochs, ColumnBelow, Or
-from braindecode2.torchext.util import to_net_in_output, set_random_seeds
+from braindecode2.torchext.util import np_to_var, set_random_seeds
 
 log = logging.getLogger(__name__)
 
@@ -168,8 +168,8 @@ class Experiment(object):
 
     def eval_on_batch(self, inputs, targets):
         self.model.eval()
-        input_vars = to_net_in_output(inputs)
-        target_vars = to_net_in_output(targets)
+        input_vars = np_to_var(inputs)
+        target_vars = np_to_var(targets)
         if self.cuda:
             input_vars = input_vars.cuda()
             target_vars = target_vars.cuda()
@@ -181,8 +181,8 @@ class Experiment(object):
 
     def train_batch(self, inputs, targets):
         self.model.train()
-        input_vars = to_net_in_output(inputs)
-        target_vars = to_net_in_output(targets)
+        input_vars = np_to_var(inputs)
+        target_vars = np_to_var(targets)
         if self.cuda:
             input_vars = input_vars.cuda()
             target_vars = target_vars.cuda()
