@@ -1,0 +1,12 @@
+{
+    extends: ['configs/experiments/grasp_lift/all_subjects/deeper_more_time.yaml',
+    'configs/experiments/grasp_lift/cnt_standard_cnn_net.yaml'],
+    variants: [[{
+        batch_size: [45],
+        save_path: ['data/models/grasp-lift/all-sub/standard-cnn/'],
+        num_filters:  [80],
+        preprocessor: ["null"],
+        standardize_series_wise: [False],
+        remove_baseline_mean: [True],
+    }]],
+}

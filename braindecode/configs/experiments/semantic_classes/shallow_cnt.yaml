@@ -1,0 +1,42 @@
+{
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/shallow_square.yaml',
+        'configs/experiments/semantic_classes/cnt.yaml',
+        'configs/experiments/semantic_classes/filenames.yaml'
+        ],
+    variants: [[{
+        save_path: ['data/models/semantic-classes/cnt/shallow/'],
+        final_dense_length: [30],
+        input_time_length: [1000],
+        n_sample_preds : [500], # will be overwritten anyways
+        first_nonlin: [$square],
+        post_pool_nonlin: [$safe_log],
+        pool_mode: ['average_exc_pad'],
+        
+        drop_p: [0.5],
+        layers: [$cnt_shallow_square],
+        
+        
+        # from paper/ours/shallow.yaml
+        num_filters: [40],
+        trial_stop: [3996],
+        filter_time_length: [25],
+        pool_time_length: [75],
+        pool_time_stride: [15],
+        
+        trial_stop: [3000],
+        
+        
+        # from paper/ours/our_data.yaml
+        resample_fs: [250],
+        eog_sensors: [['EOGv', 'EOGh']],
+        sensor_names: [$C_sensors],
+        n_classes: [3],
+        
+        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
+        'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
+        'misclass_monitor', 'rejection_blink_ival', 'whisker_percent',
+        'use_test_as_valid', 'test_cleaner', 'train_cleaner', 'valid_set_fraction']]
+    }]],
+}

@@ -1,0 +1,7 @@
+variants: [[{
+        dataset_filename: [
+            'data/four-sec-dry-32-sensors/MaVoMuSc_dryEEG32S001_2.BBCI.mat',
+            'data/four-sec-dry-32-sensors/MaVoMuSc_dryEEG32S003.BBCI.mat',
+        ],
+        loader_type: [BBCIDataset],
+    }]]

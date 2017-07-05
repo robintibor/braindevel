@@ -1,0 +1,41 @@
+{
+    templates: {
+        residual_net: !obj:braindecode.models.resnet.ResNet { 
+                in_chans: in_sensors,
+                input_time_length: $input_time_length,
+                projection: $projection,
+                n_layers_per_block: $n_layers_per_block,
+                n_first_filters: $n_first_filters,
+                first_filter_length: $first_filter_length,
+                final_pool_length: $final_pool_length,
+                batch_norm_alpha: $batch_norm_alpha,
+                batch_norm_epsilon: $batch_norm_epsilon,
+                nonlinearity: $nonlinearity,
+                drop_before_pool: $drop_before_pool,
+                final_aggregator: $final_aggregator,
+                final_nonlin: $final_nonlin,
+                survival_prob: $survival_prob,
+                split_first_layer: $split_first_layer,
+                add_after_nonlin: $add_after_nonlin,
+                reduction_method: $reduction_method, 
+                reduction_pool_mode: $reduction_pool_mode
+        },
+        layer_names_to_norms: {
+        },
+        square: !!python/name:theano.tensor.sqr ,
+        sigmoid: !!python/name:lasagne.nonlinearities.sigmoid ,
+        identity: !!python/name:lasagne.nonlinearities.identity ,
+        elu: !!python/name:lasagne.nonlinearities.elu ,
+        relu: !!python/name:lasagne.nonlinearities.rectify ,
+        leaky_relu: !!python/name:lasagne.nonlinearities.leaky_rectify ,
+        safe_log: !!python/name:braindecode.veganlasagne.nonlinearities.safe_log ,
+        safe_softmax: !!python/name:braindecode.veganlasagne.nonlinearities.safe_softmax ,
+        log_softmax: !!python/name:braindecode.veganlasagne.nonlinearities.log_softmax ,
+    },
+    variants: [[{
+        layer_names_to_norms: [$layer_names_to_norms],
+        layers: [$residual_net],
+        batch_norm_alpha: [0.1],
+        batch_norm_epsilon: [1e-4],
+    }]]
+}

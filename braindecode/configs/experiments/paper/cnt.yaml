@@ -1,0 +1,75 @@
+{
+    templates: {
+        cnt_iterator: !obj:braindecode.datahandling.batch_iteration.CntWindowTrialIterator {
+            batch_size: $batch_size,
+            input_time_length: $input_time_length,
+            n_sample_preds: $n_sample_preds,
+        },
+        sample_trial_monitors: [
+                !obj:braindecode.veganlasagne.monitors.LossMonitor {},
+                !obj:braindecode.veganlasagne.monitors.MisclassMonitor {
+                    chan_name: 'sample_misclass'},
+                !obj:braindecode.veganlasagne.monitors.CntTrialMisclassMonitor { 
+                    input_time_length: $input_time_length},
+                !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
+        ],
+        raw_set_train: !obj:braindecode.datasets.cnt_signal_matrix.CntSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.$loader_type {
+                    filename: $dataset_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            sensor_names: $sensor_names,
+        },
+        raw_set_test: !obj:braindecode.datasets.cnt_signal_matrix.CntSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.$loader_type {
+                    filename: $test_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            sensor_names: $sensor_names,
+        },
+        tied_neighbours: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [$categorical_crossentropy,
+                !!python/name:braindecode.veganlasagne.objectives.tied_neighbours_cnt_model ,
+            ]
+        },
+    },
+    variants: [[{
+        monitors: [$sample_trial_monitors],
+        iterator: [$cnt_iterator],
+        layer_modifier: [JustReturn],
+        max_epochs: [800],
+        max_increasing_epochs: [80],
+        load_sensor_names: ['null'],
+        loss_expression: [$tied_neighbours],
+        trial_stop: [4000],# fornow fixed not same as epo
+        
+        variants: [[
+        {
+            trial_start: [1500],
+            input_time_length: [1000],
+            n_sample_preds : [480], # will be overwritten anyways
+        },
+#        {
+#            trial_start: [2000],
+#            input_time_length: [1000],
+#            n_sample_preds : [480], # will be overwritten anyways
+#        },
+#        {
+#            trial_start: [2500],
+#            input_time_length: [880],
+#            n_sample_preds : [300], # will be overwritten anyways
+#        },
+        ]],
+    }]]
+}

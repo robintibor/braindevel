@@ -1,0 +1,61 @@
+{
+    templates: {
+        raw_set_train: !obj:braindecode.datasets.raw.CleanSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.$loader_type {
+                    filename: $dataset_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            cleaner: $cleaner,
+            sensor_names: $sensor_names,
+        },
+        raw_set_test: !obj:braindecode.datasets.raw.CleanSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.$loader_type {
+                    filename: $test_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            cleaner: $cleaner,
+            sensor_names: $sensor_names,
+        },
+        default_cnt_preprocessors: [
+            [
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $low_cut_off_hz}
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                {},
+            ],
+        ],
+        no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner { segment_ival: [$trial_start, $trial_stop]},
+        markers_4_class: {'1': [1], '2': [2], '3': [3], '4': [4]},
+        combined_set:  !obj:braindecode.datasets.combined.CombinedSet {
+            sets: [$raw_set_train, $raw_set_test]
+        },
+        several_sets_splitter: !obj:braindecode.datahandling.splitters.SeveralSetsSplitter {
+            use_test_as_valid: $use_test_as_valid,
+            valid_set_fraction: $valid_set_fraction,
+        }
+    },
+    variants: [[{
+        cnt_preprocessors: [$default_cnt_preprocessors],
+        trial_start: [0],
+        trial_stop: [4000],
+        load_sensor_names: ["null"],
+        sensor_names: ["null"],
+        dataset: [$combined_set],
+        marker_def: [$markers_4_class],
+        dataset_splitter: [$several_sets_splitter],
+        valid_set_fraction: [0.2],
+        cleaner: [$no_cleaner],
+    }]]
+}

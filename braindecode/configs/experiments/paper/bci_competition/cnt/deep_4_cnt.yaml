@@ -1,0 +1,11 @@
+ {
+    extends: [
+        'configs/experiments/paper/bci_competition/bcic_data.yaml',
+        'configs/experiments/paper/deep_4_cnt.yaml',
+        ],
+    variants: [[
+    {
+        save_path: ['data/models/paper/bci-competition/cnt/deep4/'],
+    }
+    ]]
+}

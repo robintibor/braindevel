@@ -1,0 +1,29 @@
+{
+extends: ['configs/experiments/paper/bci_competition/filenames.yaml'],
+templates: {
+    bci_competition_eog_sensors: ['EOG-left', 'EOG-central', 'EOG-right'], 
+},
+variants: [[{
+    eog_sensors: [$bci_competition_eog_sensors],
+    loader_type: [BCICompetition4Set2A],
+    sensor_names: ["null"],
+    resample_fs: [250],
+    n_classes: [4],
+    variants: [
+    [
+#            {
+#                low_cut_hz: [0],
+#                high_cut_hz: [4],
+#            },
+            {
+                low_cut_hz: [0],
+                high_cut_hz: [38],
+            },
+            {
+                low_cut_hz: [4],
+                high_cut_hz: [38],
+            },
+        ]
+        ]
+}]]
+}

@@ -1,0 +1,42 @@
+{
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/two_file_cnt_set.yaml',
+        'configs/experiments/4sec_movements/train_test_filenames.yaml',
+        'configs/experiments/cnt_iterator_monitor.yaml',
+        'configs/experiments/cnt_4_layer_net_in_net.yaml',
+        'configs/experiments/4sec_movements/cnt/defaults.yaml',
+        ],
+    templates: {
+        car_cnt_preprocessors: [
+            [
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $low_cut_off_hz}
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                {},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.common_average_reference_cnt , 
+                {},
+            ],
+        ],
+    },
+    variants: [[
+    {        
+        cnt_preprocessors: [$car_cnt_preprocessors],
+        #low_cut_off_hz: [4],
+        filter_time_length: [20],
+        save_path: ['data/models/4sec-movements/cnt/4-layer/car/'],
+        variants: [[
+        {
+            input_time_length: [1200],
+            trial_start: [2500],
+        },{
+            input_time_length: [1000],
+            trial_start: [3000],
+        },
+        ]],
+    }
+    ]]
+}

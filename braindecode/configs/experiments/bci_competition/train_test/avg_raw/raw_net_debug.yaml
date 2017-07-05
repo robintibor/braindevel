@@ -1,0 +1,16 @@
+ {
+    extends: [
+        'configs/experiments/defaults.yaml',
+        'configs/experiments/avg_raw_net.yaml',
+        'configs/experiments/bci_competition/filenames.yaml',
+        'configs/experiments/150_fs.yaml',
+        'configs/experiments/bci_competition/train_test/defaults.yaml'],
+    variants: [[
+    {        
+        max_epochs: [10],
+        save_path: ['data/models/debug/bci-competition/train-test/avg_raw/150-fs/'],
+        valid_set_fraction: [0.2],
+        low_cut_off_hz: [4],
+    }
+    ]]
+}

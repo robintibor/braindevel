@@ -1,0 +1,18 @@
+{
+    extends: ['configs/experiments/grasp_lift/deeper.yaml'],
+    variants: [[ {
+        save_path: ['data/models/grasp-lift/no-resample/deeper/'],
+        resample_half: [false],
+        num_filters: [40], 
+        first_nonlin: [$leaky_relu],
+        first_pool_nonlin: [$identity],
+        first_pool_layer: [SumPool2dLayer],
+        first_pool_mode: ['max'],
+        pool_layers: [Pool2DLayer],
+        later_pool_nonlin: [$identity],
+        later_nonlin: [$leaky_relu],
+        pool_mode: ['max'],
+        batch_size: [8],
+    }]],
+    
+}

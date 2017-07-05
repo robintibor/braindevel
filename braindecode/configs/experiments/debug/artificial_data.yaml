@@ -1,0 +1,15 @@
+{
+    templates: {
+        artificial_set: !obj:braindecode.datasets.random.RandomSet {
+            topo_shape: $topo_shape,
+            y_shape: [$n_trials, $n_classes],
+        },
+        default_topo_shape: [$n_trials, 5, 3, 1],
+    },
+    variants: [[{
+        dataset: [$artificial_set],
+        topo_shape: [$default_topo_shape],
+        n_trials: [15],
+        n_classes: [4],
+    }]]
+}

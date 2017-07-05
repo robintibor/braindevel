@@ -1,0 +1,42 @@
+variants: [[{
+        loader_type: [BCICompetition4Set2A],
+        variants: [[
+        {
+            dataset_filename: ['data/bci-competition-iv/2a/A01T.mat'],
+            test_filename: ['data/bci-competition-iv/2a/A01E.mat'],
+        },
+        {
+            dataset_filename: ['data/bci-competition-iv/2a/A02T.mat'],
+            test_filename: ['data/bci-competition-iv/2a/A02E.mat'],
+        },
+        {
+            dataset_filename: ['data/bci-competition-iv/2a/A03T.mat'],
+            test_filename: ['data/bci-competition-iv/2a/A03E.mat'],
+        },
+        {
+            dataset_filename: ['data/bci-competition-iv/2a/A04T.mat'],
+            test_filename: ['data/bci-competition-iv/2a/A04E.mat'],
+        },
+        {
+            dataset_filename: ['data/bci-competition-iv/2a/A05T.mat'],
+            test_filename: ['data/bci-competition-iv/2a/A05E.mat'],
+        },
+        {
+            dataset_filename: ['data/bci-competition-iv/2a/A06T.mat'],
+            test_filename: ['data/bci-competition-iv/2a/A06E.mat'],
+        },
+        {
+            dataset_filename: ['data/bci-competition-iv/2a/A07T.mat'],
+            test_filename: ['data/bci-competition-iv/2a/A07E.mat'],
+        },
+        {
+            dataset_filename: ['data/bci-competition-iv/2a/A08T.mat'],
+            test_filename: ['data/bci-competition-iv/2a/A08E.mat'],
+        },
+        {
+            dataset_filename: ['data/bci-competition-iv/2a/A09T.mat'],
+            test_filename: ['data/bci-competition-iv/2a/A09E.mat'],
+        },
+        ]]
+    }],
+]

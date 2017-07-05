@@ -1,0 +1,73 @@
+{
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/paper/cnt_preprocessors.yaml',],
+    templates: {
+        no_cleaner: !obj:braindecode.mywyrm.clean.NoCleaner {
+        segment_ival: [$trial_start, $trial_stop],
+        marker_def: $marker_def},
+        train_normal_cleaner: !obj:braindecode.mywyrm.clean.SetCleaner { 
+            eog_set: !obj:braindecode.datasets.loaders.$loader_type {
+                filename: $dataset_filename,
+                load_sensor_names: $eog_sensors,
+            },
+            rejection_var_ival: $rejection_var_ival,
+            rejection_blink_ival: $rejection_blink_ival,
+            max_min: $max_min,
+            whisker_percent: $whisker_percent, 
+            whisker_length: $whisker_length,
+            marker_def: $marker_def,
+        },
+        test_normal_cleaner: !obj:braindecode.mywyrm.clean.SetCleaner { 
+            eog_set: !obj:braindecode.datasets.loaders.$loader_type {
+                filename: $test_filename,
+                load_sensor_names: $eog_sensors,
+            },
+            rejection_var_ival: $rejection_var_ival,
+            rejection_blink_ival: $rejection_blink_ival,
+            max_min: $max_min,
+            whisker_percent: $whisker_percent, 
+            whisker_length: $whisker_length,
+            marker_def: $marker_def,
+        },
+        cleaned_combined_set: !obj:braindecode.datasets.combined.CombinedCleanedSet {
+            train_set: $raw_set_train,
+            test_set: $raw_set_test,
+            train_cleaner: $train_cleaner,
+            test_cleaner: $test_cleaner,
+        },
+        several_sets_splitter: !obj:braindecode.datahandling.splitters.SeveralSetsSplitter {
+            use_test_as_valid: $use_test_as_valid,
+            valid_set_fraction: $valid_set_fraction,
+        },
+        markers_4_class: {'1': [1], '2': [2], '3': [3], '4': [4]},
+        bp_meaner: !obj:braindecode.datahandling.batch_modifier.BandpowerMeaner { },
+        
+        max_abs_cleaner: !obj:braindecode.mywyrm.clean.MaxAbsCleaner { 
+            segment_ival: $rejection_max_abs_ival,
+            threshold: $max_abs_threshold,
+            marker_def: $marker_def,
+        },
+        
+    },
+    variants: [[{
+        updates_modifier: [$max_norm_modifier],
+        max_abs_threshold: [800],
+        dataset: [$cleaned_combined_set],
+        marker_def: [$markers_4_class],
+        dataset_splitter: [$several_sets_splitter],
+        valid_set_fraction: [0.1],
+        use_test_as_valid: [False],
+        preprocessor: ["null"],
+        rejection_var_ival: [[0,4000]],
+        rejection_blink_ival: [[-500,4000]],
+        max_min: [600],
+        whisker_percent: [10], 
+        whisker_length: [3],
+        train_cleaner: [$max_abs_cleaner],
+        test_cleaner: [$max_abs_cleaner],
+        rejection_max_abs_ival: [[0,4000]],
+        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
+        'eog_sensors', 'rejection_var_ival', 'num_split_folds',
+        'rejection_blink_ival', 'whisker_percent', 'misclass_monitor']],
+    }]]
+}

@@ -1,0 +1,31 @@
+ {
+        layers: $layers,
+        original_params: $original_params,
+        save_path: $save_path,
+        dataset: &dataset $dataset,
+        dataset_splitter: &dataset_splitter $dataset_splitter,
+        num_cv_folds: $num_cv_folds,
+        exp_args: {
+            preprocessor: &preprocessor $preprocessor,
+            iterator: $iterator,
+            loss_expression: $loss_expression,
+            updates_expression: $updates_expression,
+            updates_modifier: $updates_modifier,
+            monitors: $monitors,
+            stop_criterion: !obj:braindecode.veganlasagne.stopping.Or {
+                stop_criteria: [
+                    !obj:braindecode.veganlasagne.stopping.NoDecrease {
+                        chan_name: $early_stop_chan,
+                        num_epochs: $max_increasing_epochs,
+                        min_decrease: 0.,
+                    },
+                    !obj:braindecode.veganlasagne.stopping.MaxEpochs {
+                        num_epochs: $max_epochs,
+                    },
+                ]
+            },
+            remember_best_chan: $early_stop_chan,
+            run_after_early_stop: $run_after_early_stop,
+            batch_modifier: $batch_modifier,
+        },
+}

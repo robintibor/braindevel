@@ -1,0 +1,48 @@
+{
+    templates: {
+        categorical_crossentropy: !!python/name:lasagne.objectives.categorical_crossentropy ,
+        adam: !!python/name:lasagne.updates.adam ,
+        C_sensors: ['FFC5h', 'FFC3h', 'FFC1h', 'FFC2h', 'FFC4h', 'FFC6h', 'FC5',
+            'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FCC5h', 'FCC3h', 'FCC1h',
+            'FCC2h', 'FCC4h', 'FCC6h', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6',
+            'CCP5h', 'CCP3h', 'CCP1h', 'CCP2h', 'CCP4h', 'CCP6h', 'CP5', 'CP3',
+            'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 'CPP5h', 'CPP3h', 'CPP1h', 'CPP2h',
+            'CPP4h', 'CPP6h'],
+         single_fold_splitter: !obj:braindecode.datahandling.splitters.SingleFoldSplitter {
+                n_folds: $num_split_folds, 
+                i_test_fold: $i_test_fold,
+            },
+        balanced_batch_iterator: !obj:braindecode.datahandling.batch_iteration.BalancedBatchIterator {
+            batch_size: $batch_size,
+        },
+        monitors: [
+                !obj:braindecode.veganlasagne.monitors.LossMonitor {},
+                $misclass_monitor,
+                !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
+        ],
+        default_misclass: !obj:braindecode.veganlasagne.monitors.MisclassMonitor {},
+        max_norm_modifier: !obj:braindecode.veganlasagne.update_modifiers.MaxNormConstraint {
+            layer_names_to_norms: $layer_names_to_norms,
+        },
+    },
+    variants: [[{
+        #updates_modifier: [$max_norm_modifier], force to choose this
+        #layer_names_to_norms: [null], # have to supply this in subyamls
+        monitors: [$monitors],
+        misclass_monitor: [$default_misclass],
+        iterator: [$balanced_batch_iterator],
+        dataset_splitter: [$single_fold_splitter],
+        batch_size: [60],
+        preprocessor: ['null'],
+        loss_expression: [$categorical_crossentropy],
+        updates_expression: [$adam],
+        num_split_folds: [10],
+        num_cv_folds: [5],
+        i_test_fold: [-1], # test fold => last fold
+        max_increasing_epochs: [150],
+        max_epochs: [1500],
+        early_stop_chan: ['valid_misclass'],
+        run_after_early_stop: [true],
+        batch_modifier: ['null'],
+    }]]
+}

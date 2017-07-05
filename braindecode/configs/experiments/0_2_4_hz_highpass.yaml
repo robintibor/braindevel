@@ -1,0 +1,16 @@
+{
+    variants: [[
+        {
+            min_freq: [0],
+            low_cut_off_hz: [0.5],
+        },
+        {
+            min_freq: [2],
+            low_cut_off_hz: [2],
+        },
+        {
+            min_freq: [4],
+            low_cut_off_hz: [4],
+        },
+    ]]
+}

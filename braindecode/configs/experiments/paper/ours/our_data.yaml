@@ -1,0 +1,29 @@
+{
+    extends: [
+        'configs/experiments/4sec_movements/train_test_filenames.yaml',
+        'configs/experiments/4sec_movements/C_sensors.yaml'],
+    templates: {
+    
+    },
+    variants: [[{
+        resample_fs: [250],
+        eog_sensors: [['EOGv', 'EOGh']],
+        sensor_names: [$C_sensors],
+        n_classes: [4],
+        
+        variants: [[
+#            {
+#                low_cut_hz: [0],
+#                high_cut_hz: [4],
+#            },
+            {
+                low_cut_hz: [0],
+                high_cut_hz: ['null'],
+            },
+            {
+                low_cut_hz: [4],
+                high_cut_hz: ['null'],
+            },
+        ]]
+    }]]
+}

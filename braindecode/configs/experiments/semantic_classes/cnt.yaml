@@ -1,0 +1,69 @@
+{
+    templates: {
+        cnt_iterator: !obj:braindecode.datahandling.batch_iteration.CntWindowTrialIterator {
+            batch_size: $batch_size,
+            input_time_length: $input_time_length,
+            n_sample_preds: $n_sample_preds,
+        },
+        sample_trial_monitors: [
+                !obj:braindecode.veganlasagne.monitors.LossMonitor {},
+                !obj:braindecode.veganlasagne.monitors.MisclassMonitor {
+                    chan_name: 'sample_misclass'},
+                !obj:braindecode.veganlasagne.monitors.CntTrialMisclassMonitor { 
+                    input_time_length: $input_time_length},
+                !obj:braindecode.veganlasagne.monitors.RuntimeMonitor {},
+        ],
+        raw_set_train: !obj:braindecode.datasets.cnt_signal_matrix.CntSignalMatrix {
+            signal_processor: !obj:braindecode.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindecode.datasets.loaders.$loader_type {
+                    filename: $dataset_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            sensor_names: $sensor_names,
+        },
+        tied_neighbours: !obj:braindecode.util.FuncAndArgs {
+            func: !!python/name:braindecode.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [$categorical_crossentropy,
+                !!python/name:braindecode.veganlasagne.objectives.tied_neighbours_cnt_model ,
+            ]
+        },
+        single_fold_splitter: !obj:braindecode.datahandling.splitters.SingleFoldSplitter {
+            n_folds: $split_folds,
+            i_test_fold: -1,
+            shuffle: false,
+        },
+        resample_highpass_standardize: 
+        [[
+                !!python/name:braindecode.mywyrm.processing.resample_cnt , 
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindecode.mywyrm.processing.highpass_cnt , 
+                {'low_cut_off_hz': $low_cut_off_hz}
+        ],
+            [
+                !!python/name:braindecode.mywyrm.processing.exponential_standardize_cnt , 
+                { }
+        ]],
+    },
+    variants: [[{
+    
+        cnt_preprocessors: [$resample_highpass_standardize],
+        low_cut_off_hz: ["null"], 
+        dataset: [$raw_set_train],
+        split_folds: [10],
+        dataset_splitter: [$single_fold_splitter],
+        trial_start: [1500],
+        monitors: [$sample_trial_monitors],
+        iterator: [$cnt_iterator],
+        layer_modifier: [JustReturn],
+        max_epochs: [800],
+        max_increasing_epochs: [80],
+        load_sensor_names: ['null'],
+        loss_expression: [$tied_neighbours],
+    }]]
+}

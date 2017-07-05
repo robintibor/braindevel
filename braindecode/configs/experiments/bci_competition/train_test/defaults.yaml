@@ -1,0 +1,7 @@
+{
+    extends: ['configs/experiments/fixed_trial_split.yaml'],
+    variants: [[{   
+        n_train_trials: [288],
+        valid_set_fraction: [0.2],
+    }]]
+}
