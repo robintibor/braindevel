@@ -1,0 +1,62 @@
+ {
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/ours/our_data.yaml',
+        'configs/experiments/paper/cnt.yaml',
+        'configs/experiments/paper/cnt_preprocessors.yaml',
+        'configs/experiments/paper/res_net.yaml',
+        ],
+    templates: {
+        safe_tied_neighbours_decay: !obj:braindevel.util.FuncAndArgs {
+            func: !!python/name:braindevel.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [
+                !!python/name:braindevel.veganlasagne.objectives.categorical_crossentropy_logdomain ,
+                !!python/name:braindevel.veganlasagne.objectives.tied_neighbours_cnt_model_logdomain ,
+                !obj:braindevel.util.FuncAndArgs {
+                    func: !!python/name:braindevel.veganlasagne.objectives.weight_decay ,
+                    factor: $l2_factor
+                },
+            ]
+        },
+        categorical_crossentropy_decay: !obj:braindevel.util.FuncAndArgs {
+            func: !!python/name:braindevel.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [$categorical_crossentropy,
+                !obj:braindevel.util.FuncAndArgs {
+                    func: !!python/name:braindevel.veganlasagne.objectives.weight_decay ,
+                    factor: $l2_factor
+                },
+            ]
+        },
+    },
+    variants: [[
+    {
+        trial_stop: [4000],
+        save_path: ['data/models/debug/locking/'],
+        input_time_length: [1000],
+        n_sample_preds : [500], # will be overwritten anyways
+        train_cleaner: [$no_cleaner],
+        test_cleaner: [$no_cleaner],
+        loss_expression: [$safe_tied_neighbours_decay],
+        l2_factor: [1e-4],
+        n_first_filters: [48],#24
+        first_filter_length: [3],
+        final_pool_length: [10],#10
+        projection: [False],#$relu, 
+        nonlinearity: [$elu],
+        max_epochs: [500],
+        n_layers_per_block: [2],#,3
+#        dataset_filename: ['data/bci-competition-iv/2a/A03T.mat'],
+#        test_filename: ['data/bci-competition-iv/2a/A03E.mat'],
+        final_aggregator: ['pool'], #'conv'
+        drop_before_pool: [False], #True
+        final_nonlin: [$log_softmax],
+
+        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
+        'eog_sensors', 'rejection_var_ival', 'n_classes',
+        'num_split_folds', 'misclass_monitor', 'rejection_blink_ival',
+        'whisker_percent', 'layer_modifier']],
+        
+        
+    }
+    ]]
+}

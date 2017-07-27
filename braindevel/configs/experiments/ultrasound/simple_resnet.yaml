@@ -1,0 +1,19 @@
+{
+    extends: ['configs/experiments/ultrasound/defaults.yaml'],
+    
+    templates: {
+        simple_resnet: !obj:braindevel.ultrasound.models.simple_resnet.SimpleResNet {
+            img_rows: $img_rows,
+            img_cols: $img_cols,
+        }
+    },
+    
+    variants: [[{
+        save_path: ['data/models/ultrasound/simple_resnet'],
+        layers: [$simple_resnet],
+        n_train_subjects: [3],
+        n_valid_subjects: [2],
+        n_test_subjects: [2],
+        
+    }]]
+}

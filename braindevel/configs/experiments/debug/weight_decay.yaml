@@ -1,0 +1,21 @@
+{
+    extends: ['configs/experiments/debug/artificial_debug.yaml'],
+    templates: {
+        weight_decay_and_categorical_crossentropy: !obj:braindevel.util.FuncAndArgs {
+            func: !!python/name:braindevel.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [
+                !!python/name:lasagne.objectives.categorical_crossentropy ,
+                !obj:braindevel.util.FuncAndArgs {
+                    func: !!python/name:braindevel.veganlasagne.objectives.weight_decay ,
+                    factor: $weight_decay_factor,
+                },
+            ]
+       },
+    },
+    variants: [[{
+        save_path: ['data/models/debug/weight-decay/'],
+        n_trials: [150],
+        weight_decay_factor: [5e-2],
+        loss_expression: [$weight_decay_and_categorical_crossentropy],
+    }]]
+}

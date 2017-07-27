@@ -11,11 +11,7 @@ import torch as th
 
 from braindecode.models.deep4 import Deep4Net
 from braindecode.models.util import to_dense_prediction_model
-from hyperoptim.parse import cartesian_dict_of_lists_product, \
-    product_of_list_of_lists_of_dicts
-from hyperoptim.util import save_pkl_artifact
-
-from braindecode.datasets.bcic_iv_2a import BCICompetition4Set2A
+from braindecode.datasets.bbci import BBCIDataset
 from braindecode.experiments.experiment import Experiment
 from braindecode.experiments.monitors import LossMonitor, MisclassMonitor, \
     RuntimeMonitor, CroppedTrialMisclassMonitor
@@ -26,7 +22,7 @@ from braindecode.datautil.splitters import split_into_two_sets
 from braindecode.torch_ext.constraints import MaxNormDefaultConstraint
 from braindecode.torch_ext.util import set_random_seeds, np_to_var
 from braindecode.mne_ext.signalproc import mne_apply
-from braindecode.datautil.signalproc import (bandpass_cnt,
+from braindecode.datautil.signalproc import (highpass_cnt,
                                              exponential_running_standardize)
 from braindecode.datautil.trial_segment import create_signal_target_from_raw_mne
 

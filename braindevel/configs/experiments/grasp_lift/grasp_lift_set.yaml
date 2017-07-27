@@ -1,0 +1,18 @@
+{
+    templates: {
+        grasp_lift_set: !obj:braindevel.datasets.grasp_lift.KaggleGraspLiftSet {
+            data_folder: 'data/kaggle-grasp-lift/',
+            i_subject: $dataset_filename,
+            resample_half: $resample_half,
+            standardize: $standardize_series_wise,
+        },
+        grasp_lift_splitter: !obj:braindevel.datahandling.splitters.KaggleTrainValidTestSplitter {
+            use_test_as_valid: $use_test_as_valid,
+        }
+    },
+    variants:  [[{
+        dataset: [$grasp_lift_set],
+        dataset_splitter: [$grasp_lift_splitter],
+        use_test_as_valid: [false],
+    }]]
+}

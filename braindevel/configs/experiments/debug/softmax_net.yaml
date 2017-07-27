@@ -1,0 +1,22 @@
+{
+    templates: {
+        softmax_net:  !obj:braindevel.veganlasagne.layer_modifiers.JustReturn { [
+           &in_layer !obj:lasagne.layers.InputLayer {
+                shape: [null, in_sensors, in_rows, in_cols]
+            },
+            &final_sigmoid !obj:lasagne.layers.DenseLayer {
+                    incoming: *in_layer,
+                    num_units: $n_classes,
+                    nonlinearity: !!python/name:lasagne.nonlinearities.sigmoid ,
+                    name: 'final_dense'
+            },
+        ]},
+        softmax_norms: {
+            final_dense: 0.5,
+        }
+    },
+    variants: [[{
+        layer_names_to_norms: [$softmax_norms],
+        layers: [$softmax_net],
+    }]]
+}

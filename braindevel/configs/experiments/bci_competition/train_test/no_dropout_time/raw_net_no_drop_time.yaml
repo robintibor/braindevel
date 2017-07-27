@@ -1,0 +1,59 @@
+{
+    extends: ['configs/experiments/raw_set.yaml'],
+    templates: {
+        raw_net_no_drop_time_layers: !obj:braindevel.veganlasagne.layer_modifiers.JustReturn {
+        [ 
+           &in_layer !obj:lasagne.layers.InputLayer {
+                shape: [null, in_sensors, in_rows, in_cols]
+            },
+            &shuffle !obj:lasagne.layers.DimshuffleLayer {
+                incoming: *in_layer,
+                pattern: [0,3,2,1],
+            },
+            &time_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *shuffle,
+                num_filters: 40,
+                filter_size: [$filter_time_length, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'time_conv',
+            },
+            &spat_conv !obj:braindevel.veganlasagne.layers.Conv2DAllColsLayer {
+                incoming: *time_conv,
+                num_filters: 40,
+                filter_size: [1, -1],
+                nonlinearity: !!python/name:theano.tensor.sqr ,
+                name: 'spat_conv',
+            },
+            &pool !obj:braindevel.veganlasagne.pool.SumPool2dLayer {
+                    incoming: *spat_conv,
+                    pool_size: [$pool_time_length,1],
+                    stride: [$pool_time_stride,1],
+                    mode: 'average_exc_pad',
+            },
+            &log !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *pool,
+                    nonlinearity: !!python/name:braindevel.veganlasagne.nonlinearities.safe_log ,
+            },
+            &drop_feature !obj:lasagne.layers.DropoutLayer {
+                incoming: *log,
+                p: 0.5,
+            },
+            &final_dense !obj:lasagne.layers.DenseLayer {
+                    incoming: *drop_feature,
+                    num_units: 4,
+                    nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+                    name: 'final_dense',
+            },
+        ],
+        },
+        raw_layer_names_to_norms: {
+            time_conv: 2.0,
+            spat_conv: 2.0,
+            final_dense: 0.5,
+        }
+    },
+    variants: [[{
+        layer_names_to_norms: [$raw_layer_names_to_norms],
+        layers: [$raw_net_no_drop_time_layers],
+    }]]
+}

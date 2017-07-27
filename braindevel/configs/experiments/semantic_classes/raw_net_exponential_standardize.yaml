@@ -1,0 +1,27 @@
+ {
+    extends: ['configs/experiments/defaults.yaml',
+        'configs/experiments/raw_net_no_drop_time.yaml',
+        'configs/experiments/150_fs.yaml',
+        'configs/experiments/semantic_classes/filenames.yaml'],
+    templates: {
+      cnt_standardize:  [[
+            !!python/name:braindevel.mywyrm.processing.exponential_standardize_cnt ,
+            {},
+        ],
+        ],
+    }, 
+    variants: [[
+    {
+        low_cut_off_hz: [0.5],
+        preprocessor: ["null"],
+        save_path: ['data/models/semantic-classes/raw-net-exp-standardize/'],
+        cleaner: [$no_cleaner],
+        cnt_preprocessors: [$cnt_standardize],
+        sensor_names: [$C_sensors],
+        num_filters: [40],
+        filter_time_length: [40],
+        pool_time_length: [200],
+        pool_time_stride: [40],
+    }
+    ]]
+}

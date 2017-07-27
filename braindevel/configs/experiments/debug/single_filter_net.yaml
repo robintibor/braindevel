@@ -1,0 +1,58 @@
+{
+    templates: {
+        simple_layers: !obj:braindevel.veganlasagne.layer_modifiers.JustReturn { [
+           &in_layer !obj:lasagne.layers.InputLayer {
+                shape: [null, in_sensors, in_rows, in_cols]
+            },
+            &conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *in_layer,
+                num_filters: 1,
+                filter_size: [100, 1],
+                nonlinearity: !!python/name:theano.tensor.sqr ,
+            },
+            &pool !obj:lasagne.layers.GlobalPoolLayer {
+                    incoming: *conv,
+                    pool_function: !!python/name:theano.tensor.sum ,
+            },
+            &log !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *pool,
+                    nonlinearity: !!python/name:theano.tensor.log ,
+            },
+            &softmax !obj:lasagne.layers.DenseLayer {
+                    incoming: *log,
+                    num_units: 2,
+                    nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+            },
+        ]},
+        raw_set: !obj:braindevel.datasets.bbci_pylearn_dataset.BBCIPylearnCleanDataset {
+            filenames: 'data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat',
+            cnt_preprocessors: [
+                [
+                    !!python/name:braindevel.mywyrm.processing.highpass_cnt ,
+                    {'low_cut_off_hz': 0.5}]
+                ],
+            cleaner: !obj:braindevel.mywyrm.clean.BBCISetNoCleaner { },
+            load_sensor_names: ['CPz', 'CP1', 'CP2'],
+            unsupervised_preprocessor: !obj:braindevel.datasets.preprocessing.RestrictToTwoClasses {
+                classes: [0,2]
+            }
+        },
+        online_chan_freq_wise: !obj:braindevel.datasets.preprocessing.OnlineAxiswiseStandardize {
+            axis: ['c', 1]
+        },
+        categorical_crossentropy: !!python/name:lasagne.objectives.categorical_crossentropy ,
+        adam: !!python/name:lasagne.updates.adam ,
+    },
+    variants: [[{
+        save_path: ['data/models/faketest/'],
+        layers: [$simple_layers],
+        dataset: [$raw_set],
+        dataset_provider: ["*preprocessed_provider"],
+        preprocessor: [$online_chan_freq_wise],
+        loss_var_func: [$categorical_crossentropy],
+        updates_var_func: [$adam],
+        max_increasing_epochs: [10],
+        max_epochs: [10,30],
+        
+    }]]
+}

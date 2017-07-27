@@ -1,0 +1,15 @@
+ {
+    extends: ['configs/experiments/csp/defaults.yaml',
+        'configs/experiments/bci_competition/filenames.yaml'],
+    templates: {
+        no_cleaner: !obj:braindevel.mywyrm.clean.NoCleaner { },
+    }, 
+    variants: [[
+    {        
+        cleaner: [$no_cleaner],
+        n_selected_filterbands: ["null"],
+        sensor_names: ["null"],
+    }
+    ]]
+ }
+ 

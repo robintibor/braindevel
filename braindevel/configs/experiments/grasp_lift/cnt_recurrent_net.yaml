@@ -1,0 +1,229 @@
+{
+    templates: {
+        raw_net_no_drop_time_layers: [ 
+            &l_in !obj:lasagne.layers.InputLayer {                 
+                shape: [null, in_sensors, $input_time_length, in_cols]
+        },
+        &conv1 !obj:lasagne.layers.Conv2DLayer { 
+            incoming: *l_in, 
+            num_filters: 256, 
+            filter_size: [9, 1],
+            stride: 1, pad: 'same',
+            W: !obj:lasagne.init.Normal { 
+                std: 2e-2},
+            nonlinearity: null
+        },
+        &bn1 !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer {
+            incoming: *conv1, epsilon: 0.0000000001,
+             nonlinearity: !!python/name:lasagne.nonlinearities.very_leaky_rectify
+         },
+
+        &pool1: !obj:lasagne.layers.Pool2DLayer { 
+            incoming: *bn1, pool_size: [4, 1], stride: [1, 1]
+        },
+        &reshape1 !obj:braindevel.veganlasagne.layers.StrideReshapeLayer {
+            incoming: *pool1, n_stride: 4},
+        &drop1 !obj:lasagne.layers.DropoutLayer { 
+            incoming: *reshape1, p: $p1},
+        &conv2 !obj:lasagne.layers.Conv2DLayer { 
+            incoming: *drop1, num_filters: 256, filter_size:  [1, 1],
+            stride: 1, pad: 'same',
+            W: !obj:lasagne.init.Normal { std: 2e-2},
+            nonlinearity: null},
+
+        &bn2 !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer {
+            incoming: *conv2, epsilon: 0.0000000001,
+            nonlinearity: !!python/name:lasagne.nonlinearities.very_leaky_rectify },
+        &conv2a !obj:lasagne.layers.Conv2DLayer { 
+            incoming: *bn2, num_filters: 256, filter_size:  [ 9, 1],
+             stride: 1, pad: 'same',
+             W: !obj:lasagne.init.Normal { std: 2e-2}, b: null,
+             nonlinearity: null},
+        &sum2a !obj:lasagne.layers.ElemwiseSumLayer { 
+            incomings: [*conv2, *conv2a], coeffs: 1
+        },
+        &bn2a !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer {
+            incoming: *sum2a, epsilon: 0.0000000001,
+            nonlinearity: !!python/name:lasagne.nonlinearities.rectify },
+    &conv2b !obj:lasagne.layers.Conv2DLayer { incoming: bn2a, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: !!python/object/apply:getattr {*conv2a, 'W'}, 
+                         b: null,
+                         nonlinearity: null}
+
+    &sum2b: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv2, conv2b], coeffs: 1}
+    
+    &bn2b: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum2b, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &conv2c: !obj:lasagne.layers.Conv2DLayer { incoming: bn2b, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: conv2a.W, b: null,
+                         nonlinearity: null}
+
+    &sum2c: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv2, conv2c], coeffs: 1}
+    
+    &bn2c: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum2c, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &pool2: !obj:lasagne.layers.Pool2DLayer { incoming: bn2c, pool_size:  { 4, 1}, stride:  { 1, 1}}
+    &pool2: !obj:braindevel.veganlasagne.layers.StrideReshapeLayer { pool2, n_stride:4}
+
+    &drop2: !obj:lasagne.layers.DropoutLayer { incoming: pool2, p: p2}
+
+    &conv3: !obj:lasagne.layers.Conv2DLayer { incoming: drop2, num_filters: 256, filter_size:  { 1, 1},
+                        stride: 1, pad: 'same',
+                        W: !obj:lasagne.init.Normal { std: std},
+                        nonlinearity: null}
+
+    &bn3: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: conv3, epsilon: 0.0000000001,
+                         nonlinearity: !!python/name:lasagne.nonlinearities.very_leaky_rectify}
+
+    &conv3a: !obj:lasagne.layers.Conv2DLayer { incoming: bn3, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: !obj:lasagne.init.Normal { std: std}, b: null,
+                         nonlinearity: null}
+
+    &sum3a: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv3, conv3a], coeffs: 1}
+    
+    &bn3a: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum3a, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &conv3b: !obj:lasagne.layers.Conv2DLayer { incoming: bn3a, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: conv3a.W, b: null,
+                         nonlinearity: null}
+
+    &sum3b: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv3, conv3b], coeffs: 1}
+    
+    &bn3b: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum3b, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &conv3c: !obj:lasagne.layers.Conv2DLayer { incoming: bn3b, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: conv3a.W, b: null,
+                         nonlinearity: null}
+
+    &sum3c: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv3, conv3c], coeffs: 1}
+    
+    &bn3c: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum3c, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &pool3: !obj:lasagne.layers.Pool2DLayer { incoming: bn3c, pool_size:  { 4, 1}, stride:  { 1, 1}}
+    &pool3: !obj:braindevel.veganlasagne.layers.StrideReshapeLayer { pool3, n_stride:4}
+
+    &drop3: !obj:lasagne.layers.DropoutLayer { incoming: pool3, p: p3}
+
+    &conv4: !obj:lasagne.layers.Conv2DLayer { incoming: drop3, num_filters: 256, filter_size:  { 1, 1},
+                        stride: 1, pad: 'same',
+                        W: !obj:lasagne.init.Normal { std: std},
+                        nonlinearity: null}
+
+    &bn4: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: conv4, epsilon: 0.0000000001,
+                         nonlinearity: !!python/name:lasagne.nonlinearities.very_leaky_rectify}
+
+    &conv4a: !obj:lasagne.layers.Conv2DLayer { incoming: bn4, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: !obj:lasagne.init.Normal { std: std}, b: null,
+                         nonlinearity: null}
+
+    &sum4a: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv4, conv4a], coeffs: 1}
+    
+    &bn4a: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum4a, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &conv4b: !obj:lasagne.layers.Conv2DLayer { incoming: bn4a, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: conv4a.W, b: null,
+                         nonlinearity: null}
+
+    &sum4b: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv4, conv4b], coeffs: 1}
+    
+    &bn4b: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum4b, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &conv4c: !obj:lasagne.layers.Conv2DLayer { incoming: bn4b, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: conv4a.W, b: null,
+                         nonlinearity: null}
+
+    &sum4c: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv4, conv4c], coeffs: 1}
+    
+    &bn4c: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum4c, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &pool4: !obj:lasagne.layers.Pool2DLayer { incoming: bn4c, pool_size:  { 4, 1}, stride:  { 1, 1}}
+    &pool4: !obj:braindevel.veganlasagne.layers.StrideReshapeLayer { pool4, n_stride:4}
+
+    &drop4: !obj:lasagne.layers.DropoutLayer { incoming: pool4, p: p4}
+
+    &conv5: !obj:lasagne.layers.Conv2DLayer { incoming: drop4, num_filters: 256, filter_size:  { 1, 1},
+                        stride: 1, pad: 'same',
+                        W: !obj:lasagne.init.Normal { std: std},
+                        nonlinearity: null}
+
+    &bn5: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: conv5, epsilon: 0.0000000001,
+                         nonlinearity: !!python/name:lasagne.nonlinearities.very_leaky_rectify}
+
+    &conv5a: !obj:lasagne.layers.Conv2DLayer { incoming: bn5, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: !obj:lasagne.init.Normal { std: std}, b: null,
+                         nonlinearity: null}
+
+    &sum5a: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv5, conv5a], coeffs: 1}
+    
+    &bn5a: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum5a, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &conv5b: !obj:lasagne.layers.Conv2DLayer { incoming: bn5a, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: conv5a.W, b: null,
+                         nonlinearity: null}
+
+    &sum5b: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv5, conv5b], coeffs: 1}
+    
+    &bn5b: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum5b, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &conv5c: !obj:lasagne.layers.Conv2DLayer { incoming: bn5b, num_filters: 256, filter_size:  { 9, 1},
+                         stride: 1, pad: 'same',
+                         W: conv5a.W, b: null,
+                         nonlinearity: null}
+
+    &sum5c: !obj:lasagne.layers.ElemwiseSumLayer { incomings: [conv5, conv5c], coeffs: 1}
+    
+    &bn5c: !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer { incoming: sum5c, epsilon: 0.0000000001,
+                          nonlinearity: !!python/name:lasagne.nonlinearities.rectify}    
+
+    &pool5: !obj:lasagne.layers.Pool2DLayer { incoming: bn5c, pool_size:  { 2, 1}, stride:  { 1, 1}}
+    &pool5: !obj:braindevel.veganlasagne.layers.StrideReshapeLayer { pool5, n_stride:2}
+
+    &l_out: !obj:lasagne.layers.Conv2DLayer { incoming: pool5, num_filters: num_events,
+                                filter_size:  { 7, 1},
+                                 W: !obj:lasagne.init.Normal { std: std},
+                                 nonlinearity: !!python/name:lasagne.nonlinearities.identity}
+    &l_out: FinalReshapeLayer { incoming: l_out}
+    &l_out: lasagne.layers.NonlinearityLayer { l_out, nonlinearity:!!python/name:lasagne.nonlinearities.sigmoid}
+        ],
+        raw_layer_names_to_norms: {
+            time_conv: $conv_norm,
+            spat_conv: $conv_norm,
+            combined_conv_2: $conv_norm,
+            combined_conv_3: $conv_norm,
+            combined_conv_4: $conv_norm,
+            combined_conv_5: $conv_norm,
+            final_dense: $final_norm,
+        },
+        square: !!python/name:theano.tensor.sqr ,
+        identity: !!python/name:!!python/name:lasagne.nonlinearities.identity ,
+        relu: !!python/name:!!python/name:lasagne.nonlinearities.rectify ,
+        leaky_relu: !!python/name:!!python/name:lasagne.nonlinearities.leaky_rectify ,
+        safe_log: !!python/name:braindevel.vegan!!python/name:lasagne.nonlinearities.safe_log ,
+    },
+    variants: [[{
+        layer_names_to_norms: [$raw_layer_names_to_norms],
+        layers: [$raw_net_no_drop_time_layers],
+        final_norm: [0.5],
+        conv_norm: [2.0],
+    }]]
+}

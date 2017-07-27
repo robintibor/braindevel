@@ -1,0 +1,337 @@
+{
+    extends: [
+        'configs/experiments/paper/defaults.yaml',
+        'configs/experiments/paper/epo.yaml',
+        'configs/experiments/paper/fft_epo_spat_freq_time.yaml',
+        'configs/experiments/paper/fft_epo_freq_spat_time.yaml',
+        'configs/experiments/paper/fft_epo_freq_time_spat.yaml',
+        'configs/experiments/paper/fft_epo_combined.yaml'],
+    templates: {
+        raw_set_train: !obj:braindevel.datasets.raw.CleanSignalMatrix {
+            signal_processor: !obj:braindevel.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindevel.datasets.loaders.$loader_type {
+                    filename: $dataset_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            cleaner: $cleaner,
+            sensor_names: $sensor_names,
+            unsupervised_preprocessor: $unsupervised_preprocessor,
+        },
+        raw_set_test: !obj:braindevel.datasets.raw.CleanSignalMatrix {
+            signal_processor: !obj:braindevel.datasets.signal_processor.SignalProcessor {
+                set_loader: !obj:braindevel.datasets.loaders.$loader_type {
+                    filename: $test_filename,
+                    load_sensor_names: $load_sensor_names,
+                },
+                segment_ival: [$trial_start, $trial_stop],
+                cnt_preprocessors: $cnt_preprocessors,
+                marker_def: $marker_def,
+            },
+            cleaner: $cleaner,
+            sensor_names: $sensor_names,
+            unsupervised_preprocessor: $unsupervised_preprocessor,
+        },
+        fft_preprocessor: !obj:braindevel.datasets.fft.FFTPreprocessor {
+            include_phase: $include_phase,
+            square_amplitude: $square_amplitude,
+            window_length: $fft_window_len,
+            window_stride: $fft_window_stride,
+            frequency_start: $frequency_start,
+            frequency_end: $frequency_end,
+            fs: $resample_fs,
+        },
+        linear_classifier: [ 
+           &in_layer_l !obj:lasagne.layers.InputLayer {
+                shape: [null, in_sensors, in_rows, in_cols]
+            },
+            &final_dense_l !obj:lasagne.layers.DenseLayer {
+                incoming: *in_layer_l,
+                num_units: $n_classes,
+                nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+                name: 'final_dense',
+            },
+        ],
+        linear_names_to_norms: {
+            final_dense: 0.5,
+        },
+        deep_fft_net_spat_time_freq: [ 
+           &in_layer !obj:lasagne.layers.InputLayer {
+                shape: [null, in_sensors, in_rows, in_cols]
+            },
+            &drop_in !obj:lasagne.layers.DropoutLayer {
+                incoming: *in_layer,
+                p: $drop_in_prob,
+            },
+            &spat_conv !obj:braindevel.veganlasagne.layers.Conv2DLayer {
+                incoming: *drop_in,
+                num_filters: $num_filters_spat,
+                filter_size: [1, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'spat_conv',
+            },
+            &time_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *spat_conv,
+                num_filters: $num_filters_time,
+                filter_size: [$filter_time_length, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'time_freq_conv',
+                pad: [$pad_time,0],
+            },
+            &freq_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *time_conv,
+                num_filters: $num_filters_time,
+                filter_size: [1, in_cols],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'time_freq_conv',
+                pad: [0,0],
+            },
+            &batch_norm_1 !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *freq_conv ,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+                nonlinearity: $first_nonlin,
+            },
+            &pool !obj:braindevel.veganlasagne.pool.$first_pool_layer {
+                    incoming: *batch_norm_1,
+                    pool_size: [$pool_time_length,1],
+                    mode: $first_pool_mode,
+                    stride: $pool_time_stride,
+                    ignore_border: False,
+            },
+            &pool_nonlin_1 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *pool,
+                    nonlinearity: $first_pool_nonlin ,
+            },
+            &drop_feature_1 !obj:lasagne.layers.DropoutLayer {
+                incoming: *pool_nonlin_1,
+                p: 0.5,
+            },
+            &combined_conv_2 !obj:lasagne.layers.Conv2DLayer {
+                incoming: *drop_feature_1,
+                num_filters: $num_filters_2,
+                filter_size: [$filter_length_2, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'combined_conv_2',
+                pad: [$pad_time,0],
+            },
+            &batch_norm_2 !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *combined_conv_2 ,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+                nonlinearity: $later_nonlin,
+            },
+            &pool_2 !obj:braindevel.veganlasagne.pool.$pool_layers {
+                incoming: *batch_norm_2,
+                pool_size: [$pool_time_length,1],
+                mode: $later_pool_mode,
+                stride: $pool_time_stride,
+                ignore_border: False,
+            },
+            &pool_nonlin_2 !obj:lasagne.layers.NonlinearityLayer {
+                incoming: *pool_2,
+                nonlinearity: $later_pool_nonlin ,
+            },
+            &drop_feature_2 !obj:lasagne.layers.DropoutLayer {
+                incoming: *pool_nonlin_2,
+                p: 0.5,
+            },
+            &combined_conv_3 !obj:lasagne.layers.Conv2DLayer {
+                incoming: *drop_feature_2,
+                num_filters: $num_filters_3,
+                filter_size: [$filter_length_3, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'combined_conv_3',
+                pad: [$pad_time,0],
+            },
+            &batch_norm_3 !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *combined_conv_3 ,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+                nonlinearity: $later_nonlin,
+            },
+            &pool_3 !obj:braindevel.veganlasagne.pool.$pool_layers {
+                    incoming: *batch_norm_3,
+                    pool_size: [$pool_time_length,1],
+                    mode: $later_pool_mode,
+                    stride: $pool_time_stride,
+                    ignore_border: False,
+            },
+            &pool_nonlin_3 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *pool_3,
+                    nonlinearity: $later_pool_nonlin ,
+            },
+            &drop_feature_3 !obj:lasagne.layers.DropoutLayer {
+                incoming: *pool_nonlin_3,
+                p: 0.5,
+            },
+            &final_dense !obj:lasagne.layers.DenseLayer {
+                incoming: *drop_feature_3,
+                num_units: $n_classes,
+                nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+                name: 'final_dense',
+            },
+        ],
+        
+        deep_fft_names_to_norms: {
+            time_freq_conv: $conv_norm,
+            spat_conv: $conv_norm,
+            combined_conv_2: $conv_norm,
+            combined_conv_3: $conv_norm,
+            final_dense: $final_norm,
+        },
+        
+        seperated_linear: [
+            &in_layer_c !obj:lasagne.layers.InputLayer {
+                shape: [null, in_sensors, in_rows, in_cols]
+            },
+            &drop_in_c !obj:lasagne.layers.DropoutLayer {
+                incoming: *in_layer_c,
+                p: $drop_in_prob,
+            },
+            &spat_conv_c !obj:lasagne.layers.Conv2DLayer {
+                incoming: *drop_in_c,
+                num_filters: $num_filters_simple,
+                filter_size: [1, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'spat_conv',
+            },
+            &drop_pre_spat_c !obj:lasagne.layers.DropoutLayer {
+                incoming: *spat_conv_c,
+                p: 0.5,
+            },
+            &freq_conv_c !obj:lasagne.layers.Conv2DLayer {
+                incoming: *drop_pre_spat_c,
+                num_filters: $num_filters_simple,
+                filter_size: [1, in_cols],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'freq_conv',
+            },
+            &drop_pre_final_c !obj:lasagne.layers.DropoutLayer {
+                incoming: *freq_conv_c,
+                p: 0.5,
+            },
+            &final_dense_c !obj:lasagne.layers.DenseLayer {
+                incoming: *drop_pre_final_c,
+                num_units: $n_classes,
+                nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+                name: 'final_dense',
+            },
+        ],
+        seperated_linear_names_to_norms: {
+            spat_conv: $conv_norm,
+            freq_conv: $conv_norm,
+            final_dense: $final_norm,
+        },
+
+        square: !!python/name:theano.tensor.sqr ,
+        sigmoid: !!python/name:lasagne.nonlinearities.sigmoid ,
+        identity: !!python/name:lasagne.nonlinearities.identity ,
+        elu: !!python/name:lasagne.nonlinearities.elu ,
+        relu: !!python/name:lasagne.nonlinearities.rectify ,
+        leaky_relu: !!python/name:lasagne.nonlinearities.leaky_rectify ,
+        safe_log: !!python/name:braindevel.veganlasagne.nonlinearities.safe_log ,
+        safe_softmax: !!python/name:braindevel.veganlasagne.nonlinearities.safe_softmax ,
+        
+        trial_wise: !obj:braindevel.datahandling.preprocessing.TrialwiseStandardize {
+            axes: $norm_axes,
+        },
+    },
+    variants: [[{
+        trial_stop: [4000],
+        trial_start: [-500],
+        layer_names_to_norms: [$deep_fft_names_to_norms],
+        layers: [$deep_fft_net],
+        unsupervised_preprocessor: [$fft_preprocessor],
+        
+        cleaner: [$no_cleaner],
+        layer_modifier: [TransformToNormalNet],
+        load_sensor_names: ['null'],
+        include_phase: [False],
+        square_amplitude: [False],
+        
+        num_filters_time: [25],
+        num_filters_spat: [25],
+        num_filters_2: [50],
+        num_filters_3: [100],
+       
+        filter_time_length: [3],
+        filter_length_2: [3],
+        filter_length_3: [3],
+        
+        drop_in_prob: [0.],
+        
+        # copied from 4_layer_no_nin.yaml
+        final_norm: [0.5],
+        conv_norm: [2.0],
+        first_nonlin: [$elu],
+        later_nonlin: [$elu],
+        final_nonlin: [$safe_softmax],
+        first_pool_layer: [Pool2DLayer],
+        first_pool_mode: ['max'], # just to prevent errors on square run, reenable
+        first_pool_nonlin: [$identity],
+        pool_layers: [Pool2DLayer],
+        later_pool_mode: ['max'], # just to prevent errors on square run, reenable
+        pool_time_length: [3],
+        pool_time_stride: [3],
+        later_pool_nonlin: [$identity],
+        batch_norm_alpha: [0.1], 
+        fft_window_len: [125],
+        fft_window_stride: [12],
+       
+        variants: [[ 
+        {
+            frequency_start: [0],
+            frequency_end: [40],
+        },
+        {
+            frequency_start: ['null'],
+            frequency_end: ['null'],
+        },
+        ],
+        [
+            {
+                layer_names_to_norms: [$deep_fft_names_to_norms],
+                layers: [$deep_fft_net_spat_time_freq],
+                filter_time_length: [3],
+                filter_length_2: [3],
+                filter_length_3: [3],
+                pad_time: [1],
+                ignore_unused: [['max_min', 'whisker_length',
+                'i_test_fold', 'eog_sensors', 'rejection_var_ival', 'num_split_folds',
+                'final_nonlin', 'rejection_blink_ival', 'whisker_percent',
+                'layer_modifier', 'misclass_monitor', 'input_time_length']],
+                variants: [[{
+                    include_phase: [True, False],
+                    square_amplitude: [True, False],
+                    
+                },
+                ]]
+            },
+#            {
+#                layer_names_to_norms: [$seperated_linear_names_to_norms],
+#                layers: [$seperated_linear],
+#                
+#                square_amplitude: [True],
+#                #square_amplitude: [False],
+#                include_phase: [False],
+#                fft_window_stride: [12, 62],
+#                num_filters_simple: [10],
+#                ignore_unused: [['max_min', 'whisker_length', 'filter_length_4',
+#                'i_test_fold', 'eog_sensors', 'rejection_var_ival', 'num_split_folds',
+#                'final_nonlin', 'rejection_blink_ival', 'whisker_percent',
+#                'layer_modifier', 'pool_layers', 'filter_length_2', 
+#                'later_pool_mode', 'first_pool_layer', 'batch_norm_alpha', 
+#                'later_pool_nonlin', 'pool_time_stride', 'later_nonlin', 
+#                'filter_time_length', 'first_pool_mode', 'pool_time_length', 
+#                'first_pool_nonlin', 'num_filters_time', 'filter_length_3', 
+#                'first_nonlin', 'num_filters_spat', 'num_filters_2', 
+#                'num_filters_3']],
+#            }
+        ]],
+        
+    }]]
+}

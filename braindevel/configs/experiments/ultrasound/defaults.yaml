@@ -1,0 +1,122 @@
+{
+    templates: {
+
+        weighted_binary_cross_entropy: !obj:braindevel.util.FuncAndArgs {
+            func: !!python/name:braindevel.veganlasagne.objectives.weighted_binary_cross_entropy ,
+            imbalance_factor: $imbalance_factor,
+        },
+        adam: !!python/name:lasagne.updates.adam ,
+        ultrasound_splitter: !obj:braindevel.ultrasound.splitter.UltrasoundSplitter {
+            n_train_subjects: $n_train_subjects, 
+            n_valid_subjects: $n_valid_subjects, 
+            n_test_subjects: $n_test_subjects, 
+            use_test_as_valid: $use_test_as_valid,
+        },
+        balanced_batch_iterator: !obj:braindevel.datahandling.batch_iteration.BalancedBatchIterator {
+            batch_size: $batch_size,
+        },
+        monitors: [
+                !obj:braindevel.veganlasagne.monitors.LossMonitor {},
+                !obj:braindevel.ultrasound.monitors.DiceScoreMonitor {
+                    chan_name: 'misclass'},
+                !obj:braindevel.veganlasagne.monitors.RuntimeMonitor {},
+        ],
+        ultrasound_set:  !obj:braindevel.ultrasound.dataset.UltrasoundSet {
+            img_rows: $img_rows,
+            img_cols: $img_cols,
+            n_train_subjects: $n_train_subjects, 
+            n_valid_subjects: $n_valid_subjects, 
+            n_test_subjects: $n_test_subjects,
+            replace_faulty_masks: $replace_faulty_masks,
+            set_faulty_masks_empty: $set_faulty_masks_empty,
+            use_test_as_valid: $use_test_as_valid,
+        },
+        weighted_thresholded_l2_empty_border: !obj:braindevel.util.FuncAndArgs {
+            func: !!python/name:braindevel.veganlasagne.objectives.sum_of_losses ,
+            loss_expressions: [
+                !obj:braindevel.util.FuncAndArgs {
+                    func: !!python/name:braindevel.veganlasagne.objectives.weighted_thresholded_binary_cross_entropy ,
+                    imbalance_factor: $imbalance_factor,
+                    lower_threshold: $low_pred_loss_cut, 
+                },
+                !obj:braindevel.util.FuncAndArgs {
+                    func: !!python/name:braindevel.veganlasagne.objectives.weight_decay ,
+                    factor: $l2_factor
+                },
+                !obj:braindevel.util.FuncAndArgs {
+                    func: !!python/name:braindevel.ultrasound.objectives.empty_target_mask_loss ,
+                    factor: $mask_factor,
+                },
+                !obj:braindevel.util.FuncAndArgs {
+                    func: !!python/name:braindevel.ultrasound.objectives.border_loss ,
+                    factor: $border_factor,
+                },
+            ]
+        },
+        max_norm_default:  !obj:braindevel.veganlasagne.update_modifiers.MaxNormConstraintWithDefaults {
+            layer_names_to_norms: { },
+        },
+        max_norm_all_2:  !obj:braindevel.veganlasagne.update_modifiers.MaxNormConstraintAll2 {
+            layer_names_to_norms: { },
+        },
+        times_two_minus_one:  !obj:braindevel.ultrasound.preprocessing.TimesTwoMinusOne {
+        },
+        image_standardize:  !obj:braindevel.ultrasound.preprocessing.ImageStandardize {
+        },
+        elastic_transform: !obj:braindevel.ultrasound.batch_modifier.ElasticTransform {
+            fraction_to_augment: $elastic_fraction,
+            alpha_factor: $elastic_alpha,
+            sigma_factor: $elastic_sigma,
+            affine_factor: 0,
+            only_inputs: $elastic_only_inputs,
+            max_d_cols: $elastic_max_d_cols,
+            max_d_rows: $elastic_max_d_rows,
+            max_angle: $elastic_max_angle,
+        }
+    },
+    variants: [[{
+        updates_modifier: [$max_norm_default,],
+        monitors: [$monitors],
+        iterator: [$balanced_batch_iterator],
+        dataset_splitter: [$ultrasound_splitter],
+        dataset: [$ultrasound_set],
+        preprocessor: ['null'],#$image_standardize
+        loss_expression: [$weighted_thresholded_l2_empty_border],
+        imbalance_factor: [20],
+        low_pred_loss_cut: [0.2],
+        l2_factor: [0.],
+        mask_factor: [1],
+        border_factor: [3],
+        #mask_factor: [3,9],
+        #border_factor: [1,3,9],
+        elastic_alpha: [0.05],
+        elastic_sigma: [0.04],
+        # in videos looks like there is more rowshifts
+        elastic_max_d_cols: [0],
+        elastic_max_d_rows: [0],
+        elastic_max_angle: [0],
+        elastic_fraction: [0],
+        elastic_only_inputs: [False],
+        updates_expression: [$adam],
+        num_cv_folds: ['null'],
+        max_increasing_epochs: [100],
+        max_epochs: [250],
+        early_stop_chan: ['valid_misclass'],
+        run_after_early_stop: [true],
+        batch_modifier: [$elastic_transform],
+        batch_size: [54],
+        batch_norm: [True],
+        set_faulty_masks_empty: [False],
+        
+        # this is [420, 580] / 5.0
+        img_rows: [84],
+        img_cols: [116],
+        # just for debug mode to work
+        load_sensor_names: ['null'],
+        sensor_names: ['null'],
+        ignore_unused: [['load_sensor_names','sensor_names']],
+        n_train_subjects: [35],
+        n_valid_subjects: [6],
+        n_test_subjects: [6],
+    }]]
+}

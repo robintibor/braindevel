@@ -1,0 +1,95 @@
+{
+    extends: ['configs/experiments/ultrasound/defaults.yaml',
+        'configs/experiments/ultrasound/auto_up.yaml'],
+    templates: {
+        four_conv_pool_b: !obj:braindevel.ultrasound.models.dilated.FourConvPoolBDilated {
+            img_rows: $img_rows,
+            img_cols: $img_cols,
+            conv_nonlin: $conv_nonlin,
+            n_start_filters: $n_start_filters,
+            n_increase_filter_factor: $n_increase_filter_factor,
+            batch_norm: $batch_norm,
+        },
+        five_2_conv_pool: !obj:braindevel.ultrasound.models.dilated.Five2ConvPoolDilated {
+                img_rows: $img_rows,
+                img_cols: $img_cols,
+                conv_nonlin: $conv_nonlin,
+                n_start_filters: $n_start_filters,
+                n_increase_filter_factor: $n_increase_filter_factor,
+                batch_norm: $batch_norm,
+        },
+        five_conv_pool_b: !obj:braindevel.ultrasound.models.dilated.FiveConvPoolBDilated {
+                img_rows: $img_rows,
+                img_cols: $img_cols,
+                conv_nonlin: $conv_nonlin,
+                n_start_filters: $n_start_filters,
+                n_increase_filter_factor: $n_increase_filter_factor,
+                batch_norm: $batch_norm,
+        },
+        five_2_conv_3_pool: !obj:braindevel.ultrasound.models.dilated.Five2Conv3PoolDilated {
+                img_rows: $img_rows,
+                img_cols: $img_cols,
+                conv_nonlin: $conv_nonlin,
+                n_start_filters: $n_start_filters,
+                n_increase_filter_factor: $n_increase_filter_factor,
+                batch_norm: $batch_norm,
+        },
+        fully_conv: !obj:braindevel.ultrasound.models.dilated.FullyConvDilated {
+                img_rows: $img_rows,
+                img_cols: $img_cols,
+                conv_nonlin: $conv_nonlin,
+                n_start_filters: $n_start_filters,
+                n_increase_filter_factor: $n_increase_filter_factor,
+                batch_norm: $batch_norm,
+        },
+        negative_dice_score: !!python/name:braindevel.ultrasound.objectives.negative_dice_score ,
+        negative_dice_score_weighted: !!python/name:braindevel.ultrasound.objectives.negative_dice_score_weighted ,
+    },
+    variants: [[{
+        save_path: ['data/models/ultrasound/dilated_empty_mask/'],
+        max_epochs: [60],
+        l2_factor: [0.],
+        conv_nonlin: [$relu],
+        network: [$five_2_conv_pool, $four_conv_pool_b], 
+        layers: [$auto_net_with_dense],
+        elastic_fraction: [0.,0.25],
+        replace_faulty_masks: [False],
+        use_test_as_valid: [True],
+        set_faulty_masks_empty: [True],
+        
+        variants: [[
+        {
+            conv_nonlin: [$elu],
+            #post_processor: [$no_post],
+            post_processor: [$pad_conv_dense],
+            n_post_filters: [25],
+        },
+#        {
+#            post_processor: [$no_post],
+#        },
+#        {
+#            post_processor: [$pad_conv_dense],
+#            n_post_filters: [50],
+#            n_start_filters: [24],
+#        },
+        {
+            post_processor: [$pad_conv_dense],
+            n_post_filters: [25],
+        },
+        ],
+        [
+        {
+            batch_norm_up: [True],
+            batch_norm_sharpen: [True],
+        },
+        ],
+#        [
+#        {
+#            loss_expression: [$negative_dice_score_weighted],
+#            ignore_unused: [['l2_factor', 'low_pred_loss_cut', 'mask_factor', 
+#            'imbalance_factor', 'border_factor', 'load_sensor_names','sensor_names']]
+#        }
+#        ]
+        ],
+    }]]  
+}

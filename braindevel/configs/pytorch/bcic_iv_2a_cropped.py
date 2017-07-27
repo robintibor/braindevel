@@ -6,7 +6,10 @@ from collections import OrderedDict
 import numpy as np
 import torch.nn.functional as F
 from torch import optim
+import torch as th
 
+from braindecode.models.deep4 import Deep4Net
+from braindecode.models.util import to_dense_prediction_model
 from hyperoptim.parse import cartesian_dict_of_lists_product, \
     product_of_list_of_lists_of_dicts
 from hyperoptim.util import save_pkl_artifact
@@ -14,9 +17,9 @@ from hyperoptim.util import save_pkl_artifact
 from braindecode.datasets.bcic_iv_2a import BCICompetition4Set2A
 from braindecode.experiments.experiment import Experiment
 from braindecode.experiments.monitors import LossMonitor, MisclassMonitor, \
-    RuntimeMonitor
+    RuntimeMonitor, CroppedTrialMisclassMonitor
 from braindecode.experiments.stopcriteria import MaxEpochs, NoDecrease, Or
-from braindecode.datautil.iterators import BalancedBatchSizeIterator
+from braindecode.datautil.iterators import CropsFromTrialsIterator
 from braindecode.models.shallow_fbcsp import ShallowFBCSPNet
 from braindecode.datautil.splitters import split_into_two_sets
 from braindecode.torch_ext.constraints import MaxNormDefaultConstraint
@@ -38,7 +41,7 @@ def get_templates():
 def get_grid_param_list():
     dictlistprod = cartesian_dict_of_lists_product
     default_params = [{
-        'save_folder': './data/models/pytorch/bcic-iv-2a/shallow/epo-to-4000-ms/',
+        'save_folder': './data/models/pytorch/bcic-iv-2a/cnt-removed-eog/',
         'only_return_exp': False,
     }]
     subject_folder_params = dictlistprod({
@@ -50,10 +53,15 @@ def get_grid_param_list():
         'low_cut_hz': [0,4],
     })
 
+    model_params = dictlistprod({
+        'model': ['shallow', 'deep'],
+    })
+
     grid_params = product_of_list_of_lists_of_dicts([
         default_params,
         subject_folder_params,
         preproc_params,
+        model_params,
     ])
 
     return grid_params
@@ -63,7 +71,7 @@ def sample_config_params(rng, params):
     return params
 
 
-def run_exp(data_folder, subject_id, low_cut_hz, cuda):
+def run_exp(data_folder, subject_id, low_cut_hz, model, cuda):
     train_filename = 'A{:02d}T.gdf'.format(subject_id)
     test_filename = 'A{:02d}E.gdf'.format(subject_id)
     train_filepath = os.path.join(data_folder, train_filename)
@@ -79,8 +87,9 @@ def run_exp(data_folder, subject_id, low_cut_hz, cuda):
     test_cnt = test_loader.load()
 
     # Preprocessing
-
-    train_cnt = train_cnt.drop_channels(['STI 014'])
+    train_cnt = train_cnt.drop_channels(['STI 014', 'EOG-left',
+                                         'EOG-central', 'EOG-right'])
+    assert len(train_cnt.ch_names) == 22
     # lets convert to millvolt for numerical stability of next operations
     train_cnt = mne_apply(lambda a: a * 1e6, train_cnt)
     train_cnt = mne_apply(
@@ -92,8 +101,10 @@ def run_exp(data_folder, subject_id, low_cut_hz, cuda):
                                                   init_block_size=1000,
                                                   eps=1e-4).T,
         train_cnt)
-    test_cnt.load_data()
-    test_cnt = test_cnt.drop_channels(['STI 014'])
+
+    test_cnt = test_cnt.drop_channels(['STI 014', 'EOG-left',
+                                       'EOG-central', 'EOG-right'])
+    assert len(test_cnt.ch_names) == 22
     test_cnt = mne_apply(lambda a: a * 1e6, test_cnt)
     test_cnt = mne_apply(
         lambda a: bandpass_cnt(a, low_cut_hz, 38, test_cnt.info['sfreq'],
@@ -117,28 +128,48 @@ def run_exp(data_folder, subject_id, low_cut_hz, cuda):
 
     set_random_seeds(seed=20190706, cuda=True)
 
-    n_classes = int(np.max(train_set.y) + 1)
+    n_classes = 4
     n_chans = int(train_set.X.shape[1])
-    input_time_length = train_set.X.shape[2]
-    # final_dense_length=69 for full trial length at -500,4000
-    model = ShallowFBCSPNet(n_chans, n_classes,
-                            input_time_length=input_time_length,
-                            final_conv_length='auto').create_network()
-    model.cuda()
+    input_time_length=1000
+    if model == 'shallow':
+        model = ShallowFBCSPNet(n_chans, n_classes, input_time_length=input_time_length,
+                            final_conv_length=30).create_network()
+    elif model == 'deep':
+        model = Deep4Net(n_chans, n_classes, input_time_length=input_time_length,
+                            final_conv_length=2).create_network()
+
+    to_dense_prediction_model(model)
+    if cuda:
+        model.cuda()
+    log.info("Model: \n{:s}".format(str(model)))
+
+    dummy_input = np_to_var(train_set.X[:1, :, :, None])
+    if cuda:
+        dummy_input = dummy_input.cuda()
+    out = model(dummy_input)
+
+    n_preds_per_input = out.cpu().data.numpy().shape[2]
 
     optimizer = optim.Adam(model.parameters())
 
-    iterator = BalancedBatchSizeIterator(batch_size=60)
+    iterator = CropsFromTrialsIterator(batch_size=60,
+                                       input_time_length=input_time_length,
+                                       n_preds_per_input=n_preds_per_input)
 
-    stop_criterion = Or([MaxEpochs(1600),
-                         NoDecrease('valid_misclass', 160)])
+    stop_criterion = Or([MaxEpochs(800),
+                         NoDecrease('valid_misclass', 80)])
 
-    monitors = [LossMonitor(), MisclassMonitor(), RuntimeMonitor()]
+    monitors = [LossMonitor(), MisclassMonitor(col_suffix='sample_misclass'),
+                CroppedTrialMisclassMonitor(
+                    input_time_length=input_time_length), RuntimeMonitor()]
 
     model_constraint = MaxNormDefaultConstraint()
 
+    loss_function = lambda preds, targets: F.nll_loss(
+        th.mean(preds, dim=2)[:, :, 0], targets)
+
     exp = Experiment(model, train_set, valid_set, test_set, iterator=iterator,
-                     loss_function=F.nll_loss, optimizer=optimizer,
+                     loss_function=loss_function, optimizer=optimizer,
                      model_constraint=model_constraint,
                      monitors=monitors,
                      stop_criterion=stop_criterion,
@@ -147,19 +178,19 @@ def run_exp(data_folder, subject_id, low_cut_hz, cuda):
     exp.run()
     return exp
 
-def run(ex, data_folder, subject_id, low_cut_hz, only_return_exp, ):
+
+def run(ex, data_folder, subject_id, low_cut_hz, model, only_return_exp, ):
     cuda = True
     start_time = time.time()
     assert only_return_exp is False
     assert (only_return_exp is False) or (n_chans is not None)
     ex.info['finished'] = False
 
+    exp = run_exp(data_folder, subject_id, low_cut_hz, model, cuda)
+    last_row = exp.epochs_df.iloc[-1]
     end_time = time.time()
     run_time = end_time - start_time
-
     ex.info['finished'] = True
-    exp = run_exp(data_folder, subject_id, low_cut_hz, cuda)
-    last_row = exp.epochs_df.iloc[-1]
 
     for key, val in last_row.iteritems():
         ex.info[key] = float(val)

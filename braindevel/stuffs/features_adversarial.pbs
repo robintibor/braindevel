@@ -1,0 +1,48 @@
+#!/bin/bash
+#$ -o /home/schirrmr/motor-imagery/data/jobs_out/ -e /home/schirrmr/motor-imagery/data/jobs_out/
+
+# Die Zeile hier darüber mit -o  und -e definiert wo stdout/stderr hingeschrieben werden vom Job
+# (werden dann als Dateien in die Ordner geschrieben, mit Jobname+JobId)
+# Diese Dateien unter keinen Umständen löschen, während der Job noch läuft
+
+
+# Umgebungsvariablen + Change Folder, ein paar Ausgaben für Debugging mit echo
+cd ${HOME}/braindecode/code/braindecode/
+export PYTHONPATH=$PYTHONPATH:`pwd`/../
+
+echo "Working directory is $PWD"
+
+# für theano einfach immer auf 0 setzen. CUDA_VISIBLE_DEVICES sollte gesetzt sein
+# automatisch und die richtige GPU auswählen....
+export GPU_ID=0
+echo HOME=$HOME
+echo USER=$USER
+echo JOB_ID=$JOB_ID
+echo JOB_NAME=$JOB_NAME
+echo HOSTNAME=$HOSTNAME
+echo SGE_TASK_ID=$SGE_TASK_ID
+echo CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
+echo GPU_ID=$GPU_ID
+echo $CMD
+
+export THEANO_FLAGS="floatX=float32,device=gpu${GPU_ID},nvcc.fastmath=True,force_device=True,compiledir=/tmp/schirrmr.theano_compile.rz/"
+echo THEANO_FLAGS=$THEANO_FLAGS
+
+#### SACHEN DIE DU ALLE NICHT BENÖTIGEN SOLLTEST (altes CUDNN)
+# once cudnnv5 works or sth... ,maybe not necessary and instead remove once cudnnv5 installedon cluster
+#GPU_FLAGS="device=gpu${GPU_ID},force_device=True"
+#DNN_PATH_FLAGS="dnn.include_path=/home/schirrmr/cudnn-7.5-linux-x64-v5.1/include,dnn.library_path=/home/schirrmr/cudnn-7.5-linux-x64-v5.1/lib64"
+#COMPILEDIR_FLAG="compiledir=/tmp/schirrmr.theano_compile_cudnn5.rz/$"
+#OTHER_FLAGS="floatX=float32,nvcc.fastmath=True"
+#export THEANO_FLAGS="${GPU_FLAGS},{DNN_PATH_FLAGS},{COMPILEDIR_FLAG},{OTHER_FLAGS}"
+
+
+# exports for cudnnv3 ... maybe unneeded?
+export LD_LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LD_LIBRARY_PATH
+export LIBRARY_PATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$LIBRARY_PATH
+export CPATH=/home/schirrmr/cudnn-7.0-linux-x64-v.3.0-prod:$CPATH
+
+#### ENDE SACHEN DIE DU ALLE NICHT BENÖTIGEN SOLLTEST (CUDNN)
+
+# Tatsächlicher Aufruf SCript
+./epilepsy/scripts/train_experiments.py epilepsy/nb/features_adversarial --start 39 --stop 42 --quiet

@@ -1,0 +1,20 @@
+{
+    templates: {
+        cnt_iterator: !obj:braindevel.datahandling.batch_iteration.CntWindowsFromCntIterator {
+            batch_size: $batch_size,
+            input_time_length: $input_time_length,
+            n_sample_preds: $n_sample_preds,
+            oversample_targets: $oversample_targets,
+            remove_baseline_mean: $remove_baseline_mean,
+        },
+        auc_cnt_misclass_monitor: !obj:braindevel.veganlasagne.monitors.AUCMeanMisclassMonitor {
+            input_time_length: $input_time_length,
+            n_sample_preds: $n_sample_preds
+        },
+    },
+    variants: [[{
+        misclass_monitor: [$auc_cnt_misclass_monitor],
+        iterator: [$cnt_iterator],
+        remove_baseline_mean: [false],
+    }]]
+}

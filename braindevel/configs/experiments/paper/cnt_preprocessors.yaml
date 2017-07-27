@@ -1,0 +1,29 @@
+{
+    templates: {
+        resample_bandpass_standardize: 
+        [[
+                !!python/name:wyrm.processing.select_channels , 
+                {
+                    invert: true, 
+                    regexp_list: ['Cz']
+                },
+            ],
+            [
+                !!python/name:braindevel.mywyrm.processing.resample_cnt ,
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindevel.mywyrm.processing.bandpass_cnt ,
+                {
+                'low_cut_hz': $low_cut_hz,
+                'high_cut_hz': $high_cut_hz}
+            ],
+            [
+                !!python/name:braindevel.mywyrm.processing.exponential_standardize_cnt ,
+                { }
+        ]],
+    },
+    variants: [[{
+        cnt_preprocessors: [$resample_bandpass_standardize]
+    }]]
+}

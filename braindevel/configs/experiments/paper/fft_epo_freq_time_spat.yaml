@@ -1,0 +1,123 @@
+{
+    templates: {
+        
+        deep_fft_net_freq_time_spat: [ 
+           &in_layer !obj:lasagne.layers.InputLayer {
+                shape: [null, in_sensors, in_rows, in_cols]
+            },
+            &shuffle !obj:lasagne.layers.DimshuffleLayer {
+                incoming: *in_layer,
+                pattern: [0,3,2,1],
+            },
+            &drop_in !obj:lasagne.layers.DropoutLayer {
+                incoming: *shuffle,
+                p: $drop_in_prob,
+            },
+            &freq_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *drop_in,
+                num_filters: $num_filters_time,
+                filter_size: [1, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'time_freq_conv',
+                pad: [0,0],
+            },
+            &time_conv !obj:lasagne.layers.Conv2DLayer {
+                incoming: *freq_conv,
+                num_filters: $num_filters_time,
+                filter_size: [$filter_time_length, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'time_freq_conv',
+                pad: [$pad_time,0],
+            },
+            &spat_conv !obj:braindevel.veganlasagne.layers.Conv2DLayer {
+                incoming: *time_conv,
+                num_filters: $num_filters_spat,
+                filter_size: [1, in_sensors],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'spat_conv',
+            },
+            &batch_norm_1 !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *spat_conv ,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+                nonlinearity: $first_nonlin,
+            },
+            &pool !obj:braindevel.veganlasagne.pool.$first_pool_layer {
+                    incoming: *batch_norm_1,
+                    pool_size: [$pool_time_length,1],
+                    mode: $first_pool_mode,
+                    stride: $pool_time_stride,
+            },
+            &pool_nonlin_1 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *pool,
+                    nonlinearity: $first_pool_nonlin ,
+            },
+            &drop_feature_1 !obj:lasagne.layers.DropoutLayer {
+                incoming: *pool_nonlin_1,
+                p: 0.5,
+            },
+            &combined_conv_2 !obj:lasagne.layers.Conv2DLayer {
+                incoming: *drop_feature_1,
+                num_filters: $num_filters_2,
+                filter_size: [$filter_length_2, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'combined_conv_2',
+                pad: [$pad_time,0],
+            },
+            &batch_norm_2 !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *combined_conv_2 ,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+                nonlinearity: $later_nonlin,
+            },
+            &pool_2 !obj:braindevel.veganlasagne.pool.$pool_layers {
+                incoming: *batch_norm_2,
+                pool_size: [$pool_time_length,1],
+                mode: $later_pool_mode,
+                stride: $pool_time_stride,
+            },
+            &pool_nonlin_2 !obj:lasagne.layers.NonlinearityLayer {
+                incoming: *pool_2,
+                nonlinearity: $later_pool_nonlin ,
+            },
+            &drop_feature_2 !obj:lasagne.layers.DropoutLayer {
+                incoming: *pool_nonlin_2,
+                p: 0.5,
+            },
+            &combined_conv_3 !obj:lasagne.layers.Conv2DLayer {
+                incoming: *drop_feature_2,
+                num_filters: $num_filters_3,
+                filter_size: [$filter_length_3, 1],
+                nonlinearity: !!python/name:lasagne.nonlinearities.identity ,
+                name: 'combined_conv_3',
+                pad: [$pad_time,0],
+            },
+            &batch_norm_3 !obj:braindevel.veganlasagne.batch_norm.BatchNormLayer {
+                incoming: *combined_conv_3 ,
+                epsilon: 1e-4,
+                alpha: $batch_norm_alpha,
+                nonlinearity: $later_nonlin,
+            },
+            &pool_3 !obj:braindevel.veganlasagne.pool.$pool_layers {
+                    incoming: *batch_norm_3,
+                    pool_size: [$pool_time_length,1],
+                    mode: $later_pool_mode,
+                    stride: $pool_time_stride,
+            },
+            &pool_nonlin_3 !obj:lasagne.layers.NonlinearityLayer {
+                    incoming: *pool_3,
+                    nonlinearity: $later_pool_nonlin ,
+            },
+            &drop_feature_3 !obj:lasagne.layers.DropoutLayer {
+                incoming: *pool_nonlin_3,
+                p: 0.5,
+            },
+            &final_dense !obj:lasagne.layers.DenseLayer {
+                incoming: *drop_feature_3,
+                num_units: $n_classes,
+                nonlinearity: !!python/name:lasagne.nonlinearities.softmax ,
+                name: 'final_dense',
+            },
+            ],
+        }
+}

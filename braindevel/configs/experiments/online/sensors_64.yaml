@@ -1,0 +1,65 @@
+{
+    extends: [
+        'configs/experiments/paper/ours/shallow.yaml',
+        'configs/experiments/paper/cnt.yaml',
+    ],
+    templates: {
+        sensors_64: ['Fp1', 'Fpz', 'Fp2', 'F7', 'F3', 'Fz', 'F4',
+                    'F8', 'FC5', 'FC1', 'FC2', 'FC6', 'M1', 'T7',
+                    'C3', 'Cz', 'C4', 'T8', 'M2', 'CP5', 'CP1', 'CP2',
+                    'CP6', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1',
+                    'Oz', 'O2', 'AF7', 'AF3', 'AF4', 'AF8', 'F5', 'F1',
+                    'F2', 'F6', 'FC3', 'FCz', 'FC4', 'C5', 'C1', 'C2',
+                    'C6', 'CP3', 'CPz', 'CP4', 'P5', 'P1', 'P2', 'P6',
+                    'PO5', 'PO3', 'PO4', 'PO6', 'FT7', 'FT8', 'TP7',
+                    'TP8', 'PO7', 'PO8'],
+        C_sensors_21: ['FC5', 'FC1', 'FC2', 'FC6',
+                    'C3', 'Cz', 'C4', 'CP5', 'CP1', 'CP2',
+                    'CP6', 'FC3', 'FCz', 'FC4', 'C5', 'C1', 'C2',
+                    'C6', 'CP3', 'CPz', 'CP4',],
+        resample_highpass_standardize: 
+        [[
+                !!python/name:wyrm.processing.select_channels , 
+                {
+                    invert: true, 
+                    regexp_list: ['Cz']
+                },
+            ],
+            [
+                !!python/name:braindevel.mywyrm.processing.resample_cnt ,
+                {'newfs': $resample_fs},
+            ],
+            [
+                !!python/name:braindevel.mywyrm.processing.highpass_cnt ,
+                {'low_cut_off_hz': $low_cut_off_hz}
+            ],
+            [
+                !!python/name:braindevel.mywyrm.processing.exponential_standardize_cnt ,
+                { }
+        ]],
+    },
+    variants: [[{
+        save_path: ['data/models/online/cnt/sensors-64/'],
+
+        sensor_names: [$C_sensors_21],
+
+        dataset_filename: ['data/BBCI-without-last-runs/MaVoMoSc1S001R01_ds10_1-11.BBCI.mat'],
+        test_filename: ['data/BBCI-only-last-runs/MaVoMoSc1S001R12_ds10_1-2BBCI.mat'],
+  
+        final_dense_length: [30],
+        input_time_length: [1000],
+        n_sample_preds : [300], # will be overwritten anyways
+        first_nonlin: [$square],
+        post_pool_nonlin: [$safe_log],
+        pool_mode: ['average_exc_pad'],
+        
+        drop_p: [0.5],
+        layers: [$cnt_shallow_square],
+        cnt_preprocessors: [$resample_highpass_standardize],
+        low_cut_off_hz: ["null"],
+        
+        ignore_unused: [['max_min', 'whisker_length', 'i_test_fold',
+        'eog_sensors', 'rejection_var_ival', 'num_split_folds', 
+        'misclass_monitor', 'rejection_blink_ival', 'whisker_percent']]
+    }]],
+}

@@ -7,6 +7,7 @@ import numpy as np
 import torch.nn.functional as F
 from torch import optim
 
+from braindecode.models.deep4 import Deep4Net
 from hyperoptim.parse import cartesian_dict_of_lists_product, \
     product_of_list_of_lists_of_dicts
 from hyperoptim.util import save_pkl_artifact
@@ -38,7 +39,7 @@ def get_templates():
 def get_grid_param_list():
     dictlistprod = cartesian_dict_of_lists_product
     default_params = [{
-        'save_folder': './data/models/pytorch/bcic-iv-2a/shallow/epo-to-4000-ms/',
+        'save_folder': './data/models/pytorch/bcic-iv-2a/epo-removed-eog/',
         'only_return_exp': False,
     }]
     subject_folder_params = dictlistprod({
@@ -50,10 +51,15 @@ def get_grid_param_list():
         'low_cut_hz': [0,4],
     })
 
+    model_params = dictlistprod({
+        'model': ['shallow', 'deep'],
+    })
+
     grid_params = product_of_list_of_lists_of_dicts([
         default_params,
         subject_folder_params,
         preproc_params,
+        model_params,
     ])
 
     return grid_params
@@ -63,7 +69,7 @@ def sample_config_params(rng, params):
     return params
 
 
-def run_exp(data_folder, subject_id, low_cut_hz, cuda):
+def run_exp(data_folder, subject_id, low_cut_hz, model, cuda):
     train_filename = 'A{:02d}T.gdf'.format(subject_id)
     test_filename = 'A{:02d}E.gdf'.format(subject_id)
     train_filepath = os.path.join(data_folder, train_filename)
@@ -80,7 +86,9 @@ def run_exp(data_folder, subject_id, low_cut_hz, cuda):
 
     # Preprocessing
 
-    train_cnt = train_cnt.drop_channels(['STI 014'])
+    train_cnt = train_cnt.drop_channels(['STI 014', 'EOG-left',
+                                         'EOG-central', 'EOG-right'])
+    assert len(train_cnt.ch_names) == 22
     # lets convert to millvolt for numerical stability of next operations
     train_cnt = mne_apply(lambda a: a * 1e6, train_cnt)
     train_cnt = mne_apply(
@@ -92,8 +100,10 @@ def run_exp(data_folder, subject_id, low_cut_hz, cuda):
                                                   init_block_size=1000,
                                                   eps=1e-4).T,
         train_cnt)
-    test_cnt.load_data()
-    test_cnt = test_cnt.drop_channels(['STI 014'])
+
+    test_cnt = test_cnt.drop_channels(['STI 014', 'EOG-left',
+                                       'EOG-central', 'EOG-right'])
+    assert len(test_cnt.ch_names) == 22
     test_cnt = mne_apply(lambda a: a * 1e6, test_cnt)
     test_cnt = mne_apply(
         lambda a: bandpass_cnt(a, low_cut_hz, 38, test_cnt.info['sfreq'],
@@ -117,15 +127,18 @@ def run_exp(data_folder, subject_id, low_cut_hz, cuda):
 
     set_random_seeds(seed=20190706, cuda=True)
 
-    n_classes = int(np.max(train_set.y) + 1)
+    n_classes = 4
     n_chans = int(train_set.X.shape[1])
     input_time_length = train_set.X.shape[2]
-    # final_dense_length=69 for full trial length at -500,4000
-    model = ShallowFBCSPNet(n_chans, n_classes,
-                            input_time_length=input_time_length,
+    if model == 'shallow':
+        model = ShallowFBCSPNet(n_chans, n_classes, input_time_length=input_time_length,
+                            final_conv_length='auto').create_network()
+    elif model == 'deep':
+        model = Deep4Net(n_chans, n_classes, input_time_length=input_time_length,
                             final_conv_length='auto').create_network()
     if cuda:
         model.cuda()
+    log.info("Model: \n{:s}".format(str(model)))
 
     optimizer = optim.Adam(model.parameters())
 
@@ -148,19 +161,20 @@ def run_exp(data_folder, subject_id, low_cut_hz, cuda):
     exp.run()
     return exp
 
-def run(ex, data_folder, subject_id, low_cut_hz, only_return_exp, ):
+
+def run(ex, data_folder, subject_id, low_cut_hz, model, only_return_exp, ):
     cuda = True
     start_time = time.time()
     assert only_return_exp is False
     assert (only_return_exp is False) or (n_chans is not None)
     ex.info['finished'] = False
 
+
+    exp = run_exp(data_folder, subject_id, low_cut_hz, model, cuda)
+    last_row = exp.epochs_df.iloc[-1]
     end_time = time.time()
     run_time = end_time - start_time
-
     ex.info['finished'] = True
-    exp = run_exp(data_folder, subject_id, low_cut_hz, cuda)
-    last_row = exp.epochs_df.iloc[-1]
 
     for key, val in last_row.iteritems():
         ex.info[key] = float(val)

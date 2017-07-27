@@ -1,0 +1,12 @@
+{
+    templates: {
+         fixed_trial_split: !obj:braindevel.datahandling.splitters.FixedTrialSplitter {
+                n_train_trials: $n_train_trials, 
+                valid_set_fraction: $valid_set_fraction,
+            },
+    },
+    variants: [[{
+            dataset_splitter: [$fixed_trial_split],
+            valid_set_fraction: [0.1],
+    }]]
+}
