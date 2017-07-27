@@ -143,7 +143,7 @@ class BatchWiseCntTrainer(object):
         # need marker samples with some overlap
         # so we do not miss trial boundaries inbetween two sample blocks
         marker_samples_with_overlap = np.copy(
-            self.marker_buffer[-len(markers)-2:])
+            self.marker_buffer[-len(markers)-1:])
         trial_has_ended = np.sum(np.diff(marker_samples_with_overlap) < 0) > 0
         if trial_has_ended:
             trial_starts, trial_stops = self.get_trial_start_stop_indices(
