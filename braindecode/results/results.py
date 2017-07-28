@@ -150,7 +150,7 @@ class ResultPool():
             try:
                 self._training_times.append(result_obj.training_time)
             except:
-                print "No Info for {:d}".format(debug_i)
+                print("No Info for {:d}".format(debug_i))
                 self._training_times.append(-1)
             debug_i += 1
         # Convert to numpy array and add empty dimension for train_test results
@@ -192,7 +192,7 @@ class ResultPool():
                 self._templates.append(result_obj.templates)
                 self._parameters.append(result_obj.parameters)
             except:
-                print "No Info for {:d}".format(debug_i)
+                print("No Info for {:d}".format(debug_i))
                 self._templates.append({})
                 self._parameters.append({})
             debug_i += 1

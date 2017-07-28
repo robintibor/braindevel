@@ -278,6 +278,7 @@ class Experiment(object):
             new_key = 'before_reset_' + key
             self.monitor_chans[new_key] = self.old_monitor_chans[key]
 
+
 def load_layers_from_dict(train_dict):
     """Layers can  be a list or an object that returns a list."""
     layers_obj = train_dict['layers']
@@ -285,6 +286,7 @@ def load_layers_from_dict(train_dict):
         return layers_obj
     else:
         return layers_obj.get_layers()
+
 
 def create_experiment(yaml_filename, seed=9859295):
     """Utility function to create experiment from yaml file"""

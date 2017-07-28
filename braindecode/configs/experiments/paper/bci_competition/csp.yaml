@@ -4,11 +4,11 @@
     ],
     
     variants: [[{
-        save_path: ['data/models/paper/bci-competition/csp/'],
+        save_path: ['data/models/paper/bci-competition/csp-repl-for-pytorch/'],
         cleaner: [$no_cleaner],#$, , train_normal_cleaner
         test_cleaner: [$no_cleaner],
         n_selected_features: [20],#10,
-        trial_stop: [4000],#2500,
+        trial_stop: [2500],#4000#2500,
         filt_order: [3],
         
         standardize_cnt: [False],
@@ -22,16 +22,16 @@
             'max_abs_threshold', 'low_cut_hz', 'high_cut_hz']],
         
         variants: [[
-        {
-            min_freq: [19],
-            max_freq: [19],
-            low_width: [22],
-            high_width: [22],
-            high_overlap: [0],
-            last_low_freq: [19],
-            low_overlap: [0],
-            n_selected_features: ['null'],
-         },
+#        {
+#            min_freq: [19],
+#            max_freq: [19],
+#            low_width: [22],
+#            high_width: [22],
+#            high_overlap: [0],
+#            last_low_freq: [19],
+#            low_overlap: [0],
+#            n_selected_features: ['null'],
+#         },
 #        {
 #            min_freq: [11],
 #            max_freq: [26],
@@ -59,14 +59,14 @@
 #            last_low_freq: [10],
 #            low_overlap: [3],
 #        },
-#        {
-#            min_freq: [7],
-#            max_freq: [34],
-#            low_width: [6],
-#            high_width: [8],
-#            high_overlap: [4],
-#            last_low_freq: [10],
-#            low_overlap: [3],
+        {
+            min_freq: [7],
+            max_freq: [34],
+            low_width: [6],
+            high_width: [8],
+            high_overlap: [4],
+            last_low_freq: [10],
+            low_overlap: [3],
 #            variants: [[
 #            {
 #            },
@@ -74,7 +74,7 @@
 #                trial_start: [500],
 #                trial_stop: [2500],
 #            }]],
-#        },
+        },
 #        {
 #            resample_fs: [100],
 #            min_freq: [0.5],

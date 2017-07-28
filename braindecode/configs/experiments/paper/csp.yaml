@@ -45,7 +45,7 @@
         save_model: [false],
         load_sensor_names: ["null"],
         resample_fs: ["null"],
-        filt_order: [4],
+        filt_order: [3], #4 before, but then overriden in both bcic and ours...
         trial_start: [500],
         trial_stop: [4000],
         standardize_epo: [false],

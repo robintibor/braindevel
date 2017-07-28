@@ -63,7 +63,7 @@ def create_cnt_y_start_end_marker(cnt, start_marker_def, end_marker_def,
 
             first_index = np.searchsorted(cnt.axes[timeaxis], start_marker_ms + segment_ival[0])
             # +1 should be correct since last index not part... but maybe recheck?
-            last_index = np.searchsorted(cnt.axes[timeaxis], end_marker_ms+segment_ival[1]) + 1
+            last_index = np.searchsorted(cnt.axes[timeaxis], end_marker_ms+segment_ival[1])
             if trial_classes is not None:
                 # -1 because before is 1-based matlab-indexing(!)
                 i_class = int(old_class_to_new_class[int(start_marker_val)] - 1)

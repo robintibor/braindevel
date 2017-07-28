@@ -11,6 +11,7 @@ from braindecode.veganlasagne.layers import (Conv2DAllColsLayer,
 from braindecode.veganlasagne.batch_norm import BatchNormLayer
 from braindecode.veganlasagne.nonlinearities import square, safe_log
 
+
 class ShallowFBCSPNet(object):
     def __init__(self, in_chans, input_time_length, n_classes,
             n_filters_time=40,
