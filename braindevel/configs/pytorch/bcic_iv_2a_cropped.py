@@ -197,4 +197,3 @@ def run(ex, data_folder, subject_id, low_cut_hz, model, only_return_exp, ):
     ex.info['runtime'] = run_time
     save_pkl_artifact(ex, exp.epochs_df, 'epochs_df.pkl')
     save_pkl_artifact(ex, exp.before_stop_df, 'before_stop_df.pkl')
-
