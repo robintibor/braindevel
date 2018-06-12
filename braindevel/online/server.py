@@ -350,24 +350,24 @@ class PredictionServer(gevent.server.StreamServer):
             n_classes:]
 
         print("Corrcoeffs")
-        print corrcoeffs
+        print(corrcoeffs)
         print("mean across diagonal")
-        print np.mean(np.diag(corrcoeffs))
+        print(np.mean(np.diag(corrcoeffs)))
         interpolated_pred_labels = np.argmax(interpolated_preds, axis=0)
         
         # inside trials
         corrcoeffs = np.corrcoef(interpolated_preds[:,y_labels!=0], 
                                  y_signal[y_labels!=0].T)[:n_classes,n_classes:]
         print("Corrcoeffs inside trial")
-        print corrcoeffs
+        print(corrcoeffs)
         print("mean across diagonal inside trial")
-        print np.mean(np.diag(corrcoeffs))
+        print(np.mean(np.diag(corrcoeffs)))
         
         # -1 since we have 0 as "break" "non-trial" marker
         label_pred_equal = interpolated_pred_labels == y_labels - 1
         label_pred_trial_equal = label_pred_equal[y_labels!=0]
         print("Sample accuracy inside trials")
-        print np.mean(label_pred_trial_equal)
+        print(np.mean(label_pred_trial_equal))
         y_label_with_breaks = np.copy(y_labels)
         # set break to rest label
         y_label_with_breaks[y_label_with_breaks == 0] = n_classes
@@ -375,7 +375,7 @@ class PredictionServer(gevent.server.StreamServer):
         y_label_with_breaks -= 1
         label_pred_equal = interpolated_pred_labels == y_label_with_breaks
         print("Sample accuracy total")  
-        print np.mean(label_pred_equal)
+        print(np.mean(label_pred_equal))
         
         # also compute trial preds
         # compute boundarides so that boundaries give

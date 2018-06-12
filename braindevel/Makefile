@@ -14,5 +14,6 @@ acceptance-tests:
 
 #. ../../../motor-imagery/ipython-notebooks-metagpu/venv/bin/activate && 
 
+# set export XDG_RUNTIME_DIR="" for slurm 
 run-ipython-notebooks-top-level:
-	cd /home/schirrmr && jupyter notebook --config=/home/schirrmr/.jupyter/profile_nbserver/ipython_config.py
+	cd /home/schirrmr && XDG_RUNTIME_DIR="" /home/schirrmr/anaconda3/envs/default/bin/jupyter notebook --config=/home/schirrmr/.jupyter/profile_nbserver/ipython_config.py

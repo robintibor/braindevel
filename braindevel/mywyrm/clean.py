@@ -5,7 +5,7 @@ import itertools
 from braindevel.mywyrm.processing import (bandpass_cnt, segment_dat_fast,
     highpass_cnt, lowpass_cnt, select_marker_classes, select_marker_epochs)
 from wyrm.processing import select_channels
-from braindevel.datautil.signal_processor import SignalProcessor
+from braindevel.datasets.signal_processor import SignalProcessor
 from collections import namedtuple
 import logging 
 log = logging.getLogger(__name__)

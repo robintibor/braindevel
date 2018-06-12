@@ -288,12 +288,20 @@ def load_layers_from_dict(train_dict):
         return layers_obj.get_layers()
 
 
-def create_experiment(yaml_filename, seed=9859295):
+def create_experiment(yaml_filename, seed=9859295,
+                      change_braindecode_braindevel=True):
     """Utility function to create experiment from yaml file"""
     # for reproducibility for layer weights
     # should be same seed as in experiment_runner.py
     lasagne.random.set_rng(RandomState(seed))
-    train_dict = yaml_parse.load(open(yaml_filename, 'r'))
+    content = open(yaml_filename, 'r').read()
+    if change_braindecode_braindevel:
+        content = content.replace('!!python/name:braindecode.',
+                                  '!!python/name:braindevel.')
+        content = content.replace('!!python/object/apply:braindecode.',
+                                  '!!python/object/apply:braindevel.')
+        content = content.replace('!obj:braindecode.', '!obj:braindevel.')
+    train_dict = yaml_parse.load(content)
     layers = load_layers_from_dict(train_dict)
     final_layer = layers[-1]
     dataset = train_dict['dataset'] 

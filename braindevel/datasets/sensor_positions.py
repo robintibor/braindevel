@@ -773,7 +773,8 @@ def sort_topologically(sensor_names):
         ...
     AssertionError: Expect all sensors to exist in topo grid, not existing: set(['O5'])
     """
-    flat_topo_all_sensors = np.array(cap_positions).flatten();
+    flat_topo_all_sensors = np.array(
+        [name for row in cap_positions for name in row if name != []])
     sorted_sensor_names = []
     # Go through all sorted sensors and add those that are requested
     for sensor_name in flat_topo_all_sensors:

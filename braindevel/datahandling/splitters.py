@@ -3,7 +3,7 @@ from sklearn.cross_validation import KFold
 import numpy as np
 from collections import OrderedDict
 from numpy.random import RandomState
-from braindevel.datautil.pylearn import DenseDesignMatrixWrapper
+from braindevel.datasets.pylearn import DenseDesignMatrixWrapper
 from copy import deepcopy
 import logging
 from braindevel.datahandling.batch_iteration import compute_trial_start_end_samples,\

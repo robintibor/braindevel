@@ -5,6 +5,7 @@ from scipy import interpolate
 from matplotlib import patches
 from matplotlib.path import Path
 from braindevel.datasets.sensor_positions import CHANNEL_10_20_APPROX
+from matplotlib import cm
 
 def get_channelpos(channame, chan_pos_list):
     
@@ -81,7 +82,7 @@ def get_channelpos_from_angle(channame, chan_pos_list=CHANNEL_10_20_APPROX):
 
 def ax_scalp(v, channels, 
     ax=None, annotate=False,
-    vmin=None, vmax=None, colormap=None,
+    vmin=None, vmax=None, colormap=cm.coolwarm,
     scalp_line_width=1,
     scalp_line_style='solid',
     chan_pos_list=CHANNEL_10_20_APPROX,
@@ -165,14 +166,12 @@ def ax_scalp(v, channels,
     image = ax.imshow(zz, vmin=vmin, vmax=vmax, cmap=colormap,
         extent=[min(x),max(x),min(y),max(y)], origin='lower',
         interpolation=interpolation)
-    #image = ax.contourf(xx, yy, zz, 100, vmin=vmin, vmax=vmax,
-    #    cmap=colormap)
     if scalp_line_width > 0:
         # paint the head
         ax.add_artist(plt.Circle((0, 0), 1, linestyle=scalp_line_style,
             linewidth=scalp_line_width, fill=False))
         # add a nose
-        ax.plot([-0.1, 0, 0.1], [1, 1.1, 1], color='black', 
+        ax.plot([-0.1, 0, 0.1], [1, 1.1, 1], color='black',
             linewidth=scalp_line_width, linestyle=scalp_line_style)
         # add ears
         add_ears(ax, scalp_line_width, scalp_line_style)
@@ -180,7 +179,7 @@ def ax_scalp(v, channels,
     # set the axes limits, so the figure is centered on the scalp
     ax.set_ylim([-1.05, 1.15])
     ax.set_xlim([-1.15, 1.15])
-    
+
     # hide the frame and ticks
     ax.set_frame_on(False)
     ax.set_xticks([])

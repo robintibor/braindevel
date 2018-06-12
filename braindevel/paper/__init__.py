@@ -1,6 +1,28 @@
 import itertools
 
 unclean_sets = ['AnWe', 'JoBe', 'MaGl', 'NaMa', 'OlIl', 'SvMu']
+# Clean sets:
+"""
+['data/BBCI-without-last-runs/BhNoMoSc1S001R01_ds10_1-12.BBCI.mat',
+ 'data/BBCI-without-last-runs/FaMaMoSc1S001R01_ds10_1-14.BBCI.mat',
+ 'data/BBCI-without-last-runs/FrThMoSc1S001R01_ds10_1-11.BBCI.mat',
+ 'data/BBCI-without-last-runs/GuJoMoSc01S001R01_ds10_1-11.BBCI.mat',
+ 'data/BBCI-without-last-runs/KaUsMoSc1S001R01_ds10_1-11.BBCI.mat',
+ 'data/BBCI-without-last-runs/LaKaMoSc1S001R01_ds10_1-9.BBCI.mat',
+ 'data/BBCI-without-last-runs/LuFiMoSc3S001R01_ds10_1-11.BBCI.mat',
+ 'data/BBCI-without-last-runs/MaJaMoSc1S001R01_ds10_1-11.BBCI.mat',
+ 'data/BBCI-without-last-runs/MaKiMoSC01S001R01_ds10_1-4.BBCI.mat',
+ 'data/BBCI-without-last-runs/MaVoMoSc1S001R01_ds10_1-11.BBCI.mat',
+ 'data/BBCI-without-last-runs/PiWiMoSc1S001R01_ds10_1-11.BBCI.mat',
+ 'data/BBCI-without-last-runs/RoBeMoSc03S001R01_ds10_1-9.BBCI.mat',
+ 'data/BBCI-without-last-runs/RoScMoSc1S001R01_ds10_1-11.BBCI.mat',
+ 'data/BBCI-without-last-runs/StHeMoSc01S001R01_ds10_1-10.BBCI.mat']
+ """
+
+
+
+
+
 # for paper: left,right,feet,rest
 permute_order_i_class = [1,0,3,2]
 

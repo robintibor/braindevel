@@ -3,14 +3,14 @@
         'configs/experiments/online/cnt_with_merged_net.yaml',
         ],
     variants: [[{ 
-        save_path: ['data/models/online/cnt/merged-net/cabin/'],
+        save_path: ['data/models/online/cnt/merged-net/cabin/128-sensors/'],
         max_increasing_epochs: [80],
         max_epochs: [200],
         filenames: [[  
             'data/nico-cabin/NiRiNBD5S001R01_ds10_1-11.BBCI.mat',
             'data/nico-cabin/NiRiNBD5S001R01_ds10_1-11.BBCI.mat',
         ]],
-        load_sensor_names: [$nico_sensors],
+        load_sensor_names: [$eeg_sensors],
         sensor_names: ["null"],
         trial_ranges: ["[
                [0,800],

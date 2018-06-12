@@ -149,7 +149,7 @@ def get_templates():
 def get_grid_param_list():
     dictlistprod = cartesian_dict_of_lists_product
     default_params = [{
-        'save_folder': './data/models/pytorch/bcic-iv-2a/eegnet-cross-subject-time-pad/',
+        'save_folder': './data/models/pytorch/bcic-iv-2a/eegnet-perf-rzti/',
         'only_return_exp': False,
     }]
     subject_folder_params = dictlistprod({
@@ -158,7 +158,7 @@ def get_grid_param_list():
     })
 
     preproc_params = dictlistprod({
-        'low_cut_hz': [0,4],
+        'low_cut_hz': [4],#0
     })
 
     stop_params = dictlistprod({

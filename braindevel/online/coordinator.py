@@ -95,7 +95,6 @@ def make_predictions_with_online_predictor(coordinator, cnt_data,
     window_len = coordinator.model.get_n_samples_pred_window()
     all_preds = []
     i_pred_samples = []
-    block = np.ones((block_len, cnt_data.shape[1] + 1),dtype=np.float32)
     perc_done = 0 # Logging progress
     for i_start_sample in xrange(input_start - window_len + 1, input_end+1,block_len):
         block = cnt_data[i_start_sample:i_start_sample+block_len]

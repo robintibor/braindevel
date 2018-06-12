@@ -38,7 +38,11 @@ class BinaryCSP(object):
             epo = segment_dat_fast(bandpassed_cnt, 
                 marker_def=self.marker_def, 
                 ival=self.segment_ival)
-
+            # import numpy as np
+            # np.save("/data/schirrmr/schirrmr/csprepl/cntdata", self.cnt.data)
+            # np.save("/data/schirrmr/schirrmr/csprepl/bandpassedcntdata", bandpassed_cnt.data, )
+            # np.save("/data/schirrmr/schirrmr/csprepl/epodata", epo.data)
+            # assert False
             for fold_nr in xrange(len(self.folds)):
                 self.run_fold(epo, bp_nr, fold_nr)
     
